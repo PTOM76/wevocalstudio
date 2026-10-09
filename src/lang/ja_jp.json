@@ -78,6 +78,7 @@
   "settings.edit": "編集",
   "settings.snap": "スナップ",
   "settings.snapHelp": "ドラッグを目盛りの線、波形ブロックの端、再生位置に吸い付けます。Shift を押しながらドラッグすると吸い付けません。",
+  "settings.autoRestore": "作業を自動保存し、次回開いたときに復元する",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
@@ -106,5 +107,7 @@
   "transport.pause": "一時停止",
   "transport.repeat": "リピート",
   "transport.toEnd": "末尾へ",
-  "transport.range": "範囲"
+  "transport.range": "範囲",
+
+  "toast.restored": "前回の作業を復元しました"
 }

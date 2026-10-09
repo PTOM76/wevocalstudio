@@ -18,7 +18,7 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
   const t = useT()
   // texts は設定の検索の対象。項目を足したらここにも足す
   const categories: SettingsCategory<Category>[] = [
-    { id: 'general', label: t('settings.general'), texts: [t('settings.language')] },
+    { id: 'general', label: t('settings.general'), texts: [t('settings.language'), t('settings.autoRestore')] },
     { id: 'appearance', label: t('settings.appearance'), texts: [t('settings.theme'), t('settings.uiScale')] },
     { id: 'edit', label: t('settings.edit'), texts: [t('settings.snap')] },
     { id: 'pitch', label: t('settings.pitch'), texts: [t('settings.algorithm'), t('settings.preserveFormant')] },
@@ -38,6 +38,7 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
             <Row label={t('settings.language')}>
               <Choice<LangSetting> value={draft.language} onChange={(language) => set({ language })} options={[['auto', t('settings.languageAuto')], ...i18n.options()]} />
             </Row>
+            <Check label={t('settings.autoRestore')} checked={draft.autoRestore} onChange={(autoRestore) => set({ autoRestore })} />
           </Group>
         ),
         appearance: (

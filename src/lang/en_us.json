@@ -78,6 +78,7 @@
   "settings.edit": "Editing",
   "settings.snap": "Snap",
   "settings.snapHelp": "Snap drags to grid lines, block edges and the cursor. Hold Shift while dragging to ignore snapping.",
+  "settings.autoRestore": "Autosave your work and restore it next time",
 
   "status.ready": "Ready",
   "status.playing": "Playing",
@@ -106,5 +107,7 @@
   "transport.pause": "Pause",
   "transport.repeat": "Repeat",
   "transport.toEnd": "Go to end",
-  "transport.range": "Selection"
+  "transport.range": "Selection",
+
+  "toast.restored": "Restored your previous work"
 }

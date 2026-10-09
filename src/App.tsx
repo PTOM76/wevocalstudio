@@ -4,6 +4,7 @@ import { Alert, Box, Link, Snackbar } from '@mui/material'
 import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
 import { AUDIO_ACCEPT, EXPORT_EXT, downloadBlob, exportAudio, type Range } from 'wevocal-lib'
 import { app } from './appConfig'
+import { clearAutosave, loadAutosave, saveAutosave } from './autosave'
 import BlockDialog from './BlockDialog'
 import type { TimelineView } from './drawTimeline'
 import { pitchPending, preparePitch } from './dsp/pitch'
@@ -47,6 +48,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [busy, setBusy] = useState(false)
   const [pitching, setPitching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  // 起動時の復元が終わるまでは自動保存しない（空のプロジェクトで前回の作業を上書きしないように）
+  const [restored, setRestored] = useState(false)
   const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | null>(null)
   const audioInput = useRef<HTMLInputElement>(null)
   const projectInput = useRef<HTMLInputElement>(null)
@@ -139,6 +143,30 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
     help: { guide: () => openExternal(app.repository), licenses: () => setDialog('licenses'), about: () => setDialog('about') },
   })
+
+  // 起動時に前回の作業を復元する（WeVocalSynth と同じ）
+  useEffect(() => {
+    if (!p.settings.autoRestore) return setRestored(true)
+    loadAutosave()
+      .then((r) => {
+        if (!r) return
+        doc.replace(r.project)
+        setFileName(r.fileName)
+        setNotice(t('toast.restored'))
+      })
+      .catch(fail)
+      .finally(() => setRestored(true))
+    // 起動時に 1 回だけ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 変わったら少し待って書く。設定で切ったら消す
+  useEffect(() => {
+    if (!restored) return
+    if (!p.settings.autoRestore) return void clearAutosave().catch(fail)
+    const id = setTimeout(() => saveAutosave(project, fileName).catch(fail), 500)
+    return () => clearTimeout(id)
+  }, [project, fileName, restored, p.settings.autoRestore])
 
   // 再生中は位置を動かす
   useEffect(() => {
@@ -263,6 +291,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <Snackbar open={!!error} autoHideDuration={8000} onClose={() => setError(null)}>
         <Alert severity="error" onClose={() => setError(null)}>
           {t('error.failed', { error: error ?? '' })}
+        </Alert>
+      </Snackbar>
+      <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(null)}>
+        <Alert severity="info" onClose={() => setNotice(null)}>
+          {notice}
         </Alert>
       </Snackbar>
       <ExportDialog hasRange={!!range} open={dialog === 'export'} onClose={() => setDialog(null)} onExport={(c) => void runExport(c)} />

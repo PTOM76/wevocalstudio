@@ -11,6 +11,8 @@ export interface Settings {
   /** 画面の大きさ（倍率） */
   uiScale: number
   showStatusBar: boolean
+  /** 作業を自動保存し、次に開いたときに復元する */
+  autoRestore: boolean
   /** ドラッグを目盛りの線や波形ブロックの端に吸い付ける */
   snap: boolean
   /** 新しい波形ブロックのピッチの処理方式（WeVocalSynth と同じ。既定は Synth の声と同じ Vesola）。波形ブロックごとに変えられる */
@@ -19,7 +21,7 @@ export interface Settings {
   preserveFormant: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, snap: true, algorithm: 'sola3', preserveFormant: true }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, snap: true, autoRestore: true, algorithm: 'sola3', preserveFormant: true }
 
 const KEY = app.key('settings')
 
