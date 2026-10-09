@@ -63,9 +63,10 @@ export const KEYMAP: Record<Action, string[]> = {
   import: ['Insert'],
   // REAPER の「書き出し（Render）」と同じ
   export: ['Ctrl+Alt+KeyR'],
-  // ピッチ: テンキーの 9 と 3 で 1 半音、Shift を足すと 10 セント。Ctrl+↑↓ でも変えられる。Ctrl+Backspace か Ctrl+0 で元に戻す
-  pitchUp: ['Numpad9', 'Ctrl+ArrowUp'],
-  pitchDown: ['Numpad3', 'Ctrl+ArrowDown'],
+  // ピッチ: REAPER と同じく Shift+0（US 配列の「)」）で 1 半音上げ、Shift+9（「(」）で下げる。テンキーの 9 と 3、Ctrl+↑↓ でも変えられる。
+  // テンキーで Shift を足すと 10 セント。Ctrl+Backspace か Ctrl+0 で元に戻す
+  pitchUp: ['Shift+Digit0', 'Numpad9', 'Ctrl+ArrowUp'],
+  pitchDown: ['Shift+Digit9', 'Numpad3', 'Ctrl+ArrowDown'],
   pitchUpFine: ['Shift+Numpad9', 'Ctrl+Shift+ArrowUp'],
   pitchDownFine: ['Shift+Numpad3', 'Ctrl+Shift+ArrowDown'],
   pitchReset: ['Ctrl+Backspace', 'Ctrl+Digit0', 'Ctrl+Numpad0'],
