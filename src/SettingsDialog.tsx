@@ -1,8 +1,9 @@
-import { Choice, Group, Row, SettingsDialog as PevenSettingsDialog, type SettingsCategory } from 'pevenmui'
+import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
+import { Check, Choice, Group, Row, SettingsDialog as PevenSettingsDialog, type SettingsCategory } from 'pevenmui'
 import { i18n, useT, type LangSetting } from './i18n'
 import { DEFAULT_SETTINGS, type Settings } from './settings'
 
-type Category = 'general' | 'appearance'
+type Category = 'general' | 'appearance' | 'pitch'
 
 const SCALES: ['0.9' | '1' | '1.1' | '1.25', string][] = [
   ['0.9', '90%'],
@@ -18,6 +19,7 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
   const categories: SettingsCategory<Category>[] = [
     { id: 'general', label: t('settings.general'), texts: [t('settings.language')] },
     { id: 'appearance', label: t('settings.appearance'), texts: [t('settings.theme'), t('settings.uiScale')] },
+    { id: 'pitch', label: t('settings.pitch'), texts: [t('settings.algorithm'), t('settings.preserveFormant')] },
   ]
   return (
     <PevenSettingsDialog
@@ -52,6 +54,14 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
             <Row label={t('settings.uiScale')}>
               <Choice value={String(draft.uiScale) as (typeof SCALES)[number][0]} onChange={(v) => set({ uiScale: Number(v) })} options={SCALES} />
             </Row>
+          </Group>
+        ),
+        pitch: (
+          <Group title={t('settings.pitch')}>
+            <Row label={t('settings.algorithm')}>
+              <Choice<Algorithm> value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} options={Object.entries(ALGORITHM_NAMES) as [Algorithm, string][]} />
+            </Row>
+            <Check label={t('settings.preserveFormant')} checked={draft.preserveFormant} onChange={(preserveFormant) => set({ preserveFormant })} />
           </Group>
         ),
       })}

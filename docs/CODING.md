@@ -23,6 +23,7 @@ WeVocalSynth の docs/CODING.md と同じ決まりを使う。ここには Studi
 | コマンド | 内容 |
 | --- | --- |
 | `npm run build` | 型チェックとビルド |
+| `npm run build:wasm` | `dsp/` を wasm にビルドし、`src/dsp/dsp.wasm` を作る（wevocal-lib の処理を変えたときも作り直してコミットする） |
 
 ## コミット
 - メッセージは `feat:` / `fix:` / `refactor:` / `chore:` と日本語の要約。本文に変更の理由を書く

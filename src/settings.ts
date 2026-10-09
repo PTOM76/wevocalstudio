@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { Algorithm } from 'wevocal-lib'
 import type { LangSetting } from './i18n'
 import { app } from './appConfig'
 
@@ -9,9 +10,13 @@ export interface Settings {
   /** 画面の大きさ（倍率） */
   uiScale: number
   showStatusBar: boolean
+  /** ピッチを変える処理方式（WeVocalSynth と同じ。既定は Synth の声と同じ Vesola） */
+  algorithm: Algorithm
+  /** ピッチを変えるときにフォルマント（声の響き）を保つ */
+  preserveFormant: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, algorithm: 'sola3', preserveFormant: true }
 
 const KEY = app.key('settings')
 

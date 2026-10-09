@@ -5,7 +5,7 @@ WeVocal Studio は、複数のトラックに波形ブロックを並べて編�
 | 分類 | 機能 |
 | --- | --- |
 | 配置 | 音声ファイルをトラックに波形ブロックとして並べる、移動、分割、削除 |
-| 波形ブロック | 音量、フェード、ミュート（ピッチは今後） |
+| 波形ブロック | 音量、ピッチ（WeVocalSynth と同じ処理方式）、フェード、ミュート |
 | トラック | 音量、パン、ミュート、ソロ |
 | 出力 | 再生、WAV で書き出す |
 
@@ -13,7 +13,7 @@ WeVocal Studio は、複数のトラックに波形ブロックを並べて編�
 | 項目 | 内容 |
 | --- | --- |
 | 画面 | React + TypeScript + MUI（[PevenMUI](https://github.com/PTOM76/pevenmui)、Vite） |
-| 音声 | Web Audio、[wevocal-lib](https://github.com/PTOM76/wevocal-lib) |
+| 音声 | Web Audio、Rust（WebAssembly）、[wevocal-lib](https://github.com/PTOM76/wevocal-lib) |
 
 ## セットアップ
 ```bash

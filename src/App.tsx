@@ -1,10 +1,11 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー
 import { useEffect, useRef, useState } from 'react'
-import { Box, Link, Typography } from '@mui/material'
+import { Alert, Box, Link, Snackbar, Typography } from '@mui/material'
 import { AboutDialog, AppHeader, FULL_HEIGHT, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout, type MenuGroup } from 'pevenmui'
 import { AUDIO_ACCEPT, downloadBlob } from 'wevocal-lib'
 import { app } from './appConfig'
 import BlockPanel from './BlockPanel'
+import { pitchPending, preparePitch } from './dsp/pitch'
 import { Player, renderWav } from './engine'
 import { useT } from './i18n'
 import SettingsDialog from './SettingsDialog'
@@ -31,6 +32,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [cursor, setCursor] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pitching, setPitching] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const pitch = { algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant }
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [licensesOpen, setLicensesOpen] = useState(false)
@@ -38,7 +42,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const block = project.blocks.find((b) => b.id === selected)
 
   const play = () => {
-    player.current.play(project, cursor)
+    player.current.play(project, pitch, cursor)
     setPlaying(true)
   }
   const stop = () => {
@@ -48,12 +52,14 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   }
   const seek = (time: number) => {
     setCursor(time)
-    if (playing) player.current.play(project, time)
+    if (playing) player.current.play(project, pitch, time)
   }
   const exportWav = async () => {
     setBusy(true)
     try {
-      downloadBlob(await renderWav(project), 'mix.wav')
+      downloadBlob(await renderWav(project, pitch), 'mix.wav')
+    } catch (e) {
+      setError(String(e))
     } finally {
       setBusy(false)
     }
@@ -77,9 +83,23 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   }, [playing])
 
   // 再生中に変えた値を音に反映する（今の位置から組み直す）
+  const replay = () => {
+    if (player.current.playing) player.current.play(project, pitch, player.current.position())
+  }
+  useEffect(replay, [project, p.settings.algorithm, p.settings.preserveFormant])
+
+  // ピッチを変えた音を用意する。できたら鳴らし直す（できるまでは元の音で鳴らす）
   useEffect(() => {
-    if (player.current.playing) player.current.play(project, player.current.position())
-  }, [project])
+    let alive = true
+    setPitching(pitchPending(project, pitch))
+    preparePitch(project, pitch)
+      .then((made) => alive && made && replay())
+      .catch((e: unknown) => alive && setError(String(e)))
+      .finally(() => alive && setPitching(false))
+    return () => {
+      alive = false
+    }
+  }, [project, p.settings.algorithm, p.settings.preserveFormant])
 
   // キー: Space 再生と停止、S 分割、Delete 削除（REAPER と同じ）
   useEffect(() => {
@@ -149,11 +169,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault()
-        void addFiles([...e.dataTransfer.files])
+        addFiles([...e.dataTransfer.files]).catch((err: unknown) => setError(String(err)))
       }}
     >
       <AppHeader icon={<AppIcon size={16} />} menus={menus} />
-      <input ref={fileInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void addFiles([...(e.target.files ?? [])]).finally(() => (e.target.value = ''))} />
+      <input ref={fileInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => addFiles([...(e.target.files ?? [])]).catch((err: unknown) => setError(String(err))).finally(() => (e.target.value = ''))} />
 
       {project.tracks.length === 0 ? (
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
@@ -174,13 +194,18 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar>
-          <StatusItem>{busy ? t('status.exporting') : playing ? t('status.playing') : t('status.ready')}</StatusItem>
+          <StatusItem>{busy ? t('status.exporting') : pitching ? t('status.pitch') : playing ? t('status.playing') : t('status.ready')}</StatusItem>
           <StatusItem>{formatTime(cursor)}</StatusItem>
           <StatusSpacer />
           <StatusItem secondary>{BUILD}</StatusItem>
         </StatusBar>
       )}
 
+      <Snackbar open={!!error} autoHideDuration={8000} onClose={() => setError(null)}>
+        <Alert severity="error" onClose={() => setError(null)}>
+          {t('error.failed', { error: error ?? '' })}
+        </Alert>
+      </Snackbar>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={p.settings} onChange={p.onSettingsChange} />
       <LicensesDialog
         open={licensesOpen}

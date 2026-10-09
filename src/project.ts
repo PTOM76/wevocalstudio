@@ -35,7 +35,7 @@ export interface Block {
   length: number
   /** 音量（dB） */
   gain: number
-  /** ピッチ（半音）。元の音から変える。v0.0.1 では値を持つだけで、音にはまだ反映されない */
+  /** ピッチ（半音）。元の音から変える（dsp/pitch.ts） */
   pitch: number
   /** フェードイン、フェードアウト（秒） */
   fadeIn: number
