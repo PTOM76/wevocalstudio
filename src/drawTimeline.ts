@@ -1,8 +1,9 @@
 // 時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
-import type { Range } from 'wevocal-lib'
+import { alpha, type Range } from 'wevocal-lib'
 import { gridLines, type GridMode } from './grid'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
+import { blockReady } from './dsp/pitch'
 import { audible, type Block, type Project } from './project'
 
 export const RULER = 24
@@ -22,6 +23,8 @@ export interface TimelineView {
 /** 線の取り方とテンポ以外に描くときに使うもの */
 export interface DrawOptions {
   grid: GridMode
+  /** 作り直している波形ブロックに出す文字 */
+  pendingLabel: string
 }
 
 export interface TimelineColors {
@@ -133,6 +136,25 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
         g.clip()
         g.fillStyle = c.text
         g.fillText(`${name}  ${info}`, x + 4, y + 9)
+        g.restore()
+      }
+      // 作り直している波形ブロックは斜線と「処理中 n%」（できた所から鳴る）
+      const ready = blockReady(b)
+      if (ready < 1) {
+        g.save()
+        g.beginPath()
+        g.rect(x, y + 2, bw, H - 5)
+        g.clip()
+        g.strokeStyle = alpha(c.text, 0.25)
+        g.lineWidth = 1
+        g.beginPath()
+        for (let sx = Math.floor(x / 8) * 8 - H; sx < x + bw; sx += 8) {
+          g.moveTo(sx, y + H)
+          g.lineTo(sx + H, y)
+        }
+        g.stroke()
+        g.fillStyle = c.text
+        g.fillText(`${o.pendingLabel} ${Math.floor(ready * 100)}%`, x + 4, y + H - 10)
         g.restore()
       }
       g.globalAlpha = 1

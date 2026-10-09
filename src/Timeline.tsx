@@ -61,6 +61,10 @@ export default function Timeline(p: {
   onView: (fn: (v: TimelineView) => TimelineView) => void
   /** 波形を描く所の幅（px。ミニマップの枠に使う） */
   onWidth: (w: number) => void
+  /** かたまりができるたびに増える（「処理中」を描き直す） */
+  madeVersion: number
+  /** 作り直している波形ブロックに出す文字（「処理中」） */
+  pendingLabel: string
 }) {
   // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
   const { dark, pal } = usePalette()
@@ -99,7 +103,7 @@ export default function Timeline(p: {
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
-    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid }, {
+    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid, pendingLabel: p.pendingLabel }, {
       bg: pal.background.default,
       lane: pal.divider,
       line: alpha(pal.divider, 0.5),
@@ -113,7 +117,7 @@ export default function Timeline(p: {
       marker: '#ffb300',
       range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
     })
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.madeVersion, p.pendingLabel])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)

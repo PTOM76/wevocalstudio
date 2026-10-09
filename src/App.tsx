@@ -1,6 +1,6 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Box, Link, Snackbar } from '@mui/material'
+import { Alert, Box, LinearProgress, Link, Snackbar } from '@mui/material'
 import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, useConfirm, usePalette, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
 import { UpdatePrompt } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
@@ -13,7 +13,7 @@ import HistoryDialog from './HistoryDialog'
 import EqDialog from './EqDialog'
 import { flatEq } from 'wevocal-lib'
 import type { TimelineView } from './drawTimeline'
-import { analyzeTempo, pitchPending, preparePitch } from './dsp/pitch'
+import { analyzeTempo, onPitchProgress, pitchPending, pitchProgress, preparePitch } from './dsp/pitch'
 import { Player, renderMix } from './engine'
 import { buildOverview } from './overview'
 import ExportDialog, { type ExportChoice } from './ExportDialog'
@@ -346,7 +346,31 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project])
 
-  // ピッチを変えた音を用意する。できたら鳴らし直す（できるまでは元の音で鳴らす）
+  // かたまりが 1 つできるたびに、ゲージを動かし、再生中ならその波形ブロックを差し替え、時間軸の「処理中」を描き直す（まとめて 0.1 秒に 1 回）
+  const [progress, setProgress] = useState({ total: 0, done: 0 })
+  const projectRef = useRef(project)
+  projectRef.current = project
+  useEffect(() => {
+    let timer = 0
+    let lastDone = 0
+    return onPitchProgress(() => {
+      if (timer) return
+      timer = window.setTimeout(() => {
+        timer = 0
+        const pr = pitchProgress()
+        setProgress(pr)
+        // できたかたまりが増えていれば鳴らす音を差し替える
+        const whole = Math.floor(pr.done)
+        if (whole !== lastDone) {
+          lastDone = whole
+          player.current.update(projectRef.current)
+          setMadeVersion((v) => v + 1)
+        }
+      }, 100)
+    })
+  }, [])
+
+  // ピッチを変えた音を用意する（再生位置か編集カーソルに近い所から。できたかたまりから鳴らす）
   useEffect(() => {
     let alive = true
     setPitching(pitchPending(project))
@@ -436,6 +460,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         grid={p.settings.grid}
         onView={setView}
         onWidth={setTimelineWidth}
+        madeVersion={madeVersion}
+        pendingLabel={t('status.pitchBlock')}
       />
       {p.settings.showAnalysis && (
         <AnalysisPanel
@@ -528,6 +554,13 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       {!mobile && p.settings.showStatusBar && (
         <StatusBar>
           <StatusItem>{recording ? t('status.recording') : busy ? t('status.exporting') : pitching ? t('status.pitch') : playing ? t('status.playing') : t('status.ready')}</StatusItem>
+          {/* ピッチなどを作っている進み具合（WeVocalSynth のゲージと同じ） */}
+          {pitching && progress.total > 0 && (
+            <StatusItem>
+              <LinearProgress variant="determinate" value={(100 * progress.done) / progress.total} sx={{ width: 120 }} />
+              <span style={{ marginLeft: 6 }}>{Math.floor((100 * progress.done) / progress.total)}%</span>
+            </StatusItem>
+          )}
           <StatusSpacer />
           <StatusItem secondary>{BUILD}</StatusItem>
         </StatusBar>

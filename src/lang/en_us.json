@@ -119,6 +119,7 @@
   "status.exporting": "Exporting…",
   "status.pitch": "Changing pitch…",
   "status.recording": "Recording",
+  "status.pitchBlock": "Processing",
 
   "track.mute": "Mute",
   "track.solo": "Solo",

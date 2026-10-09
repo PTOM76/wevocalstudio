@@ -61,13 +61,23 @@ export interface StitchRequest {
 
 export type DspRequest = PitchRequest | TempoRequest | SegPlanRequest | StitchRequest
 
-export type PitchResponse = { id: number; channels: Float32Array[] } | { id: number; error: string }
+export type PitchResponse = { id: number; channels: Float32Array[] } | { id: number; error: string } | { id: number; progress: number }
 
 const scope = self as unknown as Worker
 
+// 処理中の頼みごとの id と、前に知らせた進み具合（1% ごとに間引く）
+let currentId = 0
+let lastPct = -1
+function reportProgress(p: number) {
+  const pct = Math.floor(p * 100)
+  if (pct === lastPct) return
+  lastPct = pct
+  scope.postMessage({ id: currentId, progress: p } satisfies PitchResponse)
+}
+
 const ready: Promise<DspExports> = fetch(wasmUrl)
   .then((r) => r.arrayBuffer())
-  .then((bytes) => WebAssembly.instantiate(bytes, {}))
+  .then((bytes) => WebAssembly.instantiate(bytes, { env: { report_progress: reportProgress } }))
   .then((r) => r.instance.exports as unknown as DspExports)
 
 function process(dsp: DspExports, r: PitchRequest): Float32Array[] {
@@ -134,6 +144,8 @@ scope.onmessage = async (e: MessageEvent<DspRequest>) => {
   const req = e.data
   try {
     const dsp = await ready
+    currentId = req.id
+    lastPct = -1
     const channels = req.kind === 'tempo' ? tempo(dsp, req) : req.kind === 'segplan' ? segplan(dsp, req) : req.kind === 'stitch' ? stitch(dsp, req) : process(dsp, req)
     scope.postMessage({ id: req.id, channels } satisfies PitchResponse, channels.map((c) => c.buffer))
   } catch (err) {

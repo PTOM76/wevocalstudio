@@ -1,7 +1,7 @@
 // wasm の処理の窓口。波形ブロックのピッチと速度を音に反映し（作ったものはキャッシュ）、テンポを解析する。
-// 作るのは波形ブロックが使う範囲（と前後の余白）だけ。同じ音源と設定で範囲が重なる、近いものは 1 つにまとめて作る。
-// Worker は CPU のコアに合わせて複数使い、長い音は区間に分けて同時に作ってつなぐ（WeVocalSynth と同じ segment）。待つ間に要らなくなったものは飛ばす。
-// 作り直している間の波形ブロックは鳴らさない（元の音や前の音が一瞬鳴らないように）
+// 元の音を CHUNK 秒ごとの「かたまり」に分けて作る（前後に余白を付ける）。区切りは元の音の時刻で決まるので、範囲の違う波形ブロックどうしでも同じかたまりを使い回す。
+// 再生位置（止まっていれば編集カーソル）に近いかたまりから作り、できたものから鳴らす（REAPER のように、すぐ聞く所を先に）。
+// Worker は CPU のコアに合わせて複数使う。作ったかたまりは、使われなくなってもしばらく残す（戻したときに作り直さない）
 import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
 import { CURVE_HOP, type Block, type Project, type Source } from '../project'
 import type { DspRequest, PitchResponse } from './worker'
@@ -14,13 +14,17 @@ const workers: Worker[] = []
 const idle: Worker[] = []
 const queue: (() => void)[] = []
 let nextId = 1
-const waiting = new Map<number, (r: PitchResponse) => void>()
+const waiting = new Map<number, { done: (r: PitchResponse) => void; progress?: (p: number) => void }>()
 
 function makeWorker() {
   const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' })
   w.onmessage = (e: MessageEvent<PitchResponse>) => {
-    waiting.get(e.data.id)?.(e.data)
-    waiting.delete(e.data.id)
+    const m = e.data
+    const h = waiting.get(m.id)
+    if (!h) return
+    if ('progress' in m) return h.progress?.(m.progress)
+    waiting.delete(m.id)
+    h.done(m)
   }
   workers.push(w)
   return w
@@ -38,12 +42,12 @@ function giveBack(w: Worker) {
 }
 
 /** Worker に頼む（空いているものに配る。id はここで付ける） */
-async function request(r: Req) {
+async function request(r: Req, onProgress?: (p: number) => void) {
   const w = await borrow()
   const id = nextId++
   try {
     return await new Promise<Float32Array[]>((resolve, reject) => {
-      waiting.set(id, (res) => ('error' in res ? reject(new Error(res.error)) : resolve(res.channels)))
+      waiting.set(id, { done: (res) => ('error' in res ? reject(new Error(res.error)) : 'channels' in res ? resolve(res.channels) : undefined), progress: onProgress })
       w.postMessage({ ...r, id } as DspRequest)
     })
   } finally {
@@ -51,24 +55,25 @@ async function request(r: Req) {
   }
 }
 
-/** 作った音。元の音の from〜to 秒を、params の設定で変えたもの */
+/** かたまりの長さ（秒）と、前後に足す余白（秒。区切りでつなぎやすいように） */
+const CHUNK = 4
+const MARGIN = 0.5
+/** 使われなくなったかたまりを残す量（バイト） */
+const KEEP_BYTES = 300 * 1024 * 1024
+
+/** 作ったかたまり。元の音の core（余白を除く範囲）を、params の設定で変えたもの。clip は from 秒からで、速度の分だけ伸び縮みしている */
 export interface Made {
+  key: string
   params: string
   from: number
-  to: number
+  core: [number, number]
   rate: number
   clip: Clip
+  /** 最後に使った時刻（残すかたまりを決める） */
+  used: number
 }
 
-/** 前後に足す余白（秒。少し端を動かしても作り直さずに済むように） */
-const MARGIN = 0.5
-/** 同じ設定の範囲がこれより近ければ、つないで 1 回で作る（秒） */
-const JOIN = 1
-/** これより長い範囲は区間に分けて同時に作る（秒。wevocal-lib の segment の MIN_SPLIT_SEC と同じ） */
-const SPLIT_SEC = 20
-const EPS = 1e-3
-
-let made: Made[] = []
+const made = new Map<string, Made>()
 
 /** カーブの中身を短い文字にする（キャッシュのキー） */
 function curveKey(b: Block) {
@@ -84,41 +89,112 @@ const paramsOf = (b: Block) => `${b.source}|${b.pitch}|${b.rate}|${b.formant}|${
 /** 波形ブロックが使う、元の音の範囲（秒） */
 const spanOf = (b: Block): [number, number] => [b.offset, b.offset + b.length * b.rate]
 
-const covers = (m: Made, a: number, z: number) => m.from <= a + EPS && m.to >= z - EPS
-
-/** 同じ設定で、範囲を含む作った音（分割した波形ブロック、写した波形ブロックは同じものを使う） */
-function covering(b: Block) {
-  const params = paramsOf(b)
+/** 波形ブロックが使うかたまりの番号 */
+function chunksOf(b: Block) {
   const [a, z] = spanOf(b)
-  return made.find((m) => m.params === params && covers(m, a, z))
+  const out: number[] = []
+  for (let k = Math.floor(a / CHUNK); k * CHUNK < z - 1e-6; k++) out.push(k)
+  return out
 }
 
 /** 元の音から作り直す要るか（ピッチ、速度、フォルマント、カーブを変えたとき） */
 export const needsProcess = (b: Block) => b.pitch !== 0 || b.rate !== 1 || b.formant !== 0 || !!b.curve?.st.some((v) => v !== 0)
 
-/** 鳴らす音と、その頭が元の音の何秒か。変えていなければ元の音。作り直している間は null（鳴らさない） */
+/** 鳴らす音の 1 片。元の音の a〜z 秒を、clip（頭が元の音の from 秒）から鳴らす */
+export interface Piece {
+  a: number
+  z: number
+  clip: Clip
+  from: number
+}
+
+/**
+ * 波形ブロックを鳴らす片の列（元の音の時刻の順）。変えていなければ元の音の 1 片。
+ * かたまりができていない所は抜ける（その所は鳴らさない）
+ */
+export function piecesFor(b: Block, source: Source): Piece[] {
+  const [a, z] = spanOf(b)
+  if (!needsProcess(b)) return [{ a, z, clip: source.clip, from: 0 }]
+  const params = paramsOf(b)
+  const out: Piece[] = []
+  const now = performance.now()
+  for (const k of chunksOf(b)) {
+    const m = made.get(`${params}#${k}`)
+    if (!m) continue
+    m.used = now
+    out.push({ a: Math.max(a, m.core[0]), z: Math.min(z, m.core[1]), clip: m.clip, from: m.from })
+  }
+  return out
+}
+
+/** 波形ブロックのできている割合（0〜1。描画で何 % かを出す） */
+export function blockReady(b: Block) {
+  if (!needsProcess(b)) return 1
+  const ks = chunksOf(b)
+  const params = paramsOf(b)
+  return ks.length ? ks.filter((k) => made.has(`${params}#${k}`)).length / ks.length : 1
+}
+
+/** 鳴らす音を 1 つにまとめたものと、その頭が元の音の何秒か（解析の欄で使う）。まだ全部できていなければ null */
 export function clipFor(b: Block, source: Source): { clip: Clip; from: number } | null {
   if (!needsProcess(b)) return { clip: source.clip, from: 0 }
-  return covering(b) ?? null
+  const pieces = piecesFor(b, source)
+  if (!pieces.length || pieces.length !== chunksOf(b).length) return null
+  if (pieces.length === 1) return { clip: pieces[0].clip, from: pieces[0].from }
+  // かたまりをつないだ音を作る（つなぎ目はそのまま）
+  const sr = pieces[0].clip.sampleRate
+  const parts = pieces.map((pc) => {
+    const s = Math.floor(((pc.a - pc.from) / b.rate) * sr)
+    const e = Math.floor(((pc.z - pc.from) / b.rate) * sr)
+    return pc.clip.channels.map((c) => c.subarray(s, e))
+  })
+  const len = parts.reduce((n, p) => n + p[0].length, 0)
+  const channels = parts[0].map((_, ch) => {
+    const out = new Float32Array(len)
+    let at = 0
+    for (const p of parts) {
+      out.set(p[ch], at)
+      at += p[ch].length
+    }
+    return out
+  })
+  return { clip: { sampleRate: sr, channels }, from: pieces[0].a }
 }
 
 /** まだできていない音があるか */
 export function pitchPending(p: Project) {
-  return p.blocks.some((b) => needsProcess(b) && !covering(b))
+  return p.blocks.some((b) => blockReady(b) < 1)
 }
 
 interface Want {
+  key: string
   b: Block
   source: Source
-  from: number
-  to: number
+  k: number
+  /** 再生位置からの近さ（秒。小さいほど先に作る） */
+  distance: number
 }
-/** これから作るもの。新しく頼まれたら入れ替える */
 let wanted: Want[] = []
-/** 作っている途中のもの（同じものをもう一度頼まないように） */
-const inflight = new Set<Want>()
+/** 作っている途中のもの（同じものをもう一度頼まないように）と、その進み具合 */
+const inflight = new Map<string, number>()
 let running: Promise<void> | null = null
 let madeCount = 0
+
+/** 進み具合（ゲージ）。total は今頼まれているかたまりの数、done はそのうちできた分（途中の分を含む） */
+let total = 0
+let doneCount = 0
+const listeners = new Set<() => void>()
+export function pitchProgress() {
+  const partial = [...inflight.values()].reduce((s, v) => s + v, 0)
+  return { total, done: Math.min(total, doneCount + partial) }
+}
+export function onPitchProgress(fn: () => void) {
+  listeners.add(fn)
+  return () => {
+    listeners.delete(fn)
+  }
+}
+const notify = () => listeners.forEach((fn) => fn())
 
 /** 元の音の from 秒から、hop サンプルおきのピッチ比の列（カーブの外は一定のピッチ） */
 function ratiosOf(b: Block, frames: number, sampleRate: number, from: number) {
@@ -132,59 +208,49 @@ function ratiosOf(b: Block, frames: number, sampleRate: number, from: number) {
   return { ratios: out, hopSamples: hop }
 }
 
-/** 1 つの範囲の音を作る（Worker に渡すのは範囲の写しだけ） */
-function pitchRequest(b: Block, channels: Float32Array[], sampleRate: number, fromSec: number): Req {
-  return {
-    kind: 'pitch',
-    channels,
-    sampleRate,
-    semitones: b.pitch,
-    stretch: 1 / b.rate,
-    algorithm: ALGORITHM_ID[b.algorithm],
-    preserveFormant: b.preserveFormant || b.formant !== 0,
-    formantSemitones: b.formant,
-    ...(b.curve ? ratiosOf(b, channels[0].length, sampleRate, fromSec) : {}),
-  }
-}
-
-/** 長い範囲を区間に分け、別々の Worker で同時に作ってつなぐ（WeVocalSynth の parallel.ts と同じ） */
-async function processSplit(b: Block, channels: Float32Array[], sampleRate: number, fromSec: number) {
-  const frames = channels[0].length
-  const [raw] = await request({ kind: 'segplan', frames, sampleRate })
-  const plan = new Float64Array(raw.buffer, raw.byteOffset, raw.byteLength / 8)
-  const count = plan.length / 4
-  const outs = await Promise.all(
-    Array.from({ length: count }, (_, k) => {
-      const [a, z] = [plan[k * 4 + 2], plan[k * 4 + 3]]
-      return request(pitchRequest(b, channels.map((c) => c.slice(a, z)), sampleRate, fromSec + a / sampleRate))
-    }),
-  )
-  return request({ kind: 'stitch', channels: outs.flat(), frames, channelCount: channels.length, sampleRate, stretch: 1 / b.rate })
-}
-
-async function processSpan(w: Want): Promise<Made> {
+/** かたまり 1 つを作る（Worker に渡すのは範囲の写しだけ） */
+async function processChunk(w: Want): Promise<Made> {
   const { clip } = w.source
-  const a = Math.floor(w.from * clip.sampleRate)
-  const z = Math.min(clip.channels[0].length, Math.ceil(w.to * clip.sampleRate))
+  const sr = clip.sampleRate
+  const core: [number, number] = [w.k * CHUNK, Math.min(w.source.duration, (w.k + 1) * CHUNK)]
+  const a = Math.max(0, Math.floor((core[0] - MARGIN) * sr))
+  const z = Math.min(clip.channels[0].length, Math.ceil((core[1] + MARGIN) * sr))
   const channels = clip.channels.map((c) => c.slice(a, z))
-  const fromSec = a / clip.sampleRate
-  // カーブは区間の境目で比が変わるとつなぎにくいので、分けない
-  const split = !w.b.curve && z - a >= SPLIT_SEC * clip.sampleRate
-  const out = split ? await processSplit(w.b, channels, clip.sampleRate, fromSec) : await request(pitchRequest(w.b, channels, clip.sampleRate, fromSec))
-  return { params: paramsOf(w.b), from: fromSec, to: z / clip.sampleRate, rate: w.b.rate, clip: { sampleRate: clip.sampleRate, channels: out } }
+  const b = w.b
+  const out = await request(
+    {
+      kind: 'pitch',
+      channels,
+      sampleRate: sr,
+      semitones: b.pitch,
+      stretch: 1 / b.rate,
+      algorithm: ALGORITHM_ID[b.algorithm],
+      preserveFormant: b.preserveFormant || b.formant !== 0,
+      formantSemitones: b.formant,
+      ...(b.curve ? ratiosOf(b, z - a, sr, a / sr) : {}),
+    },
+    (p) => {
+      inflight.set(w.key, p)
+      notify()
+    },
+  )
+  return { key: w.key, params: paramsOf(b), from: a / sr, core, rate: b.rate, clip: { sampleRate: sr, channels: out }, used: performance.now() }
 }
 
-/** 頼まれたものを、Worker の数だけ同時に作る。途中で頼み直されたら、新しいものから続ける */
+/** 頼まれたものを、Worker の数だけ同時に、近い順に作る。途中で頼み直されたら、新しいものから続ける */
 function run() {
   running ??= Promise.all(
     Array.from({ length: POOL }, async () => {
       for (let w = wanted.shift(); w; w = wanted.shift()) {
-        inflight.add(w)
+        inflight.set(w.key, 0)
         try {
-          made.push(await processSpan(w))
+          const m = await processChunk(w)
+          made.set(m.key, m)
           madeCount++
+          doneCount++
         } finally {
-          inflight.delete(w)
+          inflight.delete(w.key)
+          notify()
         }
       }
     }),
@@ -194,55 +260,48 @@ function run() {
   return running
 }
 
-/** 同じ設定で、範囲が重なる、近いものをつなぐ（同じ音源で同じピッチのところを何度も作らない） */
-function joinWants(list: Want[]) {
-  const byParams = new Map<string, Want[]>()
-  for (const w of list) byParams.set(paramsOf(w.b), [...(byParams.get(paramsOf(w.b)) ?? []), w])
-  const out: Want[] = []
-  for (const group of byParams.values()) {
-    group.sort((x, y) => x.from - y.from)
-    let cur = { ...group[0] }
-    for (const w of group.slice(1)) {
-      if (w.from <= cur.to + JOIN) cur.to = Math.max(cur.to, w.to)
-      else {
-        out.push(cur)
-        cur = { ...w }
-      }
-    }
-    out.push(cur)
+/** 使われなくなったかたまりは、合わせて KEEP_BYTES を超えたら古い順に捨てる */
+function prune(used: Set<string>) {
+  const bytes = (m: Made) => m.clip.channels.reduce((n, c) => n + c.byteLength, 0)
+  let sum = [...made.values()].reduce((n, m) => n + bytes(m), 0)
+  for (const m of [...made.values()].filter((m) => !used.has(m.key)).sort((x, y) => x.used - y.used)) {
+    if (sum <= KEEP_BYTES) break
+    made.delete(m.key)
+    sum -= bytes(m)
   }
-  return out
 }
 
-/** プロジェクトの波形ブロックの音をすべて用意する。使われなくなったキャッシュは消す。新しく作ったものがあれば true */
+/** プロジェクトの波形ブロックの音を用意する（around は再生位置か編集カーソル。近い所から）。新しく作ったものがあれば true */
 export async function preparePitch(p: Project, around = 0) {
-  const keep = new Set<Made>()
-  const list: Want[] = []
+  const used = new Set<string>()
+  const next = new Map<string, Want>()
   for (const b of p.blocks) {
     const source = p.sources.find((s) => s.id === b.source)
     if (!needsProcess(b) || !source) continue
-    const m = covering(b)
-    if (m) {
-      keep.add(m)
-      continue
+    const params = paramsOf(b)
+    for (const k of chunksOf(b)) {
+      const key = `${params}#${k}`
+      used.add(key)
+      if (made.has(key) || inflight.has(key)) continue
+      // かたまりの時間軸の上の範囲と、再生位置との近さ
+      const t0 = b.start + (Math.max(b.offset, k * CHUNK) - b.offset) / b.rate
+      const t1 = b.start + (Math.min(b.offset + b.length * b.rate, (k + 1) * CHUNK) - b.offset) / b.rate
+      const distance = around < t0 ? t0 - around : around > t1 ? around - t1 : 0
+      const old = next.get(key)
+      if (!old || distance < old.distance) next.set(key, { key, b, source, k, distance })
     }
-    const [a, z] = spanOf(b)
-    // 作っている途中のものが含んでいれば、それを待つ
-    if ([...inflight].some((w) => paramsOf(w.b) === paramsOf(b) && w.from <= a + EPS && w.to >= z - EPS)) continue
-    list.push({ b, source, from: Math.max(0, a - MARGIN), to: Math.min(source.duration, z + MARGIN) })
   }
-  made = made.filter((m) => keep.has(m))
-  // 再生位置（止まっていれば編集カーソル）に近い所から作る（すぐ聞く所を先に）
-  const distance = (w: Want) => {
-    const t0 = w.b.start + (w.from - w.b.offset) / w.b.rate
-    const t1 = w.b.start + (w.to - w.b.offset) / w.b.rate
-    return around < t0 ? t0 - around : around > t1 ? around - t1 : 0
-  }
-  wanted = joinWants(list).sort((x, y) => distance(x) - distance(y))
+  prune(used)
+  wanted = [...next.values()].sort((x, y) => x.distance - y.distance)
+  total = wanted.length + inflight.size
+  doneCount = 0
+  notify()
   const before = madeCount
   await run()
-  // 途中のものを待つ（最初に頼んだ側の run が終わるまで）
+  // 途中のものを待つ（先に頼んだ側の run が終わるまで）
   while (inflight.size) await (running ?? Promise.resolve())
+  total = 0
+  notify()
   return madeCount > before
 }
 

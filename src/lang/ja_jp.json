@@ -119,6 +119,7 @@
   "status.exporting": "書き出し中…",
   "status.pitch": "ピッチを変更中…",
   "status.recording": "録音中",
+  "status.pitchBlock": "処理中",
 
   "track.mute": "ミュート",
   "track.solo": "ソロ",

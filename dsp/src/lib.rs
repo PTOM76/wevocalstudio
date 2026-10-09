@@ -3,6 +3,23 @@
 use std::cell::RefCell;
 use wevocal_lib::{curve, formant, process_with_progress, segment, tempo, Algorithm, Formant};
 
+#[cfg(target_arch = "wasm32")]
+#[link(wasm_import_module = "env")]
+extern "C" {
+    /// ホスト（Worker）が `env.report_progress` として渡す（WeVocalSynth と同じ）。0〜1
+    fn report_progress(p: f64);
+}
+
+/// 進み具合を Worker に知らせる（ゲージに出す）
+fn host_progress(p: f64) {
+    #[cfg(target_arch = "wasm32")]
+    unsafe {
+        report_progress(p)
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = p;
+}
+
 thread_local! {
     static OUTPUT: RefCell<Vec<f32>> = const { RefCell::new(Vec::new()) };
 }
@@ -32,6 +49,9 @@ const STEP_SEMITONES: f64 = 24.0;
 fn process_steps(chans: &[&[f32]], sample_rate: f32, semitones: f64, stretch: f64, algorithm: Algorithm, formant: Formant) -> Vec<Vec<f32>> {
     let mut rest = semitones;
     let mut owned: Option<Vec<Vec<f32>>> = None;
+    // 回の数（進み具合を回ごとに割る）
+    let passes = ((semitones.abs() / STEP_SEMITONES).ceil().max(1.0)) as usize;
+    let mut pass = 0usize;
     while rest.abs() > STEP_SEMITONES {
         let step = STEP_SEMITONES.copysign(rest);
         let input: Vec<&[f32]> = match &owned {
@@ -43,14 +63,17 @@ fn process_steps(chans: &[&[f32]], sample_rate: f32, semitones: f64, stretch: f6
             Formant::Shift(_) => Formant::Shift(0.0),
             Formant::Follow => Formant::Follow,
         };
-        owned = Some(process_with_progress(&input, sample_rate, step, 1.0, algorithm, keep, &mut |_| {}));
+        let base = pass as f64 / passes as f64;
+        owned = Some(process_with_progress(&input, sample_rate, step, 1.0, algorithm, keep, &mut |p| host_progress(base + p / passes as f64)));
         rest -= step;
+        pass += 1;
     }
     let input: Vec<&[f32]> = match &owned {
         Some(o) => o.iter().map(|c| c.as_slice()).collect(),
         None => chans.to_vec(),
     };
-    process_with_progress(&input, sample_rate, rest, stretch, algorithm, formant, &mut |_| {})
+    let base = pass as f64 / passes as f64;
+    process_with_progress(&input, sample_rate, rest, stretch, algorithm, formant, &mut |p| host_progress(base + p / passes as f64))
 }
 
 /// プレーナー形式の音声（`frames` サンプルのブロックが `channels` 個）のピッチと長さを変え、出力のフレーム数を返す。
@@ -111,10 +134,11 @@ pub unsafe extern "C" fn process_curve_planar(
     let formant = if preserve_formant != 0 { Formant::Shift(formant_semitones) } else { Formant::Follow };
     formant::set_fast_math(true);
     let algorithm = Algorithm::from_id(algorithm);
-    let mut out = curve::process(&chans, sample_rate, ratios, hop, algorithm, formant, &mut |_| {});
+    let share = if (stretch - 1.0).abs() > 1e-9 { 0.7 } else { 1.0 };
+    let mut out = curve::process(&chans, sample_rate, ratios, hop, algorithm, formant, &mut |p| host_progress(p * share));
     if (stretch - 1.0).abs() > 1e-9 {
         let refs: Vec<&[f32]> = out.iter().map(|c| c.as_slice()).collect();
-        out = process_with_progress(&refs, sample_rate, 0.0, stretch, algorithm, Formant::Follow, &mut |_| {});
+        out = process_with_progress(&refs, sample_rate, 0.0, stretch, algorithm, Formant::Follow, &mut |p| host_progress(share + p * (1.0 - share)));
     }
     let out_frames = out.first().map_or(0, |c| c.len());
     OUTPUT.with(|o| {

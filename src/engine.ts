@@ -1,7 +1,7 @@
 // 再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）。
 // 再生中に変えたときは、変わった波形ブロックだけを差し替え、トラックとマスターの音量などは値だけを変える（全部を鳴らし直すと一瞬止まるため）
 import { createLiveEq, flatEq, updateLiveEq, type Clip, type LiveEq } from 'wevocal-lib'
-import { clipFor, preparePitch } from './dsp/pitch'
+import { piecesFor, preparePitch, type Piece } from './dsp/pitch'
 import { audible, dbToGain, projectEnd, type Block, type Project, type Track } from './project'
 
 const buffers = new WeakMap<Clip, AudioBuffer>()
@@ -19,6 +19,8 @@ function bufferOf(ctx: BaseAudioContext, clip: Clip) {
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
+/** かたまりのつなぎ目で重ねる長さ（秒。片ごとに前後へこれだけ伸ばす） */
+const XFADE = 0.005
 
 /** Clip ごとの番号（波形ブロックの音が変わったかを比べるため） */
 const clipIds = new WeakMap<Clip, number>()
@@ -32,7 +34,8 @@ interface TrackNodes {
   eq: LiveEq
 }
 interface BlockNodes {
-  node: AudioBufferSourceNode
+  /** かたまりの片ごとの音源 */
+  nodes: AudioBufferSourceNode[]
   gain: GainNode
   sig: string
 }
@@ -69,8 +72,8 @@ class Graph {
   }
 
   /** 波形ブロックを比べる文字（変わったら差し替える） */
-  private static sig(b: Block, clip: Clip, from: number) {
-    return `${b.track}|${b.start}|${b.offset}|${b.length}|${b.rate}|${b.gain}|${b.fadeIn}|${b.fadeOut}|${clipId(clip)}|${from}`
+  private static sig(b: Block, pieces: Piece[]) {
+    return `${b.track}|${b.start}|${b.offset}|${b.length}|${b.rate}|${b.gain}|${b.fadeIn}|${b.fadeOut}|${pieces.map((pc) => `${clipId(pc.clip)}:${pc.a}`).join(',')}`
   }
 
   /** from 秒より後ろの波形ブロックを鳴らす。変わっていないものはそのまま。差し替えるものは FADE でつなぐ */
@@ -101,16 +104,15 @@ class Graph {
       const source = p.sources.find((s) => s.id === b.source)
       const track = this.tracks.get(b.track)
       if (b.mute || !source || !track || b.start + b.length <= from) continue
-      // 作った音（変えていなければ元の音）。作り直している間は鳴らさない
-      const made = clipFor(b, source)
-      if (!made) continue
-      const clip = made.clip
-      const sig = Graph.sig(b, clip, made.from)
+      // 作ったかたまりの片（変えていなければ元の音）。できていない所は鳴らさない
+      const pieces = piecesFor(b, source)
+      if (!pieces.length) continue
+      const sig = Graph.sig(b, pieces)
       live.add(b.id)
       const old = this.blocks.get(b.id)
       if (old?.sig === sig) continue
       if (old) this.stopBlock(old)
-      this.blocks.set(b.id, { ...this.startBlock(b, clip, made, track.input, from, now, smooth && !!old), sig })
+      this.blocks.set(b.id, { ...this.startBlock(b, pieces, track.input, from, now, smooth && !!old), sig })
     }
     for (const [id, n] of this.blocks) {
       if (live.has(id)) continue
@@ -119,17 +121,14 @@ class Graph {
     }
   }
 
-  private startBlock(b: Block, clip: Clip, made: { from: number } | null, dest: AudioNode, from: number, now: number, fadeIn: boolean): Omit<BlockNodes, 'sig'> {
+  private startBlock(b: Block, pieces: Piece[], dest: AudioNode, from: number, now: number, fadeIn: boolean): Omit<BlockNodes, 'sig'> {
     const ctx = this.ctx
-    const node = ctx.createBufferSource()
-    node.buffer = bufferOf(ctx, clip)
     const g = ctx.createGain()
     const level = dbToGain(b.gain)
     // 時間軸の時刻で書く。今より前に始まっていれば、今から途中を鳴らす
     const t0 = this.zero + b.start
     const t1 = t0 + b.length
     const begin = Math.max(now, t0)
-    const skip = Math.max(0, from - b.start)
     // 差し替えのときは小さく始めて FADE で上げる（ぶつっと鳴らないように）
     if (fadeIn && t0 < now) {
       g.gain.setValueAtTime(0, begin)
@@ -140,16 +139,36 @@ class Graph {
       g.gain.setValueAtTime(level, Math.max(begin + FADE, t1 - b.fadeOut))
       g.gain.linearRampToValueAtTime(0, t1)
     }
-    node.connect(g).connect(dest)
-    if (made) {
-      // 作った音は元の音の made.from 秒からで、速度の分だけ伸び縮みしている
-      node.start(begin, (b.offset - made.from) / b.rate + skip, Math.max(0, b.length - skip))
-    } else {
-      // できるまでは元の音を速度の分だけ速く鳴らす（ピッチも変わる仮の音）
-      node.playbackRate.value = b.rate
-      node.start(begin, b.offset + skip * b.rate, Math.max(0, (b.length - skip) * b.rate))
-    }
-    return { node, gain: g }
+    g.connect(dest)
+    const [, spanEnd] = [b.offset, b.offset + b.length * b.rate]
+    const nodes = pieces.map((pc, i) => {
+      // つなぎ目は前後に XFADE ずつ重ねる（隣の片と重なる所だけ。かたまりには余白があるので音はある）
+      const joinA = i > 0 && pieces[i - 1].z >= pc.a - 1e-6
+      const joinZ = i < pieces.length - 1 && pieces[i + 1].a <= pc.z + 1e-6
+      const a = joinA ? pc.a - XFADE * b.rate : pc.a
+      const z = joinZ ? Math.min(spanEnd, pc.z + XFADE * b.rate) : pc.z
+      // 片の時間軸の上の範囲
+      const p0 = t0 + (a - b.offset) / b.rate
+      const p1 = t0 + (z - b.offset) / b.rate
+      if (p1 <= now) return null
+      const start = Math.max(now, p0)
+      const node = ctx.createBufferSource()
+      node.buffer = bufferOf(ctx, pc.clip)
+      const pg = ctx.createGain()
+      pg.gain.setValueAtTime(joinA && start <= p0 ? 0 : 1, start)
+      if (joinA && start <= p0) pg.gain.linearRampToValueAtTime(1, p0 + XFADE * 2)
+      if (joinZ) {
+        pg.gain.setValueAtTime(1, Math.max(start, p1 - XFADE * 2))
+        pg.gain.linearRampToValueAtTime(0, p1)
+      }
+      node.connect(pg).connect(g)
+      // 片の音は元の音の pc.from 秒からで、速度の分だけ伸び縮みしている（元の音そのままなら from は 0、速度は 1）
+      const skip = start - p0
+      node.start(start, (a - pc.from) / b.rate + skip, Math.max(0, p1 - start))
+      return node
+    })
+    void from
+    return { nodes: nodes.filter((n): n is AudioBufferSourceNode => !!n), gain: g }
   }
 
   private stopBlock(n: BlockNodes) {
@@ -157,7 +176,7 @@ class Graph {
     n.gain.gain.cancelScheduledValues(t)
     n.gain.gain.setTargetAtTime(0, t, FADE / 3)
     try {
-      n.node.stop(t + FADE * 2)
+      for (const x of n.nodes) x.stop(t + FADE * 2)
     } catch {
       // 始まる前のノード
     }
@@ -169,7 +188,7 @@ class Graph {
     this.out.gain.setTargetAtTime(0, t, FADE / 3)
     for (const n of this.blocks.values()) {
       try {
-        n.node.stop(t + FADE * 2)
+        for (const x of n.nodes) x.stop(t + FADE * 2)
       } catch {
         // 始まる前のノード
       }
