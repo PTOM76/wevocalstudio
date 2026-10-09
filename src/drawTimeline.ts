@@ -21,6 +21,8 @@ export interface TimelineView {
 /** 線の取り方とテンポ以外に描くときに使うもの */
 export interface DrawOptions {
   grid: GridMode
+  /** 再生カーソル（なければ描かない） */
+  playPos: number | null
 }
 
 export interface TimelineColors {
@@ -32,6 +34,8 @@ export interface TimelineColors {
   blockSelected: string
   wave: string
   playhead: string
+  /** 編集カーソル（REAPER と同じく再生カーソルとは別の線） */
+  editCursor: string
   /** マスタートラックの帯の色 */
   master: string
   /** マーカーの色 */
@@ -164,7 +168,26 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
     g.fillText(label, x + 4, 6)
   }
 
-  // 再生位置
-  g.fillStyle = c.playhead
-  g.fillRect(Math.round(tx(cursor)), 0, 1, h)
+  // 曲の終わり（最後の波形ブロックの終わり。再生はここで止まる）
+  const last = p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
+  if (last > 0) {
+    g.fillStyle = c.text
+    g.globalAlpha = 0.5
+    g.fillRect(Math.round(tx(last)), RULER, 2, h)
+    g.globalAlpha = 1
+  }
+
+  // 編集カーソル（上に小さな三角）と、再生カーソル
+  const ex = Math.round(tx(cursor))
+  g.fillStyle = c.editCursor
+  g.fillRect(ex, 0, 1, h)
+  g.beginPath()
+  g.moveTo(ex - 5, 0)
+  g.lineTo(ex + 6, 0)
+  g.lineTo(ex + 0.5, 7)
+  g.fill()
+  if (o.playPos !== null) {
+    g.fillStyle = c.playhead
+    g.fillRect(Math.round(tx(o.playPos)), 0, 2, h)
+  }
 }

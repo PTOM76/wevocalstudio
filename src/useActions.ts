@@ -1,5 +1,5 @@
 // 操作の表（キーとメニューから行うもの）と、メニューバーの並び
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MenuEntry, MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
@@ -32,6 +32,8 @@ export interface ActionContext {
   toggleRecord: () => void
   toggleRepeat: () => void
   seek: (t: number) => void
+  /** 編集カーソルだけを動かす（再生は止めない） */
+  moveCursor: (t: number) => void
   /** 表示の拡大（factor > 1）と縮小 */
   zoom: (factor: number) => void
   /** 線の 1 目盛り（秒。拍か秒） */
@@ -72,6 +74,8 @@ export function useActions(c: ActionContext) {
   const any = chosen.length > 0
   // コピーした波形ブロック。元の音はプロジェクトにあるものを指す
   const clipboard = useRef<Block[]>([])
+  // コピーしたら描き直す（「貼り付け」を押せるようにする。ref だけでは古いまま押せなかった）
+  const [, setCopied] = useState(0)
 
   /** 選んでいるトラックの再生位置に置く（REAPER と同じ）。複数なら、トラックと時間の並びを保つ */
   const paste = () => {
@@ -84,7 +88,7 @@ export function useActions(c: ActionContext) {
     const at = (b: Block) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
     c.select(doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: c.cursor + b.start - first }))))
     // 貼り付けたものの右端に再生位置を移す（Ctrl+V を続けると、すき間なく並ぶ。REAPER と同じ）
-    c.seek(c.cursor + Math.max(...blocks.map((b) => b.start + b.length)) - first)
+    c.moveCursor(c.cursor + Math.max(...blocks.map((b) => b.start + b.length)) - first)
   }
 
   /** 選んでいるものをまとめて、すぐ後ろに並べる */
@@ -137,7 +141,13 @@ export function useActions(c: ActionContext) {
     },
     undo: { enabled: doc.canUndo, run: doc.undo },
     redo: { enabled: doc.canRedo, run: doc.redo },
-    copy: { enabled: any, run: () => (clipboard.current = chosen) },
+    copy: {
+      enabled: any,
+      run: () => {
+        clipboard.current = chosen
+        setCopied((n) => n + 1)
+      },
+    },
     paste: { enabled: clipboard.current.length > 0, run: paste },
     duplicate: { enabled: any, run: duplicate },
     open: { run: c.openFile },

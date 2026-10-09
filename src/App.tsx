@@ -48,7 +48,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const { project } = doc
   const player = useRef(new Player())
   const [playing, setPlaying] = useState(false)
+  // 編集カーソル（押した所、貼り付ける所。再生では動かない）と、再生カーソル（再生中と一時停止中だけ。REAPER と同じく 2 本）
   const [cursor, setCursor] = useState(0)
+  const [playPos, setPlayPos] = useState<number | null>(null)
+  // 一時停止した位置（編集カーソルを動かしたら消す）
+  const [paused, setPaused] = useState<number | null>(null)
   const [selected, setSelected] = useState<string[]>([])
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
   const [range, setRange] = useState<Range | null>(null)
@@ -57,8 +61,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [recording, setRecording] = useState<{ rec: Recording; start: number; track: string } | null>(null)
   const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
   const [timelineWidth, setTimelineWidth] = useState(0)
-  // 再生を始めた位置（停止で戻る）
-  const playFrom = useRef(0)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
   // プロパティを開いている波形ブロック（複数なら一括で変える）
   const [editing, setEditing] = useState<string[]>([])
@@ -91,9 +93,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
   const play = () => {
     // 範囲選択があれば、その中だけを鳴らす（外にいたら範囲の頭から）
-    const from = range && (cursor < range.start || cursor >= range.end) ? range.start : cursor
-    setCursor(from)
-    playFrom.current = from
+    // 一時停止していたらそこから。範囲選択があれば、その中だけを鳴らす（外にいたら範囲の頭から）
+    const at = paused ?? cursor
+    const from = range && (at < range.start || at >= range.end) ? range.start : at
+    setPaused(null)
+    setPlayPos(from)
     player.current.play(project, from)
     setPlaying(true)
   }
@@ -157,22 +161,34 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
   const toggleRecord = () => void (recording ? stopRecord() : startRecord())
 
+  /** 一時停止。再生カーソルはその場に残す */
   const pause = () => {
-    setCursor(player.current.position())
+    const pos = player.current.position()
     player.current.stop()
+    setPaused(pos)
+    setPlayPos(pos)
     setPlaying(false)
   }
+  /** 停止。再生カーソルを消す（編集カーソルはそのまま。次の再生はそこから） */
   const stop = () => {
     if (recording) return void stopRecord()
-    if (playing) setCursor(playFrom.current)
     player.current.stop()
     setPlaying(false)
+    setPaused(null)
+    setPlayPos(null)
   }
-  const seek = (time: number) => {
+  /** 編集カーソルだけを動かす（波形ブロックを押したとき、コピー、貼り付け） */
+  const moveCursor = (time: number) => {
     setCursor(time)
-    // 動かした所が、停止で戻る位置になる（REAPER と同じ。前は再生を始めた位置に戻ってしまった）
-    playFrom.current = time
-    if (playing) player.current.play(project, time)
+    setPaused(null)
+  }
+  /** 編集カーソルを動かし、再生中なら再生もそこへ（目盛りと空いている所。REAPER の既定と同じ） */
+  const seek = (time: number) => {
+    moveCursor(time)
+    if (playing) {
+      player.current.play(project, time)
+      setPlayPos(time)
+    } else setPlayPos(null)
   }
 
   const load = (files: File[], at?: DropAt) => doc.addFiles(files, at).catch(fail)
@@ -225,6 +241,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleRecord,
     toggleRepeat: () => setRepeat((r) => !r),
     seek,
+    moveCursor,
     gridStep: () => snapGrid(p.settings.grid, project.tempo, view.pps).step,
     newProject: () =>
       void confirm({ message: t('confirm.newProject'), okLabel: t('menu.newProject'), danger: true }).then((ok) => {
@@ -292,28 +309,33 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       if (range && pos >= range.end) {
         if (repeat) {
           player.current.play(project, range.start)
-          setCursor(range.start)
+          setPlayPos(range.start)
         } else {
           player.current.stop()
-          setCursor(range.end)
+          setPlayPos(null)
           setPlaying(false)
           return
         }
-      } else setCursor(pos)
+      } else if (!range && end > 0 && pos >= end) {
+        // 曲の終わり（最後の波形ブロックの終わり）で止める
+        player.current.stop()
+        setPlayPos(null)
+        setPlaying(false)
+        return
+      } else setPlayPos(pos)
       id = requestAnimationFrame(tick)
     }
     id = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(id)
-  }, [playing, range, repeat, project])
+  }, [playing, range, repeat, project, end])
 
   // 再生中に変えた値を音に反映する（今の位置から組み直す）
-  const replay = () => {
-    if (player.current.playing) player.current.play(project, player.current.position())
-  }
-  // 続けて変えている間（ドラッグなど）は待ち、止まってから鳴らし直す
+  // 変わった波形ブロックだけを差し替える（全部を鳴らし直さない）
+  const replay = () => player.current.update(project)
+  // 続けて変えている間（ドラッグなど）は少し待ってから差し替える
   useEffect(() => {
     if (!player.current.playing) return
-    const id = setTimeout(replay, 60)
+    const id = setTimeout(replay, 30)
     return () => clearTimeout(id)
     // project が変わったときだけ
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -365,6 +387,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <Timeline
         project={project}
         cursor={cursor}
+        playPos={playPos}
+        onCursor={moveCursor}
         selected={selected}
         onSelect={setSelected}
         selectedTrack={selectedTrack}
@@ -419,7 +443,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           selections={range ? [range] : []}
           scrollTo={(start) => setView((v) => ({ ...v, scroll: Math.max(0, start) }))}
           label={t('menu.minimap')}
-          position={cursor}
+          position={playPos ?? cursor}
           playing={playing}
           showPlayhead
         />
@@ -427,7 +451,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       )}
       <Transport
         playing={playing}
-        cursor={cursor}
+        cursor={playPos ?? cursor}
         end={end}
         range={range}
         repeat={repeat}

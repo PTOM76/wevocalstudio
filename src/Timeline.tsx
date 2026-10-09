@@ -16,7 +16,12 @@ export const HEADER = 200
 
 export default function Timeline(p: {
   project: Project
+  /** 編集カーソル */
   cursor: number
+  /** 再生カーソル（再生中と一時停止中だけ） */
+  playPos: number | null
+  /** 編集カーソルだけを動かす（波形ブロックを押したとき） */
+  onCursor: (t: number) => void
   selected: string[]
   onSelect: (ids: string[]) => void
   selectedTrack: string | null
@@ -90,7 +95,7 @@ export default function Timeline(p: {
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
-    drawTimeline(canvas, p.project, view, p.selected, p.cursor, p.range, { grid: p.grid }, {
+    drawTimeline(canvas, p.project, view, p.selected, p.cursor, p.range, { grid: p.grid, playPos: p.playPos }, {
       bg: pal.background.default,
       lane: pal.divider,
       line: alpha(pal.divider, 0.5),
@@ -99,11 +104,12 @@ export default function Timeline(p: {
       blockSelected: alpha(pal.primary.main, dark ? 0.36 : 0.26),
       wave: pal.primary.main,
       playhead: pal.text.primary,
+      editCursor: '#e53935',
       master: alpha(pal.text.primary, 0.04),
       marker: '#ffb300',
       range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
     })
-  }, [p.project, view, p.selected, p.cursor, p.range, width, height, dark, pal, p.grid])
+  }, [p.project, view, p.selected, p.cursor, p.playPos, p.range, width, height, dark, pal, p.grid])
 
   // ホイール: Shift で横に動かす。Ctrl で拡大と縮小（マウスの位置を中心に）
   useEffect(() => {
@@ -138,9 +144,10 @@ export default function Timeline(p: {
 
   // 再生中に再生位置が画面の外に出たら、そこが左端になるように送る（REAPER と同じ）
   useEffect(() => {
-    if (!p.playing || !visible) return
-    if (p.cursor > view.scroll + visible || p.cursor < view.scroll) setView((v) => ({ ...v, scroll: Math.max(0, p.cursor) }))
-  }, [p.playing, p.cursor, visible, view.scroll, setView])
+    const pos = p.playPos
+    if (!p.playing || !visible || pos === null) return
+    if (pos > view.scroll + visible || pos < view.scroll) setView((v) => ({ ...v, scroll: Math.max(0, pos) }))
+  }, [p.playing, p.playPos, visible, view.scroll, setView])
   const snapping = { mode: p.grid, tempo: p.project.tempo, pps: view.pps }
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -189,7 +196,7 @@ export default function Timeline(p: {
       const b = hit.block
       const t = hit.kind === 'left' || hit.kind === 'fadeIn' ? b.start : hit.kind === 'right' || hit.kind === 'fadeOut' ? b.start + b.length : toTime(x)
       const snapped = hit.kind === 'move' && p.snap ? (snapTime(t, snapTargets(p.project, p.cursor, []), snapping) ?? t) : t
-      p.onSeek(Math.max(0, snapped))
+      p.onCursor(Math.max(0, snapped))
     }
     // Ctrl で足し引き。選んでいるものをつまんだら、選んだもの全部を動かす
     let group = p.selected.includes(id) ? p.selected : [id]
