@@ -25,6 +25,8 @@ export interface Drag {
   trackIndex: number
   /** 履歴をまとめるための名前（ドラッグごとに変える） */
   merge: string
+  /** Ctrl を押して始めた（動かせば複製、動かさずに離せば選択の足し引き） */
+  copy?: { wasSelected: boolean; done: boolean }
 }
 
 /** (x, y) にある波形ブロックと、つまむ所。後に置いたものが上に描かれるので、後ろから探す */

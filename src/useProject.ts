@@ -170,6 +170,21 @@ export function useProject(defaults: PitchDefaults) {
     [change],
   )
 
+  /** トラックの写しを、after のすぐ下（なければ一番下）に波形ブロックごと置き、新しい id を返す（貼り付け） */
+  const insertTrack = useCallback(
+    (track: Track, blocks: Block[], after: string | null) => {
+      const copy = { ...track, id: newId(), armed: false }
+      change((p) => {
+        const i = after ? p.tracks.findIndex((t) => t.id === after) : -1
+        const at = i < 0 ? p.tracks.length : i + 1
+        const bs = blocks.filter((b) => p.sources.some((s) => s.id === b.source)).map((b) => ({ ...b, id: newId(), track: copy.id }))
+        return { ...p, tracks: [...p.tracks.slice(0, at), copy, ...p.tracks.slice(at)], blocks: [...p.blocks, ...bs] }
+      })
+      return copy.id
+    },
+    [change],
+  )
+
   /** トラックとその波形ブロックを消す。使われなくなった元の音も消す */
   const removeTrack = useCallback(
     (id: string) =>
@@ -281,6 +296,7 @@ export function useProject(defaults: PitchDefaults) {
     addTrack,
     removeTrack,
     duplicateTrack,
+    insertTrack,
     updateTempo,
     addMarker,
     updateMarker,

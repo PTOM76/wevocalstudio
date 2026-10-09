@@ -4,7 +4,7 @@ import type { MenuEntry, MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { actionOf, keyLabel, type Action } from './keymap'
-import type { Block } from './project'
+import type { Block, Track } from './project'
 import type { useProject } from './useProject'
 
 type ProjectApi = ReturnType<typeof useProject>
@@ -74,11 +74,19 @@ export function useActions(c: ActionContext) {
   const any = chosen.length > 0
   // コピーした波形ブロック。元の音はプロジェクトにあるものを指す
   const clipboard = useRef<Block[]>([])
+  // コピーしたトラック（波形ブロックを選ばずにトラックを選んで Ctrl+C）
+  const trackClipboard = useRef<{ track: Track; blocks: Block[] } | null>(null)
   // コピーしたら描き直す（「貼り付け」を押せるようにする。ref だけでは古いまま押せなかった）
   const [, setCopied] = useState(0)
 
   /** 選んでいるトラックの再生位置に置く（REAPER と同じ）。複数なら、トラックと時間の並びを保つ */
   const paste = () => {
+    // トラックをコピーしていれば、選んでいるトラックのすぐ下に貼り付ける
+    const tc = trackClipboard.current
+    if (tc) {
+      c.selectTrack(doc.insertTrack(tc.track, tc.blocks, c.selectedTrack))
+      return
+    }
     const blocks = clipboard.current
     if (!blocks.length) return
     const { tracks } = doc.project
@@ -142,13 +150,16 @@ export function useActions(c: ActionContext) {
     undo: { enabled: doc.canUndo, run: doc.undo },
     redo: { enabled: doc.canRedo, run: doc.redo },
     copy: {
-      enabled: any,
+      enabled: any || !!c.selectedTrack,
       run: () => {
-        clipboard.current = chosen
+        // 波形ブロックを選んでいればそれ、なければ選んでいるトラックを波形ブロックごと
+        const track = !any ? doc.project.tracks.find((t) => t.id === c.selectedTrack) : undefined
+        trackClipboard.current = track ? { track, blocks: doc.project.blocks.filter((b) => b.track === track.id) } : null
+        clipboard.current = track ? [] : chosen
         setCopied((n) => n + 1)
       },
     },
-    paste: { enabled: clipboard.current.length > 0, run: paste },
+    paste: { enabled: clipboard.current.length > 0 || !!trackClipboard.current, run: paste },
     duplicate: { enabled: any, run: duplicate },
     open: { run: c.openFile },
     save: { run: c.save },

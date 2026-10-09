@@ -403,6 +403,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlockChange={doc.updateBlock}
         onBlocksChange={doc.updateBlocks}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
+        onCopyBlocks={(blocks) => void doc.insertBlocks(blocks)}
         onMarkerEdit={setEditingMarker}
         onProperties={(id) => setEditing(selected.includes(id) ? selected : [id])}
         onEq={setEqTrack}

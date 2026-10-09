@@ -38,6 +38,8 @@ export default function Timeline(p: {
   onBlocksChange: (patches: Record<string, Partial<Block>>, merge?: string) => void
   /** 波形ブロックの右クリック（画面の座標） */
   onBlockMenu: (id: string, x: number, y: number) => void
+  /** Ctrl+ドラッグで、写しをその場に残す */
+  onCopyBlocks: (blocks: Block[]) => void
   /** 目盛りの上のマーカーをダブルクリック */
   onMarkerEdit: (id: string) => void
   /** 波形ブロックのダブルクリック（プロパティ） */
@@ -198,18 +200,16 @@ export default function Timeline(p: {
       const snapped = hit.kind === 'move' && p.snap ? (snapTime(t, snapTargets(p.project, p.cursor, []), snapping) ?? t) : t
       p.onCursor(Math.max(0, snapped))
     }
-    // Ctrl で足し引き。選んでいるものをつまんだら、選んだもの全部を動かす
-    let group = p.selected.includes(id) ? p.selected : [id]
-    if (e.ctrlKey || e.metaKey) {
-      group = p.selected.includes(id) ? p.selected.filter((s) => s !== id) : [...p.selected, id]
-      p.onSelect(group)
-      if (!group.includes(id)) return
-    } else p.onSelect(group)
+    // 選んでいるものをつまんだら、選んだもの全部を動かす。Ctrl は、動かせば複製（REAPER と同じ）、動かさずに離せば選択の足し引き
+    const ctrl = e.ctrlKey || e.metaKey
+    const wasSelected = p.selected.includes(id)
+    const group = wasSelected ? p.selected : ctrl ? [...p.selected, id] : [id]
+    p.onSelect(group)
     p.onSelectTrack(hit.block.track)
     e.currentTarget.setPointerCapture(e.pointerId)
     const trackIndex = p.project.tracks.findIndex((t) => t.id === hit.block.track)
     const others = hit.kind === 'move' ? p.project.blocks.filter((b) => group.includes(b.id) && b.id !== id) : []
-    drag.current = { kind: hit.kind, block: hit.block, others, x, y, trackIndex, merge: `drag${dragCount.current++}` }
+    drag.current = { kind: hit.kind, block: hit.block, others, x, y, trackIndex, merge: `drag${dragCount.current++}`, copy: ctrl && hit.kind === 'move' ? { wasSelected, done: false } : undefined }
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -246,6 +246,12 @@ export default function Timeline(p: {
       setCursor(hit ? CURSOR[hit.kind] : 'default')
       return
     }
+    // Ctrl で始めたら、動かし始めたときに写しをその場に残す（動かすのは元のもの）
+    if (d.copy && !d.copy.done) {
+      if (Math.hypot(x - d.x, y - d.y) < 4) return
+      d.copy.done = true
+      p.onCopyBlocks([d.block, ...d.others])
+    }
     // Shift を押している間は吸い付けない（REAPER と同じ）
     const raw = (x - d.x) / view.pps
     const exclude = [d.block.id, ...d.others.map((b) => b.id)]
@@ -269,6 +275,9 @@ export default function Timeline(p: {
     }
     // 範囲を作らずに離したら、範囲を消す（REAPER と同じ）
     if (rangeDrag.current && Math.abs(e.nativeEvent.offsetX - rangeDrag.current.x) < 3) p.onRange(null)
+    // Ctrl で押して動かさずに離したら、選択の足し引き（選んでいたものは外す）
+    const d = drag.current
+    if (d?.copy && !d.copy.done && d.copy.wasSelected) p.onSelect(p.selected.filter((s) => s !== d.block.id))
     rangeDrag.current = null
     scrub.current = false
     edge.stop()
@@ -296,7 +305,11 @@ export default function Timeline(p: {
             track={track}
             height={LANE}
             selected={track.id === p.selectedTrack}
-            onSelect={() => p.onSelectTrack(track.id)}
+            onSelect={() => {
+              // トラックの欄を押したらトラックだけを選ぶ（Ctrl+C でトラックをコピーできるように）
+              p.onSelectTrack(track.id)
+              p.onSelect([])
+            }}
             onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
             onEndMerge={p.onEndMerge}
             onEq={() => p.onEq(track.id)}
