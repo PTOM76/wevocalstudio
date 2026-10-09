@@ -31,8 +31,10 @@ export interface Block {
   start: number
   /** 元の音の中での開始位置（秒） */
   offset: number
-  /** 長さ（秒） */
+  /** 長さ（秒。時間軸の上での長さ） */
   length: number
+  /** 速度（1 が元の速さ、2 で倍の速さ）。ピッチは変えずに長さが変わる（REAPER のアイテムの再生速度）。元の音の上では length × rate 秒を使う */
+  rate: number
   /** 音量（dB） */
   gain: number
   /** ピッチ（半音。小数も使える）。元の音から変える（dsp/pitch.ts） */
@@ -82,6 +84,7 @@ export const newBlock = (track: string, source: Source, start: number, defaults:
   start,
   offset: 0,
   length: source.duration,
+  rate: 1,
   gain: 0,
   pitch: 0,
   ...defaults,
@@ -89,6 +92,13 @@ export const newBlock = (track: string, source: Source, start: number, defaults:
   fadeOut: 0,
   mute: false,
 })
+
+/** 速度の範囲（REAPER と同じく 1/4 倍から 4 倍） */
+export const RATE_MIN = 0.25
+export const RATE_MAX = 4
+
+/** 古いファイルの波形ブロックに無い項目を既定値で埋める（保存したデータは壊さない） */
+export const fillBlock = (b: Partial<Block> & Pick<Block, 'id'>): Block => ({ rate: 1, gain: 0, pitch: 0, algorithm: 'sola3', preserveFormant: true, fadeIn: 0, fadeOut: 0, mute: false, ...b }) as Block
 
 /** 全体の長さ（秒） */
 export const projectEnd = (p: Project) => p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
@@ -104,6 +114,6 @@ export function splitBlock(b: Block, t: number): [Block, Block] | null {
   if (at <= 0.001 || at >= b.length - 0.001) return null
   return [
     { ...b, length: at, fadeOut: 0 },
-    { ...b, id: newId(), start: t, offset: b.offset + at, length: b.length - at, fadeIn: 0 },
+    { ...b, id: newId(), start: t, offset: b.offset + at * b.rate, length: b.length - at, fadeIn: 0 },
   ]
 }

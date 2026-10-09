@@ -13,6 +13,7 @@
   "block.start": "Position (s)",
   "block.length": "Length (s)",
   "block.offset": "Source offset (s)",
+  "block.rate": "Rate (x)",
 
   "error.failed": "Failed: {error}",
 

@@ -151,7 +151,8 @@ export default function Timeline(p: {
     const exclude = [d.block.id, ...d.others.map((b) => b.id)]
     let dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), view.pps) : raw
     const di = Math.round((y - d.y) / LANE)
-    if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di), d.merge)
+    // Alt を押しながら端をドラッグすると速度ごと伸び縮みする（REAPER と同じ）
+    if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di, e.altKey), d.merge)
     // まとめて動かす。一番前のものが 0 より前に出ない所、トラックの外に出ない所で止める
     const all = [d.block, ...d.others]
     dt = Math.max(dt, -Math.min(...all.map((b) => b.start)))

@@ -1,7 +1,7 @@
 // 作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く
 import type { Clip } from 'wevocal-lib'
 import { app } from './appConfig'
-import { newProject, type Project, type Source } from './project'
+import { fillBlock, newProject, type Project, type Source } from './project'
 
 const DB = app.id
 const STORE = 'kv'
@@ -74,7 +74,7 @@ export async function loadAutosave(): Promise<{ project: Project; fileName: stri
     written.add(s.id)
   }
   // 元の音が読めなかった波形ブロックは除く
-  const blocks = meta.blocks.filter((b) => sources.some((s) => s.id === b.source))
+  const blocks = meta.blocks.filter((b) => sources.some((s) => s.id === b.source)).map(fillBlock)
   const base = newProject()
   return { project: { sources, master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks : base.tracks, blocks }, fileName: meta.fileName }
 }

@@ -13,6 +13,7 @@
   "block.start": "位置 (秒)",
   "block.length": "長さ (秒)",
   "block.offset": "元の音の開始位置 (秒)",
+  "block.rate": "速度 (倍)",
 
   "error.failed": "処理に失敗しました: {error}",
 

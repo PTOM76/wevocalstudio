@@ -4,13 +4,14 @@ import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, Fo
 import { enterToSubmit } from 'pevenmui'
 import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
 import { useT, type MessageKey } from './i18n'
-import type { Block } from './project'
+import { RATE_MAX, RATE_MIN, type Block } from './project'
 
 /** 数値で指定する項目（名前、刻み、下限） */
-const NUMBERS: [keyof Block & ('start' | 'length' | 'offset' | 'gain' | 'pitch' | 'fadeIn' | 'fadeOut'), MessageKey, number, number][] = [
+const NUMBERS: [keyof Block & ('start' | 'length' | 'offset' | 'rate' | 'gain' | 'pitch' | 'fadeIn' | 'fadeOut'), MessageKey, number, number][] = [
   ['start', 'block.start', 0.001, 0],
   ['length', 'block.length', 0.001, 0.01],
   ['offset', 'block.offset', 0.001, 0],
+  ['rate', 'block.rate', 0.01, RATE_MIN],
   ['gain', 'block.gain', 0.1, -60],
   ['pitch', 'block.pitch', 0.01, -24],
   ['fadeIn', 'block.fadeIn', 0.01, 0],
@@ -25,10 +26,12 @@ export default function BlockDialog(p: { block: Block | null; name: string; dura
 
   // 元の音を越えないように、長さと開始位置をそろえる
   const fit = (b: Block): Block => {
+    const rate = Math.max(RATE_MIN, Math.min(RATE_MAX, b.rate))
     const offset = Math.min(Math.max(0, b.offset), p.duration - 0.01)
-    const length = Math.min(Math.max(0.01, b.length), p.duration - offset)
+    // 時間軸の上の長さは、残りの元の音を速度で割ったものまで
+    const length = Math.min(Math.max(0.01, b.length), (p.duration - offset) / rate)
     const pitch = Math.max(-24, Math.min(24, b.pitch))
-    return { ...b, offset, length, pitch, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length - Math.min(b.fadeIn, length)) }
+    return { ...b, rate, offset, length, pitch, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length - Math.min(b.fadeIn, length)) }
   }
   const apply = () => {
     p.onApply(fit(draft))
@@ -54,7 +57,11 @@ export default function BlockDialog(p: { block: Block | null; name: string; dura
                 slotProps={{ htmlInput: { step, min } }}
                 onChange={(e) => {
                   const v = Number(e.target.value)
-                  if (Number.isFinite(v)) setDraft({ ...draft, [key]: Math.max(min, v) })
+                  if (!Number.isFinite(v)) return
+                  const value = Math.max(min, v)
+                  // 速度を変えたら、使う元の音の範囲はそのままで長さが変わる（REAPER と同じ）
+                  if (key === 'rate' && value > 0) setDraft({ ...draft, rate: value, length: (draft.length * draft.rate) / value })
+                  else setDraft({ ...draft, [key]: value })
                 }}
                 sx={{ width: 150 }}
               />

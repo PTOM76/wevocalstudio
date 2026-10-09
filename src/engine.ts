@@ -37,7 +37,8 @@ function schedule(ctx: BaseAudioContext, p: Project, from: number, when: number)
       if (b.track !== track.id || b.mute || !source || b.start + b.length <= from) continue
       const node = ctx.createBufferSource()
       // ピッチを変えた音ができる前は、元の音で鳴らす
-      node.buffer = bufferOf(ctx, clipFor(b, source) ?? source.clip)
+      const made = clipFor(b, source)
+      node.buffer = bufferOf(ctx, made ?? source.clip)
       const g = ctx.createGain()
       const level = dbToGain(b.gain)
       // フェード（時間軸の時刻で書く）
@@ -51,7 +52,14 @@ function schedule(ctx: BaseAudioContext, p: Project, from: number, when: number)
       }
       node.connect(g).connect(gain)
       const skip = Math.max(0, from - b.start)
-      node.start(Math.max(when, t0), b.offset + skip, b.length - skip)
+      if (made) {
+        // 作った音は速度の分だけ伸び縮みしているので、元の音の位置を速度で割る
+        node.start(Math.max(when, t0), b.offset / b.rate + skip, b.length - skip)
+      } else {
+        // できるまでは元の音を速度の分だけ速く鳴らす（ピッチも変わる仮の音）
+        node.playbackRate.value = b.rate
+        node.start(Math.max(when, t0), b.offset + skip * b.rate, (b.length - skip) * b.rate)
+      }
       nodes.push(node)
     }
   }

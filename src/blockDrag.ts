@@ -1,7 +1,7 @@
 // 波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
 import { LANE, TOP, tickStep } from './drawTimeline'
 import { layoutRows } from './overlap'
-import type { Block, Project } from './project'
+import { RATE_MAX, RATE_MIN, type Block, type Project } from './project'
 
 /** つまむ所。move は本体、left / right は端、fadeIn / fadeOut は上の角 */
 export type DragKind = 'move' | 'left' | 'right' | 'fadeIn' | 'fadeOut'
@@ -56,11 +56,19 @@ export function hitBlock(p: Project, x: number, y: number, toTime: (x: number) =
 /** カーソルの形 */
 export const CURSOR: Record<DragKind, string> = { move: 'grab', left: 'ew-resize', right: 'ew-resize', fadeIn: 'nesw-resize', fadeOut: 'nwse-resize' }
 
-/** ドラッグで変える値。dt は動かした時間（秒）、di は動かしたトラックの数 */
-export function dragPatch(p: Project, d: Drag, dt: number, di: number): Partial<Block> {
+/** ドラッグで変える値。dt は動かした時間（秒）、di は動かしたトラックの数。stretch なら端で速度ごと伸び縮みする（REAPER の Alt+ドラッグ） */
+export function dragPatch(p: Project, d: Drag, dt: number, di: number, stretch = false): Partial<Block> {
   const b = d.block
   const source = p.sources.find((s) => s.id === b.source)
-  const total = source?.duration ?? b.start + b.length
+  // 元の音の長さ（秒）
+  const total = source?.duration ?? b.offset + (b.start + b.length) * b.rate
+  if (stretch && (d.kind === 'left' || d.kind === 'right')) {
+    // 使う元の音の範囲はそのままで、長さと速度を変える
+    const span = b.length * b.rate
+    const length = Math.max(span / RATE_MAX, Math.min(span / RATE_MIN, b.length + (d.kind === 'right' ? dt : -dt)))
+    const start = d.kind === 'left' ? Math.max(0, b.start + b.length - length) : b.start
+    return { start, length, rate: span / length, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length) }
+  }
   switch (d.kind) {
     case 'move': {
       const i = Math.min(p.tracks.length - 1, Math.max(0, d.trackIndex + di))
@@ -68,12 +76,12 @@ export function dragPatch(p: Project, d: Drag, dt: number, di: number): Partial<
     }
     case 'left': {
       // 元の音の頭より前と、右端を越えては伸ばさない
-      const move = Math.max(-b.offset, -b.start, Math.min(dt, b.length - MIN_LENGTH))
+      const move = Math.max(-b.offset / b.rate, -b.start, Math.min(dt, b.length - MIN_LENGTH))
       const length = b.length - move
-      return { start: b.start + move, offset: b.offset + move, length, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length) }
+      return { start: b.start + move, offset: b.offset + move * b.rate, length, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length) }
     }
     case 'right': {
-      const length = Math.max(MIN_LENGTH, Math.min(total - b.offset, b.length + dt))
+      const length = Math.max(MIN_LENGTH, Math.min((total - b.offset) / b.rate, b.length + dt))
       return { length, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length) }
     }
     case 'fadeIn':

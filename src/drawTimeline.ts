@@ -50,7 +50,7 @@ function drawBlockWave(g: CanvasRenderingContext2D, b: Block, p: Project, x: num
   const { clip } = source
   const data = clip.channels[0]
   const mid = y + h / 2
-  const perPx = (b.length * clip.sampleRate) / w
+  const perPx = (b.length * b.rate * clip.sampleRate) / w
   const amp = (h / 2) * Math.min(4, 10 ** (b.gain / 20))
   for (let px = Math.max(0, Math.floor(x)); px < Math.min(width, Math.ceil(x + w)); px++) {
     const a = Math.max(0, Math.floor(b.offset * clip.sampleRate + (px - x) * perPx))
@@ -131,7 +131,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       // 名前とピッチ、音量
       const name = p.sources.find((s) => s.id === b.source)?.name ?? ''
       const sign = (v: number) => (v > 0 ? `+${v}` : `${v}`)
-      const info = [b.pitch ? sign(b.pitch) : '', b.gain ? `${sign(b.gain)} dB` : ''].filter(Boolean).join('  ')
+      const info = [b.pitch ? sign(b.pitch) : '', b.rate !== 1 ? `×${+b.rate.toFixed(3)}` : '', b.gain ? `${sign(b.gain)} dB` : ''].filter(Boolean).join('  ')
       if (label) {
         g.save()
         g.beginPath()

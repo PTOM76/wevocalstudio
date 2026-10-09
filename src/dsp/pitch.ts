@@ -1,4 +1,4 @@
-// 波形ブロックのピッチを音に反映する。元の音全体をピッチだけ変えて作り、キャッシュする（再生のたびには計算しない）
+// 波形ブロックのピッチと速度を音に反映する。元の音全体を変えて作り、キャッシュする（再生のたびには計算しない）
 import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
 import type { Block, Project, Source } from '../project'
 import type { PitchRequest, PitchResponse } from './worker'
@@ -24,16 +24,19 @@ function request(r: Omit<PitchRequest, 'id'>) {
 const jobs = new Map<string, Promise<Clip>>()
 const done = new Map<string, Clip>()
 
-const keyOf = (b: Block) => `${b.source}|${b.pitch}|${b.algorithm}|${b.preserveFormant}`
+const keyOf = (b: Block) => `${b.source}|${b.pitch}|${b.rate}|${b.algorithm}|${b.preserveFormant}`
+
+/** 元の音から作り直す要るか（ピッチか速度を変えたとき） */
+export const needsProcess = (b: Block) => b.pitch !== 0 || b.rate !== 1
 
 /** 鳴らす音。ピッチを変えたものがまだできていなければ null（呼ぶ側は元の音で代わりに鳴らす） */
 export function clipFor(b: Block, source: Source): Clip | null {
-  return b.pitch === 0 ? source.clip : (done.get(keyOf(b)) ?? null)
+  return !needsProcess(b) ? source.clip : (done.get(keyOf(b)) ?? null)
 }
 
 /** まだできていないピッチの音があるか */
 export function pitchPending(p: Project) {
-  return p.blocks.some((b) => b.pitch !== 0 && !done.has(keyOf(b)))
+  return p.blocks.some((b) => needsProcess(b) && !done.has(keyOf(b)))
 }
 
 /** プロジェクトの波形ブロックのピッチをすべて用意する。使われなくなったキャッシュは消す */
@@ -42,13 +45,13 @@ export async function preparePitch(p: Project) {
   const pending: Promise<Clip>[] = []
   for (const b of p.blocks) {
     const source = p.sources.find((s) => s.id === b.source)
-    if (b.pitch === 0 || !source) continue
+    if (!needsProcess(b) || !source) continue
     const key = keyOf(b)
     used.add(key)
     let job = jobs.get(key)
     if (!job) {
       const { clip } = source
-      job = request({ channels: clip.channels, sampleRate: clip.sampleRate, semitones: b.pitch, algorithm: ALGORITHM_ID[b.algorithm], preserveFormant: b.preserveFormant }).then((channels) => {
+      job = request({ channels: clip.channels, sampleRate: clip.sampleRate, semitones: b.pitch, stretch: 1 / b.rate, algorithm: ALGORITHM_ID[b.algorithm], preserveFormant: b.preserveFormant }).then((channels) => {
         const out = { sampleRate: clip.sampleRate, channels }
         // 待つ間に使われなくなったものは残さない
         if (jobs.get(key) === job) done.set(key, out)

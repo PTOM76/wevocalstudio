@@ -14,6 +14,8 @@ export interface PitchRequest {
   channels: Float32Array[]
   sampleRate: number
   semitones: number
+  /** 長さの倍率（速度の逆数） */
+  stretch: number
   /** wevocal-lib の ALGORITHM_ID の番号 */
   algorithm: number
   preserveFormant: boolean
@@ -34,7 +36,7 @@ function process(dsp: DspExports, r: PitchRequest): Float32Array[] {
   const ptr = dsp.alloc_f32(len)
   try {
     r.channels.forEach((c, i) => new Float32Array(dsp.memory.buffer, ptr, len).set(c, i * frames))
-    const n = dsp.process_planar(ptr, frames, r.channels.length, r.sampleRate, r.semitones, 1, r.algorithm, r.preserveFormant ? 1 : 0, 0)
+    const n = dsp.process_planar(ptr, frames, r.channels.length, r.sampleRate, r.semitones, r.stretch, r.algorithm, r.preserveFormant ? 1 : 0, 0)
     // 処理中にメモリが広がることがあるので、ビューは処理のあとに作る
     const out = new Float32Array(dsp.memory.buffer, dsp.output_ptr(), n * r.channels.length)
     return r.channels.map((_, i) => out.slice(i * n, (i + 1) * n))
