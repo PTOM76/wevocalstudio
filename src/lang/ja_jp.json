@@ -14,6 +14,7 @@
   "block.length": "長さ (秒)",
   "block.offset": "元の音の開始位置 (秒)",
   "block.rate": "速度 (倍)",
+  "block.formant": "フォルマント (半音)",
 
   "error.failed": "処理に失敗しました: {error}",
   "error.noRecord": "このブラウザでは録音できません",

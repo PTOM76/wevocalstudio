@@ -7,13 +7,14 @@ import { useT, type MessageKey } from './i18n'
 import { RATE_MAX, RATE_MIN, type Block } from './project'
 
 /** 数値で指定する項目（名前、刻み、下限） */
-const NUMBERS: [keyof Block & ('start' | 'length' | 'offset' | 'rate' | 'gain' | 'pitch' | 'fadeIn' | 'fadeOut'), MessageKey, number, number][] = [
+const NUMBERS: [keyof Block & ('start' | 'length' | 'offset' | 'rate' | 'gain' | 'pitch' | 'formant' | 'fadeIn' | 'fadeOut'), MessageKey, number, number][] = [
   ['start', 'block.start', 0.001, 0],
   ['length', 'block.length', 0.001, 0.01],
   ['offset', 'block.offset', 0.001, 0],
   ['rate', 'block.rate', 0.01, RATE_MIN],
   ['gain', 'block.gain', 0.1, -60],
   ['pitch', 'block.pitch', 0.01, -24],
+  ['formant', 'block.formant', 0.1, -12],
   ['fadeIn', 'block.fadeIn', 0.01, 0],
   ['fadeOut', 'block.fadeOut', 0.01, 0],
 ]
@@ -31,7 +32,8 @@ export default function BlockDialog(p: { block: Block | null; name: string; dura
     // 時間軸の上の長さは、残りの元の音を速度で割ったものまで
     const length = Math.min(Math.max(0.01, b.length), (p.duration - offset) / rate)
     const pitch = Math.max(-24, Math.min(24, b.pitch))
-    return { ...b, rate, offset, length, pitch, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length - Math.min(b.fadeIn, length)) }
+    const formant = Math.max(-12, Math.min(12, b.formant))
+    return { ...b, rate, offset, length, pitch, formant, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length - Math.min(b.fadeIn, length)) }
   }
   const apply = () => {
     p.onApply(fit(draft))

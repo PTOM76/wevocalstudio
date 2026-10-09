@@ -127,7 +127,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       // 名前とピッチ、音量
       const name = p.sources.find((s) => s.id === b.source)?.name ?? ''
       const sign = (v: number) => (v > 0 ? `+${v}` : `${v}`)
-      const info = [b.pitch ? sign(b.pitch) : '', b.rate !== 1 ? `×${+b.rate.toFixed(3)}` : '', b.gain ? `${sign(b.gain)} dB` : ''].filter(Boolean).join('  ')
+      const info = [b.pitch ? sign(b.pitch) : '', b.rate !== 1 ? `×${+b.rate.toFixed(3)}` : '', b.formant ? `F${sign(b.formant)}` : '', b.gain ? `${sign(b.gain)} dB` : ''].filter(Boolean).join('  ')
       if (label) {
         g.save()
         g.beginPath()

@@ -45,6 +45,8 @@ export interface Block {
   algorithm: Algorithm
   /** ピッチを変えるときにフォルマント（声の響き）を保つ */
   preserveFormant: boolean
+  /** フォルマントのずらし量（半音。WeVocalSynth の「フォルマント」と同じ。0 なら変えない） */
+  formant: number
   /** フェードイン、フェードアウト（秒） */
   fadeIn: number
   fadeOut: number
@@ -100,6 +102,7 @@ export const newBlock = (track: string, source: Source, start: number, defaults:
   rate: 1,
   gain: 0,
   pitch: 0,
+  formant: 0,
   ...defaults,
   fadeIn: Math.min(DEFAULT_FADE, source.duration / 2),
   fadeOut: Math.min(DEFAULT_FADE, source.duration / 2),
@@ -114,7 +117,7 @@ export const RATE_MIN = 0.25
 export const RATE_MAX = 4
 
 /** 古いファイルの波形ブロックに無い項目を既定値で埋める（保存したデータは壊さない） */
-export const fillBlock = (b: Partial<Block> & Pick<Block, 'id'>): Block => ({ rate: 1, gain: 0, pitch: 0, algorithm: 'sola3', preserveFormant: true, fadeIn: 0, fadeOut: 0, mute: false, ...b }) as Block
+export const fillBlock = (b: Partial<Block> & Pick<Block, 'id'>): Block => ({ rate: 1, gain: 0, pitch: 0, formant: 0, algorithm: 'sola3', preserveFormant: true, fadeIn: 0, fadeOut: 0, mute: false, ...b }) as Block
 
 /** 全体の長さ（秒） */
 export const projectEnd = (p: Project) => p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)

@@ -24,10 +24,10 @@ function request(r: Omit<PitchRequest, 'id'>) {
 const jobs = new Map<string, Promise<Clip>>()
 const done = new Map<string, Clip>()
 
-const keyOf = (b: Block) => `${b.source}|${b.pitch}|${b.rate}|${b.algorithm}|${b.preserveFormant}`
+const keyOf = (b: Block) => `${b.source}|${b.pitch}|${b.rate}|${b.formant}|${b.algorithm}|${b.preserveFormant}`
 
 /** 元の音から作り直す要るか（ピッチか速度を変えたとき） */
-export const needsProcess = (b: Block) => b.pitch !== 0 || b.rate !== 1
+export const needsProcess = (b: Block) => b.pitch !== 0 || b.rate !== 1 || b.formant !== 0
 
 /** 鳴らす音。ピッチを変えたものがまだできていなければ null（呼ぶ側は元の音で代わりに鳴らす） */
 export function clipFor(b: Block, source: Source): Clip | null {
@@ -51,7 +51,7 @@ export async function preparePitch(p: Project) {
     let job = jobs.get(key)
     if (!job) {
       const { clip } = source
-      job = request({ channels: clip.channels, sampleRate: clip.sampleRate, semitones: b.pitch, stretch: 1 / b.rate, algorithm: ALGORITHM_ID[b.algorithm], preserveFormant: b.preserveFormant }).then((channels) => {
+      job = request({ channels: clip.channels, sampleRate: clip.sampleRate, semitones: b.pitch, stretch: 1 / b.rate, algorithm: ALGORITHM_ID[b.algorithm], preserveFormant: b.preserveFormant || b.formant !== 0, formantSemitones: b.formant }).then((channels) => {
         const out = { sampleRate: clip.sampleRate, channels }
         // 待つ間に使われなくなったものは残さない
         if (jobs.get(key) === job) done.set(key, out)
