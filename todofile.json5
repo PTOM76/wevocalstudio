@@ -17,6 +17,9 @@
     // dsp/ をビルドして src/dsp/dsp.wasm を作り直す。wevocal-lib の処理を変えたら結果もコミットする
     "wasm": "npm run build:wasm",
 
+    // submodule を隣の WeVocalSynth の中の今のコミットにそろえる（GitHub Actions のビルドに使う）
+    "update:modules": "node scripts/sync-modules.mjs",
+
     // ---- 確認 ----
     // コミット前にまとめて通す。書き換えはしない
     "check": [

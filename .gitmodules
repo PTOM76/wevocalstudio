@@ -1,0 +1,9 @@
+[submodule "pevenmui"]
+	path = pevenmui
+	url = https://github.com/PTOM76/pevenmui.git
+[submodule "wevocal-lib"]
+	path = wevocal-lib
+	url = https://github.com/PTOM76/wevocal-lib.git
+[submodule "analyzer"]
+	path = analyzer
+	url = https://github.com/PTOM76/wevocalanalyzer.git

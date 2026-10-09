@@ -21,7 +21,9 @@ npm install
 npm run dev
 ```
 
-`pevenmui/`、`wevocal-lib/` は、隣に WeVocalSynth（`../wevocalsynth`）があればその中のものを使う。なければ submodule として置く。
+`pevenmui/`、`wevocal-lib/`、`analyzer/` は submodule（`git submodule update --init`）。隣に WeVocalSynth（`../wevocalsynth`）があれば、その中のものを先に使う（両方を直しながら開発できるように）。submodule を Synth の中のコミットにそろえるには `todo update:modules`。
+
+GitHub Pages へは、main に push すると GitHub Actions（`.github/workflows/deploy.yml`）が公開する。
 
 ## ドキュメント
 - [アーキテクチャ](docs/ARCHITECTURE.md)
