@@ -140,6 +140,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     openSettings: () => setDialog('settings'),
     snap: p.settings.snap,
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
+    beatGrid: p.settings.grid === 'beats',
+    toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
     showStatusBar: p.settings.showStatusBar,
     toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
     help: { guide: () => openExternal(app.repository), licenses: () => setDialog('licenses'), about: () => setDialog('about') },
@@ -257,6 +259,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         view={view}
         snap={p.settings.snap}
+        grid={p.settings.grid}
         onView={setView}
       />
       <Transport
@@ -265,6 +268,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         end={end}
         range={range}
         repeat={repeat}
+        tempo={project.tempo}
+        onTempo={(patch) => doc.updateTempo(patch)}
         onToStart={() => seek(0)}
         onStop={stop}
         onPlay={play}

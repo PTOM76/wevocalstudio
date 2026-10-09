@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
+import type { GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, snapDelta, snapTargets, snapTime, type Drag } from './blockDrag'
 import { LANE, MASTER, RULER, TOP, drawTimeline, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
@@ -34,6 +35,8 @@ export default function Timeline(p: {
   view: TimelineView
   /** 目盛りの線、波形ブロックの端、再生位置に吸い付けるか */
   snap: boolean
+  /** 線の取り方（拍と小節か、秒） */
+  grid: GridMode
   onView: (fn: (v: TimelineView) => TimelineView) => void
 }) {
   // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
@@ -45,6 +48,8 @@ export default function Timeline(p: {
   const drag = useRef<Drag | null>(null)
   // 範囲選択のドラッグを始めた時刻と位置
   const rangeDrag = useRef<{ t: number; x: number } | null>(null)
+  // 目盛りの上で押している間は、再生位置が付いてくる（範囲選択にしない。WeVocalSynth と同じ）
+  const scrub = useRef(false)
   const dragCount = useRef(0)
   const [cursor, setCursor] = useState('default')
   const height = TOP + Math.max(1, p.project.tracks.length) * LANE
@@ -62,7 +67,7 @@ export default function Timeline(p: {
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
-    drawTimeline(canvas, p.project, view, p.selected, p.cursor, p.range, {
+    drawTimeline(canvas, p.project, view, p.selected, p.cursor, p.range, { grid: p.grid }, {
       bg: pal.background.default,
       lane: pal.divider,
       line: alpha(pal.divider, 0.5),
@@ -74,7 +79,7 @@ export default function Timeline(p: {
       master: alpha(pal.text.primary, 0.04),
       range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
     })
-  }, [p.project, view, p.selected, p.cursor, p.range, width, height, dark, pal])
+  }, [p.project, view, p.selected, p.cursor, p.range, width, height, dark, pal, p.grid])
 
   // ホイール: Shift で横に動かす。Ctrl で拡大と縮小（マウスの位置を中心に）
   useEffect(() => {
@@ -96,6 +101,7 @@ export default function Timeline(p: {
   }, [setView])
 
   const toTime = (x: number) => view.scroll + x / view.pps
+  const snapping = { mode: p.grid, tempo: p.project.tempo, pps: view.pps }
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // 時間軸を押したら、スライダーなどに残ったフォーカスを外す（キーが時間軸の操作に届くように）
@@ -104,8 +110,14 @@ export default function Timeline(p: {
     if (e.button === 2) return
     const { offsetX: x, offsetY: y } = e.nativeEvent
     const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
+    if (y < RULER) {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      scrub.current = true
+      p.onSeek(Math.max(0, toTime(x)))
+      return
+    }
     if (!hit) {
-      // 目盛りか空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択
+      // 空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択
       if (!e.ctrlKey && !e.metaKey) p.onSelect([])
       const track = p.project.tracks[Math.floor((y - TOP) / LANE)]
       if (track) p.onSelectTrack(track.id)
@@ -131,11 +143,12 @@ export default function Timeline(p: {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const { offsetX: x, offsetY: y } = e.nativeEvent
+    if (scrub.current) return p.onSeek(Math.max(0, toTime(x)))
     const r = rangeDrag.current
     if (r) {
       if (Math.abs(x - r.x) < 3) return
       const t = Math.max(0, toTime(x))
-      const snapped = p.snap && !e.shiftKey ? (snapTime(t, snapTargets(p.project, p.cursor, []), view.pps) ?? t) : t
+      const snapped = p.snap && !e.shiftKey ? (snapTime(t, snapTargets(p.project, p.cursor, []), snapping) ?? t) : t
       p.onRange({ start: Math.min(r.t, snapped), end: Math.max(r.t, snapped) })
       return
     }
@@ -149,7 +162,7 @@ export default function Timeline(p: {
     // Shift を押している間は吸い付けない（REAPER と同じ）
     const raw = (x - d.x) / view.pps
     const exclude = [d.block.id, ...d.others.map((b) => b.id)]
-    let dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), view.pps) : raw
+    let dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), snapping) : raw
     const di = Math.round((y - d.y) / LANE)
     // Alt を押しながら端をドラッグすると速度ごと伸び縮みする（REAPER と同じ）
     if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di, e.altKey), d.merge)
@@ -165,6 +178,7 @@ export default function Timeline(p: {
     // 範囲を作らずに離したら、範囲を消す（REAPER と同じ）
     if (rangeDrag.current && Math.abs(e.nativeEvent.offsetX - rangeDrag.current.x) < 3) p.onRange(null)
     rangeDrag.current = null
+    scrub.current = false
     drag.current = null
     p.onEndMerge()
   }

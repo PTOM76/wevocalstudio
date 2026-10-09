@@ -1,7 +1,7 @@
 // 作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く
 import type { Clip } from 'wevocal-lib'
 import { app } from './appConfig'
-import { fillBlock, newProject, type Project, type Source } from './project'
+import { DEFAULT_TEMPO, fillBlock, newProject, type Project, type Source } from './project'
 
 const DB = app.id
 const STORE = 'kv'
@@ -11,6 +11,7 @@ const sourceKey = (id: string) => `autosave:source:${id}`
 interface Meta {
   fileName: string
   sources: { id: string; name: string; sampleRate: number }[]
+  tempo?: Project['tempo']
   master: Project['master']
   tracks: Project['tracks']
   blocks: Project['blocks']
@@ -49,6 +50,7 @@ export async function saveAutosave(p: Project, fileName: string) {
   const meta: Meta = {
     fileName,
     sources: p.sources.map((s) => ({ id: s.id, name: s.name, sampleRate: s.clip.sampleRate })),
+    tempo: p.tempo,
     master: p.master,
     tracks: p.tracks,
     blocks: p.blocks,
@@ -76,7 +78,7 @@ export async function loadAutosave(): Promise<{ project: Project; fileName: stri
   // 元の音が読めなかった波形ブロックは除く
   const blocks = meta.blocks.filter((b) => sources.some((s) => s.id === b.source)).map(fillBlock)
   const base = newProject()
-  return { project: { sources, master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks : base.tracks, blocks }, fileName: meta.fileName }
+  return { project: { sources, tempo: { ...DEFAULT_TEMPO, ...meta.tempo }, master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks : base.tracks, blocks }, fileName: meta.fileName }
 }
 
 /** 自動保存を消す（自動保存をやめたとき） */

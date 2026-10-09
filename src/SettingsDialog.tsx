@@ -2,6 +2,7 @@
 import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
 import { Check, Choice, Group, Row, SettingsDialog as PevenSettingsDialog, type SettingsCategory } from 'pevenmui'
 import { i18n, useT, type LangSetting } from './i18n'
+import type { GridMode } from './grid'
 import { DEFAULT_SETTINGS, type Settings } from './settings'
 
 type Category = 'general' | 'appearance' | 'edit' | 'pitch'
@@ -20,7 +21,7 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
   const categories: SettingsCategory<Category>[] = [
     { id: 'general', label: t('settings.general'), texts: [t('settings.language'), t('settings.autoRestore')] },
     { id: 'appearance', label: t('settings.appearance'), texts: [t('settings.theme'), t('settings.uiScale')] },
-    { id: 'edit', label: t('settings.edit'), texts: [t('settings.snap')] },
+    { id: 'edit', label: t('settings.edit'), texts: [t('settings.snap'), t('settings.grid')] },
     { id: 'pitch', label: t('settings.pitch'), texts: [t('settings.algorithm'), t('settings.preserveFormant')] },
   ]
   return (
@@ -62,6 +63,9 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
         edit: (
           <Group title={t('settings.edit')}>
             <Check label={t('settings.snap')} help={t('settings.snapHelp')} checked={draft.snap} onChange={(snap) => set({ snap })} />
+            <Row label={t('settings.grid')}>
+              <Choice<GridMode> value={draft.grid} onChange={(grid) => set({ grid })} options={[['beats', t('settings.gridBeats')], ['time', t('settings.gridTime')]]} />
+            </Row>
           </Group>
         ),
         pitch: (

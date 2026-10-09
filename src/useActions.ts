@@ -39,6 +39,9 @@ export interface ActionContext {
   openSettings: () => void
   snap: boolean
   toggleSnap: () => void
+  /** 線を拍と小節で取るか（でなければ秒） */
+  beatGrid: boolean
+  toggleGrid: () => void
   showStatusBar: boolean
   toggleStatusBar: () => void
   help: { guide: () => void; licenses: () => void; about: () => void }
@@ -200,7 +203,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.view'),
       accessKey: 'V',
-      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
+      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
     },
     {
       label: t('menu.help'),

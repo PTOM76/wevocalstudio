@@ -62,6 +62,7 @@
   "menu.properties": "Properties…",
   "menu.snap": "Snap",
   "menu.selectAll": "Select All",
+  "menu.beatGrid": "Show Beats and Bars",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -80,6 +81,9 @@
   "settings.snap": "Snap",
   "settings.snapHelp": "Snap drags to grid lines, block edges and the cursor. Hold Shift while dragging to ignore snapping.",
   "settings.autoRestore": "Autosave your work and restore it next time",
+  "settings.grid": "Grid",
+  "settings.gridBeats": "Beats and bars",
+  "settings.gridTime": "Seconds",
 
   "status.ready": "Ready",
   "status.playing": "Playing",
@@ -109,6 +113,7 @@
   "transport.repeat": "Repeat",
   "transport.toEnd": "Go to end",
   "transport.range": "Selection",
+  "transport.beatsPerBar": "Time sig.",
 
   "toast.restored": "Restored your previous work"
 }

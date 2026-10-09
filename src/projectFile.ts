@@ -1,6 +1,6 @@
 // プロジェクトファイル（.wvstudio）の読み書き。先頭に JSON（トラック、波形ブロック、元の音の形）、そのあとに元の音の PCM を並べる
 import type { Clip } from 'wevocal-lib'
-import { fillBlock, newProject, type Project, type Source } from './project'
+import { DEFAULT_TEMPO, fillBlock, newProject, type Project, type Source } from './project'
 
 export const PROJECT_EXT = '.wvstudio'
 const MAGIC = 'WVST'
@@ -18,6 +18,7 @@ interface StoredSource {
 interface Header {
   version: number
   sources: StoredSource[]
+  tempo?: Project['tempo']
   master: Project['master']
   tracks: Project['tracks']
   blocks: Project['blocks']
@@ -28,6 +29,7 @@ export function writeProject(p: Project): Blob {
   const header: Header = {
     version: VERSION,
     sources: p.sources.map((s) => ({ id: s.id, name: s.name, sampleRate: s.clip.sampleRate, channels: s.clip.channels.length, frames: s.clip.channels[0].length })),
+    tempo: p.tempo,
     master: p.master,
     tracks: p.tracks,
     blocks: p.blocks,
@@ -61,5 +63,5 @@ export async function readProject(file: Blob): Promise<Project> {
     return { id: s.id, name: s.name, clip, duration: s.frames / s.sampleRate }
   })
   // 足した項目が古いファイルに無くても動くよう、既定値で埋める
-  return { ...newProject(), sources, master: { ...newProject().master, ...header.master }, tracks: header.tracks, blocks: header.blocks.map(fillBlock) }
+  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, master: { ...newProject().master, ...header.master }, tracks: header.tracks, blocks: header.blocks.map(fillBlock) }
 }

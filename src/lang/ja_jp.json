@@ -62,6 +62,7 @@
   "menu.properties": "プロパティ…",
   "menu.snap": "スナップ",
   "menu.selectAll": "すべて選択",
+  "menu.beatGrid": "拍と小節で表示",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -80,6 +81,9 @@
   "settings.snap": "スナップ",
   "settings.snapHelp": "ドラッグを目盛りの線、波形ブロックの端、再生位置に吸い付けます。Shift を押しながらドラッグすると吸い付けません。",
   "settings.autoRestore": "作業を自動保存し、次回開いたときに復元する",
+  "settings.grid": "時間軸の線",
+  "settings.gridBeats": "拍と小節",
+  "settings.gridTime": "秒",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
@@ -109,6 +113,7 @@
   "transport.repeat": "リピート",
   "transport.toEnd": "末尾へ",
   "transport.range": "範囲",
+  "transport.beatsPerBar": "拍子",
 
   "toast.restored": "前回の作業を復元しました"
 }

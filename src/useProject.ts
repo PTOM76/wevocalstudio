@@ -1,7 +1,7 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
 import { decodeFile } from 'wevocal-lib'
-import { newBlock, newId, newProject, newTrack, splitBlock, type Block, type Master, type PitchDefaults, type Project, type Source, type Track } from './project'
+import { newBlock, newId, newProject, newTrack, splitBlock, type Block, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。2 オクターブまで */
 const PITCH_MAX = 24
@@ -99,6 +99,8 @@ export function useProject(defaults: PitchDefaults) {
     [change],
   )
 
+  const updateTempo = useCallback((patch: Partial<Tempo>, merge?: string) => change((p) => ({ ...p, tempo: { ...p.tempo, ...patch } }), merge), [change])
+
   const updateMaster = useCallback((patch: Partial<Master>, merge?: string) => change((p) => ({ ...p, master: { ...p.master, ...patch } }), merge), [change])
 
   const updateTrack = useCallback(
@@ -156,6 +158,7 @@ export function useProject(defaults: PitchDefaults) {
     addFiles,
     addTrack,
     removeTrack,
+    updateTempo,
     updateMaster,
     updateTrack,
     updateBlock,

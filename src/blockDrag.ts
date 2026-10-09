@@ -1,7 +1,8 @@
 // 波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
-import { LANE, TOP, tickStep } from './drawTimeline'
+import { LANE, TOP } from './drawTimeline'
+import { snapGrid, type GridMode } from './grid'
 import { layoutRows } from './overlap'
-import { RATE_MAX, RATE_MIN, type Block, type Project } from './project'
+import { RATE_MAX, RATE_MIN, type Block, type Project, type Tempo } from './project'
 
 /** つまむ所。move は本体、left / right は端、fadeIn / fadeOut は上の角 */
 export type DragKind = 'move' | 'left' | 'right' | 'fadeIn' | 'fadeOut'
@@ -102,22 +103,30 @@ export function snapTargets(p: Project, cursor: number, exclude: string[]) {
 }
 
 /** 時刻 t を、近くの吸い付ける先（目盛りの線、edges）に寄せる。なければ null */
-export function snapTime(t: number, edges: number[], pps: number): number | null {
+/** 寄せる線の決め方（線の取り方、テンポ、拡大の度合い） */
+export interface SnapGrid {
+  mode: GridMode
+  tempo: Tempo
+  pps: number
+}
+
+export function snapTime(t: number, edges: number[], s: SnapGrid): number | null {
+  const { pps } = s
   const tol = SNAP_PX / pps
-  const step = tickStep(pps)
-  const grid = Math.round(t / step) * step
+  const { origin, step } = snapGrid(s.mode, s.tempo, pps)
+  const grid = origin + Math.round((t - origin) / step) * step
   let best: number | null = Math.abs(grid - t) <= tol ? grid : null
   for (const e of edges) if (Math.abs(e - t) <= tol && (best === null || Math.abs(e - t) < Math.abs(best - t))) best = e
   return best
 }
 
 /** ドラッグで動かした時間 dt を吸い付ける。移動は頭か終わりの近い方、端はその端を寄せる */
-export function snapDelta(d: Drag, dt: number, edges: number[], pps: number): number {
+export function snapDelta(d: Drag, dt: number, edges: number[], grid: SnapGrid): number {
   const b = d.block
   const points = d.kind === 'move' ? [b.start, b.start + b.length] : d.kind === 'left' ? [b.start] : d.kind === 'right' ? [b.start + b.length] : []
   let best: number | null = null
   for (const at of points) {
-    const s = snapTime(at + dt, edges, pps)
+    const s = snapTime(at + dt, edges, grid)
     if (s !== null && (best === null || Math.abs(s - at - dt) < Math.abs(best - dt))) best = s - at
   }
   return best ?? dt

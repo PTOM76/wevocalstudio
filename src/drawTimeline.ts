@@ -1,5 +1,6 @@
 // 時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
 import type { Range } from 'wevocal-lib'
+import { gridLines, type GridMode } from './grid'
 import { layoutRows } from './overlap'
 import type { Block, Project } from './project'
 
@@ -17,6 +18,11 @@ export interface TimelineView {
   pps: number
 }
 
+/** 線の取り方とテンポ以外に描くときに使うもの */
+export interface DrawOptions {
+  grid: GridMode
+}
+
 export interface TimelineColors {
   bg: string
   lane: string
@@ -30,17 +36,6 @@ export interface TimelineColors {
   master: string
   /** 範囲選択の色 */
   range: string
-}
-
-/** 目盛りの間隔（秒）。文字が重ならない広さにする */
-export function tickStep(pps: number) {
-  return [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300].find((s) => s * pps >= 70) ?? 600
-}
-
-function formatTime(t: number, step: number) {
-  const m = Math.floor(t / 60)
-  const s = t - m * 60
-  return `${m}:${step < 1 ? s.toFixed(2).padStart(5, '0') : String(Math.round(s)).padStart(2, '0')}`
 }
 
 /** 波形ブロックの中に元の音の波形を描く（1 列ごとの最小と最大） */
@@ -68,7 +63,7 @@ function drawBlockWave(g: CanvasRenderingContext2D, b: Block, p: Project, x: num
   }
 }
 
-export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: TimelineView, selected: string[], cursor: number, range: Range | null, c: TimelineColors) {
+export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: TimelineView, selected: string[], cursor: number, range: Range | null, o: DrawOptions, c: TimelineColors) {
   const g = canvas.getContext('2d')!
   const w = canvas.width / devicePixelRatio
   const h = canvas.height / devicePixelRatio
@@ -77,16 +72,17 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   g.fillRect(0, 0, w, h)
   const tx = (t: number) => (t - view.scroll) * view.pps
 
-  // 目盛り
-  const step = tickStep(view.pps)
+  // 目盛りと線（拍と小節か、秒）。小節の頭は濃く描く
   g.font = '11px Roboto, sans-serif'
   g.textBaseline = 'middle'
-  for (let t = Math.floor(view.scroll / step) * step; tx(t) < w; t += step) {
-    const x = Math.round(tx(t)) + 0.5
-    g.fillStyle = c.line
-    g.fillRect(x, RULER - 6, 1, h)
-    g.fillStyle = c.text
-    g.fillText(formatTime(t, step), x + 3, RULER / 2)
+  for (const line of gridLines(o.grid, p.tempo, view.pps, view.scroll, view.scroll + w / view.pps)) {
+    const x = Math.round(tx(line.t)) + 0.5
+    g.fillStyle = line.strong ? c.lane : c.line
+    g.fillRect(x, line.label ? RULER - 8 : RULER - 4, 1, h)
+    if (line.label) {
+      g.fillStyle = c.text
+      g.fillText(line.label, x + 3, RULER / 2)
+    }
   }
 
   // マスタートラックの帯（波形ブロックは置かない）

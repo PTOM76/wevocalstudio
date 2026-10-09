@@ -58,15 +58,26 @@ export interface Master {
   mute: boolean
 }
 
+/** テンポ（WeVocalSynth の ProjectTempo と同じ形） */
+export interface Tempo {
+  bpm: number
+  /** 1 小節の拍数 */
+  beatsPerBar: number
+  /** 1 拍目の位置（秒） */
+  beatOffset: number
+}
+export const DEFAULT_TEMPO: Tempo = { bpm: 120, beatsPerBar: 4, beatOffset: 0 }
+
 export interface Project {
   sources: Source[]
+  tempo: Tempo
   master: Master
   tracks: Track[]
   blocks: Block[]
 }
 
 /** 新しいプロジェクト。すぐ置けるよう、空のトラックを 1 つ用意しておく */
-export const newProject = (): Project => ({ sources: [], master: { volume: 0, pan: 0, mute: false }, tracks: [newTrack(1)], blocks: [] })
+export const newProject = (): Project => ({ sources: [], tempo: DEFAULT_TEMPO, master: { volume: 0, pan: 0, mute: false }, tracks: [newTrack(1)], blocks: [] })
 
 /** 新しい波形ブロックの処理方式（設定の既定値） */
 export type PitchDefaults = Pick<Block, 'algorithm' | 'preserveFormant'>
