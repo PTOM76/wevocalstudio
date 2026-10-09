@@ -63,6 +63,7 @@
   "menu.snap": "Snap",
   "menu.selectAll": "Select All",
   "menu.beatGrid": "Show Beats and Bars",
+  "menu.playStop": "Play / Stop",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -84,6 +85,7 @@
   "settings.grid": "Grid",
   "settings.gridBeats": "Beats and bars",
   "settings.gridTime": "Seconds",
+  "settings.keys": "Keys and mouse",
 
   "status.ready": "Ready",
   "status.playing": "Playing",

@@ -12,6 +12,7 @@ import { pitchPending, preparePitch } from './dsp/pitch'
 import { Player, renderMix } from './engine'
 import ExportDialog, { type ExportChoice } from './ExportDialog'
 import { useT } from './i18n'
+import { setKeyOverrides } from './keymap'
 import { PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings'
 import SettingsDialog from './SettingsDialog'
@@ -30,6 +31,8 @@ const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noref
 
 export default function App(p: { settings: Settings; onSettingsChange: (patch: Partial<Settings>) => void }) {
   const t = useT()
+  // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
+  setKeyOverrides(p.settings.keys)
   const mobile = useMobileLayout()
   const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant })
   const { project } = doc

@@ -1,7 +1,9 @@
 // アプリの設定（localStorage に保存する）
 import { useState } from 'react'
 import type { Algorithm } from 'wevocal-lib'
+import type { KeymapOverrides } from 'pevenmui'
 import type { GridMode } from './grid'
+import type { Action } from './keymap'
 import type { LangSetting } from './i18n'
 import { app } from './appConfig'
 
@@ -18,13 +20,15 @@ export interface Settings {
   snap: boolean
   /** 時間軸の線を拍と小節で取るか、秒で取るか */
   grid: GridMode
+  /** 既定から変えたキーの割り当て */
+  keys: KeymapOverrides<Action>
   /** 新しい波形ブロックのピッチの処理方式（WeVocalSynth と同じ。既定は Synth の声と同じ Vesola）。波形ブロックごとに変えられる */
   algorithm: Algorithm
   /** 新しい波形ブロックでフォルマント（声の響き）を保つか */
   preserveFormant: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, snap: true, grid: 'beats', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, snap: true, grid: 'beats', keys: {}, autoRestore: true, algorithm: 'sola3', preserveFormant: true }
 
 const KEY = app.key('settings')
 

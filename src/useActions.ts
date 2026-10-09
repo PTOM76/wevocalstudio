@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 import type { MenuEntry, MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
-import { KEYMAP, actionOf, keyLabel, type Action } from './keymap'
+import { actionOf, keyLabel, type Action } from './keymap'
 import type { Block } from './project'
 import type { useProject } from './useProject'
 
@@ -150,7 +150,7 @@ export function useActions(c: ActionContext) {
   /** メニューの項目（名前は menu.<操作の名前>） */
   const item = (a: Action, label = t(`menu.${a}` as Parameters<typeof t>[0])): MenuEntry => ({
     label,
-    shortcut: KEYMAP[a].length ? keyLabel(a) : undefined,
+    shortcut: keyLabel(a) || undefined,
     disabled: commands[a].enabled === false,
     onClick: commands[a].run,
   })

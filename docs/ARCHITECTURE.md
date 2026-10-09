@@ -40,7 +40,7 @@ Synth は編集した音声を書き換えて持つ。Studio は元の音（`Sou
 ## 登録する表
 | 足すもの | 登録する場所 |
 | --- | --- |
-| キーの割り当て | `src/keymap.ts` の KEYMAP（操作の名前 → キー）と、App の `actions` |
+| キーの割り当て | `src/keymap.ts` の DEFAULT_KEYS（操作の名前 → 既定のキー）と、`useActions.ts` の commands。名前は訳文の `menu.<操作の名前>`。設定で変えた分は `settings.keys` |
 | 訳文 | `npm run i18n -- add`（`src/lang/` の全言語に同じ位置で足す） |
 
 ## 共通の部品

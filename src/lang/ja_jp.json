@@ -63,6 +63,7 @@
   "menu.snap": "スナップ",
   "menu.selectAll": "すべて選択",
   "menu.beatGrid": "拍と小節で表示",
+  "menu.playStop": "再生と停止",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -84,6 +85,7 @@
   "settings.grid": "時間軸の線",
   "settings.gridBeats": "拍と小節",
   "settings.gridTime": "秒",
+  "settings.keys": "キーとマウス",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",

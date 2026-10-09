@@ -1,4 +1,5 @@
-// キーの割り当ての表。操作の名前 → キー。キーを変えるときはここだけ直す（あとで設定から変えられるようにする）
+// キーの割り当て。既定の表（操作の名前 → キー）と、設定の「キーとマウス」で変えた分（PevenMUI の keymap と同じ形）
+import { comboOf, resolveKeymap, type KeymapOverrides } from 'pevenmui'
 
 /** 操作の名前 */
 export type Action =
@@ -36,7 +37,7 @@ export type Action =
  * キーの書き方は `Ctrl+Shift+キー`（キーは KeyboardEvent の code）。1 つの操作に複数のキーを割り当てられる。
  * できるだけ REAPER の既定の割り当てに合わせる（2026-10-09 に調べたもの。資料によって違うものは両方入れる）
  */
-export const KEYMAP: Record<Action, string[]> = {
+export const DEFAULT_KEYS: Record<Action, string[]> = {
   playStop: ['Space'],
   // 停止は再生を始めた位置に戻る。一時停止はその場で止まる（REAPER と同じ）
   stop: [],
@@ -74,17 +75,26 @@ export const KEYMAP: Record<Action, string[]> = {
   pitchReset: ['Ctrl+Backspace', 'Ctrl+Digit0', 'Ctrl+Numpad0'],
 }
 
-/** 押されたキーを表の書き方にする */
-function comboOf(e: KeyboardEvent) {
-  return [e.ctrlKey || e.metaKey ? 'Ctrl' : '', e.altKey ? 'Alt' : '', e.shiftKey ? 'Shift' : '', e.code].filter(Boolean).join('+')
+/** 操作の一覧（並びは設定の画面の並び） */
+export const ACTIONS = (Object.keys(DEFAULT_KEYS) as Action[]).map((id) => ({ id, keys: DEFAULT_KEYS[id] }))
+
+/** 今の割り当て（設定で変えたものはそれ、ほかは既定）。App が設定から入れる */
+let keymap: Record<Action, string[]> = DEFAULT_KEYS
+export function setKeyOverrides(o: KeymapOverrides<Action>) {
+  keymap = resolveKeymap(ACTIONS, o)
 }
+export const currentKeys = (a: Action) => keymap[a]
 
 /** 押されたキーに割り当てた操作。なければ null */
 export function actionOf(e: KeyboardEvent): Action | null {
   const combo = comboOf(e)
-  return (Object.keys(KEYMAP) as Action[]).find((a) => KEYMAP[a].includes(combo)) ?? null
+  if (!combo) return null
+  return (Object.keys(keymap) as Action[]).find((a) => keymap[a].includes(combo)) ?? null
 }
 
-/** メニューに出すキーの表記（最初の割り当て） */
-export const keyLabel = (a: Action) =>
-  (KEYMAP[a][0] ?? '').replace('Numpad', 'Num ').replace('Add', '+').replace('Subtract', '-').replace('Key', '').replace('Digit', '').replace('Equal', '=').replace('Minus', '-')
+/** キーの表記（テンキーは Num を付けて区別する） */
+export const comboText = (combo: string) =>
+  combo.replace('Numpad', 'Num ').replace('Add', '+').replace('Subtract', '-').replace('Key', '').replace('Digit', '').replace('Equal', '=').replace('Minus', '-').replace('Arrow', '')
+
+/** メニューに出すキーの表記（最初の割り当て。なければ空） */
+export const keyLabel = (a: Action) => (keymap[a][0] ? comboText(keymap[a][0]) : '')

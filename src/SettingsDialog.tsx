@@ -1,11 +1,12 @@
 // 設定画面（外枠は PevenMUI の SettingsDialog）
 import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
-import { Check, Choice, Group, Row, SettingsDialog as PevenSettingsDialog, type SettingsCategory } from 'pevenmui'
-import { i18n, useT, type LangSetting } from './i18n'
+import { Check, Choice, Group, KeymapEditor, Row, SettingsDialog as PevenSettingsDialog, type SettingsCategory } from 'pevenmui'
+import { i18n, useT, type LangSetting, type MessageKey } from './i18n'
+import { ACTIONS } from './keymap'
 import type { GridMode } from './grid'
 import { DEFAULT_SETTINGS, type Settings } from './settings'
 
-type Category = 'general' | 'appearance' | 'edit' | 'pitch'
+type Category = 'general' | 'appearance' | 'edit' | 'pitch' | 'keys'
 
 const SCALES: ['0.9' | '1' | '1.1' | '1.25', string][] = [
   ['0.9', '90%'],
@@ -17,11 +18,14 @@ const SCALES: ['0.9' | '1' | '1.1' | '1.25', string][] = [
 /** 設定画面（外枠は PevenMUI の SettingsDialog） */
 export default function SettingsDialog(p: { open: boolean; onClose: () => void; settings: Settings; onChange: (patch: Partial<Settings>) => void }) {
   const t = useT()
+  // 操作の名前はメニューと同じ（menu.<操作の名前>）
+  const keyActions = ACTIONS.map((a) => ({ ...a, label: t(`menu.${a.id}` as MessageKey) }))
   // texts は設定の検索の対象。項目を足したらここにも足す
   const categories: SettingsCategory<Category>[] = [
     { id: 'general', label: t('settings.general'), texts: [t('settings.language'), t('settings.autoRestore')] },
     { id: 'appearance', label: t('settings.appearance'), texts: [t('settings.theme'), t('settings.uiScale')] },
     { id: 'edit', label: t('settings.edit'), texts: [t('settings.snap'), t('settings.grid')] },
+    { id: 'keys', label: t('settings.keys'), texts: keyActions.map((a) => a.label) },
     { id: 'pitch', label: t('settings.pitch'), texts: [t('settings.algorithm'), t('settings.preserveFormant')] },
   ]
   return (
@@ -66,6 +70,11 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
             <Row label={t('settings.grid')}>
               <Choice<GridMode> value={draft.grid} onChange={(grid) => set({ grid })} options={[['beats', t('settings.gridBeats')], ['time', t('settings.gridTime')]]} />
             </Row>
+          </Group>
+        ),
+        keys: (
+          <Group title={t('settings.keys')}>
+            <KeymapEditor actions={keyActions} overrides={draft.keys} onChange={(keys) => set({ keys })} />
           </Group>
         ),
         pitch: (
