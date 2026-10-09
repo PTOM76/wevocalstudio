@@ -22,10 +22,9 @@ const noteOf = (hz: number) => {
 /** 波形ブロックが鳴らす範囲の音（ピッチや速度を変えたものができていればそれ）と、その頭の時間軸の上の位置 */
 function blockClip(b: Block, source: Source): { clip: Clip; start: number } {
   const made = clipFor(b, source)
-  const clip = made ?? source.clip
-  // 作った音は速度の分だけ伸び縮みしている
-  const scale = made && made !== source.clip ? 1 / b.rate : 1
-  const from = Math.floor(b.offset * scale * clip.sampleRate)
+  const clip = made?.clip ?? source.clip
+  // 作った音は元の音の made.from 秒からで、速度の分だけ伸び縮みしている
+  const from = made ? Math.floor(((b.offset - made.from) / b.rate) * clip.sampleRate) : Math.floor(b.offset * clip.sampleRate)
   const to = Math.min(clip.channels[0].length, from + Math.floor(b.length * (made ? 1 : b.rate) * clip.sampleRate))
   return { clip: { sampleRate: clip.sampleRate, channels: clip.channels.map((c) => c.subarray(from, to)) }, start: b.start }
 }

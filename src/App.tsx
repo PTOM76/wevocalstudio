@@ -1,5 +1,5 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
 import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, useConfirm, usePalette, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
 import { UpdatePrompt } from 'pevenmui/pwa'
@@ -82,7 +82,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const sourceOf = (id: string | undefined) => project.sources.find((s) => s.id === id)
   const { pal, dark } = usePalette()
   // ミニマップ（全体を縮めた波形。WeVocalSynth と同じ部品）
-  const overview = useMemo(() => buildOverview(project), [project])
+  // 作り直しは操作のあとに回す（ドラッグの途中で固まらないように）
+  const deferredProject = useDeferredValue(project)
+  const overview = useMemo(() => buildOverview(deferredProject), [deferredProject])
   const end = project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
 
   const fail = (e: unknown) => setError(String(e))
@@ -308,7 +310,14 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const replay = () => {
     if (player.current.playing) player.current.play(project, player.current.position())
   }
-  useEffect(replay, [project])
+  // 続けて変えている間（ドラッグなど）は待ち、止まってから鳴らし直す
+  useEffect(() => {
+    if (!player.current.playing) return
+    const id = setTimeout(replay, 60)
+    return () => clearTimeout(id)
+    // project が変わったときだけ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project])
 
   // ピッチを変えた音を用意する。できたら鳴らし直す（できるまでは元の音で鳴らす）
   useEffect(() => {
