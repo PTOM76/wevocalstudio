@@ -9,7 +9,9 @@
     "build:wasm": "node scripts/build-wasm.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "i18n": "node scripts/i18n.mjs",
+    "map": "node scripts/map.mjs"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",

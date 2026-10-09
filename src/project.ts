@@ -1,5 +1,5 @@
 // プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
-import type { Clip } from 'wevocal-lib'
+import type { Algorithm, Clip } from 'wevocal-lib'
 
 /** 読み込んだ音声ファイル（元の音）。波形ブロックはこれを参照するだけで、中身を書き換えない */
 export interface Source {
@@ -35,21 +35,39 @@ export interface Block {
   length: number
   /** 音量（dB） */
   gain: number
-  /** ピッチ（半音）。元の音から変える（dsp/pitch.ts） */
+  /** ピッチ（半音。小数も使える）。元の音から変える（dsp/pitch.ts） */
   pitch: number
+  /** ピッチを変える処理方式（WeVocalSynth と同じ） */
+  algorithm: Algorithm
+  /** ピッチを変えるときにフォルマント（声の響き）を保つ */
+  preserveFormant: boolean
   /** フェードイン、フェードアウト（秒） */
   fadeIn: number
   fadeOut: number
   mute: boolean
 }
 
+/** マスタートラック。全トラックを混ぜたあとに掛ける */
+export interface Master {
+  /** 音量（dB） */
+  volume: number
+  /** パン（-1〜1） */
+  pan: number
+  mute: boolean
+}
+
 export interface Project {
   sources: Source[]
+  master: Master
   tracks: Track[]
   blocks: Block[]
 }
 
-export const EMPTY_PROJECT: Project = { sources: [], tracks: [], blocks: [] }
+/** 新しいプロジェクト。すぐ置けるよう、空のトラックを 1 つ用意しておく */
+export const newProject = (): Project => ({ sources: [], master: { volume: 0, pan: 0, mute: false }, tracks: [newTrack(1)], blocks: [] })
+
+/** 新しい波形ブロックの処理方式（設定の既定値） */
+export type PitchDefaults = Pick<Block, 'algorithm' | 'preserveFormant'>
 
 export const newId = () => crypto.randomUUID()
 
@@ -57,7 +75,7 @@ export const dbToGain = (db: number) => (db <= -60 ? 0 : 10 ** (db / 20))
 
 export const newTrack = (n: number): Track => ({ id: newId(), name: `Track ${n}`, volume: 0, pan: 0, mute: false, solo: false })
 
-export const newBlock = (track: string, source: Source, start: number): Block => ({
+export const newBlock = (track: string, source: Source, start: number, defaults: PitchDefaults): Block => ({
   id: newId(),
   track,
   source: source.id,
@@ -66,6 +84,7 @@ export const newBlock = (track: string, source: Source, start: number): Block =>
   length: source.duration,
   gain: 0,
   pitch: 0,
+  ...defaults,
   fadeIn: 0,
   fadeOut: 0,
   mute: false,

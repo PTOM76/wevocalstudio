@@ -1,3 +1,4 @@
+// 多言語化（訳文は lang/ の JSON）
 import { createI18n } from 'pevenmui'
 import en from './lang/en_us.json'
 import ja from './lang/ja_jp.json'

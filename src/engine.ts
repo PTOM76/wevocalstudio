@@ -1,6 +1,6 @@
 // 再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）
 import { encodeWav, type Clip } from 'wevocal-lib'
-import { clipFor, preparePitch, type PitchOptions } from './dsp/pitch'
+import { clipFor, preparePitch } from './dsp/pitch'
 import { audible, dbToGain, projectEnd, type Project } from './project'
 
 const buffers = new WeakMap<Clip, AudioBuffer>()
@@ -17,21 +17,27 @@ function bufferOf(ctx: BaseAudioContext, clip: Clip) {
 }
 
 /** from 秒の位置から鳴らすノードを組み、ctx の時刻 when に始める。止めるためにノードの一覧を返す */
-function schedule(ctx: BaseAudioContext, p: Project, o: PitchOptions, from: number, when: number) {
+function schedule(ctx: BaseAudioContext, p: Project, from: number, when: number) {
   const nodes: AudioScheduledSourceNode[] = []
+  // トラック → マスター → 出力
+  const master = ctx.createGain()
+  master.gain.value = p.master.mute ? 0 : dbToGain(p.master.volume)
+  const masterPan = ctx.createStereoPanner()
+  masterPan.pan.value = p.master.pan
+  master.connect(masterPan).connect(ctx.destination)
   for (const track of p.tracks) {
     if (!audible(p, track)) continue
     const gain = ctx.createGain()
     gain.gain.value = dbToGain(track.volume)
     const pan = ctx.createStereoPanner()
     pan.pan.value = track.pan
-    gain.connect(pan).connect(ctx.destination)
+    gain.connect(pan).connect(master)
     for (const b of p.blocks) {
       const source = p.sources.find((s) => s.id === b.source)
       if (b.track !== track.id || b.mute || !source || b.start + b.length <= from) continue
       const node = ctx.createBufferSource()
       // ピッチを変えた音ができる前は、元の音で鳴らす
-      node.buffer = bufferOf(ctx, clipFor(b, source, o) ?? source.clip)
+      node.buffer = bufferOf(ctx, clipFor(b, source) ?? source.clip)
       const g = ctx.createGain()
       const level = dbToGain(b.gain)
       // フェード（時間軸の時刻で書く）
@@ -60,13 +66,13 @@ export class Player {
   private from = 0
   playing = false
 
-  play(p: Project, o: PitchOptions, from: number) {
+  play(p: Project, from: number) {
     this.stop()
     this.ctx ??= new AudioContext()
     void this.ctx.resume()
     this.from = from
     this.startedAt = this.ctx.currentTime + 0.05
-    this.nodes = schedule(this.ctx, p, o, from, this.startedAt)
+    this.nodes = schedule(this.ctx, p, from, this.startedAt)
     this.playing = true
   }
 
@@ -89,11 +95,11 @@ export class Player {
 }
 
 /** 全トラックを混ぜて WAV にする */
-export async function renderWav(p: Project, o: PitchOptions, sampleRate = 48000) {
-  await preparePitch(p, o)
+export async function renderWav(p: Project, sampleRate = 48000) {
+  await preparePitch(p)
   const length = Math.max(1, Math.ceil(projectEnd(p) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
-  schedule(ctx, p, o, 0, 0)
+  schedule(ctx, p, 0, 0)
   const out = await ctx.startRendering()
   return encodeWav({ sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] })
 }

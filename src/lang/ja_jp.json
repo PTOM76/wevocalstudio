@@ -1,14 +1,19 @@
 {
   "about.version": "バージョン",
   "about.author": "作者",
+
   "block.gain": "音量 (dB)",
   "block.pitch": "ピッチ (半音)",
   "block.fadeIn": "フェードイン (秒)",
   "block.fadeOut": "フェードアウト (秒)",
   "block.mute": "ミュート",
+  "block.algorithm": "処理方式",
+  "block.preserveFormant": "フォルマントを保つ",
+
   "error.failed": "処理に失敗しました: {error}",
+
   "licenses.app": "このアプリ",
-  "main.empty": "音声ファイルをドロップするか、「ファイル」から読み込んでください。",
+
   "menu.file": "ファイル",
   "menu.view": "表示",
   "menu.help": "ヘルプ",
@@ -28,6 +33,12 @@
   "menu.play": "再生",
   "menu.stop": "停止",
   "menu.toStart": "先頭へ移動",
+  "menu.pitchUp": "ピッチを 1 半音上げる",
+  "menu.pitchDown": "ピッチを 1 半音下げる",
+  "menu.pitchUpFine": "ピッチを 10 セント上げる",
+  "menu.pitchDownFine": "ピッチを 10 セント下げる",
+  "menu.pitchReset": "ピッチを元に戻す",
+
   "settings.title": "設定",
   "settings.general": "全般",
   "settings.appearance": "表示",
@@ -39,14 +50,17 @@
   "settings.themeDark": "ダーク",
   "settings.uiScale": "画面の大きさ",
   "settings.pitch": "ピッチ",
-  "settings.algorithm": "処理方式",
-  "settings.preserveFormant": "フォルマントを保つ",
+  "settings.algorithm": "新しい波形ブロックの処理方式",
+  "settings.preserveFormant": "新しい波形ブロックでフォルマントを保つ",
+
   "status.ready": "準備完了",
   "status.playing": "再生中",
   "status.exporting": "書き出し中…",
   "status.pitch": "ピッチを変更中…",
+
   "track.mute": "ミュート",
   "track.solo": "ソロ",
   "track.volume": "音量",
-  "track.pan": "パン"
+  "track.pan": "パン",
+  "track.master": "マスター"
 }

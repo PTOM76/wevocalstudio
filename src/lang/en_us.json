@@ -1,14 +1,19 @@
 {
   "about.version": "Version",
   "about.author": "Author",
+
   "block.gain": "Volume (dB)",
   "block.pitch": "Pitch (st)",
   "block.fadeIn": "Fade In (s)",
   "block.fadeOut": "Fade Out (s)",
   "block.mute": "Mute",
+  "block.algorithm": "Algorithm",
+  "block.preserveFormant": "Preserve formants",
+
   "error.failed": "Failed: {error}",
+
   "licenses.app": "This app",
-  "main.empty": "Drop audio files here, or import them from the File menu.",
+
   "menu.file": "File",
   "menu.view": "View",
   "menu.help": "Help",
@@ -28,6 +33,12 @@
   "menu.play": "Play",
   "menu.stop": "Stop",
   "menu.toStart": "Go to Start",
+  "menu.pitchUp": "Pitch Up 1 Semitone",
+  "menu.pitchDown": "Pitch Down 1 Semitone",
+  "menu.pitchUpFine": "Pitch Up 10 Cents",
+  "menu.pitchDownFine": "Pitch Down 10 Cents",
+  "menu.pitchReset": "Reset Pitch",
+
   "settings.title": "Settings",
   "settings.general": "General",
   "settings.appearance": "Appearance",
@@ -39,14 +50,17 @@
   "settings.themeDark": "Dark",
   "settings.uiScale": "Display size",
   "settings.pitch": "Pitch",
-  "settings.algorithm": "Algorithm",
-  "settings.preserveFormant": "Preserve Formants",
+  "settings.algorithm": "Default algorithm for new blocks",
+  "settings.preserveFormant": "Preserve formants in new blocks",
+
   "status.ready": "Ready",
   "status.playing": "Playing",
   "status.exporting": "Exporting…",
   "status.pitch": "Changing pitch…",
+
   "track.mute": "Mute",
   "track.solo": "Solo",
   "track.volume": "Volume",
-  "track.pan": "Pan"
+  "track.pan": "Pan",
+  "track.master": "Master"
 }

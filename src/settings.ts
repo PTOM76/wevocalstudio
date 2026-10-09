@@ -1,3 +1,4 @@
+// アプリの設定（localStorage に保存する）
 import { useState } from 'react'
 import type { Algorithm } from 'wevocal-lib'
 import type { LangSetting } from './i18n'
@@ -10,9 +11,9 @@ export interface Settings {
   /** 画面の大きさ（倍率） */
   uiScale: number
   showStatusBar: boolean
-  /** ピッチを変える処理方式（WeVocalSynth と同じ。既定は Synth の声と同じ Vesola） */
+  /** 新しい波形ブロックのピッチの処理方式（WeVocalSynth と同じ。既定は Synth の声と同じ Vesola）。波形ブロックごとに変えられる */
   algorithm: Algorithm
-  /** ピッチを変えるときにフォルマント（声の響き）を保つ */
+  /** 新しい波形ブロックでフォルマント（声の響き）を保つか */
   preserveFormant: boolean
 }
 

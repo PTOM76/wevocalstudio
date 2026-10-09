@@ -1,11 +1,12 @@
-// 選んだ波形ブロックの値（音量、ピッチ、フェード、ミュート）を変える欄
-import { Box, Checkbox, FormControlLabel, TextField, Typography } from '@mui/material'
+// 選んだ波形ブロックの値（音量、ピッチ、処理方式、フェード、ミュート）を変える欄
+import { Box, Checkbox, FormControlLabel, MenuItem, TextField, Typography } from '@mui/material'
+import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
 import { useT } from './i18n'
 import type { Block } from './project'
 
 const FIELDS = [
   ['gain', 'block.gain', 0.5],
-  ['pitch', 'block.pitch', 1],
+  ['pitch', 'block.pitch', 0.1],
   ['fadeIn', 'block.fadeIn', 0.05],
   ['fadeOut', 'block.fadeOut', 0.05],
 ] as const
@@ -34,6 +35,14 @@ export default function BlockPanel(p: { block: Block; name: string; onChange: (p
           sx={{ width: 110 }}
         />
       ))}
+      <TextField select size="small" label={t('block.algorithm')} value={p.block.algorithm} onChange={(e) => p.onChange({ algorithm: e.target.value as Algorithm })} sx={{ width: 150 }}>
+        {(Object.entries(ALGORITHM_NAMES) as [Algorithm, string][]).map(([id, name]) => (
+          <MenuItem key={id} value={id}>
+            {name}
+          </MenuItem>
+        ))}
+      </TextField>
+      <FormControlLabel control={<Checkbox size="small" checked={p.block.preserveFormant} onChange={(e) => p.onChange({ preserveFormant: e.target.checked })} />} label={t('block.preserveFormant')} />
       <FormControlLabel control={<Checkbox size="small" checked={p.block.mute} onChange={(e) => p.onChange({ mute: e.target.checked })} />} label={t('block.mute')} />
     </Box>
   )

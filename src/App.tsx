@@ -1,6 +1,6 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Box, Link, Snackbar, Typography } from '@mui/material'
+import { Alert, Box, Link, Snackbar } from '@mui/material'
 import { AboutDialog, AppHeader, FULL_HEIGHT, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout, type MenuGroup } from 'pevenmui'
 import { AUDIO_ACCEPT, downloadBlob } from 'wevocal-lib'
 import { app } from './appConfig'
@@ -8,10 +8,11 @@ import BlockPanel from './BlockPanel'
 import { pitchPending, preparePitch } from './dsp/pitch'
 import { Player, renderWav } from './engine'
 import { useT } from './i18n'
+import { actionOf, keyLabel, type Action } from './keymap'
 import SettingsDialog from './SettingsDialog'
 import type { Settings } from './settings'
 import Timeline from './Timeline'
-import { useProject } from './useProject'
+import { useProject, type DropAt } from './useProject'
 
 /** 今動いている版 */
 const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`
@@ -26,7 +27,7 @@ const formatTime = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(2).p
 export default function App(p: { settings: Settings; onSettingsChange: (patch: Partial<Settings>) => void }) {
   const t = useT()
   const mobile = useMobileLayout()
-  const { project, addFiles, addTrack, updateTrack, updateBlock, removeBlock, split } = useProject()
+  const { project, addFiles, addTrack, updateMaster, updateTrack, updateBlock, removeBlock, nudgePitch, split } = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant })
   const player = useRef(new Player())
   const [playing, setPlaying] = useState(false)
   const [cursor, setCursor] = useState(0)
@@ -34,7 +35,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [busy, setBusy] = useState(false)
   const [pitching, setPitching] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const pitch = { algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant }
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [licensesOpen, setLicensesOpen] = useState(false)
@@ -42,7 +42,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const block = project.blocks.find((b) => b.id === selected)
 
   const play = () => {
-    player.current.play(project, pitch, cursor)
+    player.current.play(project, cursor)
     setPlaying(true)
   }
   const stop = () => {
@@ -52,12 +52,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   }
   const seek = (time: number) => {
     setCursor(time)
-    if (playing) player.current.play(project, pitch, time)
+    if (playing) player.current.play(project, time)
   }
   const exportWav = async () => {
     setBusy(true)
     try {
-      downloadBlob(await renderWav(project, pitch), 'mix.wav')
+      downloadBlob(await renderWav(project), 'mix.wav')
     } catch (e) {
       setError(String(e))
     } finally {
@@ -84,32 +84,45 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
   // 再生中に変えた値を音に反映する（今の位置から組み直す）
   const replay = () => {
-    if (player.current.playing) player.current.play(project, pitch, player.current.position())
+    if (player.current.playing) player.current.play(project, player.current.position())
   }
-  useEffect(replay, [project, p.settings.algorithm, p.settings.preserveFormant])
+  useEffect(replay, [project])
 
   // ピッチを変えた音を用意する。できたら鳴らし直す（できるまでは元の音で鳴らす）
   useEffect(() => {
     let alive = true
-    setPitching(pitchPending(project, pitch))
-    preparePitch(project, pitch)
+    setPitching(pitchPending(project))
+    preparePitch(project)
       .then((made) => alive && made && replay())
       .catch((e: unknown) => alive && setError(String(e)))
       .finally(() => alive && setPitching(false))
     return () => {
       alive = false
     }
-  }, [project, p.settings.algorithm, p.settings.preserveFormant])
+  }, [project])
 
-  // キー: Space 再生と停止、S 分割、Delete 削除（REAPER と同じ）
+  const load = (files: File[], at?: DropAt) => addFiles(files, at).catch((err: unknown) => setError(String(err)))
+
+  /** キーとメニューから行う操作 */
+  const actions: Record<Action, () => void> = {
+    playStop: () => (playing ? stop : play)(),
+    split: splitAtCursor,
+    delete: deleteSelected,
+    pitchUp: () => selected && nudgePitch(selected, 1),
+    pitchDown: () => selected && nudgePitch(selected, -1),
+    pitchUpFine: () => selected && nudgePitch(selected, 0.1),
+    pitchDownFine: () => selected && nudgePitch(selected, -0.1),
+    pitchReset: () => selected && nudgePitch(selected, null),
+  }
+
+  // キーの割り当ては keymap.ts の表
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return
-      if (e.code === 'Space') (playing ? stop : play)()
-      else if (e.key === 's' || e.key === 'S') splitAtCursor()
-      else if (e.key === 'Delete') deleteSelected()
-      else return
+      if (e.target instanceof HTMLInputElement) return
+      const action = actionOf(e)
+      if (!action) return
       e.preventDefault()
+      actions[action]()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -130,8 +143,14 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       label: t('menu.edit'),
       accessKey: 'E',
       entries: [
-        { label: t('menu.split'), onClick: splitAtCursor },
-        { label: t('menu.delete'), disabled: !selected, onClick: deleteSelected },
+        { label: t('menu.split'), shortcut: keyLabel('split'), onClick: splitAtCursor },
+        { label: t('menu.delete'), shortcut: keyLabel('delete'), disabled: !selected, onClick: deleteSelected },
+        { divider: true },
+        { label: t('menu.pitchUp'), shortcut: keyLabel('pitchUp'), disabled: !selected, onClick: actions.pitchUp },
+        { label: t('menu.pitchDown'), shortcut: keyLabel('pitchDown'), disabled: !selected, onClick: actions.pitchDown },
+        { label: t('menu.pitchUpFine'), shortcut: keyLabel('pitchUpFine'), disabled: !selected, onClick: actions.pitchUpFine },
+        { label: t('menu.pitchDownFine'), shortcut: keyLabel('pitchDownFine'), disabled: !selected, onClick: actions.pitchDownFine },
+        { label: t('menu.pitchReset'), shortcut: keyLabel('pitchReset'), disabled: !selected, onClick: actions.pitchReset },
       ],
     },
     {
@@ -143,7 +162,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       label: t('menu.transport'),
       accessKey: 'P',
       entries: [
-        { label: playing ? t('menu.stop') : t('menu.play'), onClick: playing ? stop : play },
+        { label: playing ? t('menu.stop') : t('menu.play'), shortcut: keyLabel('playStop'), onClick: actions.playStop },
         { label: t('menu.toStart'), onClick: () => seek(0) },
       ],
     },
@@ -169,27 +188,23 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault()
-        addFiles([...e.dataTransfer.files]).catch((err: unknown) => setError(String(err)))
+        void load([...e.dataTransfer.files])
       }}
     >
       <AppHeader icon={<AppIcon size={16} />} menus={menus} />
-      <input ref={fileInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => addFiles([...(e.target.files ?? [])]).catch((err: unknown) => setError(String(err))).finally(() => (e.target.value = ''))} />
+      <input ref={fileInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load([...(e.target.files ?? [])]).finally(() => (e.target.value = ''))} />
 
-      {project.tracks.length === 0 ? (
-        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
-          <Typography color="text.secondary">{t('main.empty')}</Typography>
-        </Box>
-      ) : (
-        <Timeline
-          project={project}
-          cursor={cursor}
-          selected={selected}
-          onSelect={setSelected}
-          onSeek={seek}
-          onTrackChange={updateTrack}
-          onBlockChange={updateBlock}
-        />
-      )}
+      <Timeline
+        project={project}
+        cursor={cursor}
+        selected={selected}
+        onSelect={setSelected}
+        onSeek={seek}
+        onMasterChange={updateMaster}
+        onTrackChange={updateTrack}
+        onDropFiles={(files, at) => void load(files, at)}
+        onBlockChange={updateBlock}
+      />
       {block && <BlockPanel block={block} name={project.sources.find((s) => s.id === block.source)?.name ?? ''} onChange={(patch) => updateBlock(block.id, patch)} />}
 
       {!mobile && p.settings.showStatusBar && (

@@ -1,3 +1,4 @@
+// 設定画面（外枠は PevenMUI の SettingsDialog）
 import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
 import { Check, Choice, Group, Row, SettingsDialog as PevenSettingsDialog, type SettingsCategory } from 'pevenmui'
 import { i18n, useT, type LangSetting } from './i18n'

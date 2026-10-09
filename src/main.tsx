@@ -1,3 +1,4 @@
+// 起動。設定を読み、言語、テーマ、画面の大きさを PevenProvider に渡す
 import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useColorScheme } from '@mui/material'

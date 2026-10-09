@@ -1,9 +1,11 @@
 // 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし、ほかのトラックへも移せる
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Box, useTheme } from '@mui/material'
+import { Box } from '@mui/material'
+import { usePalette } from 'pevenmui'
 import { LANE, RULER, drawTimeline, type TimelineView } from './drawTimeline'
-import type { Block, Project, Track } from './project'
-import TrackHeader from './TrackHeader'
+import type { Block, Master, Project, Track } from './project'
+import TrackHeader, { MasterHeader } from './TrackHeader'
+import type { DropAt } from './useProject'
 
 const HEADER = 200
 
@@ -21,10 +23,13 @@ export default function Timeline(p: {
   selected: string | null
   onSelect: (id: string | null) => void
   onSeek: (t: number) => void
+  onMasterChange: (patch: Partial<Master>) => void
   onTrackChange: (id: string, patch: Partial<Track>) => void
+  onDropFiles: (files: File[], at?: DropAt) => void
   onBlockChange: (id: string, patch: Partial<Block>) => void
 }) {
-  const dark = useTheme().palette.mode === 'dark'
+  // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
+  const { dark } = usePalette()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
   const [width, setWidth] = useState(0)
@@ -105,7 +110,17 @@ export default function Timeline(p: {
     p.onBlockChange(d.id, { start: Math.max(0, d.start + (x - d.x) / view.pps), track: p.project.tracks[i].id })
   }
 
+  // ファイルを落としたトラックと時刻に置く（トラックの外なら空いているトラックか新しいトラック）
+  const onDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const track = p.project.tracks[Math.floor((e.nativeEvent.offsetY - RULER) / LANE)]
+    p.onDropFiles([...e.dataTransfer.files], track && { track: track.id, start: Math.max(0, toTime(e.nativeEvent.offsetX)) })
+  }
+
   return (
+    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <MasterHeader master={p.project.master} width={HEADER} onChange={p.onMasterChange} />
     <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: 'flex-start' }}>
       <Box sx={{ width: HEADER, flexShrink: 0, borderRight: 1, borderColor: 'divider' }}>
         <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box' }} />
@@ -120,8 +135,11 @@ export default function Timeline(p: {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={() => (drag.current = null)}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={onDrop}
         />
       </Box>
+    </Box>
     </Box>
   )
 }
