@@ -133,6 +133,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     save,
     openExport: () => setDialog('export'),
     openSettings: () => setDialog('settings'),
+    snap: p.settings.snap,
+    toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
     showStatusBar: p.settings.showStatusBar,
     toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
     help: { guide: () => openExternal(app.repository), licenses: () => setDialog('licenses'), about: () => setDialog('about') },
@@ -224,6 +226,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlockChange={doc.updateBlock}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         view={view}
+        snap={p.settings.snap}
         onView={setView}
       />
       <Transport

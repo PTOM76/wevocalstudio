@@ -1,5 +1,5 @@
 // 波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
-import { LANE, TOP } from './drawTimeline'
+import { LANE, TOP, tickStep } from './drawTimeline'
 import type { Block, Project } from './project'
 
 /** つまむ所。move は本体、left / right は端、fadeIn / fadeOut は上の角 */
@@ -70,4 +70,36 @@ export function dragPatch(p: Project, d: Drag, dt: number, di: number): Partial<
     case 'fadeOut':
       return { fadeOut: Math.max(0, Math.min(b.length - b.fadeIn, b.fadeOut - dt)) }
   }
+}
+
+/** 吸い付ける距離（px） */
+const SNAP_PX = 8
+
+/** 吸い付ける先（目盛りの線は近くのものだけ作る）。exclude の波形ブロックの端は除く */
+export function snapTargets(p: Project, cursor: number, exclude: string | null) {
+  const edges = [0, cursor]
+  for (const b of p.blocks) if (b.id !== exclude) edges.push(b.start, b.start + b.length)
+  return edges
+}
+
+/** 時刻 t を、近くの吸い付ける先（目盛りの線、edges）に寄せる。なければ null */
+export function snapTime(t: number, edges: number[], pps: number): number | null {
+  const tol = SNAP_PX / pps
+  const step = tickStep(pps)
+  const grid = Math.round(t / step) * step
+  let best: number | null = Math.abs(grid - t) <= tol ? grid : null
+  for (const e of edges) if (Math.abs(e - t) <= tol && (best === null || Math.abs(e - t) < Math.abs(best - t))) best = e
+  return best
+}
+
+/** ドラッグで動かした時間 dt を吸い付ける。移動は頭か終わりの近い方、端はその端を寄せる */
+export function snapDelta(d: Drag, dt: number, edges: number[], pps: number): number {
+  const b = d.block
+  const points = d.kind === 'move' ? [b.start, b.start + b.length] : d.kind === 'left' ? [b.start] : d.kind === 'right' ? [b.start + b.length] : []
+  let best: number | null = null
+  for (const at of points) {
+    const s = snapTime(at + dt, edges, pps)
+    if (s !== null && (best === null || Math.abs(s - at - dt) < Math.abs(best - dt))) best = s - at
+  }
+  return best ?? dt
 }

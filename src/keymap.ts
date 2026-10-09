@@ -8,6 +8,7 @@ export type Action =
   | 'repeat'
   | 'toStart'
   | 'toEnd'
+  | 'snap'
   | 'zoomIn'
   | 'zoomOut'
   | 'split'
@@ -42,6 +43,8 @@ export const KEYMAP: Record<Action, string[]> = {
   repeat: ['KeyR'],
   toStart: ['Home'],
   toEnd: ['End'],
+  // スナップの切り替え（REAPER の既定の割り当ては確かめられなかったので Alt+S）
+  snap: ['Alt+KeyS'],
   zoomIn: ['NumpadAdd', 'Equal'],
   zoomOut: ['NumpadSubtract', 'Minus'],
   split: ['KeyS'],

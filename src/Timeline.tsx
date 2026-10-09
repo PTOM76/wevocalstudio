@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
-import { CURSOR, dragPatch, hitBlock, type Drag } from './blockDrag'
+import { CURSOR, dragPatch, hitBlock, snapDelta, snapTargets, snapTime, type Drag } from './blockDrag'
 import { LANE, MASTER, RULER, TOP, drawTimeline, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
@@ -31,6 +31,8 @@ export default function Timeline(p: {
   onBlockMenu: (id: string, x: number, y: number) => void
   /** 表示範囲（拡大縮小をキーからも変えるので App が持つ） */
   view: TimelineView
+  /** 目盛りの線、波形ブロックの端、再生位置に吸い付けるか */
+  snap: boolean
   onView: (fn: (v: TimelineView) => TimelineView) => void
 }) {
   // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
@@ -122,7 +124,8 @@ export default function Timeline(p: {
     if (r) {
       if (Math.abs(x - r.x) < 3) return
       const t = Math.max(0, toTime(x))
-      p.onRange({ start: Math.min(r.t, t), end: Math.max(r.t, t) })
+      const snapped = p.snap && !e.shiftKey ? (snapTime(t, snapTargets(p.project, p.cursor, null), view.pps) ?? t) : t
+      p.onRange({ start: Math.min(r.t, snapped), end: Math.max(r.t, snapped) })
       return
     }
     const d = drag.current
@@ -132,7 +135,10 @@ export default function Timeline(p: {
       setCursor(hit ? CURSOR[hit.kind] : 'default')
       return
     }
-    p.onBlockChange(d.block.id, dragPatch(p.project, d, (x - d.x) / view.pps, Math.round((y - d.y) / LANE)), d.merge)
+    // Shift を押している間は吸い付けない（REAPER と同じ）
+    const raw = (x - d.x) / view.pps
+    const dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, d.block.id), view.pps) : raw
+    p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, Math.round((y - d.y) / LANE)), d.merge)
   }
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {

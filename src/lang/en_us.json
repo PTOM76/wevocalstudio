@@ -59,6 +59,7 @@
   "menu.zoomIn": "Zoom In",
   "menu.zoomOut": "Zoom Out",
   "menu.properties": "Properties…",
+  "menu.snap": "Snap",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -73,6 +74,9 @@
   "settings.pitch": "Pitch",
   "settings.algorithm": "Default algorithm for new blocks",
   "settings.preserveFormant": "Preserve formants in new blocks",
+  "settings.edit": "Editing",
+  "settings.snap": "Snap",
+  "settings.snapHelp": "Snap drags to grid lines, block edges and the cursor. Hold Shift while dragging to ignore snapping.",
 
   "status.ready": "Ready",
   "status.playing": "Playing",

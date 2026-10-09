@@ -32,7 +32,7 @@ export interface TimelineColors {
 }
 
 /** 目盛りの間隔（秒）。文字が重ならない広さにする */
-function tickStep(pps: number) {
+export function tickStep(pps: number) {
   return [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300].find((s) => s * pps >= 70) ?? 600
 }
 

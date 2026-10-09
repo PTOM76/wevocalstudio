@@ -1,7 +1,6 @@
 # TASK
 
 ## MVP（済み、2026-10-09。docs/VERSION.md）
-- 👤 動作を確かめて 0.1.0 にする（todo bump:minor）
 
 ## MVP のあと
 - PWA

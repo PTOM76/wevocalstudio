@@ -4,7 +4,7 @@ import { Check, Choice, Group, Row, SettingsDialog as PevenSettingsDialog, type 
 import { i18n, useT, type LangSetting } from './i18n'
 import { DEFAULT_SETTINGS, type Settings } from './settings'
 
-type Category = 'general' | 'appearance' | 'pitch'
+type Category = 'general' | 'appearance' | 'edit' | 'pitch'
 
 const SCALES: ['0.9' | '1' | '1.1' | '1.25', string][] = [
   ['0.9', '90%'],
@@ -20,6 +20,7 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
   const categories: SettingsCategory<Category>[] = [
     { id: 'general', label: t('settings.general'), texts: [t('settings.language')] },
     { id: 'appearance', label: t('settings.appearance'), texts: [t('settings.theme'), t('settings.uiScale')] },
+    { id: 'edit', label: t('settings.edit'), texts: [t('settings.snap')] },
     { id: 'pitch', label: t('settings.pitch'), texts: [t('settings.algorithm'), t('settings.preserveFormant')] },
   ]
   return (
@@ -55,6 +56,11 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
             <Row label={t('settings.uiScale')}>
               <Choice value={String(draft.uiScale) as (typeof SCALES)[number][0]} onChange={(v) => set({ uiScale: Number(v) })} options={SCALES} />
             </Row>
+          </Group>
+        ),
+        edit: (
+          <Group title={t('settings.edit')}>
+            <Check label={t('settings.snap')} help={t('settings.snapHelp')} checked={draft.snap} onChange={(snap) => set({ snap })} />
           </Group>
         ),
         pitch: (

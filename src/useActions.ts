@@ -36,6 +36,8 @@ export interface ActionContext {
   save: () => void
   openExport: () => void
   openSettings: () => void
+  snap: boolean
+  toggleSnap: () => void
   showStatusBar: boolean
   toggleStatusBar: () => void
   help: { guide: () => void; licenses: () => void; about: () => void }
@@ -69,6 +71,7 @@ export function useActions(c: ActionContext) {
     repeat: { run: c.toggleRepeat },
     toStart: { run: () => c.seek(0) },
     toEnd: { run: () => c.seek(doc.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)) },
+    snap: { run: c.toggleSnap },
     zoomIn: { run: () => c.zoom(1.5) },
     zoomOut: { run: () => c.zoom(1 / 1.5) },
     properties: { enabled: !!block, run: () => block && c.openProperties(block.id) },
@@ -179,7 +182,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.view'),
       accessKey: 'V',
-      entries: [item('zoomIn'), item('zoomOut'), divider, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
+      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
     },
     {
       label: t('menu.help'),

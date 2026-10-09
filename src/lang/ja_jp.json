@@ -59,6 +59,7 @@
   "menu.zoomIn": "拡大",
   "menu.zoomOut": "縮小",
   "menu.properties": "プロパティ…",
+  "menu.snap": "スナップ",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -73,6 +74,9 @@
   "settings.pitch": "ピッチ",
   "settings.algorithm": "新しい波形ブロックの処理方式",
   "settings.preserveFormant": "新しい波形ブロックでフォルマントを保つ",
+  "settings.edit": "編集",
+  "settings.snap": "スナップ",
+  "settings.snapHelp": "ドラッグを目盛りの線、波形ブロックの端、再生位置に吸い付けます。Shift を押しながらドラッグすると吸い付けません。",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
