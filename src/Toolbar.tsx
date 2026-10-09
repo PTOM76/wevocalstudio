@@ -6,11 +6,13 @@ import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus,
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 
-function ToolButton(p: { icon: IconDefinition; label: MessageKey; action?: Action; pressed?: boolean; disabled?: boolean; onClick: () => void }) {
+/** ツールバーのボタン（アイコン。カーソルを合わせると名前とキー、help があればその説明） */
+export function ToolButton(p: { icon: IconDefinition; label: MessageKey; help?: MessageKey; action?: Action; pressed?: boolean; disabled?: boolean; onClick: () => void }) {
   const t = useT()
   const key = p.action && keyLabel(p.action)
+  const name = key ? `${t(p.label)} (${key})` : t(p.label)
   return (
-    <Tooltip title={key ? `${t(p.label)} (${key})` : t(p.label)}>
+    <Tooltip title={p.help ? `${name}: ${t(p.help)}` : name}>
       <span>
         <IconButton size="small" aria-label={t(p.label)} aria-pressed={p.pressed} color={p.pressed ? 'primary' : 'default'} disabled={p.disabled} onClick={p.onClick} sx={{ fontSize: 14, width: 30, height: 30 }}>
           <FontAwesomeIcon icon={p.icon} />
@@ -20,7 +22,7 @@ function ToolButton(p: { icon: IconDefinition; label: MessageKey; action?: Actio
   )
 }
 
-const Divider = () => <Box sx={{ width: '1px', height: 20, bgcolor: 'divider', mx: 0.5 }} />
+export const Divider = () => <Box sx={{ width: '1px', height: 20, bgcolor: 'divider', mx: 0.5 }} />
 
 export default function Toolbar(p: {
   follow: boolean

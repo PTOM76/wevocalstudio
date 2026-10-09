@@ -194,6 +194,8 @@
   "analysis.pen": "ペン",
   "analysis.penHelp": "なぞった高さになるようにピッチカーブを描きます。Alt を押しながらなぞると元に戻します",
   "analysis.clearCurve": "カーブを消す",
+  "analysis.grab": "つかむ",
+  "analysis.grabHelp": "線をつかんで上下に動かします。範囲選択の中なら範囲を、外なら声が途切れる所までの一続きを動かします。Shift で半音きざみ",
 
   "history.new": "新しいプロジェクト",
   "history.open": "開く",

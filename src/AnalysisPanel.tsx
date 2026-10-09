@@ -1,8 +1,10 @@
 // 解析の欄（WeVocalAnalyzer のスペクトログラムと F0）。選んだ波形ブロックの音を、時間軸とそろえて下に描く。ペンでピッチカーブを描く
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, ToggleButton, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
+import { faEraser, faHand, faPen } from '@fortawesome/free-solid-svg-icons'
+import { Divider, ToolButton } from './Toolbar'
 import { usePalette } from 'pevenmui'
-import type { Clip } from 'wevocal-lib'
+import type { Clip, Range } from 'wevocal-lib'
 import { analyzePitch, analyzeSpectrogram, renderSpectrogram, type Pitch, type Spectrogram } from 'wevocalanalyzer'
 import { clipFor } from './dsp/pitch'
 import type { TimelineView } from './drawTimeline'
@@ -58,6 +60,8 @@ export default function AnalysisPanel(p: {
   view: TimelineView
   headerWidth: number
   version: number
+  /** 範囲選択（つかむとき、範囲の中なら範囲をまとめて動かす） */
+  range: Range | null
   /** ペンで描いたカーブ（merge は続けて描く間の履歴のまとまり） */
   onCurve: (curve: PitchCurve | undefined, merge: string) => void
   onEndMerge: () => void
@@ -70,7 +74,11 @@ export default function AnalysisPanel(p: {
   const [pitch, setPitch] = useState<Pitch | null>(null)
   const [busy, setBusy] = useState(false)
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
-  const [pen, setPen] = useState(false)
+  // 道具（ペンで描く、つかんで動かす。どちらか一方だけ。WeVocalSynth と同じ）
+  const [tool, setTool] = useState<'pen' | 'grab' | null>(null)
+  const pen = tool === 'pen'
+  // つかんで動かしている所（元の音の時刻の範囲、つかんだときのカーブ、高さ）
+  const grabbing = useRef<{ s0: number; s1: number; base: PitchCurve; y: number; merge: string } | null>(null)
   // 元の音の F0（ペンで描くときの基準）
   const [orig, setOrig] = useState<Pitch | null>(null)
   const drawing = useRef<{ last: { s: number; v: number } | null; merge: string; curve: PitchCurve } | null>(null)
@@ -182,6 +190,40 @@ export default function AnalysisPanel(p: {
     }
   }, [spec, pitch, orig, target, width, p.view, p.block])
 
+  /** つかむ: 押した所の一続き（範囲選択の中なら範囲）を決める。元の音の時刻 */
+  const grabSpan = (x: number): [number, number] | null => {
+    const b = p.block
+    if (!b || !orig) return null
+    const t = p.view.scroll + x / p.view.pps
+    const src = (tt: number) => b.offset + (tt - b.start) * b.rate
+    if (p.range && t >= p.range.start && t <= p.range.end) return [src(Math.max(b.start, p.range.start)), src(Math.min(b.start + b.length, p.range.end))]
+    // 声のある一続き（F0 が途切れる所まで）
+    let k = Math.round((src(t) - b.offset) / orig.hopSec)
+    if (!(orig.data[k] > 0)) return null
+    let k0 = k
+    while (k0 > 0 && orig.data[k0 - 1] > 0) k0--
+    while (k < orig.data.length - 1 && orig.data[k + 1] > 0) k++
+    return [b.offset + k0 * orig.hopSec, b.offset + (k + 1) * orig.hopSec]
+  }
+
+  /** つかんだ一続きを、高さの差（半音）だけ動かす。端は 20ms でなめらかにつなぐ。Shift で半音きざみ */
+  const grabAt = (y: number, shift: boolean) => {
+    const g = grabbing.current
+    if (!g) return
+    let d = 12 * Math.log2(hzOfY(y) / hzOfY(g.y))
+    if (shift) d = Math.round(d)
+    const EDGE = 0.02
+    let curve = g.base
+    for (let s = g.s0 - EDGE; s <= g.s1 + EDGE + 1e-9; s += CURVE_HOP) {
+      const w = s < g.s0 ? (s - (g.s0 - EDGE)) / EDGE : s > g.s1 ? (g.s1 + EDGE - s) / EDGE : 1
+      if (w <= 0) continue
+      const i = Math.round((s - g.base.from) / CURVE_HOP)
+      const old = i >= 0 && i < g.base.st.length ? g.base.st[i] : 0
+      curve = putCurve(curve, s, old + d * Math.min(1, w))
+    }
+    p.onCurve(curve, g.merge)
+  }
+
   /** ペン: 押した所の高さになるようにカーブを書く（元の F0 との差を半音で）。Alt で元に戻す（0） */
   const drawAt = (x: number, y: number, erase: boolean) => {
     const d = drawing.current
@@ -214,53 +256,63 @@ export default function AnalysisPanel(p: {
   })()
 
   return (
-    <Box sx={{ display: 'flex', flexShrink: 0, borderTop: 1, borderColor: 'divider', height: HEIGHT }}>
-      <Box sx={{ width: p.headerWidth, flexShrink: 0, borderRight: 1, borderColor: 'divider', p: 1, boxSizing: 'border-box', overflow: 'hidden' }}>
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-          {t('analysis.title')}
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }} noWrap title={p.source?.name}>
-          {p.block ? p.source?.name : t('analysis.select')}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
-          <ToggleButton size="small" value="pen" selected={pen} disabled={!p.block} onChange={() => setPen(!pen)} sx={{ py: 0, px: 1, fontSize: 12 }} title={t('analysis.penHelp')}>
-            {t('analysis.pen')}
-          </ToggleButton>
-          <ToggleButton size="small" value="clear" disabled={!p.block?.curve} onChange={() => p.onCurve(undefined, `clear${strokes.current++}`)} sx={{ py: 0, px: 1, fontSize: 12 }}>
-            {t('analysis.clearCurve')}
-          </ToggleButton>
-        </Box>
-        {busy && (
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {t('analysis.busy')}
-          </Typography>
-        )}
-        {hoverText && (
-          <Typography variant="caption" sx={{ color: pal.text.primary, display: 'block', mt: 1, fontFamily: 'monospace' }}>
-            {hoverText}
-          </Typography>
-        )}
+    <Box sx={{ flexShrink: 0, borderTop: 1, borderColor: 'divider' }}>
+      {/* 解析の欄のツールバー（ペン、つかむ、カーブを消す） */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, height: 32, px: 1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+        <ToolButton icon={faPen} label="analysis.pen" help="analysis.penHelp" pressed={pen} disabled={!p.block} onClick={() => setTool(pen ? null : 'pen')} />
+        <ToolButton icon={faHand} label="analysis.grab" help="analysis.grabHelp" pressed={tool === 'grab'} disabled={!p.block} onClick={() => setTool(tool === 'grab' ? null : 'grab')} />
+        <Divider />
+        <ToolButton icon={faEraser} label="analysis.clearCurve" disabled={!p.block?.curve} onClick={() => p.onCurve(undefined, `clear${strokes.current++}`)} />
       </Box>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <canvas
-          ref={canvasRef}
-          style={{ display: 'block', width, height: HEIGHT, cursor: pen ? 'crosshair' : 'default', touchAction: 'none' }}
-          onPointerDown={(e) => {
-            if (!pen || !p.block) return
-            e.currentTarget.setPointerCapture(e.pointerId)
-            drawing.current = { last: null, merge: `curve${strokes.current++}`, curve: p.block.curve ?? { from: p.block.offset, st: [] } }
-            drawAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY, e.altKey)
-          }}
-          onPointerUp={() => {
-            drawing.current = null
-            p.onEndMerge()
-          }}
-          onPointerMove={(e) => {
-            setHover({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY })
-            if (drawing.current) drawAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY, e.altKey)
-          }}
-          onPointerLeave={() => setHover(null)}
-        />
+      <Box sx={{ display: 'flex', height: HEIGHT }}>
+        <Box sx={{ width: p.headerWidth, flexShrink: 0, borderRight: 1, borderColor: 'divider', p: 1, boxSizing: 'border-box', overflow: 'hidden' }}>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {t('analysis.title')}
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }} noWrap title={p.source?.name}>
+            {p.block ? p.source?.name : t('analysis.select')}
+          </Typography>
+          {busy && (
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {t('analysis.busy')}
+            </Typography>
+          )}
+          {hoverText && (
+            <Typography variant="caption" sx={{ color: pal.text.primary, display: 'block', mt: 1, fontFamily: 'monospace' }}>
+              {hoverText}
+            </Typography>
+          )}
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <canvas
+            ref={canvasRef}
+            style={{ display: 'block', width, height: HEIGHT, cursor: pen ? 'crosshair' : tool === 'grab' ? (grabbing.current ? 'grabbing' : 'grab') : 'default', touchAction: 'none' }}
+            onPointerDown={(e) => {
+              if (tool === 'grab' && p.block) {
+                const span = grabSpan(e.nativeEvent.offsetX)
+                if (!span) return
+                e.currentTarget.setPointerCapture(e.pointerId)
+                grabbing.current = { s0: span[0], s1: span[1], base: p.block.curve ?? { from: p.block.offset, st: [] }, y: e.nativeEvent.offsetY, merge: `grab${strokes.current++}` }
+                return
+              }
+              if (!pen || !p.block) return
+              e.currentTarget.setPointerCapture(e.pointerId)
+              drawing.current = { last: null, merge: `curve${strokes.current++}`, curve: p.block.curve ?? { from: p.block.offset, st: [] } }
+              drawAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY, e.altKey)
+            }}
+            onPointerUp={() => {
+              drawing.current = null
+              grabbing.current = null
+              p.onEndMerge()
+            }}
+            onPointerMove={(e) => {
+              setHover({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY })
+              if (drawing.current) drawAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY, e.altKey)
+              if (grabbing.current) grabAt(e.nativeEvent.offsetY, e.shiftKey)
+            }}
+            onPointerLeave={() => setHover(null)}
+          />
+        </Box>
       </Box>
     </Box>
   )

@@ -194,6 +194,8 @@
   "analysis.pen": "Pen",
   "analysis.penHelp": "Draw a pitch curve to the traced pitch. Hold Alt to erase",
   "analysis.clearCurve": "Clear curve",
+  "analysis.grab": "Grab",
+  "analysis.grabHelp": "Drag the pitch line up or down. Inside the time selection moves the selection, otherwise the voiced phrase. Shift snaps to semitones",
 
   "history.new": "New project",
   "history.open": "Open",
