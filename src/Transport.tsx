@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Box, IconButton, InputBase, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBackwardStep, faForwardStep, faPause, faPlay, faRepeat, faStop, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { faBackwardStep, faCircle, faForwardStep, faPause, faPlay, faRepeat, faStop, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import type { Range } from 'wevocal-lib'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
@@ -10,11 +10,11 @@ import type { Tempo } from './project'
 
 export const formatTime = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(3).padStart(6, '0')}`
 
-function Button(p: { icon: IconDefinition; label: MessageKey; action: Action; onClick: () => void; pressed?: boolean; primary?: boolean }) {
+function Button(p: { icon: IconDefinition; label: MessageKey; action: Action; onClick: () => void; pressed?: boolean; primary?: boolean; danger?: boolean }) {
   const t = useT()
   return (
     <Tooltip title={keyLabel(p.action) ? `${t(p.label)} (${keyLabel(p.action)})` : t(p.label)}>
-      <IconButton size="small" aria-label={t(p.label)} aria-pressed={p.pressed} color={p.primary || p.pressed ? 'primary' : 'default'} onClick={p.onClick} sx={{ width: 32, height: 32, fontSize: 14 }}>
+      <IconButton size="small" aria-label={t(p.label)} aria-pressed={p.pressed} color={p.danger ? 'error' : p.primary || p.pressed ? 'primary' : 'default'} onClick={p.onClick} sx={{ width: 32, height: 32, fontSize: 14 }}>
         <FontAwesomeIcon icon={p.icon} />
       </IconButton>
     </Tooltip>
@@ -49,6 +49,8 @@ export default function Transport(p: {
   end: number
   range: Range | null
   repeat: boolean
+  recording: boolean
+  onRecord: () => void
   tempo: Tempo
   onTempo: (patch: Partial<Tempo>) => void
   onToStart: () => void
@@ -65,6 +67,7 @@ export default function Transport(p: {
       <Button icon={faStop} label="transport.stop" action="stop" onClick={p.onStop} />
       <Button icon={faPlay} label="transport.play" action="playStop" onClick={p.onPlay} primary={p.playing} />
       <Button icon={faPause} label="transport.pause" action="pause" onClick={p.onPause} />
+      <Button icon={faCircle} label="transport.record" action="record" onClick={p.onRecord} pressed={p.recording} danger />
       <Button icon={faRepeat} label="transport.repeat" action="repeat" onClick={p.onRepeat} pressed={p.repeat} />
       <Button icon={faForwardStep} label="transport.toEnd" action="toEnd" onClick={p.onToEnd} />
       <Typography className="selectable" sx={{ ml: 1.5, fontFamily: 'monospace', fontSize: 16 }}>

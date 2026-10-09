@@ -1,12 +1,13 @@
 // 設定画面（外枠は PevenMUI の SettingsDialog）
-import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
+import { useEffect, useState } from 'react'
+import { ALGORITHM_NAMES, listInputDevices, type Algorithm, type InputDevice } from 'wevocal-lib'
 import { Check, Choice, Group, KeymapEditor, Row, SettingsDialog as PevenSettingsDialog, type SettingsCategory } from 'pevenmui'
 import { i18n, useT, type LangSetting, type MessageKey } from './i18n'
 import { ACTIONS } from './keymap'
 import type { GridMode } from './grid'
 import { DEFAULT_SETTINGS, type Settings } from './settings'
 
-type Category = 'general' | 'appearance' | 'edit' | 'pitch' | 'keys'
+type Category = 'general' | 'appearance' | 'edit' | 'pitch' | 'record' | 'keys'
 
 const SCALES: ['0.9' | '1' | '1.1' | '1.25', string][] = [
   ['0.9', '90%'],
@@ -18,6 +19,11 @@ const SCALES: ['0.9' | '1' | '1.1' | '1.25', string][] = [
 /** 設定画面（外枠は PevenMUI の SettingsDialog） */
 export default function SettingsDialog(p: { open: boolean; onClose: () => void; settings: Settings; onChange: (patch: Partial<Settings>) => void }) {
   const t = useT()
+  // 録音の入力元の一覧（設定を開いたときに読む。名前はマイクを許可するまで出ないことがある）
+  const [inputs, setInputs] = useState<InputDevice[]>([])
+  useEffect(() => {
+    if (p.open) listInputDevices().then(setInputs, () => setInputs([]))
+  }, [p.open])
   // 操作の名前はメニューと同じ（menu.<操作の名前>）
   const keyActions = ACTIONS.map((a) => ({ ...a, label: t(`menu.${a.id}` as MessageKey) }))
   // texts は設定の検索の対象。項目を足したらここにも足す
@@ -25,6 +31,7 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
     { id: 'general', label: t('settings.general'), texts: [t('settings.language'), t('settings.autoRestore')] },
     { id: 'appearance', label: t('settings.appearance'), texts: [t('settings.theme'), t('settings.uiScale')] },
     { id: 'edit', label: t('settings.edit'), texts: [t('settings.snap'), t('settings.grid')] },
+    { id: 'record', label: t('settings.record'), texts: [t('settings.inputDevice')] },
     { id: 'keys', label: t('settings.keys'), texts: keyActions.map((a) => a.label) },
     { id: 'pitch', label: t('settings.pitch'), texts: [t('settings.algorithm'), t('settings.preserveFormant')] },
   ]
@@ -69,6 +76,13 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
             <Check label={t('settings.snap')} help={t('settings.snapHelp')} checked={draft.snap} onChange={(snap) => set({ snap })} />
             <Row label={t('settings.grid')}>
               <Choice<GridMode> value={draft.grid} onChange={(grid) => set({ grid })} options={[['beats', t('settings.gridBeats')], ['time', t('settings.gridTime')]]} />
+            </Row>
+          </Group>
+        ),
+        record: (
+          <Group title={t('settings.record')}>
+            <Row label={t('settings.inputDevice')}>
+              <Choice<string> value={draft.inputDevice} onChange={(inputDevice) => set({ inputDevice })} options={[['', t('settings.inputDefault')], ...inputs.map((d) => [d.id, d.label] as [string, string])]} />
             </Row>
           </Group>
         ),

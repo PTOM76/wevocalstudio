@@ -7,6 +7,7 @@ export type Action =
   | 'stop'
   | 'pause'
   | 'repeat'
+  | 'record'
   | 'toStart'
   | 'toEnd'
   | 'snap'
@@ -43,6 +44,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   stop: [],
   pause: ['Ctrl+Space'],
   repeat: ['KeyR'],
+  // 録音（REAPER と同じ Ctrl+R）
+  record: ['Ctrl+KeyR'],
   toStart: ['Home'],
   toEnd: ['End'],
   // スナップの切り替え（REAPER の既定の割り当ては確かめられなかったので Alt+S）

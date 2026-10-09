@@ -27,6 +27,8 @@ export interface ActionContext {
   /** その場で止める */
   pause: () => void
   repeat: boolean
+  recording: boolean
+  toggleRecord: () => void
   toggleRepeat: () => void
   seek: (t: number) => void
   /** 表示の拡大（factor > 1）と縮小 */
@@ -86,6 +88,7 @@ export function useActions(c: ActionContext) {
     stop: { run: c.stop },
     pause: { run: () => (c.playing ? c.pause() : c.play()) },
     repeat: { run: c.toggleRepeat },
+    record: { run: c.toggleRecord },
     toStart: { run: () => c.seek(0) },
     toEnd: { run: () => c.seek(doc.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)) },
     snap: { run: c.toggleSnap },
@@ -194,6 +197,7 @@ export function useActions(c: ActionContext) {
       entries: [
         item('playStop', c.playing ? t('menu.stop') : t('menu.play')),
         item('pause'),
+        { ...item('record'), checked: c.recording },
         { ...item('repeat'), checked: c.repeat },
         divider,
         item('toStart'),

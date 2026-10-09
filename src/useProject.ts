@@ -1,6 +1,6 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
-import { decodeFile } from 'wevocal-lib'
+import { decodeFile, type Clip } from 'wevocal-lib'
 import { newBlock, newId, newProject, newTrack, splitBlock, type Block, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。2 オクターブまで */
@@ -59,6 +59,22 @@ export function useProject(defaults: PitchDefaults) {
     lastMerge.current = null
     setHistory({ past: [], present: p, future: [] })
   }, [])
+
+  /** 録った音を、指定したトラックの start 秒に波形ブロックとして置く */
+  const addClip = useCallback(
+    (clip: Clip, name: string, track: string, start: number) => {
+      const source: Source = { id: newId(), name, clip, duration: clip.channels[0].length / clip.sampleRate }
+      change((p) => ({ ...p, sources: [...p.sources, source], blocks: [...p.blocks, newBlock(track, source, start, defaultsRef.current)] }))
+    },
+    [change],
+  )
+
+  /** 新しいトラックを足して、その id を返す */
+  const addTrackNow = useCallback(() => {
+    const track = newTrack(0)
+    change((p) => ({ ...p, tracks: [...p.tracks, { ...track, name: `Track ${p.tracks.length + 1}` }] }))
+    return track.id
+  }, [change])
 
   /** ファイルを読み込んで波形ブロックとして置く。場所を指定したら、そのトラックに続けて並べる */
   const addFiles = useCallback(
@@ -156,6 +172,8 @@ export function useProject(defaults: PitchDefaults) {
     endMerge,
     replace,
     addFiles,
+    addClip,
+    addTrackNow,
     addTrack,
     removeTrack,
     updateTempo,

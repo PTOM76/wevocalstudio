@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
 import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
 import { UpdatePrompt } from 'pevenmui/pwa'
-import { AUDIO_ACCEPT, EXPORT_EXT, downloadBlob, exportAudio, type Range } from 'wevocal-lib'
+import { AUDIO_ACCEPT, EXPORT_EXT, canRecord, downloadBlob, exportAudio, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
 import { app } from './appConfig'
 import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
@@ -43,6 +43,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
   const [range, setRange] = useState<Range | null>(null)
   const [repeat, setRepeat] = useState(false)
+  // 録音中のものと、録り始めた位置
+  const [recording, setRecording] = useState<{ rec: Recording; start: number; track: string } | null>(null)
   const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
   // 再生を始めた位置（停止で戻る）
   const playFrom = useRef(0)
@@ -72,12 +74,46 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     player.current.play(project, from)
     setPlaying(true)
   }
+  /** 録音を始める（再生位置から、ほかのトラックを鳴らしながら録る。REAPER と同じ） */
+  const startRecord = async () => {
+    if (!canRecord()) return fail(t('error.noRecord'))
+    try {
+      // 録音待機のトラック、なければ選んでいるトラック、空いているトラック、新しいトラックの順に置く
+      const track =
+        project.tracks.find((tr) => tr.armed)?.id ??
+        selectedTrack ??
+        project.tracks.find((tr) => !project.blocks.some((b) => b.track === tr.id))?.id ??
+        doc.addTrackNow()
+      const rec = await startRecording(await openInput({ deviceId: p.settings.inputDevice, echoCancellation: false, noiseSuppression: false, autoGainControl: false }))
+      setRecording({ rec, start: cursor, track })
+      play()
+    } catch (e) {
+      fail(e)
+    }
+  }
+  /** 録音を止めて、録った音を波形ブロックとして置く */
+  const stopRecord = async () => {
+    const r = recording
+    if (!r) return
+    setRecording(null)
+    player.current.stop()
+    setPlaying(false)
+    try {
+      const clip = await r.rec.stop()
+      if (clip.channels[0]?.length) doc.addClip(clip, `${t('track.recorded')} ${new Date().toLocaleTimeString()}`, r.track, r.start)
+    } catch (e) {
+      fail(e)
+    }
+  }
+  const toggleRecord = () => void (recording ? stopRecord() : startRecord())
+
   const pause = () => {
     setCursor(player.current.position())
     player.current.stop()
     setPlaying(false)
   }
   const stop = () => {
+    if (recording) return void stopRecord()
     if (playing) setCursor(playFrom.current)
     player.current.stop()
     setPlaying(false)
@@ -132,6 +168,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     stop,
     pause,
     repeat,
+    recording: !!recording,
+    toggleRecord,
     toggleRepeat: () => setRepeat((r) => !r),
     seek,
     zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
@@ -271,6 +309,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         end={end}
         range={range}
         repeat={repeat}
+        recording={!!recording}
+        onRecord={toggleRecord}
         tempo={project.tempo}
         onTempo={(patch) => doc.updateTempo(patch)}
         onToStart={() => seek(0)}
@@ -291,7 +331,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar>
-          <StatusItem>{busy ? t('status.exporting') : pitching ? t('status.pitch') : playing ? t('status.playing') : t('status.ready')}</StatusItem>
+          <StatusItem>{recording ? t('status.recording') : busy ? t('status.exporting') : pitching ? t('status.pitch') : playing ? t('status.playing') : t('status.ready')}</StatusItem>
           <StatusSpacer />
           <StatusItem secondary>{BUILD}</StatusItem>
         </StatusBar>

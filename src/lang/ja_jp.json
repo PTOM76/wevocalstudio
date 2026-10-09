@@ -16,6 +16,7 @@
   "block.rate": "速度 (倍)",
 
   "error.failed": "処理に失敗しました: {error}",
+  "error.noRecord": "このブラウザでは録音できません",
 
   "licenses.app": "このアプリ",
 
@@ -64,6 +65,7 @@
   "menu.selectAll": "すべて選択",
   "menu.beatGrid": "拍と小節で表示",
   "menu.playStop": "再生と停止",
+  "menu.record": "録音",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -86,17 +88,23 @@
   "settings.gridBeats": "拍と小節",
   "settings.gridTime": "秒",
   "settings.keys": "キーとマウス",
+  "settings.record": "録音",
+  "settings.inputDevice": "入力元",
+  "settings.inputDefault": "既定の入力",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
   "status.exporting": "書き出し中…",
   "status.pitch": "ピッチを変更中…",
+  "status.recording": "録音中",
 
   "track.mute": "ミュート",
   "track.solo": "ソロ",
   "track.volume": "音量",
   "track.pan": "パン",
   "track.master": "マスター",
+  "track.arm": "録音待機",
+  "track.recorded": "録音",
 
   "export.title": "書き出す",
   "export.format": "形式",
@@ -116,6 +124,7 @@
   "transport.toEnd": "末尾へ",
   "transport.range": "範囲",
   "transport.beatsPerBar": "拍子",
+  "transport.record": "録音",
 
   "toast.restored": "前回の作業を復元しました"
 }

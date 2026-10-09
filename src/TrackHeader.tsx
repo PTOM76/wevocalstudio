@@ -90,6 +90,16 @@ export default function TrackHeader(p: {
             {track.name}
           </Typography>
         )}
+        <ToggleButton
+          size="small"
+          value="r"
+          selected={!!track.armed}
+          onChange={() => p.onChange({ armed: !track.armed })}
+          sx={{ ...toggleSx, color: track.armed ? 'error.main' : undefined, '&.Mui-selected': { color: 'error.main' } }}
+          title={t('track.arm')}
+        >
+          ●
+        </ToggleButton>
         <ToggleButton size="small" value="m" selected={track.mute} onChange={() => p.onChange({ mute: !track.mute })} sx={toggleSx} title={t('track.mute')}>
           M
         </ToggleButton>

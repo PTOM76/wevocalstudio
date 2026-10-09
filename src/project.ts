@@ -20,6 +20,8 @@ export interface Track {
   pan: number
   mute: boolean
   solo: boolean
+  /** 録音待機（REAPER の録音アーム）。録った音はこのトラックに置く */
+  armed?: boolean
 }
 
 /** 波形ブロック（REAPER のアイテム）。元の音のどこを、いつ、どう鳴らすか */

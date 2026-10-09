@@ -16,6 +16,7 @@
   "block.rate": "Rate (x)",
 
   "error.failed": "Failed: {error}",
+  "error.noRecord": "Recording is not supported in this browser",
 
   "licenses.app": "This app",
 
@@ -64,6 +65,7 @@
   "menu.selectAll": "Select All",
   "menu.beatGrid": "Show Beats and Bars",
   "menu.playStop": "Play / Stop",
+  "menu.record": "Record",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -86,17 +88,23 @@
   "settings.gridBeats": "Beats and bars",
   "settings.gridTime": "Seconds",
   "settings.keys": "Keys and mouse",
+  "settings.record": "Recording",
+  "settings.inputDevice": "Input",
+  "settings.inputDefault": "Default input",
 
   "status.ready": "Ready",
   "status.playing": "Playing",
   "status.exporting": "Exporting…",
   "status.pitch": "Changing pitch…",
+  "status.recording": "Recording",
 
   "track.mute": "Mute",
   "track.solo": "Solo",
   "track.volume": "Volume",
   "track.pan": "Pan",
   "track.master": "Master",
+  "track.arm": "Record arm",
+  "track.recorded": "Recording",
 
   "export.title": "Export",
   "export.format": "Format",
@@ -116,6 +124,7 @@
   "transport.toEnd": "Go to end",
   "transport.range": "Selection",
   "transport.beatsPerBar": "Time sig.",
+  "transport.record": "Record",
 
   "toast.restored": "Restored your previous work"
 }
