@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Synth のアイコンを土台に、波形の後ろにクモの巣を重ねる -->
+  <!-- WeVocal Studio のアイコン。WeVocalSynth と同じ青の角丸に、白いクモの巣（たわんだ輪と 8 本の糸）と細い波形 -->
   <rect width="512" height="512" rx="96" fill="#1976d2"/>
-  <g fill="none" stroke="#fff" stroke-opacity="0.35" stroke-width="10" stroke-linejoin="round">
-    <path d="M256 56V456M56 256H456M115 115L397 397M397 115L115 397"/>
-    <path d="M256 106L362 150L406 256L362 362L256 406L150 362L106 256L150 150Z"/>
-    <path d="M256 166L320 192L346 256L320 320L256 346L192 320L166 256L192 192Z"/>
+  <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M256 256L256.0 44.0M256 256L405.9 106.1M256 256L468.0 256.0M256 256L405.9 405.9M256 256L256.0 468.0M256 256L106.1 405.9M256 256L44.0 256.0M256 256L106.1 106.1" stroke-width="12"/>
+    <path d="M256.0 156.0Q288.1 178.4 326.7 185.3Q333.6 223.9 356.0 256.0Q333.6 288.1 326.7 326.7Q288.1 333.6 256.0 356.0Q223.9 333.6 185.3 326.7Q178.4 288.1 156.0 256.0Q178.4 223.9 185.3 185.3Q223.9 178.4 256.0 156.0ZM256.0 112.0Q302.3 144.2 357.8 154.2Q367.8 209.7 400.0 256.0Q367.8 302.3 357.8 357.8Q302.3 367.8 256.0 400.0Q209.7 367.8 154.2 357.8Q144.2 302.3 112.0 256.0Q144.2 209.7 154.2 154.2Q209.7 144.2 256.0 112.0ZM256.0 68.0Q316.4 110.1 388.9 123.1Q401.9 195.6 444.0 256.0Q401.9 316.4 388.9 388.9Q316.4 401.9 256.0 444.0Q195.6 401.9 123.1 388.9Q110.1 316.4 68.0 256.0Q110.1 195.6 123.1 123.1Q195.6 110.1 256.0 68.0Z" stroke-width="14"/>
   </g>
-  <path d="M64 256h48l32-96 48 192 48-240 48 288 48-192 32 96 32-48h48" fill="none" stroke="#fff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M88 256h40l24-70 36 140 36-180 36 220 36-150 24 70 24-30h48" fill="none" stroke="#1976d2" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M88 256h40l24-70 36 140 36-180 36 220 36-150 24 70 24-30h48" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

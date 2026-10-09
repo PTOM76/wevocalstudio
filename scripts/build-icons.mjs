@@ -1,6 +1,10 @@
 // public/icon.svg から PWA のアイコンの PNG を作る（ヘッドレスの Chrome で描く。WeVocalSynth の scripts/screenshots/cdp.mjs を使う）
 import { readFileSync } from 'node:fs'
 import { launch, sleep } from '../../wevocalsynth/scripts/screenshots/cdp.mjs'
+// Chrome を閉じたあとの一時フォルダーの片付けが、使用中で失敗することがある（PNG はできているので無視する）
+process.on('uncaughtException', (e) => {
+  if (e.code !== 'EBUSY') throw e
+})
 const svg = readFileSync('public/icon.svg', 'utf8')
 const out = 'public/'
 const shots = [
