@@ -11,7 +11,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "i18n": "node scripts/i18n.mjs",
-    "map": "node scripts/map.mjs"
+    "map": "node scripts/map.mjs",
+    "build:icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -31,6 +32,7 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^6.0.3",
-    "vite": "^8.3.1"
+    "vite": "^8.3.1",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }

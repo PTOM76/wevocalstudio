@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
 import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
+import { UpdatePrompt } from 'pevenmui/pwa'
 import { AUDIO_ACCEPT, EXPORT_EXT, downloadBlob, exportAudio, type Range } from 'wevocal-lib'
 import { app } from './appConfig'
 import { clearAutosave, loadAutosave, saveAutosave } from './autosave'
@@ -293,6 +294,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           {t('error.failed', { error: error ?? '' })}
         </Alert>
       </Snackbar>
+      <UpdatePrompt build={BUILD} />
       <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(null)}>
         <Alert severity="info" onClose={() => setNotice(null)}>
           {notice}

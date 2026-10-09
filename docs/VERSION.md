@@ -29,4 +29,5 @@
 - キー: Space で再生と停止、Ctrl+Space で一時停止、R でリピート、Home と End、テンキーの + と - で拡大と縮小
 - 書き出し（Ctrl+Alt+R）: WAV、FLAC、MP3、AAC、Opus。範囲選択の所だけも書き出せる
 - プロジェクトの保存（Ctrl+S、.wvstudio）と開く（Ctrl+O）
+- PWA（インストールしてオフラインでも使える。新しい版は「更新」を押したときに切り替える）。アイコンはクモの巣に波形
 - 作業を自動保存し（IndexedDB）、次に開いたときに復元する（WeVocalSynth と同じ。設定の「全般」で切り替え）
