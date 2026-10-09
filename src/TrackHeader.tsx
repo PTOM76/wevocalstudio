@@ -1,9 +1,9 @@
 // トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
 import { useState, type ReactNode } from 'react'
-import { Box, ButtonBase, InputBase, Slider, Tooltip, Typography } from '@mui/material'
+import { Box, ButtonBase, InputBase, Tooltip, Typography } from '@mui/material'
 import { pevenFont } from 'pevenmui'
 import { ContextMenu } from 'pevenmui'
-import LevelMeter from './LevelMeter'
+import { MeterFader, PanBar } from './MeterFader'
 import { useT } from './i18n'
 import { isFlatEq } from 'wevocal-lib'
 import type { Master, Track } from './project'
@@ -39,38 +39,22 @@ function MixToggle(p: { label: string; title: string; on: boolean; color: string
   )
 }
 
-/** 音量とパンのスライダー。動かしている間の変更は 1 回分の履歴にまとめる */
-function Faders<T extends { volume: number; pan: number }>(p: { value: T; merge: string; onChange: (patch: Partial<T>, merge: string) => void; onEndMerge: () => void; panExtra?: ReactNode }) {
+/** 音量（レベルメーターと一つ）とパン。動かしている間の変更は 1 回分の履歴にまとめる */
+function Faders<T extends { volume: number; pan: number }>(p: {
+  value: T
+  merge: string
+  onChange: (patch: Partial<T>, merge: string) => void
+  onEndMerge: () => void
+  panExtra?: ReactNode
+  meter?: () => AnalyserNode | readonly AnalyserNode[] | null
+  rows?: number
+}) {
   const t = useT()
   return (
     <>
-      <Slider
-        size="small"
-        min={-60}
-        max={12}
-        step={0.5}
-        value={p.value.volume}
-        onChange={(_, v) => p.onChange({ volume: v as number } as Partial<T>, `${p.merge}:volume`)}
-        onChangeCommitted={p.onEndMerge}
-        onDoubleClick={() => p.onChange({ volume: 0 } as Partial<T>, `${p.merge}:volume`)}
-        valueLabelDisplay="auto"
-        valueLabelFormat={(v) => `${v} dB`}
-        aria-label={t('track.volume')}
-      />
+      <MeterFader value={p.value.volume} onChange={(volume) => p.onChange({ volume } as Partial<T>, `${p.merge}:volume`)} onCommit={p.onEndMerge} meter={p.meter} rows={p.rows} label={t('track.volume')} />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        <Slider
-          size="small"
-          min={-1}
-          max={1}
-          step={0.01}
-          value={p.value.pan}
-          track={false}
-          onChange={(_, v) => p.onChange({ pan: v as number } as Partial<T>, `${p.merge}:pan`)}
-          onChangeCommitted={p.onEndMerge}
-          onDoubleClick={() => p.onChange({ pan: 0 } as Partial<T>, `${p.merge}:pan`)}
-          aria-label={t('track.pan')}
-          sx={{ flex: 1 }}
-        />
+        <PanBar value={p.value.pan} onChange={(pan) => p.onChange({ pan } as Partial<T>, `${p.merge}:pan`)} onCommit={p.onEndMerge} label={t('track.pan')} />
         {p.panExtra}
       </Box>
     </>
@@ -141,8 +125,6 @@ export default function TrackHeader(p: {
             <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => setEditing(true)}>
             {track.name}
           </Typography>
-            {/* メーターは名前の列に収める（WeVocalSynth と同じ） */}
-            {p.meter && <LevelMeter source={p.meter} width={80} height={4} label={t('meter.track', { name: track.name })} />}
           </Box>
         )}
         <MixToggle label="●" title={t('track.arm')} on={!!track.armed} color="error.main" onClick={() => p.onChange({ armed: !track.armed })} />
@@ -154,6 +136,7 @@ export default function TrackHeader(p: {
         merge={`track:${track.id}`}
         onChange={p.onChange}
         onEndMerge={p.onEndMerge}
+        meter={p.meter}
         panExtra={
           <>
             <MixToggle label="Ø" title={t('track.invert')} on={!!track.invert} color="primary.main" onClick={() => p.onChange({ invert: !track.invert })} />
@@ -200,11 +183,10 @@ export function MasterHeader(p: { master: Master; height: number; onChange: (pat
           <Typography variant="body2" sx={{ fontWeight: 500, letterSpacing: 1 }}>
             {t('track.master')}
           </Typography>
-          {p.meter && <LevelMeter source={p.meter} rows={2} width={96} height={4} label={t('meter.master')} />}
         </Box>
         <MixToggle label="M" title={t('track.mute')} on={master.mute} color="warning.main" onClick={() => p.onChange({ mute: !master.mute })} />
       </Box>
-      <Faders value={master} merge="master" onChange={p.onChange} onEndMerge={p.onEndMerge} />
+      <Faders value={master} merge="master" onChange={p.onChange} onEndMerge={p.onEndMerge} meter={p.meter} rows={2} />
     </Box>
   )
 }
