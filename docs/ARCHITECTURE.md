@@ -34,7 +34,7 @@ Synth は編集した音声を書き換えて持つ。Studio は元の音（`Sou
 | 対象 | 保存先 | 形式 |
 | --- | --- | --- |
 | プロジェクト | ダウンロード（.wvstudio） | "WVST"＋ヘッダ JSON＋元の音の f32（`src/projectFile.ts`） |
-| 自動保存 | IndexedDB（`wevocalstudio` / `kv` / `autosave:meta`、`autosave:source:<id>`） | 元の音は書き換えないので 1 回だけ書き、メタ（トラック、波形ブロック）は 0.5 秒待って書く（`src/autosave.ts`） |
+| 自動保存 | IndexedDB（`wevocalstudio` / `kv` / `autosave:meta`、`autosave:source:<id>`） | 元の音は書き換えないので 1 回だけ書き、メタ（トラック、波形ブロック）は 0.5 秒待って書く。書き込みと読み出しは Worker で、元の音は 4 MB ずつ空いている間に渡す（`src/storage/`） |
 | 設定 | localStorage（`wevocalstudio.settings`） | JSON |
 
 ## 登録する表

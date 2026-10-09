@@ -5,7 +5,7 @@ import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, LicensesDialog, Statu
 import { UpdatePrompt } from 'pevenmui/pwa'
 import { AUDIO_ACCEPT, EXPORT_EXT, downloadBlob, exportAudio, type Range } from 'wevocal-lib'
 import { app } from './appConfig'
-import { clearAutosave, loadAutosave, saveAutosave } from './autosave'
+import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
 import type { TimelineView } from './drawTimeline'
 import { pitchPending, preparePitch } from './dsp/pitch'

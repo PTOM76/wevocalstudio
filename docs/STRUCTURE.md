@@ -10,7 +10,6 @@ src/
   App.tsx  画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
   appConfig.ts  アプリの定義（名前、URL、保存のキー）を画面から使う形にする
   appInfo.ts  アプリの定義。vite.config.ts からも読み込むので、ほかのファイルを import しない（画面からは appConfig.ts の app を使う）
-  autosave.ts  作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く
   BlockDialog.tsx  波形ブロックのプロパティ（REAPER のアイテムのプロパティ）。位置、長さ、音量、ピッチ、処理方式、フェードを数値で指定する
   blockDrag.ts  波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
   drawTimeline.ts  時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
@@ -34,6 +33,11 @@ src/
 src/dsp/
   pitch.ts  波形ブロックのピッチと速度を音に反映する。元の音全体を変えて作り、キャッシュする（再生のたびには計算しない）
   worker.ts  wasm のピッチ変更を画面のスレッドの外で行う Worker
+
+src/storage/
+  autosave.ts  作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く。書き込みは Worker
+  autosaveWorker.ts  自動保存の書き込みと読み出しをする Worker。数十〜百 MB の元の音の複製と保存を画面のスレッドから外す（WeVocalSynth と同じ）
+  idb.ts  IndexedDB の小さな読み書き（キーと値だけ）。画面と Worker の両方から使う
 
 dsp/src/
   lib.rs  WeVocal Studio の wasm。wevocal-lib のピッチ変更（WeVocalSynth と同じ処理方式）を、Worker から呼べる C ABI で公開するだけ。
