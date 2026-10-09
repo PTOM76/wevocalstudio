@@ -146,6 +146,11 @@
   "track.rename": "Rename",
   "track.duplicate": "Duplicate Track",
   "track.remove": "Remove Track",
+  "track.addSubtrack": "Add Subtrack",
+  "track.indent": "Move into Track Above",
+  "track.outdent": "Move Out of Parent",
+  "track.collapse": "Collapse Subtracks",
+  "track.expand": "Expand Subtracks",
 
   "export.title": "Export",
   "export.format": "Format",

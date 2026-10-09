@@ -146,6 +146,11 @@
   "track.rename": "名前を変更",
   "track.duplicate": "トラックを複製",
   "track.remove": "トラックを削除",
+  "track.addSubtrack": "サブトラックを追加",
+  "track.indent": "上のトラックの中に入れる",
+  "track.outdent": "外に出す",
+  "track.collapse": "子のトラックをたたむ",
+  "track.expand": "子のトラックを開く",
 
   "export.title": "書き出す",
   "export.format": "形式",

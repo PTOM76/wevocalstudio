@@ -5,7 +5,7 @@ import { useEdgeScroll } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
 import { layoutRows } from './overlap'
-import { ENV_MAX, ENV_MIN } from './project'
+import { ENV_MAX, ENV_MIN, depthOf } from './project'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, envDb, hitBlock, hitEnvPoint, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { LANE, MASTER, RULER, TOP, drawCursors, drawTimeline, type TimelineView } from './drawTimeline'
@@ -60,6 +60,10 @@ export default function Timeline(p: {
   meter?: (trackId: string) => AnalyserNode | null
   masterMeter?: () => readonly AnalyserNode[] | null
   onDuplicateTrack: (id: string) => void
+  /** サブトラックの操作 */
+  onTrackOp: (op: 'addSubtrack' | 'indent' | 'outdent', id: string) => void
+  /** 隠したトラックも含む、全部のトラック（階層を調べる。project は見えているトラックだけ） */
+  tree: Project
   onRemoveTrack: (id: string) => void
   /** 表示範囲（拡大縮小をキーからも変えるので App が持つ） */
   view: TimelineView
@@ -415,6 +419,11 @@ export default function Timeline(p: {
             onEndMerge={p.onEndMerge}
             onEq={() => p.onEq(track.id)}
             meter={p.meter && (() => p.meter!(track.id))}
+            depth={depthOf(p.tree, track)}
+            hasChildren={p.tree.tracks.some((t) => t.parent === track.id)}
+            onAddSubtrack={() => p.onTrackOp('addSubtrack', track.id)}
+            onIndent={() => p.onTrackOp('indent', track.id)}
+            onOutdent={() => p.onTrackOp('outdent', track.id)}
             onDuplicate={() => p.onDuplicateTrack(track.id)}
             onRemove={() => p.onRemoveTrack(track.id)}
           />

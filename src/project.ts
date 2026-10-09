@@ -24,6 +24,10 @@ export interface Track {
   armed?: boolean
   /** 位相の反転（WeVocalSynth のフェーダーと同じ） */
   invert?: boolean
+  /** 親のトラック（サブトラック。REAPER のフォルダートラック）。音は親を通ってからマスターへ行く。子は親のすぐ後ろに並べる */
+  parent?: string
+  /** 子のトラックをたたんで隠す */
+  collapsed?: boolean
   /** グラフィック EQ（WeVocalSynth と同じ。無ければ平ら） */
   eq?: TrackEq
 }
@@ -180,7 +184,35 @@ export const projectEnd = (p: Project) => p.blocks.reduce((m, b) => Math.max(m, 
 
 /** 鳴らすトラックか（ソロがあればソロだけ、なければミュート以外） */
 export function audible(p: Project, track: Track) {
-  return p.tracks.some((t) => t.solo) ? track.solo : !track.mute
+  if (!p.tracks.some((t) => t.solo)) return !track.mute
+  // ソロのとき: 自分か先祖がソロなら鳴る。子孫がソロなら、その音を通すために鳴らす（REAPER と同じ）
+  return track.solo || ancestors(p, track).some((t) => t.solo) || descendants(p, track).some((t) => t.solo)
+}
+
+/** 親から先祖をたどる（近い順） */
+export function ancestors(p: Project, track: Track): Track[] {
+  const out: Track[] = []
+  for (let t = p.tracks.find((x) => x.id === track.parent); t && out.length < 64; t = p.tracks.find((x) => x.id === t!.parent)) out.push(t)
+  return out
+}
+
+/** 子孫（並びの順） */
+export function descendants(p: Project, track: Track): Track[] {
+  return p.tracks.filter((t) => ancestors(p, t).some((a) => a.id === track.id))
+}
+
+/** 階層の深さ（0 が一番上） */
+export const depthOf = (p: Project, track: Track) => ancestors(p, track).length
+
+/** 見えているトラック（たたんだ親の子孫は隠す） */
+export const visibleTracks = (p: Project) => p.tracks.filter((t) => !ancestors(p, t).some((a) => a.collapsed))
+
+/** トラックとその子孫の、並びの上での終わり（次の index） */
+export function subtreeEnd(p: Project, index: number) {
+  const id = p.tracks[index].id
+  let i = index + 1
+  while (i < p.tracks.length && ancestors(p, p.tracks[i]).some((a) => a.id === id)) i++
+  return i
 }
 
 /** 位置 t で波形ブロックを 2 つに分ける（REAPER の S） */

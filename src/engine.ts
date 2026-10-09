@@ -32,6 +32,8 @@ interface TrackNodes {
   pan: StereoPannerNode
   /** レベルメーター（パンのあと。WeVocalSynth と同じ） */
   meter: AnalyserNode
+  /** 出し先（親のトラックの id か 'master'。変わったときだけつなぎ直す） */
+  dest: string
   /** 鳴らしたまま値を変えられる EQ（WeVocalSynth の再生と同じ wevocal-lib のもの） */
   eq: LiveEq
 }
@@ -91,10 +93,10 @@ class Graph {
     const eq = createLiveEq(this.ctx, t.eq ?? flatEq())
     input.connect(eq.input)
     eq.output.connect(pan)
-    pan.connect(this.master)
     const meter = Graph.analyser(this.ctx)
     pan.connect(meter)
-    return { input, pan, eq, meter }
+    // 出し先（マスターか親のトラック）は sync でつなぐ
+    return { input, pan, eq, meter, dest: '' }
   }
 
   /** 波形ブロックを比べる文字（変わったら差し替える） */
@@ -117,6 +119,19 @@ class Graph {
       // ミュートとソロは音量 0 にする（ノードは残す）
       n.input.gain.setTargetAtTime(audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, at, 0.01)
       n.pan.pan.setTargetAtTime(t.pan, at, 0.01)
+    }
+    // 出し先をつなぐ。サブトラックは親のトラックの入口へ、ほかはマスターへ（REAPER のフォルダートラックと同じ）
+    for (const t of p.tracks) {
+      const n = this.tracks.get(t.id)!
+      const parent = t.parent ? this.tracks.get(t.parent) : undefined
+      const dest = parent ? t.parent! : 'master'
+      if (n.dest === dest) continue
+      if (n.dest) {
+        n.pan.disconnect()
+        n.pan.connect(n.meter)
+      }
+      n.pan.connect(parent ? parent.input : this.master)
+      n.dest = dest
     }
     for (const [id, n] of this.tracks) {
       if (p.tracks.some((t) => t.id === id)) continue

@@ -246,6 +246,7 @@ export function useActions(c: ActionContext) {
       accessKey: 'T',
       entries: [
         { label: t('menu.addTrack'), onClick: doc.addTrack },
+        { label: t('track.addSubtrack'), disabled: !c.selectedTrack, onClick: () => c.selectedTrack && c.selectTrack(doc.addSubtrack(c.selectedTrack)) },
         {
           label: t('menu.removeTrack'),
           disabled: !c.selectedTrack,

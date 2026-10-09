@@ -26,7 +26,7 @@ import SettingsDialog from './SettingsDialog'
 import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
-import { newProject, type Track } from './project'
+import { newProject, visibleTracks, type Track } from './project'
 import Timeline, { HEADER } from './Timeline'
 import Toolbar from './Toolbar'
 import Transport from './Transport'
@@ -90,6 +90,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | 'history' | null>(null)
   const audioInput = useRef<HTMLInputElement>(null)
   const projectInput = useRef<HTMLInputElement>(null)
+  // 時間軸に出すのは見えているトラックだけ（たたんだ親の子孫は隠す）
+  const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project])
   const editingBlocks = project.blocks.filter((b) => editing.includes(b.id))
   const sourceOf = (id: string | undefined) => project.sources.find((s) => s.id === id)
   const { pal, dark } = usePalette()
@@ -456,7 +458,13 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
 
       <Timeline
-        project={project}
+        project={shown}
+        tree={project}
+        onTrackOp={(op, id) => {
+          if (op === 'addSubtrack') setSelectedTrack(doc.addSubtrack(id))
+          else if (op === 'indent') doc.indentTrack(id)
+          else doc.outdentTrack(id)
+        }}
         cursor={cursor}
         livePos={livePos}
         follow={p.settings.follow}

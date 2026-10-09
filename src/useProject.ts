@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip } from 'wevocal-lib'
 import { describeChange } from './history'
 import type { MessageKey } from './i18n'
-import { DEFAULT_FADE, fitBlock, newBlock, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
+import { DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
 const PITCH_MAX = 256
@@ -205,7 +205,57 @@ export function useProject(defaults: PitchDefaults) {
     (id: string) =>
       change((p) => {
         const blocks = p.blocks.filter((b) => b.track !== id)
-        return { ...p, tracks: p.tracks.filter((t) => t.id !== id), blocks, sources: p.sources.filter((s) => blocks.some((b) => b.source === s.id)) }
+        // 子は一つ上の階層に上げる
+        const gone = p.tracks.find((t) => t.id === id)
+        const tracks = p.tracks.filter((t) => t.id !== id).map((t) => (t.parent === id ? { ...t, parent: gone?.parent } : t))
+        return { ...p, tracks, blocks, sources: p.sources.filter((s) => blocks.some((b) => b.source === s.id)) }
+      }),
+    [change],
+  )
+
+  /** parent の子として、新しいトラックを親の子孫の一番後ろに足して id を返す（サブトラック） */
+  const addSubtrack = useCallback(
+    (parent: string) => {
+      const track = newTrack(0)
+      change((p) => {
+        const i = p.tracks.findIndex((t) => t.id === parent)
+        if (i < 0) return p
+        const at = subtreeEnd(p, i)
+        const child = { ...track, name: `Track ${p.tracks.length + 1}`, parent }
+        return { ...p, tracks: [...p.tracks.slice(0, at), child, ...p.tracks.slice(at)].map((t) => (t.id === parent ? { ...t, collapsed: false } : t)) }
+      })
+      return track.id
+    },
+    [change],
+  )
+
+  /** 上の同じ階層のトラックの中に入れる（REAPER の字下げ） */
+  const indentTrack = useCallback(
+    (id: string) =>
+      change((p) => {
+        const i = p.tracks.findIndex((t) => t.id === id)
+        const me = p.tracks[i]
+        if (!me) return p
+        const above = p.tracks.slice(0, i).reverse().find((t) => t.parent === me.parent)
+        return above ? { ...p, tracks: p.tracks.map((t) => (t.id === id ? { ...t, parent: above.id } : t.id === above.id ? { ...t, collapsed: false } : t)) } : p
+      }),
+    [change],
+  )
+
+  /** 親の外に出す。子孫ごと、親の子孫の一番後ろへ動かす（並びを崩さないように） */
+  const outdentTrack = useCallback(
+    (id: string) =>
+      change((p) => {
+        const i = p.tracks.findIndex((t) => t.id === id)
+        const me = p.tracks[i]
+        const parent = me && p.tracks.find((t) => t.id === me.parent)
+        if (!parent) return p
+        const mine = p.tracks.slice(i, subtreeEnd(p, i))
+        const rest = p.tracks.filter((t) => !mine.includes(t))
+        const pi = rest.findIndex((t) => t.id === parent.id)
+        const at = subtreeEnd({ ...p, tracks: rest }, pi)
+        const moved = mine.map((t) => (t.id === id ? { ...t, parent: parent.parent } : t))
+        return { ...p, tracks: [...rest.slice(0, at), ...moved, ...rest.slice(at)] }
       }),
     [change],
   )
@@ -319,6 +369,9 @@ export function useProject(defaults: PitchDefaults) {
     addTrack,
     removeTrack,
     duplicateTrack,
+    addSubtrack,
+    indentTrack,
+    outdentTrack,
     insertTrack,
     updateTempo,
     addMarker,

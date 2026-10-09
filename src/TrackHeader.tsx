@@ -73,6 +73,12 @@ export default function TrackHeader(p: {
   onRemove: () => void
   /** レベルメーター（出さなければ省く） */
   meter?: () => AnalyserNode | null
+  /** サブトラックの階層の深さ（字下げ）と、子があるか */
+  depth: number
+  hasChildren: boolean
+  onAddSubtrack: () => void
+  onIndent: () => void
+  onOutdent: () => void
 }) {
   const t = useT()
   const { track } = p
@@ -90,7 +96,9 @@ export default function TrackHeader(p: {
       sx={{
         height: p.height,
         boxSizing: 'border-box',
-        px: 1,
+        pr: 1,
+        // サブトラックは深さだけ字下げする
+        pl: 1 + p.depth * 1.5,
         py: 0.5,
         borderBottom: 1,
         borderColor: 'divider',
@@ -103,6 +111,17 @@ export default function TrackHeader(p: {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        {/* 子があるトラックは、たたむ、開くの印（REAPER のフォルダー） */}
+        {p.hasChildren && (
+          <ButtonBase
+            aria-label={t(track.collapsed ? 'track.expand' : 'track.collapse')}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => p.onChange({ collapsed: !track.collapsed })}
+            sx={{ width: 14, fontSize: pevenFont('xs'), color: 'text.secondary' }}
+          >
+            {track.collapsed ? '▸' : '▾'}
+          </ButtonBase>
+        )}
         {editing ? (
           <InputBase
             autoFocus
@@ -151,6 +170,10 @@ export default function TrackHeader(p: {
         entries={[
           { label: t('track.rename'), onClick: () => setEditing(true) },
           { label: t('track.duplicate'), onClick: p.onDuplicate },
+          { divider: true },
+          { label: t('track.addSubtrack'), onClick: p.onAddSubtrack },
+          { label: t('track.indent'), onClick: p.onIndent },
+          { label: t('track.outdent'), disabled: !track.parent, onClick: p.onOutdent },
           { divider: true },
           { label: t('track.remove'), onClick: p.onRemove },
         ]}
