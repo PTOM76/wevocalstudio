@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="%APP_LANG%">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- % で囲んだ所は、ビルド時に src/appInfo.ts の値へ置き換える（PevenMUI の pevenApp） -->
+    <title>%APP_NAME%</title>
+    <meta name="description" content="%APP_DESCRIPTION%" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="%APP_NAME%" />
+    <meta property="og:description" content="%APP_DESCRIPTION%" />
+    <meta property="og:url" content="%SITE_URL%" />
+    <meta property="og:locale" content="%APP_LOCALE%" />
+    <link rel="icon" href="%BASE_URL%icon.svg" type="image/svg+xml" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#202124" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

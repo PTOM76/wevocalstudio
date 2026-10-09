@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "types": ["vite/client", "node"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    // 隣の WeVocalSynth の中の pevenmui、wevocal-lib を先に探し、なければ自分の submodule
+    "paths": {
+      "pevenmui": ["../wevocalsynth/pevenmui/src/index.ts", "./pevenmui/src/index.ts"],
+      "pevenmui/web": ["../wevocalsynth/pevenmui/src/web/index.ts", "./pevenmui/src/web/index.ts"],
+      "wevocal-lib": ["../wevocalsynth/wevocal-lib/web/src/index.ts", "./wevocal-lib/web/src/index.ts"]
+    },
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src", "vite.config.ts"]
+}

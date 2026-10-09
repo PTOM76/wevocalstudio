@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Synth のアイコンを土台に、波形の後ろにクモの巣を重ねる -->
+  <rect width="512" height="512" rx="96" fill="#1976d2"/>
+  <g fill="none" stroke="#fff" stroke-opacity="0.35" stroke-width="10" stroke-linejoin="round">
+    <path d="M256 56V456M56 256H456M115 115L397 397M397 115L115 397"/>
+    <path d="M256 106L362 150L406 256L362 362L256 406L150 362L106 256L150 150Z"/>
+    <path d="M256 166L320 192L346 256L320 320L256 346L192 320L166 256L192 192Z"/>
+  </g>
+  <path d="M64 256h48l32-96 48 192 48-240 48 288 48-192 32 96 32-48h48" fill="none" stroke="#fff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
