@@ -1,5 +1,6 @@
 // 波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
 import { LANE, TOP, tickStep } from './drawTimeline'
+import { layoutRows } from './overlap'
 import type { Block, Project } from './project'
 
 /** つまむ所。move は本体、left / right は端、fadeIn / fadeOut は上の角 */
@@ -31,11 +32,19 @@ export function hitBlock(p: Project, x: number, y: number, toTime: (x: number) =
   const track = p.tracks[i]
   if (!track) return null
   const t = toTime(x)
-  const block = p.blocks.findLast((b) => b.track === track.id && t >= b.start - EDGE / pps && t < b.start + b.length + EDGE / pps)
+  // 重なって段に分けたものは、押した段のものだけを見る
+  const slots = layoutRows(p.blocks.filter((b) => b.track === track.id))
+  const inLane = y - (TOP + i * LANE)
+  const inRow = (b: Block) => {
+    const s = slots.get(b.id) ?? { row: 0, rows: 1 }
+    return Math.floor((inLane / LANE) * s.rows) === s.row
+  }
+  const block = p.blocks.findLast((b) => b.track === track.id && inRow(b) && t >= b.start - EDGE / pps && t < b.start + b.length + EDGE / pps)
   if (!block) return null
+  const slot = slots.get(block.id) ?? { row: 0, rows: 1 }
   const left = (t - block.start) * pps
   const right = (block.start + block.length - t) * pps
-  const top = y - (TOP + i * LANE) < CORNER
+  const top = inLane - (slot.row * LANE) / slot.rows < CORNER
   // 上の角はフェード（フェードの終わりの位置もつまめる）
   if (top && left < EDGE + block.fadeIn * pps && left < (block.length * pps) / 2) return { block, kind: 'fadeIn' }
   if (top && right < EDGE + block.fadeOut * pps) return { block, kind: 'fadeOut' }

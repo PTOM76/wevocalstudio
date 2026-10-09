@@ -1,5 +1,6 @@
 // 時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
 import type { Range } from 'wevocal-lib'
+import { layoutRows } from './overlap'
 import type { Block, Project } from './project'
 
 export const RULER = 24
@@ -94,44 +95,52 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   g.fillStyle = c.lane
   g.fillRect(0, TOP - 1, w, 1)
 
-  // トラックと波形ブロック
+  // トラックと波形ブロック。重なったものは段に分ける
+  const slots = layoutRows(p.blocks)
   p.tracks.forEach((track, i) => {
-    const y = TOP + i * LANE
+    const laneY = TOP + i * LANE
     g.fillStyle = c.lane
-    g.fillRect(0, y + LANE - 1, w, 1)
+    g.fillRect(0, laneY + LANE - 1, w, 1)
     for (const b of p.blocks) {
       if (b.track !== track.id) continue
+      const slot = slots.get(b.id) ?? { row: 0, rows: 1 }
+      const H = LANE / slot.rows
+      const y = laneY + slot.row * H
       const x = tx(b.start)
       const bw = b.length * view.pps
       if (x > w || x + bw < 0) continue
       g.globalAlpha = b.mute ? 0.4 : 1
       g.fillStyle = selected.includes(b.id) ? c.blockSelected : c.block
-      g.fillRect(x, y + 2, bw, LANE - 5)
+      g.fillRect(x, y + 2, bw, H - 5)
       g.fillStyle = c.wave
-      drawBlockWave(g, b, p, x, y + 16, bw, LANE - 20, w)
+      // 低い段では名前の行を省いて波形だけにする
+      const label = H >= 40
+      drawBlockWave(g, b, p, x, y + (label ? 16 : 3), bw, H - (label ? 20 : 6), w)
       // フェード
       g.strokeStyle = c.text
       g.beginPath()
       if (b.fadeIn > 0) {
-        g.moveTo(x, y + LANE - 3)
+        g.moveTo(x, y + H - 3)
         g.lineTo(x + b.fadeIn * view.pps, y + 2)
       }
       if (b.fadeOut > 0) {
         g.moveTo(x + bw - b.fadeOut * view.pps, y + 2)
-        g.lineTo(x + bw, y + LANE - 3)
+        g.lineTo(x + bw, y + H - 3)
       }
       g.stroke()
       // 名前とピッチ、音量
       const name = p.sources.find((s) => s.id === b.source)?.name ?? ''
       const sign = (v: number) => (v > 0 ? `+${v}` : `${v}`)
       const info = [b.pitch ? sign(b.pitch) : '', b.gain ? `${sign(b.gain)} dB` : ''].filter(Boolean).join('  ')
-      g.save()
-      g.beginPath()
-      g.rect(x, y, bw, LANE)
-      g.clip()
-      g.fillStyle = c.text
-      g.fillText(`${name}  ${info}`, x + 4, y + 9)
-      g.restore()
+      if (label) {
+        g.save()
+        g.beginPath()
+        g.rect(x, y, bw, H)
+        g.clip()
+        g.fillStyle = c.text
+        g.fillText(`${name}  ${info}`, x + 4, y + 9)
+        g.restore()
+      }
       g.globalAlpha = 1
     }
   })
