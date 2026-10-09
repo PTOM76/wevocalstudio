@@ -1,17 +1,21 @@
-// 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー
+// 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
-import { AboutDialog, AppHeader, FULL_HEIGHT, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout, type MenuGroup } from 'pevenmui'
-import { AUDIO_ACCEPT, downloadBlob } from 'wevocal-lib'
+import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
+import { AUDIO_ACCEPT, EXPORT_EXT, downloadBlob, exportAudio, type Range } from 'wevocal-lib'
 import { app } from './appConfig'
-import BlockPanel from './BlockPanel'
+import BlockDialog from './BlockDialog'
+import type { TimelineView } from './drawTimeline'
 import { pitchPending, preparePitch } from './dsp/pitch'
-import { Player, renderWav } from './engine'
+import { Player, renderMix } from './engine'
+import ExportDialog, { type ExportChoice } from './ExportDialog'
 import { useT } from './i18n'
-import { actionOf, keyLabel, type Action } from './keymap'
-import SettingsDialog from './SettingsDialog'
+import { PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings'
+import SettingsDialog from './SettingsDialog'
 import Timeline from './Timeline'
+import Transport from './Transport'
+import { useActions } from './useActions'
 import { useProject, type DropAt } from './useProject'
 
 /** 今動いている版 */
@@ -22,31 +26,51 @@ const AppIcon = ({ size }: { size: number }) => <img src={`${import.meta.env.BAS
 
 const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
-const formatTime = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(2).padStart(5, '0')}`
-
 export default function App(p: { settings: Settings; onSettingsChange: (patch: Partial<Settings>) => void }) {
   const t = useT()
   const mobile = useMobileLayout()
-  const { project, addFiles, addTrack, updateMaster, updateTrack, updateBlock, removeBlock, nudgePitch, split } = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant })
+  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant })
+  const { project } = doc
   const player = useRef(new Player())
   const [playing, setPlaying] = useState(false)
   const [cursor, setCursor] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
+  const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
+  const [range, setRange] = useState<Range | null>(null)
+  const [repeat, setRepeat] = useState(false)
+  const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
+  // 再生を始めた位置（停止で戻る）
+  const playFrom = useRef(0)
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
+  const [fileName, setFileName] = useState('untitled')
   const [busy, setBusy] = useState(false)
   const [pitching, setPitching] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [aboutOpen, setAboutOpen] = useState(false)
-  const [licensesOpen, setLicensesOpen] = useState(false)
-  const fileInput = useRef<HTMLInputElement>(null)
-  const block = project.blocks.find((b) => b.id === selected)
+  const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | null>(null)
+  const audioInput = useRef<HTMLInputElement>(null)
+  const projectInput = useRef<HTMLInputElement>(null)
+  const editingBlock = project.blocks.find((b) => b.id === editing) ?? null
+  const sourceOf = (id: string | undefined) => project.sources.find((s) => s.id === id)
+  const end = project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
+
+  const fail = (e: unknown) => setError(String(e))
 
   const play = () => {
-    player.current.play(project, cursor)
+    // 範囲選択があれば、その中だけを鳴らす（外にいたら範囲の頭から）
+    const from = range && (cursor < range.start || cursor >= range.end) ? range.start : cursor
+    setCursor(from)
+    playFrom.current = from
+    player.current.play(project, from)
     setPlaying(true)
   }
-  const stop = () => {
+  const pause = () => {
     setCursor(player.current.position())
+    player.current.stop()
+    setPlaying(false)
+  }
+  const stop = () => {
+    if (playing) setCursor(playFrom.current)
     player.current.stop()
     setPlaying(false)
   }
@@ -54,33 +78,89 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     setCursor(time)
     if (playing) player.current.play(project, time)
   }
-  const exportWav = async () => {
+
+  const load = (files: File[], at?: DropAt) => doc.addFiles(files, at).catch(fail)
+
+  const openProject = async (file: File) => {
+    try {
+      stop()
+      doc.replace(await readProject(file))
+      setRange(null)
+      setFileName(file.name.replace(/\.[^.]+$/, ''))
+      setSelected(null)
+      setSelectedTrack(null)
+      setCursor(0)
+    } catch (e) {
+      fail(e)
+    }
+  }
+
+  const save = () => downloadBlob(writeProject(project), fileName + PROJECT_EXT)
+
+  const runExport = async (c: ExportChoice) => {
     setBusy(true)
     try {
-      downloadBlob(await renderWav(project), 'mix.wav')
+      const mix = await renderMix(project, c.rangeOnly && range ? range.end : 0)
+      const blob = await exportAudio(mix, { ...c, sampleRate: mix.sampleRate, mono: false, range: c.rangeOnly ? range : null })
+      downloadBlob(blob, fileName + EXPORT_EXT[c.format])
     } catch (e) {
-      setError(String(e))
+      fail(e)
     } finally {
       setBusy(false)
     }
   }
-  const splitAtCursor = () => split(cursor, selected ?? undefined)
-  const deleteSelected = () => {
-    if (selected) removeBlock(selected)
-    setSelected(null)
-  }
+
+  const { menus, blockMenu } = useActions({
+    doc,
+    cursor,
+    playing,
+    selected,
+    selectedTrack,
+    range,
+    setRange,
+    select: setSelected,
+    selectTrack: setSelectedTrack,
+    play,
+    stop,
+    pause,
+    repeat,
+    toggleRepeat: () => setRepeat((r) => !r),
+    seek,
+    zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
+    openProperties: setEditing,
+    openFile: () => projectInput.current?.click(),
+    importFiles: () => audioInput.current?.click(),
+    save,
+    openExport: () => setDialog('export'),
+    openSettings: () => setDialog('settings'),
+    showStatusBar: p.settings.showStatusBar,
+    toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
+    help: { guide: () => openExternal(app.repository), licenses: () => setDialog('licenses'), about: () => setDialog('about') },
+  })
 
   // 再生中は位置を動かす
   useEffect(() => {
     if (!playing) return
     let id = 0
     const tick = () => {
-      setCursor(player.current.position())
+      const pos = player.current.position()
+      // 範囲の終わりで止める。リピートなら範囲の頭に戻る
+      if (range && pos >= range.end) {
+        if (repeat) {
+          player.current.play(project, range.start)
+          setCursor(range.start)
+        } else {
+          player.current.stop()
+          setCursor(range.end)
+          setPlaying(false)
+          return
+        }
+      } else setCursor(pos)
       id = requestAnimationFrame(tick)
     }
     id = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(id)
-  }, [playing])
+  }, [playing, range, repeat, project])
 
   // 再生中に変えた値を音に反映する（今の位置から組み直す）
   const replay = () => {
@@ -94,93 +174,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     setPitching(pitchPending(project))
     preparePitch(project)
       .then((made) => alive && made && replay())
-      .catch((e: unknown) => alive && setError(String(e)))
+      .catch((e: unknown) => alive && fail(e))
       .finally(() => alive && setPitching(false))
     return () => {
       alive = false
     }
   }, [project])
-
-  const load = (files: File[], at?: DropAt) => addFiles(files, at).catch((err: unknown) => setError(String(err)))
-
-  /** キーとメニューから行う操作 */
-  const actions: Record<Action, () => void> = {
-    playStop: () => (playing ? stop : play)(),
-    split: splitAtCursor,
-    delete: deleteSelected,
-    pitchUp: () => selected && nudgePitch(selected, 1),
-    pitchDown: () => selected && nudgePitch(selected, -1),
-    pitchUpFine: () => selected && nudgePitch(selected, 0.1),
-    pitchDownFine: () => selected && nudgePitch(selected, -0.1),
-    pitchReset: () => selected && nudgePitch(selected, null),
-  }
-
-  // キーの割り当ては keymap.ts の表
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return
-      const action = actionOf(e)
-      if (!action) return
-      e.preventDefault()
-      actions[action]()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  })
-
-  const menus: MenuGroup[] = [
-    {
-      label: t('menu.file'),
-      accessKey: 'F',
-      entries: [
-        { label: t('menu.import'), onClick: () => fileInput.current?.click() },
-        { label: t('menu.exportWav'), disabled: busy || project.blocks.length === 0, onClick: () => void exportWav() },
-        { divider: true },
-        { label: t('menu.settings'), onClick: () => setSettingsOpen(true) },
-      ],
-    },
-    {
-      label: t('menu.edit'),
-      accessKey: 'E',
-      entries: [
-        { label: t('menu.split'), shortcut: keyLabel('split'), onClick: splitAtCursor },
-        { label: t('menu.delete'), shortcut: keyLabel('delete'), disabled: !selected, onClick: deleteSelected },
-        { divider: true },
-        { label: t('menu.pitchUp'), shortcut: keyLabel('pitchUp'), disabled: !selected, onClick: actions.pitchUp },
-        { label: t('menu.pitchDown'), shortcut: keyLabel('pitchDown'), disabled: !selected, onClick: actions.pitchDown },
-        { label: t('menu.pitchUpFine'), shortcut: keyLabel('pitchUpFine'), disabled: !selected, onClick: actions.pitchUpFine },
-        { label: t('menu.pitchDownFine'), shortcut: keyLabel('pitchDownFine'), disabled: !selected, onClick: actions.pitchDownFine },
-        { label: t('menu.pitchReset'), shortcut: keyLabel('pitchReset'), disabled: !selected, onClick: actions.pitchReset },
-      ],
-    },
-    {
-      label: t('menu.track'),
-      accessKey: 'T',
-      entries: [{ label: t('menu.addTrack'), onClick: addTrack }],
-    },
-    {
-      label: t('menu.transport'),
-      accessKey: 'P',
-      entries: [
-        { label: playing ? t('menu.stop') : t('menu.play'), shortcut: keyLabel('playStop'), onClick: actions.playStop },
-        { label: t('menu.toStart'), onClick: () => seek(0) },
-      ],
-    },
-    {
-      label: t('menu.view'),
-      accessKey: 'V',
-      entries: [{ label: t('menu.statusBar'), checked: p.settings.showStatusBar, onClick: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }) }],
-    },
-    {
-      label: t('menu.help'),
-      accessKey: 'H',
-      entries: [
-        { label: t('menu.guide'), onClick: () => openExternal(app.repository) },
-        { label: t('menu.licenses'), onClick: () => setLicensesOpen(true) },
-        { label: t('menu.about'), onClick: () => setAboutOpen(true) },
-      ],
-    },
-  ]
 
   return (
     <Box
@@ -188,29 +187,70 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault()
-        void load([...e.dataTransfer.files])
+        const files = [...e.dataTransfer.files]
+        const proj = files.find((f) => f.name.endsWith(PROJECT_EXT))
+        if (proj) void openProject(proj)
+        else void load(files)
       }}
     >
       <AppHeader icon={<AppIcon size={16} />} menus={menus} />
-      <input ref={fileInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load([...(e.target.files ?? [])]).finally(() => (e.target.value = ''))} />
+      <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load([...(e.target.files ?? [])]).finally(() => (e.target.value = ''))} />
+      <input
+        ref={projectInput}
+        type="file"
+        accept={PROJECT_EXT}
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (file) void openProject(file)
+        }}
+      />
 
       <Timeline
         project={project}
         cursor={cursor}
         selected={selected}
         onSelect={setSelected}
+        selectedTrack={selectedTrack}
+        onSelectTrack={setSelectedTrack}
         onSeek={seek}
-        onMasterChange={updateMaster}
-        onTrackChange={updateTrack}
+        range={range}
+        onRange={setRange}
+        onMasterChange={doc.updateMaster}
+        onTrackChange={doc.updateTrack}
+        onEndMerge={doc.endMerge}
         onDropFiles={(files, at) => void load(files, at)}
-        onBlockChange={updateBlock}
+        onBlockChange={doc.updateBlock}
+        onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
+        view={view}
+        onView={setView}
       />
-      {block && <BlockPanel block={block} name={project.sources.find((s) => s.id === block.source)?.name ?? ''} onChange={(patch) => updateBlock(block.id, patch)} />}
+      <Transport
+        playing={playing}
+        cursor={cursor}
+        end={end}
+        range={range}
+        repeat={repeat}
+        onToStart={() => seek(0)}
+        onStop={stop}
+        onPlay={play}
+        onPause={() => (playing ? pause() : play())}
+        onRepeat={() => setRepeat((r) => !r)}
+        onToEnd={() => seek(end)}
+      />
+      <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
+      <BlockDialog
+        block={editingBlock}
+        name={sourceOf(editingBlock?.source)?.name ?? ''}
+        duration={sourceOf(editingBlock?.source)?.duration ?? 0}
+        onClose={() => setEditing(null)}
+        onApply={(b) => editingBlock && doc.updateBlock(editingBlock.id, b)}
+      />
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar>
           <StatusItem>{busy ? t('status.exporting') : pitching ? t('status.pitch') : playing ? t('status.playing') : t('status.ready')}</StatusItem>
-          <StatusItem>{formatTime(cursor)}</StatusItem>
           <StatusSpacer />
           <StatusItem secondary>{BUILD}</StatusItem>
         </StatusBar>
@@ -221,10 +261,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           {t('error.failed', { error: error ?? '' })}
         </Alert>
       </Snackbar>
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={p.settings} onChange={p.onSettingsChange} />
+      <ExportDialog hasRange={!!range} open={dialog === 'export'} onClose={() => setDialog(null)} onExport={(c) => void runExport(c)} />
+      <SettingsDialog open={dialog === 'settings'} onClose={() => setDialog(null)} settings={p.settings} onChange={p.onSettingsChange} />
       <LicensesDialog
-        open={licensesOpen}
-        onClose={() => setLicensesOpen(false)}
+        open={dialog === 'licenses'}
+        onClose={() => setDialog(null)}
         title={t('menu.licenses')}
         entries={[
           { name: app.name, license: 'MIT', url: app.repository, note: t('licenses.app') },
@@ -237,8 +278,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         ]}
       />
       <AboutDialog
-        open={aboutOpen}
-        onClose={() => setAboutOpen(false)}
+        open={dialog === 'about'}
+        onClose={() => setDialog(null)}
         icon={<AppIcon size={56} />}
         rows={[
           [t('about.version'), <span className="selectable">{BUILD}</span>],

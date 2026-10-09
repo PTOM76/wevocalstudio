@@ -9,6 +9,10 @@
   "block.mute": "Mute",
   "block.algorithm": "Algorithm",
   "block.preserveFormant": "Preserve formants",
+  "block.properties": "Block Properties",
+  "block.start": "Position (s)",
+  "block.length": "Length (s)",
+  "block.offset": "Source offset (s)",
 
   "error.failed": "Failed: {error}",
 
@@ -23,7 +27,6 @@
   "menu.licenses": "Licenses",
   "menu.about": "About",
   "menu.import": "Import Audio Files…",
-  "menu.exportWav": "Export as WAV",
   "menu.edit": "Edit",
   "menu.split": "Split at Cursor",
   "menu.delete": "Delete Block",
@@ -38,6 +41,24 @@
   "menu.pitchUpFine": "Pitch Up 10 Cents",
   "menu.pitchDownFine": "Pitch Down 10 Cents",
   "menu.pitchReset": "Reset Pitch",
+  "menu.open": "Open Project…",
+  "menu.save": "Save Project",
+  "menu.export": "Export…",
+  "menu.undo": "Undo",
+  "menu.redo": "Redo",
+  "menu.copy": "Copy",
+  "menu.paste": "Paste",
+  "menu.duplicate": "Duplicate",
+  "menu.block": "Block",
+  "menu.removeTrack": "Remove Selected Track",
+  "menu.splitRange": "Split at Time Selection",
+  "menu.clearRange": "Clear Time Selection",
+  "menu.pause": "Pause",
+  "menu.repeat": "Repeat",
+  "menu.toEnd": "Go to End",
+  "menu.zoomIn": "Zoom In",
+  "menu.zoomOut": "Zoom Out",
+  "menu.properties": "Properties…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -62,5 +83,23 @@
   "track.solo": "Solo",
   "track.volume": "Volume",
   "track.pan": "Pan",
-  "track.master": "Master"
+  "track.master": "Master",
+
+  "export.title": "Export",
+  "export.format": "Format",
+  "export.bits": "Bit depth",
+  "export.bitrate": "Bitrate",
+  "export.run": "Export",
+  "export.rangeOnly": "Export the time selection only",
+
+  "common.cancel": "Cancel",
+  "common.ok": "OK",
+
+  "transport.toStart": "Go to start",
+  "transport.stop": "Stop",
+  "transport.play": "Play",
+  "transport.pause": "Pause",
+  "transport.repeat": "Repeat",
+  "transport.toEnd": "Go to end",
+  "transport.range": "Selection"
 }

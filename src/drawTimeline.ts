@@ -1,7 +1,12 @@
 // 時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
+import type { Range } from 'wevocal-lib'
 import type { Block, Project } from './project'
 
 export const RULER = 24
+/** マスタートラックの行の高さ（目盛りのすぐ下。REAPER と同じく一番上） */
+export const MASTER = 96
+/** トラックの行が始まる位置 */
+export const TOP = RULER + MASTER
 export const LANE = 96
 
 export interface TimelineView {
@@ -20,6 +25,10 @@ export interface TimelineColors {
   blockSelected: string
   wave: string
   playhead: string
+  /** マスタートラックの帯の色 */
+  master: string
+  /** 範囲選択の色 */
+  range: string
 }
 
 /** 目盛りの間隔（秒）。文字が重ならない広さにする */
@@ -58,7 +67,7 @@ function drawBlockWave(g: CanvasRenderingContext2D, b: Block, p: Project, x: num
   }
 }
 
-export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: TimelineView, selected: string | null, cursor: number, c: TimelineColors) {
+export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: TimelineView, selected: string | null, cursor: number, range: Range | null, c: TimelineColors) {
   const g = canvas.getContext('2d')!
   const w = canvas.width / devicePixelRatio
   const h = canvas.height / devicePixelRatio
@@ -79,9 +88,15 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
     g.fillText(formatTime(t, step), x + 3, RULER / 2)
   }
 
+  // マスタートラックの帯（波形ブロックは置かない）
+  g.fillStyle = c.master
+  g.fillRect(0, RULER, w, MASTER)
+  g.fillStyle = c.lane
+  g.fillRect(0, TOP - 1, w, 1)
+
   // トラックと波形ブロック
   p.tracks.forEach((track, i) => {
-    const y = RULER + i * LANE
+    const y = TOP + i * LANE
     g.fillStyle = c.lane
     g.fillRect(0, y + LANE - 1, w, 1)
     for (const b of p.blocks) {
@@ -120,6 +135,12 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       g.globalAlpha = 1
     }
   })
+
+  // 範囲選択（全トラックにかかる。REAPER のタイムセレクション）
+  if (range) {
+    g.fillStyle = c.range
+    g.fillRect(tx(range.start), 0, (range.end - range.start) * view.pps, h)
+  }
 
   // 再生位置
   g.fillStyle = c.playhead

@@ -1,10 +1,12 @@
-// プロジェクトの状態と操作（ファイルの読み込み、マスター、トラック、波形ブロックの変更）
+// プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
 import { decodeFile } from 'wevocal-lib'
 import { newBlock, newId, newProject, newTrack, splitBlock, type Block, type Master, type PitchDefaults, type Project, type Source, type Track } from './project'
 
 /** ピッチの範囲（半音）。2 オクターブまで */
 const PITCH_MAX = 24
+/** 元に戻せる回数 */
+const HISTORY_MAX = 200
 
 /** 置く場所（トラックと時刻）。省略したときは空いているトラックか、新しいトラック */
 export interface DropAt {
@@ -12,66 +14,148 @@ export interface DropAt {
   start: number
 }
 
+interface History {
+  past: Project[]
+  present: Project
+  future: Project[]
+}
+
 export function useProject(defaults: PitchDefaults) {
-  const [project, setProject] = useState<Project>(newProject)
+  const [history, setHistory] = useState<History>(() => ({ past: [], present: newProject(), future: [] }))
   // 読み込みの途中で設定が変わっても、最新の既定値を使う
   const defaultsRef = useRef(defaults)
   defaultsRef.current = defaults
+  // 直前の変更のまとめ方。同じ merge が続いたら（ドラッグ、スライダー）履歴を 1 つにまとめる
+  const lastMerge = useRef<string | null>(null)
 
-  /** ファイルを読み込んで波形ブロックとして置く。場所を指定したら、そのトラックに続けて並べる */
-  const addFiles = useCallback(async (files: File[], at?: DropAt) => {
-    let start = at?.start ?? 0
-    for (const file of files) {
-      const clip = await decodeFile(file)
-      const source: Source = { id: newId(), name: file.name, clip, duration: clip.channels[0].length / clip.sampleRate }
-      const name = file.name.replace(/\.[^.]+$/, '')
-      const begin = start
-      setProject((p) => {
-        let tracks = p.tracks
-        let track = at && tracks.find((t) => t.id === at.track)
-        if (!track) {
-          // 波形ブロックのない最初のトラックを使い、なければ足す
-          track = tracks.find((t) => !p.blocks.some((b) => b.track === t.id))
-          if (!track) {
-            track = newTrack(tracks.length + 1)
-            tracks = [...tracks, track]
-          }
-          // 空のトラックの名前はファイルの名前にする
-          const id = track.id
-          tracks = tracks.map((t) => (t.id === id ? { ...t, name } : t))
-          track = { ...track, name }
-        }
-        return { ...p, sources: [...p.sources, source], tracks, blocks: [...p.blocks, newBlock(track.id, source, begin, defaultsRef.current)] }
-      })
-      if (at) start += source.duration
-    }
+  /** プロジェクトを変える。merge を渡すと、同じ merge の続けての変更を 1 回分の履歴にする */
+  const change = useCallback((fn: (p: Project) => Project, merge?: string) => {
+    const merged = merge !== undefined && merge === lastMerge.current
+    lastMerge.current = merge ?? null
+    setHistory((h) => {
+      const next = fn(h.present)
+      if (next === h.present) return h
+      return { past: merged ? h.past : [...h.past, h.present].slice(-HISTORY_MAX), present: next, future: [] }
+    })
   }, [])
 
-  const addTrack = useCallback(() => setProject((p) => ({ ...p, tracks: [...p.tracks, newTrack(p.tracks.length + 1)] })), [])
+  /** 続けての変更のまとまりを切る（ドラッグを離したとき） */
+  const endMerge = useCallback(() => {
+    lastMerge.current = null
+  }, [])
 
-  const updateMaster = useCallback((patch: Partial<Master>) => setProject((p) => ({ ...p, master: { ...p.master, ...patch } })), [])
+  const undo = useCallback(() => {
+    lastMerge.current = null
+    setHistory((h) => (h.past.length ? { past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] } : h))
+  }, [])
 
-  const updateTrack = useCallback((id: string, patch: Partial<Track>) => setProject((p) => ({ ...p, tracks: p.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })), [])
+  const redo = useCallback(() => {
+    lastMerge.current = null
+    setHistory((h) => (h.future.length ? { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) } : h))
+  }, [])
 
-  const updateBlock = useCallback((id: string, patch: Partial<Block>) => setProject((p) => ({ ...p, blocks: p.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) })), [])
+  /** 開いたプロジェクトに入れ替える（履歴は消す） */
+  const replace = useCallback((p: Project) => {
+    lastMerge.current = null
+    setHistory({ past: [], present: p, future: [] })
+  }, [])
 
-  const removeBlock = useCallback((id: string) => setProject((p) => ({ ...p, blocks: p.blocks.filter((b) => b.id !== id) })), [])
+  /** ファイルを読み込んで波形ブロックとして置く。場所を指定したら、そのトラックに続けて並べる */
+  const addFiles = useCallback(
+    async (files: File[], at?: DropAt) => {
+      let start = at?.start ?? 0
+      for (const file of files) {
+        const clip = await decodeFile(file)
+        const source: Source = { id: newId(), name: file.name, clip, duration: clip.channels[0].length / clip.sampleRate }
+        const name = file.name.replace(/\.[^.]+$/, '')
+        const begin = start
+        change((p) => {
+          let tracks = p.tracks
+          let track = at && tracks.find((t) => t.id === at.track)
+          if (!track) {
+            // 波形ブロックのない最初のトラックを使い、なければ足す。空のトラックの名前はファイルの名前にする
+            const empty = tracks.find((t) => !p.blocks.some((b) => b.track === t.id))
+            track = { ...(empty ?? newTrack(tracks.length + 1)), name }
+            const named = track
+            tracks = empty ? tracks.map((t) => (t.id === named.id ? named : t)) : [...tracks, named]
+          }
+          return { ...p, sources: [...p.sources, source], tracks, blocks: [...p.blocks, newBlock(track.id, source, begin, defaultsRef.current)] }
+        })
+        if (at) start += source.duration
+      }
+    },
+    [change],
+  )
+
+  const addTrack = useCallback(() => change((p) => ({ ...p, tracks: [...p.tracks, newTrack(p.tracks.length + 1)] })), [change])
+
+  /** トラックとその波形ブロックを消す。使われなくなった元の音も消す */
+  const removeTrack = useCallback(
+    (id: string) =>
+      change((p) => {
+        const blocks = p.blocks.filter((b) => b.track !== id)
+        return { ...p, tracks: p.tracks.filter((t) => t.id !== id), blocks, sources: p.sources.filter((s) => blocks.some((b) => b.source === s.id)) }
+      }),
+    [change],
+  )
+
+  const updateMaster = useCallback((patch: Partial<Master>, merge?: string) => change((p) => ({ ...p, master: { ...p.master, ...patch } }), merge), [change])
+
+  const updateTrack = useCallback(
+    (id: string, patch: Partial<Track>, merge?: string) => change((p) => ({ ...p, tracks: p.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }), merge),
+    [change],
+  )
+
+  const updateBlock = useCallback(
+    (id: string, patch: Partial<Block>, merge?: string) => change((p) => ({ ...p, blocks: p.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }), merge),
+    [change],
+  )
+
+  const removeBlock = useCallback((id: string) => change((p) => ({ ...p, blocks: p.blocks.filter((b) => b.id !== id) })), [change])
+
+  /** 波形ブロックの写しを置き、その id を返す（複製、貼り付け） */
+  const insertBlock = useCallback(
+    (b: Block, patch: Partial<Block>) => {
+      const id = newId()
+      change((p) => (p.sources.some((s) => s.id === b.source) ? { ...p, blocks: [...p.blocks, { ...b, ...patch, id }] } : p))
+      return id
+    },
+    [change],
+  )
 
   /** ピッチを delta 半音だけ変える。delta が null なら 0 に戻す。小数の誤差は 0.01 半音（1 セント）に丸める */
   const nudgePitch = useCallback(
     (id: string, delta: number | null) =>
-      setProject((p) => ({
+      change((p) => ({
         ...p,
         blocks: p.blocks.map((b) => (b.id === id ? { ...b, pitch: delta === null ? 0 : Math.max(-PITCH_MAX, Math.min(PITCH_MAX, Math.round((b.pitch + delta) * 100) / 100)) } : b)),
       })),
-    [],
+    [change],
   )
 
   /** 位置 t で分ける。id を渡さなければ、t にかかる波形ブロックを全部分ける */
   const split = useCallback(
-    (t: number, id?: string) => setProject((p) => ({ ...p, blocks: p.blocks.flatMap((b) => (id && b.id !== id ? [b] : (splitBlock(b, t) ?? [b]))) })),
-    [],
+    (t: number, id?: string) => change((p) => ({ ...p, blocks: p.blocks.flatMap((b) => (id && b.id !== id ? [b] : (splitBlock(b, t) ?? [b]))) })),
+    [change],
   )
 
-  return { project, addFiles, addTrack, updateMaster, updateTrack, updateBlock, removeBlock, nudgePitch, split }
+  return {
+    project: history.present,
+    canUndo: history.past.length > 0,
+    canRedo: history.future.length > 0,
+    undo,
+    redo,
+    endMerge,
+    replace,
+    addFiles,
+    addTrack,
+    removeTrack,
+    updateMaster,
+    updateTrack,
+    updateBlock,
+    removeBlock,
+    insertBlock,
+    nudgePitch,
+    split,
+  }
 }

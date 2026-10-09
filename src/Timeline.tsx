@@ -1,40 +1,50 @@
-// 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし、ほかのトラックへも移せる
+// 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
+import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
-import { LANE, RULER, drawTimeline, type TimelineView } from './drawTimeline'
+import { CURSOR, dragPatch, hitBlock, type Drag } from './blockDrag'
+import { LANE, MASTER, RULER, TOP, drawTimeline, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
 
 const HEADER = 200
 
-interface Drag {
-  id: string
-  x: number
-  y: number
-  start: number
-  trackIndex: number
-}
-
 export default function Timeline(p: {
   project: Project
   cursor: number
   selected: string | null
   onSelect: (id: string | null) => void
+  selectedTrack: string | null
+  onSelectTrack: (id: string) => void
   onSeek: (t: number) => void
-  onMasterChange: (patch: Partial<Master>) => void
-  onTrackChange: (id: string, patch: Partial<Track>) => void
+  range: Range | null
+  onRange: (r: Range | null) => void
+  onMasterChange: (patch: Partial<Master>, merge?: string) => void
+  onTrackChange: (id: string, patch: Partial<Track>, merge?: string) => void
+  /** 続けての変更（ドラッグ、スライダー）の履歴のまとまりを切る */
+  onEndMerge: () => void
   onDropFiles: (files: File[], at?: DropAt) => void
-  onBlockChange: (id: string, patch: Partial<Block>) => void
+  onBlockChange: (id: string, patch: Partial<Block>, merge?: string) => void
+  /** 波形ブロックの右クリック（画面の座標） */
+  onBlockMenu: (id: string, x: number, y: number) => void
+  /** 表示範囲（拡大縮小をキーからも変えるので App が持つ） */
+  view: TimelineView
+  onView: (fn: (v: TimelineView) => TimelineView) => void
 }) {
   // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
-  const { dark } = usePalette()
+  const { dark, pal } = usePalette()
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
+  const { view } = p
+  const setView = p.onView
   const [width, setWidth] = useState(0)
   const drag = useRef<Drag | null>(null)
-  const height = RULER + Math.max(1, p.project.tracks.length) * LANE
+  // 範囲選択のドラッグを始めた時刻と位置
+  const rangeDrag = useRef<{ t: number; x: number } | null>(null)
+  const dragCount = useRef(0)
+  const [cursor, setCursor] = useState('default')
+  const height = TOP + Math.max(1, p.project.tracks.length) * LANE
 
   // 幅に合わせる
   useLayoutEffect(() => {
@@ -48,17 +58,20 @@ export default function Timeline(p: {
     const canvas = canvasRef.current!
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
-    drawTimeline(canvas, p.project, view, p.selected, p.cursor, {
-      bg: dark ? '#1e1f22' : '#fafafa',
-      lane: dark ? '#3a3b3e' : '#ddd',
-      line: dark ? '#2c2d30' : '#eee',
-      text: dark ? '#ddd' : '#333',
-      block: dark ? '#2f4f6f' : '#c5daf0',
-      blockSelected: dark ? '#3f6f9f' : '#9cc2ea',
-      wave: dark ? '#9fd0ff' : '#1565c0',
-      playhead: '#e53935',
+    // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
+    drawTimeline(canvas, p.project, view, p.selected, p.cursor, p.range, {
+      bg: pal.background.default,
+      lane: pal.divider,
+      line: alpha(pal.divider, 0.5),
+      text: pal.text.primary,
+      block: alpha(pal.primary.main, dark ? 0.18 : 0.12),
+      blockSelected: alpha(pal.primary.main, dark ? 0.36 : 0.26),
+      wave: pal.primary.main,
+      playhead: pal.text.primary,
+      master: alpha(pal.text.primary, 0.04),
+      range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
     })
-  }, [p.project, view, p.selected, p.cursor, width, height, dark])
+  }, [p.project, view, p.selected, p.cursor, p.range, width, height, dark, pal])
 
   // ホイール: Shift で横に動かす。Ctrl で拡大と縮小（マウスの位置を中心に）
   useEffect(() => {
@@ -77,64 +90,101 @@ export default function Timeline(p: {
     }
     canvas.addEventListener('wheel', onWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [setView])
 
   const toTime = (x: number) => view.scroll + x / view.pps
 
-  const hit = (x: number, y: number) => {
-    const track = p.project.tracks[Math.floor((y - RULER) / LANE)]
-    if (!track) return null
-    const t = toTime(x)
-    // 後に置いたものが上に描かれるので、後ろから探す
-    return p.project.blocks.findLast((b) => b.track === track.id && t >= b.start && t < b.start + b.length) ?? null
-  }
-
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // 右クリックはメニュー（onContextMenu）だけ
+    if (e.button === 2) return
     const { offsetX: x, offsetY: y } = e.nativeEvent
-    const b = y > RULER ? hit(x, y) : null
-    if (!b) {
+    const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
+    if (!hit) {
+      // 目盛りか空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択
       p.onSelect(null)
+      const track = p.project.tracks[Math.floor((y - TOP) / LANE)]
+      if (track) p.onSelectTrack(track.id)
       p.onSeek(Math.max(0, toTime(x)))
+      e.currentTarget.setPointerCapture(e.pointerId)
+      rangeDrag.current = { t: Math.max(0, toTime(x)), x }
       return
     }
-    p.onSelect(b.id)
+    p.onSelect(hit.block.id)
+    p.onSelectTrack(hit.block.track)
     e.currentTarget.setPointerCapture(e.pointerId)
-    drag.current = { id: b.id, x, y, start: b.start, trackIndex: p.project.tracks.findIndex((t) => t.id === b.track) }
+    const trackIndex = p.project.tracks.findIndex((t) => t.id === hit.block.track)
+    drag.current = { kind: hit.kind, block: hit.block, x, y, trackIndex, merge: `drag${dragCount.current++}` }
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const d = drag.current
-    if (!d) return
     const { offsetX: x, offsetY: y } = e.nativeEvent
-    const i = Math.min(p.project.tracks.length - 1, Math.max(0, d.trackIndex + Math.round((y - d.y) / LANE)))
-    p.onBlockChange(d.id, { start: Math.max(0, d.start + (x - d.x) / view.pps), track: p.project.tracks[i].id })
+    const r = rangeDrag.current
+    if (r) {
+      if (Math.abs(x - r.x) < 3) return
+      const t = Math.max(0, toTime(x))
+      p.onRange({ start: Math.min(r.t, t), end: Math.max(r.t, t) })
+      return
+    }
+    const d = drag.current
+    if (!d) {
+      // つまめる所でカーソルの形を変える
+      const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
+      setCursor(hit ? CURSOR[hit.kind] : 'default')
+      return
+    }
+    p.onBlockChange(d.block.id, dragPatch(p.project, d, (x - d.x) / view.pps, Math.round((y - d.y) / LANE)), d.merge)
+  }
+
+  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // 範囲を作らずに離したら、範囲を消す（REAPER と同じ）
+    if (rangeDrag.current && Math.abs(e.nativeEvent.offsetX - rangeDrag.current.x) < 3) p.onRange(null)
+    rangeDrag.current = null
+    drag.current = null
+    p.onEndMerge()
   }
 
   // ファイルを落としたトラックと時刻に置く（トラックの外なら空いているトラックか新しいトラック）
   const onDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    const track = p.project.tracks[Math.floor((e.nativeEvent.offsetY - RULER) / LANE)]
+    const track = p.project.tracks[Math.floor((e.nativeEvent.offsetY - TOP) / LANE)]
     p.onDropFiles([...e.dataTransfer.files], track && { track: track.id, start: Math.max(0, toTime(e.nativeEvent.offsetX)) })
   }
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-    <MasterHeader master={p.project.master} width={HEADER} onChange={p.onMasterChange} />
     <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: 'flex-start' }}>
       <Box sx={{ width: HEADER, flexShrink: 0, borderRight: 1, borderColor: 'divider' }}>
         <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box' }} />
+        <MasterHeader master={p.project.master} height={MASTER} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} />
         {p.project.tracks.map((track) => (
-          <TrackHeader key={track.id} track={track} height={LANE} onChange={(patch) => p.onTrackChange(track.id, patch)} />
+          <TrackHeader
+            key={track.id}
+            track={track}
+            height={LANE}
+            selected={track.id === p.selectedTrack}
+            onSelect={() => p.onSelectTrack(track.id)}
+            onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
+            onEndMerge={p.onEndMerge}
+          />
         ))}
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <canvas
           ref={canvasRef}
-          style={{ display: 'block', width, height, touchAction: 'none' }}
+          style={{ display: 'block', width, height, touchAction: 'none', cursor }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={() => (drag.current = null)}
+          onPointerUp={onPointerUp}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            const { offsetX: x, offsetY: y } = e.nativeEvent
+            const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
+            if (!hit) return
+            p.onSelect(hit.block.id)
+            p.onSelectTrack(hit.block.track)
+            p.onBlockMenu(hit.block.id, e.clientX, e.clientY)
+          }}
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
         />

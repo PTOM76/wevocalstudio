@@ -9,6 +9,10 @@
   "block.mute": "ミュート",
   "block.algorithm": "処理方式",
   "block.preserveFormant": "フォルマントを保つ",
+  "block.properties": "波形ブロックのプロパティ",
+  "block.start": "位置 (秒)",
+  "block.length": "長さ (秒)",
+  "block.offset": "元の音の開始位置 (秒)",
 
   "error.failed": "処理に失敗しました: {error}",
 
@@ -23,7 +27,6 @@
   "menu.licenses": "ライセンス",
   "menu.about": "このアプリについて",
   "menu.import": "音声ファイルを読み込む…",
-  "menu.exportWav": "WAV で書き出す",
   "menu.edit": "編集",
   "menu.split": "再生位置で分割",
   "menu.delete": "波形ブロックを削除",
@@ -38,6 +41,24 @@
   "menu.pitchUpFine": "ピッチを 10 セント上げる",
   "menu.pitchDownFine": "ピッチを 10 セント下げる",
   "menu.pitchReset": "ピッチを元に戻す",
+  "menu.open": "プロジェクトを開く…",
+  "menu.save": "プロジェクトを保存",
+  "menu.export": "書き出す…",
+  "menu.undo": "元に戻す",
+  "menu.redo": "やり直す",
+  "menu.copy": "コピー",
+  "menu.paste": "貼り付け",
+  "menu.duplicate": "複製",
+  "menu.block": "波形ブロック",
+  "menu.removeTrack": "選択中のトラックを削除",
+  "menu.splitRange": "範囲の両端で分割",
+  "menu.clearRange": "範囲選択を解除",
+  "menu.pause": "一時停止",
+  "menu.repeat": "リピート",
+  "menu.toEnd": "末尾へ移動",
+  "menu.zoomIn": "拡大",
+  "menu.zoomOut": "縮小",
+  "menu.properties": "プロパティ…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -62,5 +83,23 @@
   "track.solo": "ソロ",
   "track.volume": "音量",
   "track.pan": "パン",
-  "track.master": "マスター"
+  "track.master": "マスター",
+
+  "export.title": "書き出す",
+  "export.format": "形式",
+  "export.bits": "サンプル形式",
+  "export.bitrate": "ビットレート",
+  "export.run": "書き出す",
+  "export.rangeOnly": "選択範囲だけを書き出す",
+
+  "common.cancel": "キャンセル",
+  "common.ok": "OK",
+
+  "transport.toStart": "先頭へ",
+  "transport.stop": "停止",
+  "transport.play": "再生",
+  "transport.pause": "一時停止",
+  "transport.repeat": "リピート",
+  "transport.toEnd": "末尾へ",
+  "transport.range": "範囲"
 }

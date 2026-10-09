@@ -1,5 +1,5 @@
 // 再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）
-import { encodeWav, type Clip } from 'wevocal-lib'
+import type { Clip } from 'wevocal-lib'
 import { clipFor, preparePitch } from './dsp/pitch'
 import { audible, dbToGain, projectEnd, type Project } from './project'
 
@@ -94,12 +94,13 @@ export class Player {
   }
 }
 
-/** 全トラックを混ぜて WAV にする */
-export async function renderWav(p: Project, sampleRate = 48000) {
+/** 全トラックをマスターまで混ぜた音（ステレオ）。書き出しの形式にするのは wevocal-lib の exportAudio */
+/** until を渡すと、そこまでの長さにする（範囲選択が曲の終わりより後ろまであるとき） */
+export async function renderMix(p: Project, until = 0, sampleRate = 48000): Promise<Clip> {
   await preparePitch(p)
-  const length = Math.max(1, Math.ceil(projectEnd(p) * sampleRate))
+  const length = Math.max(1, Math.ceil(Math.max(projectEnd(p), until) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
   schedule(ctx, p, 0, 0)
   const out = await ctx.startRendering()
-  return encodeWav({ sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] })
+  return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
 }
