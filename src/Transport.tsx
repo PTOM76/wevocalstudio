@@ -1,13 +1,13 @@
 // 再生のボタン一式（REAPER のトランスポート。先頭へ、停止、再生、一時停止、リピート、末尾へ）と時間の表示。見た目は WeVocalSynth のツールバーと同じ
 import { useEffect, useState } from 'react'
-import { Box, IconButton, InputBase, NativeSelect, Tooltip, Typography } from '@mui/material'
+import { Box, IconButton, InputBase, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBackwardStep, faCircle, faForwardStep, faPause, faPlay, faRepeat, faStop, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import type { Range } from 'wevocal-lib'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 import type { Tempo } from './project'
-import { GRID_DIVISIONS, type GridDivision } from './grid'
+import { GRID_MAX, GRID_MIN, type GridDivision } from './grid'
 
 export const formatTime = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(3).padStart(6, '0')}`
 
@@ -102,13 +102,8 @@ export default function Transport(p: {
         <NumberField value={p.tempo.beatsPerBar} min={1} max={16} step={1} width={40} label={t('transport.beatsPerBar')} onChange={(beatsPerBar) => p.onTempo({ beatsPerBar: Math.round(beatsPerBar) })} />
         <span>/4</span>
         <span style={{ marginLeft: 8 }}>{t('transport.grid')}</span>
-        <NativeSelect disableUnderline value={p.division} onChange={(e) => p.onDivision(Number(e.target.value) as GridDivision)} sx={{ fontSize: 13, fontFamily: 'monospace' }} inputProps={{ 'aria-label': t('transport.grid') }}>
-          {GRID_DIVISIONS.map((d) => (
-            <option key={d} value={d}>
-              1/{d}
-            </option>
-          ))}
-        </NativeSelect>
+        <span>1/</span>
+        <NumberField value={p.division} min={GRID_MIN} max={GRID_MAX} step={1} width={44} label={t('transport.grid')} onChange={(d) => p.onDivision(Math.round(d))} />
       </Box>
       {p.range && (
         <Typography sx={{ ml: 2, color: 'text.secondary', fontSize: 12 }}>

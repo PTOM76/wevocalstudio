@@ -30,9 +30,10 @@ function formatTime(t: number, step: number) {
   return `${m}:${step < 1 ? s.toFixed(2).padStart(5, '0') : String(Math.round(s)).padStart(2, '0')}`
 }
 
-/** グリッドの細かさ（音符。4 なら 4 分音符、16 なら 16 分音符。BPM は 4 分音符の速さ） */
-export type GridDivision = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256
-export const GRID_DIVISIONS: GridDivision[] = [1, 2, 4, 8, 16, 32, 64, 128, 256]
+/** グリッドの細かさ（音符。4 なら 4 分音符、16 なら 16 分音符、3 や 6 なら 3 連符。BPM は 4 分音符の速さ） */
+export type GridDivision = number
+export const GRID_MIN = 1
+export const GRID_MAX = 256
 
 /** 拍と小節の長さ（秒）と、線を引く単位。グリッドの 1 目盛りが詰まりすぎるときは、詰まらない所まで粗くする */
 function beatUnit(tempo: Tempo, pps: number, division: GridDivision) {
