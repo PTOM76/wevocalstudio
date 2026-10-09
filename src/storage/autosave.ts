@@ -12,6 +12,7 @@ interface Meta {
   fileName: string
   sources: { id: string; name: string; sampleRate: number }[]
   tempo?: Project['tempo']
+  markers?: Project['markers']
   master: Project['master']
   tracks: Project['tracks']
   blocks: Project['blocks']
@@ -75,6 +76,7 @@ export async function saveAutosave(p: Project, fileName: string) {
     fileName,
     sources: p.sources.map((s) => ({ id: s.id, name: s.name, sampleRate: s.clip.sampleRate })),
     tempo: p.tempo,
+    markers: p.markers,
     master: p.master,
     tracks: p.tracks,
     blocks: p.blocks,
@@ -104,7 +106,7 @@ export async function loadAutosave(): Promise<{ project: Project; fileName: stri
   const blocks = meta.blocks.filter((b) => sources.some((s) => s.id === b.source)).map(fillBlock)
   const base = newProject()
   return {
-    project: { sources, tempo: { ...DEFAULT_TEMPO, ...meta.tempo }, master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks : base.tracks, blocks },
+    project: { sources, tempo: { ...DEFAULT_TEMPO, ...meta.tempo }, markers: meta.markers ?? [], master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks : base.tracks, blocks },
     fileName: meta.fileName,
   }
 }

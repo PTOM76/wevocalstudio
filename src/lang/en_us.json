@@ -67,6 +67,9 @@
   "menu.beatGrid": "Show Beats and Bars",
   "menu.playStop": "Play / Stop",
   "menu.record": "Record",
+  "menu.addMarker": "Add Marker",
+  "menu.nextMarker": "Next Marker",
+  "menu.prevMarker": "Previous Marker",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -127,5 +130,9 @@
   "transport.beatsPerBar": "Time sig.",
   "transport.record": "Record",
 
-  "toast.restored": "Restored your previous work"
+  "toast.restored": "Restored your previous work",
+
+  "marker.title": "Marker",
+  "marker.name": "Name",
+  "marker.remove": "Remove"
 }

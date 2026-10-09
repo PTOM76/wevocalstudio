@@ -1,7 +1,7 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
 import { decodeFile, type Clip } from 'wevocal-lib'
-import { newBlock, newId, newProject, newTrack, splitBlock, type Block, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
+import { newBlock, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。2 オクターブまで */
 const PITCH_MAX = 24
@@ -115,6 +115,15 @@ export function useProject(defaults: PitchDefaults) {
     [change],
   )
 
+  /** マーカーを足す（同じ位置にあれば足さない）。名前は M1、M2… */
+  const addMarker = useCallback(
+    (time: number) =>
+      change((p) => (p.markers.some((m) => Math.abs(m.time - time) < 1e-3) ? p : { ...p, markers: [...p.markers, { id: newId(), time, name: `M${p.markers.length + 1}` }].sort((a, b) => a.time - b.time) })),
+    [change],
+  )
+  const updateMarker = useCallback((id: string, patch: Partial<Marker>) => change((p) => ({ ...p, markers: p.markers.map((m) => (m.id === id ? { ...m, ...patch } : m)) })), [change])
+  const removeMarker = useCallback((id: string) => change((p) => ({ ...p, markers: p.markers.filter((m) => m.id !== id) })), [change])
+
   const updateTempo = useCallback((patch: Partial<Tempo>, merge?: string) => change((p) => ({ ...p, tempo: { ...p.tempo, ...patch } }), merge), [change])
 
   const updateMaster = useCallback((patch: Partial<Master>, merge?: string) => change((p) => ({ ...p, master: { ...p.master, ...patch } }), merge), [change])
@@ -177,6 +186,9 @@ export function useProject(defaults: PitchDefaults) {
     addTrack,
     removeTrack,
     updateTempo,
+    addMarker,
+    updateMarker,
+    removeMarker,
     updateMaster,
     updateTrack,
     updateBlock,

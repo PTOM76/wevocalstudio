@@ -72,16 +72,25 @@ export interface Tempo {
 }
 export const DEFAULT_TEMPO: Tempo = { bpm: 120, beatsPerBar: 4, beatOffset: 0 }
 
+/** 位置に付ける名前付きの目印（WeVocalSynth の Marker と同じ形） */
+export interface Marker {
+  id: string
+  /** 位置（秒） */
+  time: number
+  name: string
+}
+
 export interface Project {
   sources: Source[]
   tempo: Tempo
+  markers: Marker[]
   master: Master
   tracks: Track[]
   blocks: Block[]
 }
 
 /** 新しいプロジェクト。すぐ置けるよう、空のトラックを 1 つ用意しておく */
-export const newProject = (): Project => ({ sources: [], tempo: DEFAULT_TEMPO, master: { volume: 0, pan: 0, mute: false }, tracks: [newTrack(1)], blocks: [] })
+export const newProject = (): Project => ({ sources: [], tempo: DEFAULT_TEMPO, markers: [], master: { volume: 0, pan: 0, mute: false }, tracks: [newTrack(1)], blocks: [] })
 
 /** 新しい波形ブロックの処理方式（設定の既定値） */
 export type PitchDefaults = Pick<Block, 'algorithm' | 'preserveFormant'>

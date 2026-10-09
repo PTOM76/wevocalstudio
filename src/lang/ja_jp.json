@@ -67,6 +67,9 @@
   "menu.beatGrid": "拍と小節で表示",
   "menu.playStop": "再生と停止",
   "menu.record": "録音",
+  "menu.addMarker": "マーカーを追加",
+  "menu.nextMarker": "次のマーカーへ",
+  "menu.prevMarker": "前のマーカーへ",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -127,5 +130,9 @@
   "transport.beatsPerBar": "拍子",
   "transport.record": "録音",
 
-  "toast.restored": "前回の作業を復元しました"
+  "toast.restored": "前回の作業を復元しました",
+
+  "marker.title": "マーカー",
+  "marker.name": "名前",
+  "marker.remove": "削除"
 }

@@ -7,6 +7,7 @@ import { AUDIO_ACCEPT, EXPORT_EXT, canRecord, downloadBlob, exportAudio, openInp
 import { app } from './appConfig'
 import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
+import MarkerDialog from './MarkerDialog'
 import type { TimelineView } from './drawTimeline'
 import { pitchPending, preparePitch } from './dsp/pitch'
 import { Player, renderMix } from './engine'
@@ -50,6 +51,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const playFrom = useRef(0)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
+  const [editingMarker, setEditingMarker] = useState<string | null>(null)
   const [fileName, setFileName] = useState('untitled')
   const [busy, setBusy] = useState(false)
   const [pitching, setPitching] = useState(false)
@@ -300,6 +302,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlockChange={doc.updateBlock}
         onBlocksChange={doc.updateBlocks}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
+        onMarkerEdit={setEditingMarker}
         view={view}
         snap={p.settings.snap}
         playing={playing}
@@ -323,6 +326,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onToEnd={() => seek(end)}
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
+      <MarkerDialog
+        marker={project.markers.find((m) => m.id === editingMarker) ?? null}
+        onClose={() => setEditingMarker(null)}
+        onRename={(name) => editingMarker && doc.updateMarker(editingMarker, { name })}
+        onRemove={() => editingMarker && doc.removeMarker(editingMarker)}
+      />
       <BlockDialog
         block={editingBlock}
         name={sourceOf(editingBlock?.source)?.name ?? ''}

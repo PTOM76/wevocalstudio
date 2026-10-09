@@ -95,6 +95,9 @@ export function useActions(c: ActionContext) {
     zoomIn: { run: () => c.zoom(1.5) },
     zoomOut: { run: () => c.zoom(1 / 1.5) },
     properties: { enabled: any, run: () => any && c.openProperties(chosen[0].id) },
+    addMarker: { run: () => doc.addMarker(c.cursor) },
+    nextMarker: { run: () => { const m = doc.project.markers.find((m) => m.time > c.cursor + 1e-3); if (m) c.seek(m.time) } },
+    prevMarker: { run: () => { const m = doc.project.markers.findLast((m) => m.time < c.cursor - 1e-3); if (m) c.seek(m.time) } },
     split: { run: () => doc.split(c.cursor, ids) },
     selectAll: { run: () => c.select(doc.project.blocks.map((b) => b.id)) },
     // 範囲の両端で、かかっている波形ブロックを全部分ける
@@ -202,6 +205,10 @@ export function useActions(c: ActionContext) {
         divider,
         item('toStart'),
         item('toEnd'),
+        divider,
+        item('addMarker'),
+        item('prevMarker'),
+        item('nextMarker'),
       ],
     },
     {

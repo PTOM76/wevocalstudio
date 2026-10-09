@@ -13,6 +13,9 @@ export type Action =
   | 'snap'
   | 'zoomIn'
   | 'zoomOut'
+  | 'addMarker'
+  | 'nextMarker'
+  | 'prevMarker'
   | 'split'
   | 'splitRange'
   | 'clearRange'
@@ -52,6 +55,10 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   snap: ['Alt+KeyS'],
   zoomIn: ['NumpadAdd', 'Equal'],
   zoomOut: ['NumpadSubtract', 'Minus'],
+  // マーカー（REAPER と同じく M で足す）
+  addMarker: ['KeyM'],
+  nextMarker: ['BracketRight'],
+  prevMarker: ['BracketLeft'],
   split: ['KeyS'],
   splitRange: ['Shift+KeyS'],
   clearRange: ['Escape'],

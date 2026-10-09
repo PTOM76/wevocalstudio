@@ -32,6 +32,8 @@ export default function Timeline(p: {
   onBlocksChange: (patches: Record<string, Partial<Block>>, merge?: string) => void
   /** 波形ブロックの右クリック（画面の座標） */
   onBlockMenu: (id: string, x: number, y: number) => void
+  /** 目盛りの上のマーカーをダブルクリック */
+  onMarkerEdit: (id: string) => void
   /** 表示範囲（拡大縮小をキーからも変えるので App が持つ） */
   view: TimelineView
   /** 目盛りの線、波形ブロックの端、再生位置に吸い付けるか */
@@ -80,6 +82,7 @@ export default function Timeline(p: {
       wave: pal.primary.main,
       playhead: pal.text.primary,
       master: alpha(pal.text.primary, 0.04),
+      marker: '#ffb300',
       range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
     })
   }, [p.project, view, p.selected, p.cursor, p.range, width, height, dark, pal, p.grid])
@@ -239,6 +242,13 @@ export default function Timeline(p: {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          onDoubleClick={(e) => {
+            const { offsetX: x, offsetY: y } = e.nativeEvent
+            if (y >= RULER) return
+            // 旗の幅の中か、線の近く
+            const m = p.project.markers.find((m) => { const mx = (m.time - view.scroll) * view.pps; return x >= mx - 4 && x <= mx + 60 })
+            if (m) p.onMarkerEdit(m.id)
+          }}
           onContextMenu={(e) => {
             e.preventDefault()
             const { offsetX: x, offsetY: y } = e.nativeEvent

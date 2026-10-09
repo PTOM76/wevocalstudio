@@ -19,6 +19,7 @@ interface Header {
   version: number
   sources: StoredSource[]
   tempo?: Project['tempo']
+  markers?: Project['markers']
   master: Project['master']
   tracks: Project['tracks']
   blocks: Project['blocks']
@@ -30,6 +31,7 @@ export function writeProject(p: Project): Blob {
     version: VERSION,
     sources: p.sources.map((s) => ({ id: s.id, name: s.name, sampleRate: s.clip.sampleRate, channels: s.clip.channels.length, frames: s.clip.channels[0].length })),
     tempo: p.tempo,
+    markers: p.markers,
     master: p.master,
     tracks: p.tracks,
     blocks: p.blocks,
@@ -63,5 +65,5 @@ export async function readProject(file: Blob): Promise<Project> {
     return { id: s.id, name: s.name, clip, duration: s.frames / s.sampleRate }
   })
   // 足した項目が古いファイルに無くても動くよう、既定値で埋める
-  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, master: { ...newProject().master, ...header.master }, tracks: header.tracks, blocks: header.blocks.map(fillBlock) }
+  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, markers: header.markers ?? [], master: { ...newProject().master, ...header.master }, tracks: header.tracks, blocks: header.blocks.map(fillBlock) }
 }

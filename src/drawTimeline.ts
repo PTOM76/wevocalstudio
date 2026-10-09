@@ -34,6 +34,8 @@ export interface TimelineColors {
   playhead: string
   /** マスタートラックの帯の色 */
   master: string
+  /** マーカーの色 */
+  marker: string
   /** 範囲選択の色 */
   range: string
 }
@@ -145,6 +147,21 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   if (range) {
     g.fillStyle = c.range
     g.fillRect(tx(range.start), 0, (range.end - range.start) * view.pps, h)
+  }
+
+  // マーカー（目盛りの上に旗と名前、全トラックに細い線）
+  for (const m of p.markers) {
+    const x = Math.round(tx(m.time)) + 0.5
+    if (x < -100 || x > w) continue
+    g.fillStyle = c.marker
+    g.globalAlpha = 0.5
+    g.fillRect(x, RULER, 1, h)
+    g.globalAlpha = 1
+    const label = m.name
+    const lw = g.measureText(label).width + 8
+    g.fillRect(x, 0, lw, 12)
+    g.fillStyle = '#000'
+    g.fillText(label, x + 4, 6)
   }
 
   // 再生位置
