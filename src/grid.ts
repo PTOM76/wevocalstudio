@@ -8,6 +8,8 @@ export interface GridLine {
   t: number
   /** 小節の頭（濃く描く） */
   strong: boolean
+  /** グリッドの細かい線（拍より細かい。薄く描く） */
+  sub?: boolean
   /** 目盛りに書く文字（なければ書かない） */
   label?: string
 }
@@ -28,25 +30,28 @@ function formatTime(t: number, step: number) {
   return `${m}:${step < 1 ? s.toFixed(2).padStart(5, '0') : String(Math.round(s)).padStart(2, '0')}`
 }
 
-/** 拍の長さ（秒）と、線を引く単位（拍、小節、何小節か）。拍が詰まりすぎるときは小節だけにする */
-function beatUnit(tempo: Tempo, pps: number) {
+/** グリッドの細かさ（音符。4 なら 4 分音符、16 なら 16 分音符。BPM は 4 分音符の速さ） */
+export type GridDivision = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256
+export const GRID_DIVISIONS: GridDivision[] = [1, 2, 4, 8, 16, 32, 64, 128, 256]
+
+/** 拍と小節の長さ（秒）と、線を引く単位。グリッドの 1 目盛りが詰まりすぎるときは、詰まらない所まで粗くする */
+function beatUnit(tempo: Tempo, pps: number, division: GridDivision) {
   const beat = 60 / tempo.bpm
   const bar = beat * tempo.beatsPerBar
-  if (beat * pps >= LINE_PX) return { beat, bar, step: beat }
-  let step = bar
+  let step = beat * (4 / division)
   while (step * pps < LINE_PX) step *= 2
   return { beat, bar, step }
 }
 
 /** from〜to 秒の線 */
-export function gridLines(mode: GridMode, tempo: Tempo, pps: number, from: number, to: number): GridLine[] {
+export function gridLines(mode: GridMode, tempo: Tempo, pps: number, from: number, to: number, division: GridDivision = 4): GridLine[] {
   const out: GridLine[] = []
   if (mode === 'time') {
     const step = timeStep(pps)
     for (let t = Math.floor(from / step) * step; t <= to; t += step) out.push({ t, strong: true, label: formatTime(t, step) })
     return out
   }
-  const { beat, bar, step } = beatUnit(tempo, pps)
+  const { beat, bar, step } = beatUnit(tempo, pps, division)
   // 小節の番号を書く間隔（何小節おきか）
   let every = 1
   while (bar * every * pps < LABEL_PX / 2) every *= 2
@@ -55,7 +60,13 @@ export function gridLines(mode: GridMode, tempo: Tempo, pps: number, from: numbe
     const t = tempo.beatOffset + k * step
     if (t > to) break
     if (t < 0) continue
-    const beats = Math.round((t - tempo.beatOffset) / beat)
+    const exact = (t - tempo.beatOffset) / beat
+    const beats = Math.round(exact)
+    // 拍の上にない線は、グリッドの細かい線
+    if (Math.abs(exact - beats) > 1e-6) {
+      out.push({ t, strong: false, sub: true })
+      continue
+    }
     const strong = beats % tempo.beatsPerBar === 0
     const barNo = Math.floor(beats / tempo.beatsPerBar)
     // 拍の間が広ければ、拍にも「小節.拍」を書く
@@ -66,7 +77,7 @@ export function gridLines(mode: GridMode, tempo: Tempo, pps: number, from: numbe
 }
 
 /** スナップで寄せる線の間隔と起点（拍が見えていれば拍、なければ線と同じ単位） */
-export function snapGrid(mode: GridMode, tempo: Tempo, pps: number): { origin: number; step: number } {
+export function snapGrid(mode: GridMode, tempo: Tempo, pps: number, division: GridDivision = 4): { origin: number; step: number } {
   if (mode === 'time') return { origin: 0, step: timeStep(pps) }
-  return { origin: tempo.beatOffset, step: beatUnit(tempo, pps).step }
+  return { origin: tempo.beatOffset, step: beatUnit(tempo, pps, division).step }
 }

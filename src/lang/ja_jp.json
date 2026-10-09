@@ -154,6 +154,7 @@
   "transport.range": "範囲",
   "transport.beatsPerBar": "拍子",
   "transport.record": "録音",
+  "transport.grid": "グリッド",
 
   "toast.restored": "前回の作業を復元しました",
   "toast.tempo": "テンポを {bpm} BPM にしました",

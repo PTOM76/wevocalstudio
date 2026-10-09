@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import type { Algorithm } from 'wevocal-lib'
 import type { KeymapOverrides } from 'pevenmui'
-import type { GridMode } from './grid'
+import type { GridDivision, GridMode } from './grid'
 import type { Action } from './keymap'
 import type { LangSetting } from './i18n'
 import { app } from './appConfig'
@@ -26,6 +26,8 @@ export interface Settings {
   follow: boolean
   /** 時間軸の線を拍と小節で取るか、秒で取るか */
   grid: GridMode
+  /** グリッドの細かさ（音符。1/1〜1/256） */
+  gridDivision: GridDivision
   /** 録音の入力元（'' は既定の入力） */
   inputDevice: string
   /** 既定から変えたキーの割り当て */
@@ -36,7 +38,7 @@ export interface Settings {
   preserveFormant: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showAnalysis: false, snap: true, follow: true, grid: 'beats', keys: {}, inputDevice: '', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showAnalysis: false, snap: true, follow: true, grid: 'beats', gridDivision: 4, keys: {}, inputDevice: '', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
 
 const KEY = app.key('settings')
 

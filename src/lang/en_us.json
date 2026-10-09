@@ -154,6 +154,7 @@
   "transport.range": "Selection",
   "transport.beatsPerBar": "Time sig.",
   "transport.record": "Record",
+  "transport.grid": "Grid",
 
   "toast.restored": "Restored your previous work",
   "toast.tempo": "Set the tempo to {bpm} BPM",

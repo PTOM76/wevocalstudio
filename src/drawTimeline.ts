@@ -1,6 +1,6 @@
 // 時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
 import { alpha, type Range } from 'wevocal-lib'
-import { gridLines, type GridMode } from './grid'
+import { gridLines, type GridDivision, type GridMode } from './grid'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
@@ -23,6 +23,7 @@ export interface TimelineView {
 /** 線の取り方とテンポ以外に描くときに使うもの */
 export interface DrawOptions {
   grid: GridMode
+  division: GridDivision
   /** 作り直している波形ブロックに出す文字 */
   pendingLabel: string
 }
@@ -75,10 +76,13 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   // 目盛りと線（拍と小節か、秒）。小節の頭は濃く描く
   g.font = '11px Roboto, sans-serif'
   g.textBaseline = 'middle'
-  for (const line of gridLines(o.grid, p.tempo, view.pps, view.scroll, view.scroll + w / view.pps)) {
+  for (const line of gridLines(o.grid, p.tempo, view.pps, view.scroll, view.scroll + w / view.pps, o.division)) {
     const x = Math.round(tx(line.t)) + 0.5
     g.fillStyle = line.strong ? c.lane : c.line
+    // グリッドの細かい線は薄く
+    g.globalAlpha = line.sub ? 0.45 : 1
     g.fillRect(x, line.label ? RULER - 8 : RULER - 4, 1, h)
+    g.globalAlpha = 1
     if (line.label) {
       g.fillStyle = c.text
       g.fillText(line.label, x + 3, RULER / 2)

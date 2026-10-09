@@ -4,7 +4,7 @@ import { Box } from '@mui/material'
 import { useEdgeScroll } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
-import { snapGrid, type GridMode } from './grid'
+import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { LANE, MASTER, RULER, TOP, drawCursors, drawTimeline, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
@@ -58,6 +58,8 @@ export default function Timeline(p: {
   playing: boolean
   /** 線の取り方（拍と小節か、秒） */
   grid: GridMode
+  /** グリッドの細かさ */
+  division: GridDivision
   onView: (fn: (v: TimelineView) => TimelineView) => void
   /** 波形を描く所の幅（px。ミニマップの枠に使う） */
   onWidth: (w: number) => void
@@ -103,7 +105,7 @@ export default function Timeline(p: {
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
-    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid, pendingLabel: p.pendingLabel }, {
+    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel }, {
       bg: pal.background.default,
       lane: pal.divider,
       line: alpha(pal.divider, 0.5),
@@ -117,7 +119,7 @@ export default function Timeline(p: {
       marker: '#ffb300',
       range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
     })
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.madeVersion, p.pendingLabel])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -175,12 +177,12 @@ export default function Timeline(p: {
     seek: (t) => p.onSeek(Math.max(0, t)),
   })
 
-  const snapping = { mode: p.grid, tempo: p.project.tempo, pps: view.pps }
+  const snapping = { mode: p.grid, division: p.division, tempo: p.project.tempo, pps: view.pps }
   /** 編集カーソルと範囲選択の端は、スナップが入っていればいちばん近いグリッドの線に合わせる（Shift で外す） */
   const gridAt = (x: number, shift: boolean) => {
     const t = Math.max(0, toTime(x))
     if (!p.snap || shift) return t
-    const { origin, step } = snapGrid(p.grid, p.project.tempo, view.pps)
+    const { origin, step } = snapGrid(p.grid, p.project.tempo, view.pps, p.division)
     return Math.max(0, origin + Math.round((t - origin) / step) * step)
   }
 

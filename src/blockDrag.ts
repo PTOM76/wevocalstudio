@@ -1,6 +1,6 @@
 // 波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
 import { LANE, TOP } from './drawTimeline'
-import { snapGrid, type GridMode } from './grid'
+import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { layoutRows } from './overlap'
 import { RATE_MAX, RATE_MIN, type Block, type Project, type Tempo } from './project'
 
@@ -108,6 +108,7 @@ export function snapTargets(p: Project, cursor: number, exclude: string[]) {
 /** 寄せる線の決め方（線の取り方、テンポ、拡大の度合い） */
 export interface SnapGrid {
   mode: GridMode
+  division: GridDivision
   tempo: Tempo
   pps: number
 }
@@ -115,7 +116,7 @@ export interface SnapGrid {
 export function snapTime(t: number, edges: number[], s: SnapGrid): number | null {
   const { pps } = s
   const tol = SNAP_PX / pps
-  const { origin, step } = snapGrid(s.mode, s.tempo, pps)
+  const { origin, step } = snapGrid(s.mode, s.tempo, pps, s.division)
   const grid = origin + Math.round((t - origin) / step) * step
   let best: number | null = Math.abs(grid - t) <= tol ? grid : null
   for (const e of edges) if (Math.abs(e - t) <= tol && (best === null || Math.abs(e - t) < Math.abs(best - t))) best = e

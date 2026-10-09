@@ -245,7 +245,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleRepeat: () => setRepeat((r) => !r),
     seek,
     moveCursor,
-    gridStep: () => snapGrid(p.settings.grid, project.tempo, view.pps).step,
+    gridStep: () => snapGrid(p.settings.grid, project.tempo, view.pps, p.settings.gridDivision).step,
     newProject: () =>
       void confirm({ message: t('confirm.newProject'), okLabel: t('menu.newProject'), danger: true }).then((ok) => {
         if (!ok) return
@@ -458,6 +458,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         snap={p.settings.snap}
         playing={playing}
         grid={p.settings.grid}
+        division={p.settings.gridDivision}
         onView={setView}
         onWidth={setTimelineWidth}
         madeVersion={madeVersion}
@@ -506,6 +507,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onRecord={toggleRecord}
         tempo={project.tempo}
         onTempo={(patch) => doc.updateTempo(patch)}
+        division={p.settings.gridDivision}
+        onDivision={(gridDivision) => p.onSettingsChange({ gridDivision })}
         onToStart={() => seek(0)}
         onStop={stop}
         onPause={() => (playing ? pause() : play())}
