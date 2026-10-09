@@ -112,6 +112,7 @@
   "track.master": "Master",
   "track.arm": "Record arm",
   "track.recorded": "Recording",
+  "track.eq": "EQ",
 
   "export.title": "Export",
   "export.format": "Format",
@@ -122,6 +123,7 @@
 
   "common.cancel": "Cancel",
   "common.ok": "OK",
+  "common.close": "Close",
 
   "transport.toStart": "Go to start",
   "transport.stop": "Stop",
@@ -138,5 +140,12 @@
 
   "marker.title": "Marker",
   "marker.name": "Name",
-  "marker.remove": "Remove"
+  "marker.remove": "Remove",
+
+  "eq.title": "EQ ({name})",
+  "eq.on": "On",
+  "eq.bandsN": "{n} bands",
+  "eq.flat": "Reset to flat",
+  "eq.graph": "EQ graph",
+  "eq.help": "Drag to draw. Shift adjusts one band finely, Alt smooths with neighbors, double-click resets a band to 0 dB."
 }

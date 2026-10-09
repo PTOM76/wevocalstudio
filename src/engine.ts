@@ -1,5 +1,5 @@
 // 再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）
-import type { Clip } from 'wevocal-lib'
+import { buildEqChain, isFlatEq, type Clip } from 'wevocal-lib'
 import { clipFor, preparePitch } from './dsp/pitch'
 import { audible, dbToGain, projectEnd, type Project } from './project'
 
@@ -31,7 +31,13 @@ function schedule(ctx: BaseAudioContext, p: Project, from: number, when: number)
     gain.gain.value = dbToGain(track.volume)
     const pan = ctx.createStereoPanner()
     pan.pan.value = track.pan
-    gain.connect(pan).connect(master)
+    // トラック: 音量 → EQ → パン → マスター（EQ は WeVocalSynth と同じ wevocal-lib のもの）
+    if (track.eq && !isFlatEq(track.eq)) {
+      const eq = buildEqChain(ctx, track.eq)
+      gain.connect(eq.input)
+      eq.output.connect(pan)
+    } else gain.connect(pan)
+    pan.connect(master)
     for (const b of p.blocks) {
       const source = p.sources.find((s) => s.id === b.source)
       if (b.track !== track.id || b.mute || !source || b.start + b.length <= from) continue

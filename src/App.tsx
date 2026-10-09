@@ -9,6 +9,8 @@ import { app } from './appConfig'
 import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
 import MarkerDialog from './MarkerDialog'
+import EqDialog from './EqDialog'
+import { flatEq } from 'wevocal-lib'
 import type { TimelineView } from './drawTimeline'
 import { analyzeTempo, pitchPending, preparePitch } from './dsp/pitch'
 import { Player, renderMix } from './engine'
@@ -55,6 +57,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [editingMarker, setEditingMarker] = useState<string | null>(null)
+  const [eqTrack, setEqTrack] = useState<string | null>(null)
+  const eqOf = project.tracks.find((tr) => tr.id === eqTrack)
   const [fileName, setFileName] = useState('untitled')
   const [busy, setBusy] = useState(false)
   const [pitching, setPitching] = useState(false)
@@ -339,6 +343,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlocksChange={doc.updateBlocks}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         onMarkerEdit={setEditingMarker}
+        onEq={setEqTrack}
         view={view}
         snap={p.settings.snap}
         playing={playing}
@@ -380,6 +385,18 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onToEnd={() => seek(end)}
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
+      {eqOf && (
+        <EqDialog
+          open
+          trackName={eqOf.name}
+          eq={eqOf.eq ?? flatEq()}
+          onChange={(eq) => doc.updateTrack(eqOf.id, { eq }, `eq:${eqOf.id}`)}
+          onClose={() => {
+            doc.endMerge()
+            setEqTrack(null)
+          }}
+        />
+      )}
       <MarkerDialog
         marker={project.markers.find((m) => m.id === editingMarker) ?? null}
         onClose={() => setEditingMarker(null)}

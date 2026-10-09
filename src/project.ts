@@ -1,5 +1,5 @@
 // プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
-import type { Algorithm, Clip } from 'wevocal-lib'
+import type { Algorithm, Clip, TrackEq } from 'wevocal-lib'
 
 /** 読み込んだ音声ファイル（元の音）。波形ブロックはこれを参照するだけで、中身を書き換えない */
 export interface Source {
@@ -22,6 +22,8 @@ export interface Track {
   solo: boolean
   /** 録音待機（REAPER の録音アーム）。録った音はこのトラックに置く */
   armed?: boolean
+  /** グラフィック EQ（WeVocalSynth と同じ。無ければ平ら） */
+  eq?: TrackEq
 }
 
 /** 波形ブロック（REAPER のアイテム）。元の音のどこを、いつ、どう鳴らすか */

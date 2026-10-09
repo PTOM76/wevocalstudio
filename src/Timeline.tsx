@@ -34,6 +34,8 @@ export default function Timeline(p: {
   onBlockMenu: (id: string, x: number, y: number) => void
   /** 目盛りの上のマーカーをダブルクリック */
   onMarkerEdit: (id: string) => void
+  /** トラックの EQ を開く */
+  onEq: (track: string) => void
   /** 表示範囲（拡大縮小をキーからも変えるので App が持つ） */
   view: TimelineView
   /** 目盛りの線、波形ブロックの端、再生位置に吸い付けるか */
@@ -238,6 +240,7 @@ export default function Timeline(p: {
             onSelect={() => p.onSelectTrack(track.id)}
             onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
             onEndMerge={p.onEndMerge}
+            onEq={() => p.onEq(track.id)}
           />
         ))}
       </Box>

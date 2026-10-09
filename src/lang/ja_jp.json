@@ -112,6 +112,7 @@
   "track.master": "マスター",
   "track.arm": "録音待機",
   "track.recorded": "録音",
+  "track.eq": "EQ",
 
   "export.title": "書き出す",
   "export.format": "形式",
@@ -122,6 +123,7 @@
 
   "common.cancel": "キャンセル",
   "common.ok": "OK",
+  "common.close": "閉じる",
 
   "transport.toStart": "先頭へ",
   "transport.stop": "停止",
@@ -138,5 +140,12 @@
 
   "marker.title": "マーカー",
   "marker.name": "名前",
-  "marker.remove": "削除"
+  "marker.remove": "削除",
+
+  "eq.title": "EQ（{name}）",
+  "eq.on": "オン",
+  "eq.bandsN": "{n} 帯",
+  "eq.flat": "平らに戻す",
+  "eq.graph": "EQ のグラフ",
+  "eq.help": "なぞって描きます。Shift で 1 つの帯だけを細かく、Alt で両隣となじませ、ダブルクリックで 0 dB に戻します。"
 }

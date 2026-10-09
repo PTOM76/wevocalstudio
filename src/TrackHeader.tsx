@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Box, InputBase, Slider, ToggleButton, Typography } from '@mui/material'
 import { useT } from './i18n'
+import { isFlatEq } from 'wevocal-lib'
 import type { Master, Track } from './project'
 
 const toggleSx = { py: 0, px: 0.75 }
@@ -47,6 +48,7 @@ export default function TrackHeader(p: {
   onSelect: () => void
   onChange: (patch: Partial<Track>, merge?: string) => void
   onEndMerge: () => void
+  onEq: () => void
 }) {
   const t = useT()
   const { track } = p
@@ -90,6 +92,10 @@ export default function TrackHeader(p: {
             {track.name}
           </Typography>
         )}
+        {/* EQ。掛けているときは色を付ける */}
+        <ToggleButton size="small" value="eq" selected={!!track.eq && !isFlatEq(track.eq)} onChange={p.onEq} sx={{ ...toggleSx, fontSize: 10 }} title={t('track.eq')}>
+          EQ
+        </ToggleButton>
         <ToggleButton
           size="small"
           value="r"
