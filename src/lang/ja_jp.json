@@ -73,6 +73,7 @@
   "menu.prevMarker": "前のマーカーへ",
   "menu.detectTempo": "テンポを解析",
   "menu.minimap": "ミニマップ",
+  "menu.analysis": "解析の欄",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -147,5 +148,9 @@
   "eq.bandsN": "{n} 帯",
   "eq.flat": "平らに戻す",
   "eq.graph": "EQ のグラフ",
-  "eq.help": "なぞって描きます。Shift で 1 つの帯だけを細かく、Alt で両隣となじませ、ダブルクリックで 0 dB に戻します。"
+  "eq.help": "なぞって描きます。Shift で 1 つの帯だけを細かく、Alt で両隣となじませ、ダブルクリックで 0 dB に戻します。",
+
+  "analysis.title": "解析",
+  "analysis.select": "波形ブロックを選ぶと、スペクトログラムと F0 を表示します",
+  "analysis.busy": "解析中…"
 }

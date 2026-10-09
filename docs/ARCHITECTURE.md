@@ -47,7 +47,8 @@ Synth は編集した音声を書き換えて持つ。Studio は元の音（`Sou
 | 置き場所 | 中身 |
 | --- | --- |
 | PevenMUI | 画面の部品（メニュー、設定、ダイアログ、ステータスバー） |
-| wevocal-lib | 音声の読み込みと書き出し、Synth と共通の処理 |
+| wevocal-lib | 音声の読み込みと書き出し、Synth と共通の処理（ピッチ、伸縮、EQ、録音、ミニマップ） |
+| WeVocalAnalyzer の src/ | スペクトログラム、F0 などの解析（本体に入れる。AI のモデルを使う歌詞の文字化だけは追加機能にする予定） |
 
 どちらも隣の WeVocalSynth の中のものを先に使い（`vite.config.ts`、`tsconfig.json`）、なければ自分の submodule を使う。
 

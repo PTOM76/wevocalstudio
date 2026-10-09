@@ -21,7 +21,8 @@ import { setKeyOverrides } from './keymap'
 import { PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings'
 import SettingsDialog from './SettingsDialog'
-import Timeline from './Timeline'
+import AnalysisPanel from './AnalysisPanel'
+import Timeline, { HEADER } from './Timeline'
 import Transport from './Transport'
 import { useActions } from './useActions'
 import { useProject, type DropAt } from './useProject'
@@ -62,6 +63,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [fileName, setFileName] = useState('untitled')
   const [busy, setBusy] = useState(false)
   const [pitching, setPitching] = useState(false)
+  // ピッチや速度を変えた音ができるたびに増やす（解析の欄が作り直した音で解析し直す）
+  const [madeVersion, setMadeVersion] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   // 起動時の復元が終わるまでは自動保存しない（空のプロジェクトで前回の作業を上書きしないように）
@@ -225,6 +228,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
     beatGrid: p.settings.grid === 'beats',
     toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
+    showAnalysis: p.settings.showAnalysis,
+    toggleAnalysis: () => p.onSettingsChange({ showAnalysis: !p.settings.showAnalysis }),
     showMinimap: p.settings.showMinimap,
     toggleMinimap: () => p.onSettingsChange({ showMinimap: !p.settings.showMinimap }),
     showStatusBar: p.settings.showStatusBar,
@@ -291,7 +296,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     let alive = true
     setPitching(pitchPending(project))
     preparePitch(project)
-      .then((made) => alive && made && replay())
+      .then((made) => {
+        if (!alive || !made) return
+        replay()
+        setMadeVersion((v) => v + 1)
+      })
       .catch((e: unknown) => alive && fail(e))
       .finally(() => alive && setPitching(false))
     return () => {
@@ -351,6 +360,15 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onView={setView}
         onWidth={setTimelineWidth}
       />
+      {p.settings.showAnalysis && (
+        <AnalysisPanel
+          block={project.blocks.find((b) => b.id === selected[0]) ?? null}
+          source={sourceOf(project.blocks.find((b) => b.id === selected[0])?.source)}
+          view={view}
+          headerWidth={HEADER}
+          version={madeVersion}
+        />
+      )}
       {p.settings.showMinimap && project.blocks.length > 0 && (
         // 高さは Minimap の分だけ（伸ばさない）
         <Box sx={{ flexShrink: 0, flexGrow: 0, borderTop: 1, borderColor: 'divider' }}>

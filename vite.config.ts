@@ -17,6 +17,8 @@ function submodule(name: string, entry: string, env: string | undefined) {
 // PevenMUI（画面の部品）と wevocal-lib（音声の読み込み、書き出し。TypeScript 側は web/）
 const pevenmui = submodule('pevenmui', 'src/index.ts', process.env.PEVENMUI_PATH)
 const wevocalLib = submodule('wevocal-lib', 'web/src/index.ts', process.env.WEVOCAL_LIB_PATH)
+// WeVocalAnalyzer のライブラリ（スペクトログラム、F0。src/ は画面を持たない）。WeVocalSynth の中の analyzer/ を使う
+const analyzer = submodule('analyzer', 'src/index.ts', process.env.ANALYZER_PATH)
 // 場所が決まるのは実行時なので、動的に読み込む（Node が .ts の型を取り除いて読む）
 const { pevenApp, pevenManifest }: typeof import('../wevocalsynth/pevenmui/src/vite.ts') = await import(pathToFileURL(resolve(pevenmui, 'src/vite.ts')).href)
 
@@ -27,13 +29,14 @@ export default defineConfig({
       { find: /^pevenmui$/, replacement: resolve(pevenmui, 'src/index.ts') },
       { find: /^pevenmui\/web$/, replacement: resolve(pevenmui, 'src/web/index.ts') },
       { find: /^pevenmui\/pwa$/, replacement: resolve(pevenmui, 'src/pwa/index.ts') },
+      { find: /^wevocalanalyzer$/, replacement: resolve(analyzer, 'src/index.ts') },
       { find: /^wevocal-lib\/react$/, replacement: resolve(wevocalLib, 'web/src/react/index.ts') },
       { find: /^wevocal-lib$/, replacement: resolve(wevocalLib, 'web/src/index.ts') },
     ],
     // 外にある pevenmui から読み込む React、MUI も、このアプリと同じものにする（2 つになると動かない）
     dedupe: ['react', 'react-dom', '@mui/material', '@emotion/react', '@emotion/styled', '@fortawesome/react-fontawesome'],
   },
-  server: { fs: { allow: [root, pevenmui, wevocalLib, resolve(pevenmui, '..')] } },
+  server: { fs: { allow: [root, pevenmui, wevocalLib, analyzer, resolve(pevenmui, '..')] } },
   // 版（__APP_VERSION__、__APP_COMMIT__、version.json）と、index.html の名前、言語、配信先の URL
   plugins: [
     react(),

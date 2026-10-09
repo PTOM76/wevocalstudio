@@ -45,6 +45,8 @@ export interface ActionContext {
   /** 線を拍と小節で取るか（でなければ秒） */
   beatGrid: boolean
   toggleGrid: () => void
+  showAnalysis: boolean
+  toggleAnalysis: () => void
   showMinimap: boolean
   toggleMinimap: () => void
   showStatusBar: boolean
@@ -219,7 +221,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.view'),
       accessKey: 'V',
-      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
+      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.analysis'), checked: c.showAnalysis, onClick: c.toggleAnalysis }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
     },
     {
       label: t('menu.help'),

@@ -11,7 +11,8 @@ import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
 
-const HEADER = 200
+/** 左のトラックの欄の幅（解析の欄もそろえる） */
+export const HEADER = 200
 
 export default function Timeline(p: {
   project: Project

@@ -16,6 +16,8 @@ export interface Settings {
   showStatusBar: boolean
   /** ミニマップ（全体を縮めた波形）を出す */
   showMinimap: boolean
+  /** 解析の欄（WeVocalAnalyzer のスペクトログラムと F0）を出す */
+  showAnalysis: boolean
   /** 作業を自動保存し、次に開いたときに復元する */
   autoRestore: boolean
   /** ドラッグを目盛りの線や波形ブロックの端に吸い付ける */
@@ -32,7 +34,7 @@ export interface Settings {
   preserveFormant: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, snap: true, grid: 'beats', keys: {}, inputDevice: '', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showAnalysis: false, snap: true, grid: 'beats', keys: {}, inputDevice: '', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
 
 const KEY = app.key('settings')
 

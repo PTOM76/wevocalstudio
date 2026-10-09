@@ -73,6 +73,7 @@
   "menu.prevMarker": "Previous Marker",
   "menu.detectTempo": "Detect Tempo",
   "menu.minimap": "Minimap",
+  "menu.analysis": "Analysis Panel",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -147,5 +148,9 @@
   "eq.bandsN": "{n} bands",
   "eq.flat": "Reset to flat",
   "eq.graph": "EQ graph",
-  "eq.help": "Drag to draw. Shift adjusts one band finely, Alt smooths with neighbors, double-click resets a band to 0 dB."
+  "eq.help": "Drag to draw. Shift adjusts one band finely, Alt smooths with neighbors, double-click resets a band to 0 dB.",
+
+  "analysis.title": "Analysis",
+  "analysis.select": "Select a block to show its spectrogram and F0",
+  "analysis.busy": "Analyzing…"
 }
