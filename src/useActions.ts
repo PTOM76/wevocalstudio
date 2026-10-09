@@ -83,6 +83,8 @@ export function useActions(c: ActionContext) {
     const target = Math.max(0, tracks.findIndex((tr) => tr.id === c.selectedTrack))
     const at = (b: Block) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
     c.select(doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: c.cursor + b.start - first }))))
+    // 貼り付けたものの右端に再生位置を移す（Ctrl+V を続けると、すき間なく並ぶ。REAPER と同じ）
+    c.seek(c.cursor + Math.max(...blocks.map((b) => b.start + b.length)) - first)
   }
 
   /** 選んでいるものをまとめて、すぐ後ろに並べる */

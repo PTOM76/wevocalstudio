@@ -184,6 +184,13 @@ export default function Timeline(p: {
       return
     }
     anchor.current = id
+    // 押した所に再生位置を移す。端（長さを変える所）ならその端（REAPER と同じ）
+    if (!e.ctrlKey && !e.metaKey) {
+      const b = hit.block
+      const t = hit.kind === 'left' || hit.kind === 'fadeIn' ? b.start : hit.kind === 'right' || hit.kind === 'fadeOut' ? b.start + b.length : toTime(x)
+      const snapped = hit.kind === 'move' && p.snap ? (snapTime(t, snapTargets(p.project, p.cursor, []), snapping) ?? t) : t
+      p.onSeek(Math.max(0, snapped))
+    }
     // Ctrl で足し引き。選んでいるものをつまんだら、選んだもの全部を動かす
     let group = p.selected.includes(id) ? p.selected : [id]
     if (e.ctrlKey || e.metaKey) {
