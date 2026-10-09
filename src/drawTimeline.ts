@@ -1,6 +1,7 @@
 // 時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
 import { alpha, type Range } from 'wevocal-lib'
 import { gridLines, type GridDivision, type GridMode } from './grid'
+import { envY } from './blockDrag'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
@@ -26,6 +27,8 @@ export interface DrawOptions {
   division: GridDivision
   /** 作り直している波形ブロックに出す文字 */
   pendingLabel: string
+  /** 音量のエンベロープを描く */
+  showEnvelope: boolean
 }
 
 export interface TimelineColors {
@@ -140,6 +143,26 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
         g.clip()
         g.fillStyle = c.text
         g.fillText(`${name}  ${info}`, x + 4, y + 9)
+        g.restore()
+      }
+      // 音量のエンベロープ（橙の線と点。無ければ 0 dB の線）
+      if (o.showEnvelope) {
+        const top = y + 2
+        const eh = H - 5
+        const env = b.envelope?.length ? b.envelope : [{ t: 0, db: 0 }]
+        g.save()
+        g.beginPath()
+        g.rect(x, top, bw, eh)
+        g.clip()
+        g.strokeStyle = '#ff9800'
+        g.lineWidth = 1.5
+        g.beginPath()
+        g.moveTo(x, top + envY(env[0].db) * eh)
+        for (const pt of env) g.lineTo(x + pt.t * view.pps, top + envY(pt.db) * eh)
+        g.lineTo(x + bw, top + envY(env[env.length - 1].db) * eh)
+        g.stroke()
+        g.fillStyle = '#ff9800'
+        for (const pt of b.envelope ?? []) g.fillRect(x + pt.t * view.pps - 3, top + envY(pt.db) * eh - 3, 6, 6)
         g.restore()
       }
       // 作り直している波形ブロックは斜線と「処理中 n%」（できた所から鳴る）

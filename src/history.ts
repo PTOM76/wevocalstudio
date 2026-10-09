@@ -20,6 +20,7 @@ export function describeChange(before: Project, after: Project): MessageKey {
     if (old && old !== b) for (const k of changedKeys(old, b)) keys.add(k)
   }
   if (keys.has('pitch') || keys.has('formant') || keys.has('algorithm')) return 'history.pitch'
+  if (keys.has('envelope')) return 'history.envelope'
   if (keys.has('rate')) return 'history.rate'
   if (keys.has('offset') || keys.has('length')) return 'history.trim'
   if (keys.has('fadeIn') || keys.has('fadeOut')) return 'history.fade'

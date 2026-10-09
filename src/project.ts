@@ -53,6 +53,8 @@ export interface Block {
   formant: number
   /** ピッチカーブ（なければ一定のピッチ）。元の音の時刻 from 秒から 10ms ごとの半音（pitch に足す）。元の音の時刻で持つので、分割や端の調整をしてもずれない */
   curve?: PitchCurve
+  /** 音量のエンベロープ（REAPER のアイテムの音量エンベロープ）。無ければ平ら。gain とフェードに重ねて掛ける */
+  envelope?: EnvPoint[]
   /** フェードイン、フェードアウト（秒） */
   fadeIn: number
   fadeOut: number
@@ -84,6 +86,28 @@ export interface Marker {
   /** 位置（秒） */
   time: number
   name: string
+}
+
+/** エンベロープの点（波形ブロックの頭からの秒と dB。t の順に並べる） */
+export interface EnvPoint {
+  t: number
+  db: number
+}
+
+/** エンベロープの範囲（dB） */
+export const ENV_MIN = -60
+export const ENV_MAX = 12
+
+/** 波形ブロックの頭から t 秒のエンベロープの値（dB）。点の間は dB でまっすぐ、外は端の点の値 */
+export function envAt(env: EnvPoint[] | undefined, t: number): number {
+  if (!env?.length) return 0
+  if (t <= env[0].t) return env[0].db
+  for (let i = 1; i < env.length; i++) {
+    const a = env[i - 1]
+    const b = env[i]
+    if (t <= b.t) return b.t === a.t ? b.db : a.db + ((b.db - a.db) * (t - a.t)) / (b.t - a.t)
+  }
+  return env[env.length - 1].db
 }
 
 /** ピッチカーブ（元の音の時刻 from 秒から CURVE_HOP 秒ごとの半音） */

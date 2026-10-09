@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react'
 import { Box, IconButton, Tooltip } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faArrowsLeftRightToLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faScissors, faCopy, faPaste, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faScissors, faCopy, faPaste, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 
@@ -25,6 +25,8 @@ const Divider = () => <Box sx={{ width: '1px', height: 20, bgcolor: 'divider', m
 export default function Toolbar(p: {
   follow: boolean
   snap: boolean
+  envelope: boolean
+  onEnvelope: () => void
   canCut: boolean
   canPaste: boolean
   onFollow: () => void
@@ -43,6 +45,7 @@ export default function Toolbar(p: {
       <Divider />
       <ToolButton icon={faArrowsLeftRightToLine} label="menu.follow" action="follow" pressed={p.follow} onClick={p.onFollow} />
       <ToolButton icon={faMagnet} label="menu.snap" action="snap" pressed={p.snap} onClick={p.onSnap} />
+      <ToolButton icon={faChartLine} label="menu.envelope" action="envelope" pressed={p.envelope} onClick={p.onEnvelope} />
       <Divider />
       <ToolButton icon={faMagnifyingGlassPlus} label="menu.zoomIn" action="zoomIn" onClick={() => p.onZoom(1.5)} />
       <ToolButton icon={faMagnifyingGlassMinus} label="menu.zoomOut" action="zoomOut" onClick={() => p.onZoom(1 / 1.5)} />

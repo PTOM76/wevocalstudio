@@ -26,6 +26,8 @@ export interface Settings {
   snap: boolean
   /** 再生中に表示を再生位置に追従させる */
   follow: boolean
+  /** 音量のエンベロープを出して編集する */
+  envelope: boolean
   /** 時間軸の線を拍と小節で取るか、秒で取るか */
   grid: GridMode
   /** グリッドの細かさ（音符。1/1〜1/256） */
@@ -40,7 +42,7 @@ export interface Settings {
   preserveFormant: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showMeters: true, showAnalysis: false, snap: true, follow: true, grid: 'beats', gridDivision: 4, keys: {}, inputDevice: '', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showMeters: true, showAnalysis: false, snap: true, follow: true, envelope: false, grid: 'beats', gridDivision: 4, keys: {}, inputDevice: '', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
 
 const KEY = app.key('settings')
 

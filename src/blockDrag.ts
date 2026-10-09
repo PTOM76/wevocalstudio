@@ -2,7 +2,7 @@
 import { LANE, TOP } from './drawTimeline'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { layoutRows } from './overlap'
-import { RATE_MAX, RATE_MIN, type Block, type Project, type Tempo } from './project'
+import { ENV_MAX, ENV_MIN, RATE_MAX, RATE_MIN, type Block, type Project, type Tempo } from './project'
 
 /** つまむ所。move は本体、left / right は端、fadeIn / fadeOut は上の角 */
 export type DragKind = 'move' | 'left' | 'right' | 'fadeIn' | 'fadeOut'
@@ -58,6 +58,19 @@ export function hitBlock(p: Project, x: number, y: number, toTime: (x: number) =
 
 /** カーソルの形 */
 export const CURSOR: Record<DragKind, string> = { move: 'grab', left: 'ew-resize', right: 'ew-resize', fadeIn: 'nesw-resize', fadeOut: 'nwse-resize' }
+
+/** エンベロープの線を描く高さの割合（dB → 0〜1。0 dB が 3/4 の高さ） */
+export function envY(db: number) {
+  return db >= 0 ? 0.25 - (db / ENV_MAX) * 0.25 : 0.25 + (db / ENV_MIN) * 0.75
+}
+export function envDb(frac: number) {
+  return frac <= 0.25 ? ((0.25 - frac) / 0.25) * ENV_MAX : ((frac - 0.25) / 0.75) * ENV_MIN
+}
+
+/** 押した所の近くにあるエンベロープの点（番号）。なければ -1 */
+export function hitEnvPoint(b: Block, x: number, y: number, blockX: number, top: number, h: number, pps: number) {
+  return (b.envelope ?? []).findIndex((pt) => Math.hypot(blockX + pt.t * pps - x, top + envY(pt.db) * h - y) < 7)
+}
 
 /** Alt を押して本体をドラッグしたとき: 位置と長さはそのままで、中の音だけをずらす（REAPER のスリップ編集）。元の音の端より外へはずらさない */
 export function slipPatch(p: Project, b: Block, dt: number): Partial<Block> {

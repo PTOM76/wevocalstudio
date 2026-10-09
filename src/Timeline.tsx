@@ -4,8 +4,10 @@ import { Box } from '@mui/material'
 import { useEdgeScroll } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
+import { layoutRows } from './overlap'
+import { ENV_MAX, ENV_MIN } from './project'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
-import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
+import { CURSOR, dragPatch, envDb, hitBlock, hitEnvPoint, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { LANE, MASTER, RULER, TOP, drawCursors, drawTimeline, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
@@ -67,6 +69,8 @@ export default function Timeline(p: {
   grid: GridMode
   /** グリッドの細かさ */
   division: GridDivision
+  /** 音量のエンベロープを描いて編集する */
+  envelope: boolean
   onView: (fn: (v: TimelineView) => TimelineView) => void
   /** 波形を描く所の幅（px。ミニマップの枠に使う） */
   onWidth: (w: number) => void
@@ -86,6 +90,8 @@ export default function Timeline(p: {
   const rangeDrag = useRef<{ t: number; x: number } | null>(null)
   // 目盛りの上で押している間は、再生位置が付いてくる（範囲選択にしない。WeVocalSynth と同じ）
   const scrub = useRef(false)
+  // エンベロープの点をドラッグしている所
+  const envDrag = useRef<{ block: string; index: number; merge: string } | null>(null)
   // Shift+クリックの起点（前に押した波形ブロック）
   const anchor = useRef<string | null>(null)
   // 右ドラッグの枠で選ぶ（REAPER と同じ）。moved なら右クリックのメニューは出さない
@@ -112,7 +118,7 @@ export default function Timeline(p: {
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
-    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel }, {
+    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, showEnvelope: p.envelope }, {
       bg: pal.background.default,
       lane: pal.divider,
       line: alpha(pal.divider, 0.5),
@@ -126,7 +132,7 @@ export default function Timeline(p: {
       marker: '#ffb300',
       range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
     })
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envelope])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -173,6 +179,13 @@ export default function Timeline(p: {
   }, [setView])
 
   const toTime = (x: number) => view.scroll + x / view.pps
+  /** 波形ブロックの画面の上の位置（重なって段に分けたときはその段。エンベロープの線を描く所と同じ） */
+  const blockGeom = (b: Block) => {
+    const row = p.project.tracks.findIndex((t) => t.id === b.track)
+    const slot = layoutRows(p.project.blocks.filter((x) => x.track === b.track)).get(b.id) ?? { row: 0, rows: 1 }
+    const H = LANE / slot.rows
+    return { x: (b.start - view.scroll) * view.pps, top: TOP + row * LANE + slot.row * H + 2, h: H - 5 }
+  }
   // 目盛りのドラッグで端に来たら表示を流す（WeVocalSynth と同じ wevocal-lib の部品）。流せる先は曲の終わりの少し先まで
   const visible = width / view.pps
   const end = p.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
@@ -223,6 +236,24 @@ export default function Timeline(p: {
       return
     }
     const id = hit.block.id
+    // エンベロープを出しているときは、点を足すか動かす
+    if (p.envelope && !e.altKey) {
+      const b = hit.block
+      const g = blockGeom(b)
+      const env = [...(b.envelope ?? [])]
+      let index = hitEnvPoint(b, x, y, g.x, g.top, g.h, view.pps)
+      if (index < 0) {
+        const t = Math.max(0, Math.min(b.length, (x - g.x) / view.pps))
+        const db = Math.round(envDb((y - g.top) / g.h) * 10) / 10
+        index = env.filter((pt) => pt.t <= t).length
+        env.splice(index, 0, { t, db })
+        p.onBlockChange(b.id, { envelope: env }, `env${dragCount.current}`)
+      }
+      p.onSelect([b.id])
+      e.currentTarget.setPointerCapture(e.pointerId)
+      envDrag.current = { block: b.id, index, merge: `env${dragCount.current++}` }
+      return
+    }
     // Shift: 起点から押したものまでの、トラックと時間の範囲の波形ブロックを選ぶ
     const from = anchor.current && p.project.blocks.find((b) => b.id === anchor.current)
     if (e.shiftKey && from) {
@@ -255,6 +286,18 @@ export default function Timeline(p: {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const { offsetX: x, offsetY: y } = e.nativeEvent
+    const ed = envDrag.current
+    if (ed) {
+      const b = p.project.blocks.find((x) => x.id === ed.block)
+      if (!b?.envelope) return
+      const g = blockGeom(b)
+      const env = [...b.envelope]
+      // 前後の点は越えない
+      const lo = env[ed.index - 1]?.t ?? 0
+      const hi = env[ed.index + 1]?.t ?? b.length
+      env[ed.index] = { t: Math.max(lo, Math.min(hi, (x - g.x) / view.pps)), db: Math.round(Math.max(ENV_MIN, Math.min(ENV_MAX, envDb((y - g.top) / g.h))) * 10) / 10 }
+      return p.onBlockChange(b.id, { envelope: env }, ed.merge)
+    }
     const mq = marquee.current
     if (mq) {
       if (!mq.moved && Math.hypot(x - mq.x, y - mq.y) < 4) return
@@ -316,6 +359,7 @@ export default function Timeline(p: {
   }
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    envDrag.current = null
     if (marquee.current) {
       // 動かしたら、このあとの右クリックのメニューは出さない
       if (!marquee.current.moved) marquee.current = null
@@ -390,7 +434,14 @@ export default function Timeline(p: {
             const { offsetX: x, offsetY: y } = e.nativeEvent
             if (y > TOP) {
               const hit = hitBlock(p.project, x, y, toTime, view.pps)
-              if (hit) p.onProperties(hit.block.id)
+              if (!hit) return
+              // エンベロープの点のダブルクリックは、その点を消す
+              if (p.envelope) {
+                const g = blockGeom(hit.block)
+                const i = hitEnvPoint(hit.block, x, y, g.x, g.top, g.h, view.pps)
+                if (i >= 0) return p.onBlockChange(hit.block.id, { envelope: hit.block.envelope!.filter((_, k) => k !== i) })
+              }
+              p.onProperties(hit.block.id)
               return
             }
             if (y >= RULER) return

@@ -2,7 +2,7 @@
 // 再生中に変えたときは、変わった波形ブロックだけを差し替え、トラックとマスターの音量などは値だけを変える（全部を鳴らし直すと一瞬止まるため）
 import { createLiveEq, flatEq, updateLiveEq, type Clip, type LiveEq } from 'wevocal-lib'
 import { piecesFor, preparePitch, type Piece } from './dsp/pitch'
-import { audible, dbToGain, projectEnd, type Block, type Project, type Track } from './project'
+import { audible, dbToGain, envAt, projectEnd, type Block, type Project, type Track } from './project'
 
 const buffers = new WeakMap<Clip, AudioBuffer>()
 
@@ -99,7 +99,7 @@ class Graph {
 
   /** 波形ブロックを比べる文字（変わったら差し替える） */
   private static sig(b: Block, pieces: Piece[]) {
-    return `${b.track}|${b.start}|${b.offset}|${b.length}|${b.rate}|${b.gain}|${b.fadeIn}|${b.fadeOut}|${pieces.map((pc) => `${clipId(pc.clip)}:${pc.a}`).join(',')}`
+    return `${b.track}|${b.start}|${b.offset}|${b.length}|${b.rate}|${b.gain}|${b.fadeIn}|${b.fadeOut}|${JSON.stringify(b.envelope ?? [])}|${pieces.map((pc) => `${clipId(pc.clip)}:${pc.a}`).join(',')}`
   }
 
   /** from 秒より後ろの波形ブロックを鳴らす。変わっていないものはそのまま。差し替えるものは FADE でつなぐ */
@@ -165,7 +165,17 @@ class Graph {
       g.gain.setValueAtTime(level, Math.max(begin + FADE, t1 - b.fadeOut))
       g.gain.linearRampToValueAtTime(0, t1)
     }
-    g.connect(dest)
+    // 音量のエンベロープは別のノードで掛ける（フェードと重ねる）
+    if (b.envelope?.length) {
+      const env = ctx.createGain()
+      const at = (t: number) => dbToGain(envAt(b.envelope, t))
+      env.gain.setValueAtTime(at(Math.max(0, begin - t0)), begin)
+      for (const pt of b.envelope) {
+        const tt = t0 + pt.t
+        if (tt > begin && pt.t <= b.length) env.gain.linearRampToValueAtTime(dbToGain(pt.db), tt)
+      }
+      g.connect(env).connect(dest)
+    } else g.connect(dest)
     const [, spanEnd] = [b.offset, b.offset + b.length * b.rate]
     const nodes = pieces.map((pc, i) => {
       // つなぎ目は前後に XFADE ずつ重ねる（隣の片と重なる所だけ。かたまりには余白があるので音はある）

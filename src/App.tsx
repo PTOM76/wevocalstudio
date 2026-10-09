@@ -276,6 +276,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     snap: p.settings.snap,
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
     follow: p.settings.follow,
+    envelope: p.settings.envelope,
+    toggleEnvelope: () => p.onSettingsChange({ envelope: !p.settings.envelope }),
     toggleFollow: () => p.onSettingsChange({ follow: !p.settings.follow }),
     beatGrid: p.settings.grid === 'beats',
     toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
@@ -418,6 +420,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <Toolbar
         follow={p.settings.follow}
         snap={p.settings.snap}
+        envelope={p.settings.envelope}
+        onEnvelope={commands.envelope.run}
         canCut={commands.cut.enabled !== false}
         canPaste={commands.paste.enabled !== false}
         onFollow={commands.follow.run}
@@ -495,6 +499,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         playing={playing}
         grid={p.settings.grid}
         division={p.settings.gridDivision}
+        envelope={p.settings.envelope}
         onView={setView}
         onWidth={setTimelineWidth}
         madeVersion={madeVersion}

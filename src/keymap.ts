@@ -17,6 +17,7 @@ export type Action =
   | 'toEnd'
   | 'snap'
   | 'follow'
+  | 'envelope'
   | 'zoomIn'
   | 'zoomOut'
   | 'detectTempo'
@@ -71,6 +72,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   snap: ['Alt+KeyS'],
   // 再生位置に表示を追従させるか
   follow: ['KeyF'],
+  // 音量のエンベロープを出して編集する
+  envelope: ['KeyE'],
   zoomIn: ['NumpadAdd', 'Equal'],
   zoomOut: ['NumpadSubtract', 'Minus'],
   // マーカー（REAPER と同じく M で足す）

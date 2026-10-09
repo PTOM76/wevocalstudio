@@ -89,6 +89,7 @@
   "menu.cut": "切り取り",
   "menu.follow": "再生位置に追従",
   "menu.meters": "レベルメーター",
+  "menu.envelope": "音量のエンベロープ",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -207,6 +208,7 @@
   "history.title": "操作履歴",
   "history.restore": "前回の作業の復元",
   "history.select": "選択",
+  "history.envelope": "エンベロープ",
 
   "confirm.newProject": "今の作業を閉じて、新しいプロジェクトにしますか？（保存していない変更は失われます）",
 
