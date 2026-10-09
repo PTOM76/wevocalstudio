@@ -43,6 +43,8 @@ export default function Timeline(p: {
   /** 線の取り方（拍と小節か、秒） */
   grid: GridMode
   onView: (fn: (v: TimelineView) => TimelineView) => void
+  /** 波形を描く所の幅（px。ミニマップの枠に使う） */
+  onWidth: (w: number) => void
 }) {
   // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
   const { dark, pal } = usePalette()
@@ -58,6 +60,10 @@ export default function Timeline(p: {
   const dragCount = useRef(0)
   const [cursor, setCursor] = useState('default')
   const height = TOP + Math.max(1, p.project.tracks.length) * LANE
+
+  // 幅を App に知らせる
+  const { onWidth } = p
+  useEffect(() => onWidth(width), [width, onWidth])
 
   // 幅に合わせる
   useLayoutEffect(() => {

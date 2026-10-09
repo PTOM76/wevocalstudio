@@ -21,6 +21,7 @@ src/
   main.tsx  起動。設定を読み、言語、テーマ、画面の大きさを PevenProvider に渡す
   MarkerDialog.tsx  マーカーの名前の変更と削除（目盛りの上のマーカーをダブルクリック）
   overlap.ts  重なった波形ブロックの段の割り当て（REAPER と同じく、重なっている所だけトラックの高さを段に分ける）。画面を知らない
+  overview.ts  ミニマップ用の、全トラックを重ねた小さな音（1 秒 1000 点の振幅）。元の音は書き換えず、波形ブロックの位置と音量から作る
   project.ts  プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
   projectFile.ts  プロジェクトファイル（.wvstudio）の読み書き。先頭に JSON（トラック、波形ブロック、元の音の形）、そのあとに元の音の PCM を並べる
   settings.ts  アプリの設定（localStorage に保存する）
@@ -32,8 +33,8 @@ src/
   useProject.ts  プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 
 src/dsp/
-  pitch.ts  波形ブロックのピッチと速度を音に反映する。元の音全体を変えて作り、キャッシュする（再生のたびには計算しない）
-  worker.ts  wasm のピッチ変更を画面のスレッドの外で行う Worker
+  pitch.ts  wasm の処理の窓口。波形ブロックのピッチと速度を音に反映し（作ったものはキャッシュ）、テンポを解析する。元の音全体を変えて作り、キャッシュする（再生のたびには計算しない）
+  worker.ts  wasm の処理（ピッチと速度の変更、テンポの解析）を画面のスレッドの外で行う Worker
 
 src/storage/
   autosave.ts  作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く。書き込みは Worker
@@ -41,6 +42,6 @@ src/storage/
   idb.ts  IndexedDB の小さな読み書き（キーと値だけ）。画面と Worker の両方から使う
 
 dsp/src/
-  lib.rs  WeVocal Studio の wasm。wevocal-lib のピッチ変更（WeVocalSynth と同じ処理方式）を、Worker から呼べる C ABI で公開するだけ。
+  lib.rs  WeVocal Studio の wasm。wevocal-lib のピッチ変更（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。
 ```
 <!-- map:end -->

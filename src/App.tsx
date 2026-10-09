@@ -1,9 +1,10 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
-import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
+import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, usePalette, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
 import { UpdatePrompt } from 'pevenmui/pwa'
-import { AUDIO_ACCEPT, EXPORT_EXT, canRecord, downloadBlob, exportAudio, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
+import { Minimap } from 'wevocal-lib/react'
+import { AUDIO_ACCEPT, EXPORT_EXT, SELECTION_DARK, SELECTION_LIGHT, canRecord, downloadBlob, exportAudio, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
 import { app } from './appConfig'
 import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
@@ -11,6 +12,7 @@ import MarkerDialog from './MarkerDialog'
 import type { TimelineView } from './drawTimeline'
 import { analyzeTempo, pitchPending, preparePitch } from './dsp/pitch'
 import { Player, renderMix } from './engine'
+import { buildOverview } from './overview'
 import ExportDialog, { type ExportChoice } from './ExportDialog'
 import { useT } from './i18n'
 import { setKeyOverrides } from './keymap'
@@ -47,6 +49,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 録音中のものと、録り始めた位置
   const [recording, setRecording] = useState<{ rec: Recording; start: number; track: string } | null>(null)
   const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
+  const [timelineWidth, setTimelineWidth] = useState(0)
   // 再生を始めた位置（停止で戻る）
   const playFrom = useRef(0)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
@@ -64,6 +67,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const projectInput = useRef<HTMLInputElement>(null)
   const editingBlock = project.blocks.find((b) => b.id === editing) ?? null
   const sourceOf = (id: string | undefined) => project.sources.find((s) => s.id === id)
+  const { pal, dark } = usePalette()
+  // ミニマップ（全体を縮めた波形。WeVocalSynth と同じ部品）
+  const overview = useMemo(() => buildOverview(project), [project])
   const end = project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
 
   const fail = (e: unknown) => setError(String(e))
@@ -215,6 +221,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
     beatGrid: p.settings.grid === 'beats',
     toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
+    showMinimap: p.settings.showMinimap,
+    toggleMinimap: () => p.onSettingsChange({ showMinimap: !p.settings.showMinimap }),
     showStatusBar: p.settings.showStatusBar,
     toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
     help: { guide: () => openExternal(app.repository), licenses: () => setDialog('licenses'), about: () => setDialog('about') },
@@ -336,7 +344,25 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         playing={playing}
         grid={p.settings.grid}
         onView={setView}
+        onWidth={setTimelineWidth}
       />
+      {p.settings.showMinimap && project.blocks.length > 0 && (
+        // 高さは Minimap の分だけ（伸ばさない）
+        <Box sx={{ flexShrink: 0, flexGrow: 0, borderTop: 1, borderColor: 'divider' }}>
+        <Minimap
+          clip={overview.clip}
+          duration={overview.duration}
+          colors={{ text: pal.text.primary, textSecondary: pal.text.secondary, divider: pal.divider, wave: pal.primary.main, selection: dark ? SELECTION_DARK : SELECTION_LIGHT }}
+          view={{ start: view.scroll, dur: timelineWidth / view.pps }}
+          selections={range ? [range] : []}
+          scrollTo={(start) => setView((v) => ({ ...v, scroll: Math.max(0, start) }))}
+          label={t('menu.minimap')}
+          position={cursor}
+          playing={playing}
+          showPlayhead
+        />
+        </Box>
+      )}
       <Transport
         playing={playing}
         cursor={cursor}

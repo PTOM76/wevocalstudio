@@ -72,6 +72,7 @@
   "menu.nextMarker": "次のマーカーへ",
   "menu.prevMarker": "前のマーカーへ",
   "menu.detectTempo": "テンポを解析",
+  "menu.minimap": "ミニマップ",
 
   "settings.title": "設定",
   "settings.general": "全般",
