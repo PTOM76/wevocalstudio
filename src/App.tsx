@@ -302,6 +302,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         view={view}
         snap={p.settings.snap}
+        playing={playing}
         grid={p.settings.grid}
         onView={setView}
       />

@@ -16,6 +16,7 @@
       "pevenmui": ["../wevocalsynth/pevenmui/src/index.ts", "./pevenmui/src/index.ts"],
       "pevenmui/pwa": ["../wevocalsynth/pevenmui/src/pwa/index.ts", "./pevenmui/src/pwa/index.ts"],
       "pevenmui/web": ["../wevocalsynth/pevenmui/src/web/index.ts", "./pevenmui/src/web/index.ts"],
+      "wevocal-lib/react": ["../wevocalsynth/wevocal-lib/web/src/react/index.ts", "./wevocal-lib/web/src/react/index.ts"],
       "wevocal-lib": ["../wevocalsynth/wevocal-lib/web/src/index.ts", "./wevocal-lib/web/src/index.ts"]
     },
     "strict": true,

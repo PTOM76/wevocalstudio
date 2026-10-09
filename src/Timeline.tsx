@@ -1,6 +1,7 @@
 // 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
+import { useEdgeScroll } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
 import type { GridMode } from './grid'
@@ -35,6 +36,8 @@ export default function Timeline(p: {
   view: TimelineView
   /** 目盛りの線、波形ブロックの端、再生位置に吸い付けるか */
   snap: boolean
+  /** 再生中（再生位置が画面の外に出たら表示を送る） */
+  playing: boolean
   /** 線の取り方（拍と小節か、秒） */
   grid: GridMode
   onView: (fn: (v: TimelineView) => TimelineView) => void
@@ -101,6 +104,22 @@ export default function Timeline(p: {
   }, [setView])
 
   const toTime = (x: number) => view.scroll + x / view.pps
+  // 目盛りのドラッグで端に来たら表示を流す（WeVocalSynth と同じ wevocal-lib の部品）。流せる先は曲の終わりの少し先まで
+  const visible = width / view.pps
+  const end = p.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
+  const edge = useEdgeScroll({
+    canvasRef,
+    view: { start: view.scroll, dur: visible },
+    duration: Math.max(end + visible, view.scroll + visible),
+    setRange: (start) => setView((v) => ({ ...v, scroll: start })),
+    seek: (t) => p.onSeek(Math.max(0, t)),
+  })
+
+  // 再生中に再生位置が画面の外に出たら、そこが左端になるように送る（REAPER と同じ）
+  useEffect(() => {
+    if (!p.playing || !visible) return
+    if (p.cursor > view.scroll + visible || p.cursor < view.scroll) setView((v) => ({ ...v, scroll: Math.max(0, p.cursor) }))
+  }, [p.playing, p.cursor, visible, view.scroll, setView])
   const snapping = { mode: p.grid, tempo: p.project.tempo, pps: view.pps }
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -143,7 +162,10 @@ export default function Timeline(p: {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const { offsetX: x, offsetY: y } = e.nativeEvent
-    if (scrub.current) return p.onSeek(Math.max(0, toTime(x)))
+    if (scrub.current) {
+      edge.update(e.clientX)
+      return p.onSeek(Math.max(0, toTime(x)))
+    }
     const r = rangeDrag.current
     if (r) {
       if (Math.abs(x - r.x) < 3) return
@@ -179,6 +201,7 @@ export default function Timeline(p: {
     if (rangeDrag.current && Math.abs(e.nativeEvent.offsetX - rangeDrag.current.x) < 3) p.onRange(null)
     rangeDrag.current = null
     scrub.current = false
+    edge.stop()
     drag.current = null
     p.onEndMerge()
   }

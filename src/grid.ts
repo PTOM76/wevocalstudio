@@ -58,7 +58,9 @@ export function gridLines(mode: GridMode, tempo: Tempo, pps: number, from: numbe
     const beats = Math.round((t - tempo.beatOffset) / beat)
     const strong = beats % tempo.beatsPerBar === 0
     const barNo = Math.floor(beats / tempo.beatsPerBar)
-    out.push({ t, strong, label: strong && barNo % every === 0 ? String(barNo + 1) : undefined })
+    // 拍の間が広ければ、拍にも「小節.拍」を書く
+    const beatLabel = beat * pps >= LABEL_PX ? `${barNo + 1}.${(beats % tempo.beatsPerBar) + 1}` : undefined
+    out.push({ t, strong, label: strong && barNo % every === 0 ? String(barNo + 1) : strong ? undefined : beatLabel })
   }
   return out
 }

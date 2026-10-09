@@ -27,6 +27,7 @@ export default defineConfig({
       { find: /^pevenmui$/, replacement: resolve(pevenmui, 'src/index.ts') },
       { find: /^pevenmui\/web$/, replacement: resolve(pevenmui, 'src/web/index.ts') },
       { find: /^pevenmui\/pwa$/, replacement: resolve(pevenmui, 'src/pwa/index.ts') },
+      { find: /^wevocal-lib\/react$/, replacement: resolve(wevocalLib, 'web/src/react/index.ts') },
       { find: /^wevocal-lib$/, replacement: resolve(wevocalLib, 'web/src/index.ts') },
     ],
     // 外にある pevenmui から読み込む React、MUI も、このアプリと同じものにする（2 つになると動かない）
