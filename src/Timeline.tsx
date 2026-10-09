@@ -46,6 +46,8 @@ export default function Timeline(p: {
   onBlocksChange: (patches: Record<string, Partial<Block>>, merge?: string) => void
   /** 波形ブロックの右クリック（画面の座標） */
   onBlockMenu: (id: string, x: number, y: number) => void
+  /** 何もない所の右クリック（目盛りか、トラックの空いている所）。time はグリッドに合わせた時刻 */
+  onEmptyMenu: (kind: 'lane' | 'ruler', time: number, track: string | null, x: number, y: number) => void
   /** Ctrl+ドラッグで、写しをその場に残す */
   onCopyBlocks: (blocks: Block[]) => void
   /** 目盛りの上のマーカーをダブルクリック */
@@ -458,7 +460,11 @@ export default function Timeline(p: {
             marquee.current = null
             const { offsetX: x, offsetY: y } = e.nativeEvent
             const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
-            if (!hit) return
+            if (!hit) {
+              const track = y > TOP ? (p.project.tracks[Math.floor((y - TOP) / LANE)]?.id ?? null) : null
+              if (track) p.onSelectTrack(track)
+              return p.onEmptyMenu(y < RULER ? 'ruler' : 'lane', gridAt(x, e.shiftKey), track, e.clientX, e.clientY)
+            }
             if (!p.selected.includes(hit.block.id)) p.onSelect([hit.block.id])
             p.onSelectTrack(hit.block.track)
             p.onBlockMenu(hit.block.id, e.clientX, e.clientY)

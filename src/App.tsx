@@ -70,6 +70,10 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
   const [timelineWidth, setTimelineWidth] = useState(0)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
+  // 何もない所の右クリックのメニュー（押した所の時刻とトラック）
+  const [emptyAt, setEmptyAt] = useState<{ kind: 'lane' | 'ruler'; time: number; track: string | null; x: number; y: number } | null>(null)
+  // 「ここに読み込む」の行き先（ファイルを選んだら使う）
+  const importTarget = useRef<DropAt | undefined>(undefined)
   // プロパティを開いている波形ブロック（複数なら一括で変える）
   const [editing, setEditing] = useState<string[]>([])
   const sourceInput = useRef<HTMLInputElement>(null)
@@ -233,7 +237,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     }
   }
 
-  const { menus, blockMenu, commands } = useActions({
+  const { menus, blockMenu, emptyMenu, commands } = useActions({
     doc,
     cursor,
     playing,
@@ -268,7 +272,14 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     // 選んでいるものの中を開いたら、選んでいるもの全部を一括で
     openProperties: (id: string) => setEditing(selected.includes(id) ? selected : [id]),
     openFile: () => projectInput.current?.click(),
-    importFiles: () => audioInput.current?.click(),
+    importFiles: () => {
+      importTarget.current = undefined
+      audioInput.current?.click()
+    },
+    importAt: (time, track) => {
+      importTarget.current = track ? { track, start: time } : undefined
+      audioInput.current?.click()
+    },
     save,
     openExport: () => setDialog('export'),
     openSettings: () => setDialog('settings'),
@@ -431,7 +442,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onCopy={commands.copy.run}
         onPaste={commands.paste.run}
       />
-      <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load([...(e.target.files ?? [])]).finally(() => (e.target.value = ''))} />
+      <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load([...(e.target.files ?? [])], importTarget.current).finally(() => (e.target.value = ''))} />
       <input
         ref={projectInput}
         type="file"
@@ -483,6 +494,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlockChange={doc.updateBlock}
         onBlocksChange={doc.updateBlocks}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
+        onEmptyMenu={(kind, time, track, x, y) => setEmptyAt({ kind, time, track, x, y })}
         onCopyBlocks={(blocks) => void doc.insertBlocks(blocks)}
         onMarkerEdit={setEditingMarker}
         onProperties={(id) => setEditing(selected.includes(id) ? selected : [id])}
@@ -558,6 +570,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onToEnd={() => seek(end)}
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
+      <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track) : []} onClose={() => setEmptyAt(null)} />
       {eqOf && (
         <EqDialog
           open

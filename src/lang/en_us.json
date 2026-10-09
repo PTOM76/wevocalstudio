@@ -90,6 +90,9 @@
   "menu.follow": "Follow Playback",
   "menu.meters": "Level Meters",
   "menu.envelope": "Volume Envelope",
+  "menu.addMarkerHere": "Add Marker Here",
+  "menu.pasteHere": "Paste Here",
+  "menu.importHere": "Import Audio Here…",
 
   "settings.title": "Settings",
   "settings.general": "General",

@@ -42,6 +42,8 @@ export interface ActionContext {
   openProperties: (id: string) => void
   openFile: () => void
   importFiles: () => void
+  /** その時刻とトラックへ音声ファイルを読み込む（トラックが無ければ空いているトラック） */
+  importAt: (time: number, track: string | null) => void
   save: () => void
   openExport: () => void
   openSettings: () => void
@@ -86,11 +88,14 @@ export function useActions(c: ActionContext) {
   const [, setCopied] = useState(0)
 
   /** 選んでいるトラックの再生位置に置く（REAPER と同じ）。複数なら、トラックと時間の並びを保つ */
-  const paste = () => {
+  /** 貼り付ける。at を渡せば、その時刻とトラックに（何もない所の右クリックの「ここに貼り付け」） */
+  const paste = (place?: { time: number; track: string | null }) => {
+    const cursor = place?.time ?? c.cursor
+    const selectedTrack = place?.track ?? c.selectedTrack
     // トラックをコピーしていれば、選んでいるトラックのすぐ下に貼り付ける
     const tc = trackClipboard.current
     if (tc) {
-      c.selectTrack(doc.insertTrack(tc.track, tc.blocks, c.selectedTrack))
+      c.selectTrack(doc.insertTrack(tc.track, tc.blocks, selectedTrack))
       return
     }
     const blocks = clipboard.current
@@ -98,11 +103,11 @@ export function useActions(c: ActionContext) {
     const { tracks } = doc.project
     const first = Math.min(...blocks.map((b) => b.start))
     const top = Math.min(...blocks.map((b) => tracks.findIndex((tr) => tr.id === b.track)))
-    const target = Math.max(0, tracks.findIndex((tr) => tr.id === c.selectedTrack))
+    const target = Math.max(0, tracks.findIndex((tr) => tr.id === selectedTrack))
     const at = (b: Block) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
-    c.select(doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: c.cursor + b.start - first }))))
+    c.select(doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))))
     // 貼り付けたものの右端に再生位置を移す（Ctrl+V を続けると、すき間なく並ぶ。REAPER と同じ）
-    c.moveCursor(c.cursor + Math.max(...blocks.map((b) => b.start + b.length)) - first)
+    c.moveCursor(cursor + Math.max(...blocks.map((b) => b.start + b.length)) - first)
   }
 
   /** 選んでいるものをまとめて、すぐ後ろに並べる */
@@ -178,7 +183,7 @@ export function useActions(c: ActionContext) {
         setCopied((n) => n + 1)
       },
     },
-    paste: { enabled: clipboard.current.length > 0 || !!trackClipboard.current, run: paste },
+    paste: { enabled: clipboard.current.length > 0 || !!trackClipboard.current, run: () => paste() },
     duplicate: { enabled: any, run: duplicate },
     open: { run: c.openFile },
     save: { run: c.save },
@@ -301,5 +306,25 @@ export function useActions(c: ActionContext) {
     item('delete'),
   ]
 
-  return { menus, blockMenu, commands }
+  /** 何もない所の右クリックのメニュー（REAPER のように、押した所に合わせた中身）。time と track は押した所 */
+  const emptyMenu = (kind: 'lane' | 'ruler', time: number, track: string | null): MenuEntry[] =>
+    kind === 'ruler'
+      ? [
+          { label: t('menu.addMarkerHere'), onClick: () => doc.addMarker(time) },
+          item('detectTempo'),
+          divider,
+          item('clearRange'),
+        ]
+      : [
+          { label: t('menu.pasteHere'), disabled: commands.paste.enabled === false, onClick: () => paste({ time, track }) },
+          { label: t('menu.importHere'), onClick: () => c.importAt(time, track) },
+          divider,
+          item('selectAll'),
+          item('splitRange'),
+          item('clearRange'),
+          divider,
+          { label: t('menu.addTrack'), onClick: doc.addTrack },
+        ]
+
+  return { menus, blockMenu, emptyMenu, commands }
 }

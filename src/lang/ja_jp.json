@@ -90,6 +90,9 @@
   "menu.follow": "再生位置に追従",
   "menu.meters": "レベルメーター",
   "menu.envelope": "音量のエンベロープ",
+  "menu.addMarkerHere": "ここにマーカーを追加",
+  "menu.pasteHere": "ここに貼り付け",
+  "menu.importHere": "ここに音声ファイルを読み込む…",
 
   "settings.title": "設定",
   "settings.general": "全般",
