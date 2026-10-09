@@ -5,7 +5,7 @@ import { useEdgeScroll } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
-import { CURSOR, dragPatch, hitBlock, snapDelta, snapTargets, type Drag } from './blockDrag'
+import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { LANE, MASTER, RULER, TOP, drawCursors, drawTimeline, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
@@ -25,9 +25,13 @@ export default function Timeline(p: {
   /** 編集カーソルだけを動かす（波形ブロックを押したとき） */
   onCursor: (t: number) => void
   selected: string[]
-  onSelect: (ids: string[]) => void
+  /** merge が同じなら履歴の 1 段にまとめる（枠でのドラッグ） */
+  onSelect: (ids: string[], merge?: string) => void
   selectedTrack: string | null
   onSelectTrack: (id: string) => void
+  /** 選んでいるトラック（複数） */
+  selectedTracks: string[]
+  onSelectTracks: (ids: string[]) => void
   onSeek: (t: number) => void
   range: Range | null
   onRange: (r: Range | null) => void
@@ -48,6 +52,9 @@ export default function Timeline(p: {
   onProperties: (id: string) => void
   /** トラックの EQ を開く */
   onEq: (track: string) => void
+  /** レベルメーター（出さなければ省く） */
+  meter?: (trackId: string) => AnalyserNode | null
+  masterMeter?: () => readonly AnalyserNode[] | null
   onDuplicateTrack: (id: string) => void
   onRemoveTrack: (id: string) => void
   /** 表示範囲（拡大縮小をキーからも変えるので App が持つ） */
@@ -258,7 +265,10 @@ export default function Timeline(p: {
       const tb = toTime(Math.max(mq.x, x))
       const ra = Math.floor((Math.min(mq.y, y) - TOP) / LANE)
       const rb = Math.floor((Math.max(mq.y, y) - TOP) / LANE)
-      p.onSelect(p.project.blocks.filter((b) => { const r = p.project.tracks.findIndex((t) => t.id === b.track); return r >= ra && r <= rb && b.start < tb && b.start + b.length > ta }).map((b) => b.id))
+      p.onSelect(
+        p.project.blocks.filter((b) => { const r = p.project.tracks.findIndex((t) => t.id === b.track); return r >= ra && r <= rb && b.start < tb && b.start + b.length > ta }).map((b) => b.id),
+        `marquee${mq.x},${mq.y}`,
+      )
       return
     }
     if (scrub.current) {
@@ -288,6 +298,11 @@ export default function Timeline(p: {
     // Shift を押している間は吸い付けない（REAPER と同じ）
     const raw = (x - d.x) / view.pps
     const exclude = [d.block.id, ...d.others.map((b) => b.id)]
+    // Alt で本体をつまんだら、中の音だけをずらす（REAPER のスリップ編集。吸い付けない）
+    if (e.altKey && d.kind === 'move') {
+      const all = [d.block, ...d.others]
+      return p.onBlocksChange(Object.fromEntries(all.map((b) => [b.id, slipPatch(p.project, b, raw)])), d.merge)
+    }
     let dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), snapping) : raw
     const di = Math.round((y - d.y) / LANE)
     // Alt を押しながら端をドラッグすると速度ごと伸び縮みする（REAPER と同じ）
@@ -331,21 +346,29 @@ export default function Timeline(p: {
     <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: 'flex-start' }}>
       <Box sx={{ width: HEADER, flexShrink: 0, borderRight: 1, borderColor: 'divider' }}>
         <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box' }} />
-        <MasterHeader master={p.project.master} height={MASTER} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} />
+        <MasterHeader master={p.project.master} height={MASTER} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
         {p.project.tracks.map((track) => (
           <TrackHeader
             key={track.id}
             track={track}
             height={LANE}
-            selected={track.id === p.selectedTrack}
-            onSelect={() => {
-              // トラックの欄を押したらトラックだけを選ぶ（Ctrl+C でトラックをコピーできるように）
-              p.onSelectTrack(track.id)
+            selected={p.selectedTracks.includes(track.id)}
+            onSelect={(e) => {
+              // トラックの欄を押したらトラックだけを選ぶ（Ctrl+C でトラックをコピーできるように）。
+              // Ctrl で足し引き、Shift で前に選んだトラックからの範囲。選んでいるものを押したら選択はそのまま（まとめて音量を動かせるように）
               p.onSelect([])
+              const ids = p.project.tracks.map((tr) => tr.id)
+              const sel = p.selectedTracks
+              if (e.ctrlKey || e.metaKey) p.onSelectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
+              else if (e.shiftKey && p.selectedTrack) {
+                const [i0, i1] = [ids.indexOf(p.selectedTrack), ids.indexOf(track.id)].sort((x, y) => x - y)
+                p.onSelectTracks([...ids.slice(i0, i1 + 1).filter((x) => x !== p.selectedTrack), p.selectedTrack])
+              } else if (!sel.includes(track.id)) p.onSelectTrack(track.id)
             }}
             onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
             onEndMerge={p.onEndMerge}
             onEq={() => p.onEq(track.id)}
+            meter={p.meter && (() => p.meter!(track.id))}
             onDuplicate={() => p.onDuplicateTrack(track.id)}
             onRemove={() => p.onRemoveTrack(track.id)}
           />

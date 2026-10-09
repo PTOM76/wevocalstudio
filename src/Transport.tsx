@@ -1,5 +1,5 @@
 // 再生のボタン一式（REAPER のトランスポート。先頭へ、停止、再生、一時停止、リピート、末尾へ）と時間の表示。見た目は WeVocalSynth のツールバーと同じ
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Box, IconButton, InputBase, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBackwardStep, faCircle, faForwardStep, faPause, faPlay, faRepeat, faStop, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
@@ -65,6 +65,8 @@ export default function Transport(p: {
   playing: boolean
   cursor: number
   livePos: () => number | null
+  /** マスターのレベルメーター（時間の横。WeVocalSynth のツールバーと同じ） */
+  meter: ReactNode
   end: number
   range: Range | null
   repeat: boolean
@@ -95,6 +97,7 @@ export default function Transport(p: {
         <LiveTime playing={p.playing} cursor={p.cursor} livePos={p.livePos} />
       </Typography>
       <Typography sx={{ color: 'text.secondary', fontSize: 12, fontFamily: 'monospace' }}>/ {formatTime(p.end)}</Typography>
+      <Box sx={{ ml: 1.5 }}>{p.meter}</Box>
       <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', fontSize: 12 }}>
         <span>BPM</span>
         <NumberField value={p.tempo.bpm} min={20} max={400} step={0.1} width={64} label="BPM" onChange={(bpm) => p.onTempo({ bpm })} />

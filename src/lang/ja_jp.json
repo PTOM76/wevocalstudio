@@ -88,6 +88,7 @@
   "menu.newProject": "新しいプロジェクト",
   "menu.cut": "切り取り",
   "menu.follow": "再生位置に追従",
+  "menu.meters": "レベルメーター",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -120,6 +121,14 @@
   "status.pitch": "ピッチを変更中…",
   "status.recording": "録音中",
   "status.pitchBlock": "処理中",
+  "status.beats": "拍",
+  "status.noRange": "範囲選択なし",
+  "status.rangeStart": "始まり (秒)",
+  "status.rangeEnd": "終わり (秒)",
+  "status.clearRange": "解除",
+  "status.renameHint": "押すとプロジェクトの名前を変えられます（保存と書き出しのファイル名になります）",
+  "status.tracks": "{n} トラック",
+  "status.projectName": "プロジェクトの名前",
 
   "track.mute": "ミュート",
   "track.solo": "ソロ",
@@ -197,6 +206,13 @@
   "history.block": "波形ブロックの設定",
   "history.title": "操作履歴",
   "history.restore": "前回の作業の復元",
+  "history.select": "選択",
 
-  "confirm.newProject": "今の作業を閉じて、新しいプロジェクトにしますか？（保存していない変更は失われます）"
+  "confirm.newProject": "今の作業を閉じて、新しいプロジェクトにしますか？（保存していない変更は失われます）",
+
+  "meter.track": "{name} の音量",
+  "meter.master": "全体の音量",
+
+  "job.pitch": "ピッチなどを処理中",
+  "job.export": "書き出し中"
 }

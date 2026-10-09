@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { Box, ButtonBase, InputBase, Slider, Tooltip, Typography } from '@mui/material'
 import { pevenFont } from 'pevenmui'
 import { ContextMenu } from 'pevenmui'
+import LevelMeter from './LevelMeter'
 import { useT } from './i18n'
 import { isFlatEq } from 'wevocal-lib'
 import type { Master, Track } from './project'
@@ -80,12 +81,14 @@ export default function TrackHeader(p: {
   track: Track
   height: number
   selected: boolean
-  onSelect: () => void
+  onSelect: (e: React.PointerEvent) => void
   onChange: (patch: Partial<Track>, merge?: string) => void
   onEndMerge: () => void
   onEq: () => void
   onDuplicate: () => void
   onRemove: () => void
+  /** レベルメーター（出さなければ省く） */
+  meter?: () => AnalyserNode | null
 }) {
   const t = useT()
   const { track } = p
@@ -97,7 +100,7 @@ export default function TrackHeader(p: {
       onPointerDown={p.onSelect}
       onContextMenu={(e) => {
         e.preventDefault()
-        p.onSelect()
+        p.onSelect(e as unknown as React.PointerEvent)
         setMenu({ x: e.clientX, y: e.clientY })
       }}
       sx={{
@@ -134,9 +137,13 @@ export default function TrackHeader(p: {
             }}
           />
         ) : (
-          <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => setEditing(true)}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => setEditing(true)}>
             {track.name}
           </Typography>
+            {/* メーターは名前の列に収める（WeVocalSynth と同じ） */}
+            {p.meter && <LevelMeter source={p.meter} width={80} height={4} label={t('meter.track', { name: track.name })} />}
+          </Box>
         )}
         <MixToggle label="●" title={t('track.arm')} on={!!track.armed} color="error.main" onClick={() => p.onChange({ armed: !track.armed })} />
         <MixToggle label="M" title={t('track.mute')} on={track.mute} color="warning.main" onClick={() => p.onChange({ mute: !track.mute })} />
@@ -170,7 +177,7 @@ export default function TrackHeader(p: {
 }
 
 /** マスタートラックの欄（トラックの一番上。REAPER と同じく、トラックと同じ形で波形ブロックは置かない） */
-export function MasterHeader(p: { master: Master; height: number; onChange: (patch: Partial<Master>, merge?: string) => void; onEndMerge: () => void }) {
+export function MasterHeader(p: { master: Master; height: number; onChange: (patch: Partial<Master>, merge?: string) => void; onEndMerge: () => void; meter?: () => readonly AnalyserNode[] | null }) {
   const t = useT()
   const { master } = p
   return (
@@ -189,9 +196,12 @@ export function MasterHeader(p: { master: Master; height: number; onChange: (pat
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        <Typography variant="body2" sx={{ flex: 1, fontWeight: 500, letterSpacing: 1 }}>
-          {t('track.master')}
-        </Typography>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="body2" sx={{ fontWeight: 500, letterSpacing: 1 }}>
+            {t('track.master')}
+          </Typography>
+          {p.meter && <LevelMeter source={p.meter} rows={2} width={96} height={4} label={t('meter.master')} />}
+        </Box>
         <MixToggle label="M" title={t('track.mute')} on={master.mute} color="warning.main" onClick={() => p.onChange({ mute: !master.mute })} />
       </Box>
       <Faders value={master} merge="master" onChange={p.onChange} onEndMerge={p.onEndMerge} />

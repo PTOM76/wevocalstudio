@@ -1,7 +1,8 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Box, LinearProgress, Link, Snackbar } from '@mui/material'
-import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, useConfirm, usePalette, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
+import { Alert, Box, Link, Snackbar } from '@mui/material'
+import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, LicensesDialog, startJob, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
+import StatusBar from './StatusBar'
 import { UpdatePrompt } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { AUDIO_ACCEPT, EXPORT_EXT, SELECTION_DARK, SELECTION_LIGHT, canRecord, downloadBlob, exportAudio, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
@@ -13,7 +14,7 @@ import HistoryDialog from './HistoryDialog'
 import EqDialog from './EqDialog'
 import { flatEq } from 'wevocal-lib'
 import type { TimelineView } from './drawTimeline'
-import { analyzeTempo, onPitchProgress, pitchPending, pitchProgress, preparePitch } from './dsp/pitch'
+import { analyzeTempo, onPitchProgress, pitchProgress, preparePitch } from './dsp/pitch'
 import { Player, renderMix } from './engine'
 import { buildOverview } from './overview'
 import ExportDialog, { type ExportChoice } from './ExportDialog'
@@ -23,8 +24,9 @@ import { PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings'
 import SettingsDialog from './SettingsDialog'
 import AnalysisPanel from './AnalysisPanel'
+import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
-import { newProject } from './project'
+import { newProject, type Track } from './project'
 import Timeline, { HEADER } from './Timeline'
 import Toolbar from './Toolbar'
 import Transport from './Transport'
@@ -46,7 +48,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   setKeyOverrides(p.settings.keys)
   const mobile = useMobileLayout()
   const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant })
-  const { project } = doc
+  const { project, selected } = doc
+  const setSelected = doc.select
   const player = useRef(new Player())
   const [playing, setPlaying] = useState(false)
   // 編集カーソル（押した所、貼り付ける所。再生では動かない）と、再生カーソル（再生中と一時停止中だけ。REAPER と同じく 2 本）
@@ -56,8 +59,10 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [paused, setPaused] = useState<number | null>(null)
   // 再生中の位置は状態に入れず、描く所が毎フレーム読む（画面全体を毎フレーム描き直さないように。WeVocalSynth と同じ）
   const livePos = useCallback(() => (player.current.playing ? player.current.position() : playPos), [playPos])
-  const [selected, setSelected] = useState<string[]>([])
-  const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
+  // 選んでいるトラック（複数。最後に選んだものが「選んでいるトラック」で、貼り付けや録音の先）
+  const [selectedTracks, setSelectedTracks] = useState<string[]>([])
+  const selectedTrack = selectedTracks[selectedTracks.length - 1] ?? null
+  const setSelectedTrack = (id: string | null) => setSelectedTracks(id ? [id] : [])
   const [range, setRange] = useState<Range | null>(null)
   const [repeat, setRepeat] = useState(false)
   // 録音中のものと、録り始めた位置
@@ -72,8 +77,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [eqTrack, setEqTrack] = useState<string | null>(null)
   const eqOf = project.tracks.find((tr) => tr.id === eqTrack)
   const [fileName, setFileName] = useState('untitled')
-  const [busy, setBusy] = useState(false)
-  const [pitching, setPitching] = useState(false)
   // ピッチや速度を変えた音ができるたびに増やす（解析の欄が作り直した音で解析し直す）
   const [madeVersion, setMadeVersion] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -93,6 +96,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const end = project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
 
   const fail = (e: unknown) => setError(String(e))
+  // 保存したとき（開いたとき）のプロジェクト。今と違えば、名前の後ろに * を付ける
+  const savedProject = useRef(project)
 
   const play = () => {
     // 範囲選択があれば、その中だけを鳴らす（外にいたら範囲の頭から）
@@ -140,7 +145,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     const b = project.blocks.find((x) => selected.includes(x.id)) ?? project.blocks[0]
     const source = b && sourceOf(b.source)
     if (!b || !source) return
-    setBusy(true)
     try {
       const { clip } = source
       const from = Math.floor(b.offset * clip.sampleRate)
@@ -158,7 +162,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     } catch (e) {
       fail(e)
     } finally {
-      setBusy(false)
     }
   }
 
@@ -210,10 +213,15 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     }
   }
 
-  const save = () => downloadBlob(writeProject(project), fileName + PROJECT_EXT)
+  const save = () => {
+    downloadBlob(writeProject(project), fileName + PROJECT_EXT)
+    savedProject.current = project
+  }
 
   const runExport = async (c: ExportChoice) => {
-    setBusy(true)
+    // 進み具合はステータスバーのゲージに出す（WeVocalSynth と同じ startJob）
+    const job = startJob('export', t('job.export'))
+    job.update(-1)
     try {
       const mix = await renderMix(project, c.rangeOnly && range ? range.end : 0)
       const blob = await exportAudio(mix, { ...c, sampleRate: mix.sampleRate, mono: false, range: c.rangeOnly ? range : null })
@@ -221,7 +229,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     } catch (e) {
       fail(e)
     } finally {
-      setBusy(false)
+      job.end()
     }
   }
 
@@ -273,6 +281,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
     showAnalysis: p.settings.showAnalysis,
     toggleAnalysis: () => p.onSettingsChange({ showAnalysis: !p.settings.showAnalysis }),
+    showMeters: p.settings.showMeters,
+    toggleMeters: () => p.onSettingsChange({ showMeters: !p.settings.showMeters }),
     showMinimap: p.settings.showMinimap,
     toggleMinimap: () => p.onSettingsChange({ showMinimap: !p.settings.showMinimap }),
     showStatusBar: p.settings.showStatusBar,
@@ -347,18 +357,25 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   }, [project])
 
   // かたまりが 1 つできるたびに、ゲージを動かし、再生中ならその波形ブロックを差し替え、時間軸の「処理中」を描き直す（まとめて 0.1 秒に 1 回）
-  const [progress, setProgress] = useState({ total: 0, done: 0 })
   const projectRef = useRef(project)
   projectRef.current = project
   useEffect(() => {
     let timer = 0
     let lastDone = 0
+    let pitchJob: ReturnType<typeof startJob> | null = null
     return onPitchProgress(() => {
       if (timer) return
       timer = window.setTimeout(() => {
         timer = 0
         const pr = pitchProgress()
-        setProgress(pr)
+        // ピッチなどを作っている間はゲージに出す
+        if (pr.total > 0) {
+          pitchJob ??= startJob('pitch', t('job.pitch'))
+          pitchJob.update(pr.done / pr.total)
+        } else {
+          pitchJob?.end()
+          pitchJob = null
+        }
         // できたかたまりが増えていれば鳴らす音を差し替える
         const whole = Math.floor(pr.done)
         if (whole !== lastDone) {
@@ -373,7 +390,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // ピッチを変えた音を用意する（再生位置か編集カーソルに近い所から。できたかたまりから鳴らす）
   useEffect(() => {
     let alive = true
-    setPitching(pitchPending(project))
     preparePitch(project, player.current.playing ? player.current.position() : cursor)
       .then((made) => {
         if (!alive || !made) return
@@ -381,7 +397,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         setMadeVersion((v) => v + 1)
       })
       .catch((e: unknown) => alive && fail(e))
-      .finally(() => alive && setPitching(false))
     return () => {
       alive = false
     }
@@ -435,11 +450,30 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onSelect={setSelected}
         selectedTrack={selectedTrack}
         onSelectTrack={setSelectedTrack}
+        selectedTracks={selectedTracks}
+        onSelectTracks={setSelectedTracks}
         onSeek={seek}
         range={range}
         onRange={setRange}
         onMasterChange={doc.updateMaster}
-        onTrackChange={doc.updateTrack}
+        onTrackChange={(id, patch, merge) => {
+          // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量とパンは差分で。REAPER と同じ）
+          if (selectedTracks.length < 2 || !selectedTracks.includes(id) || 'name' in patch || 'eq' in patch) return doc.updateTrack(id, patch, merge)
+          const base = project.tracks.find((tr) => tr.id === id)!
+          doc.updateTracks(
+            Object.fromEntries(
+              project.tracks
+                .filter((tr) => selectedTracks.includes(tr.id))
+                .map((tr) => {
+                  const q: Partial<Track> = { ...patch }
+                  if (patch.volume !== undefined) q.volume = Math.max(-60, Math.min(12, tr.volume + patch.volume - base.volume))
+                  if (patch.pan !== undefined) q.pan = Math.max(-1, Math.min(1, tr.pan + patch.pan - base.pan))
+                  return [tr.id, q]
+                }),
+            ),
+            merge,
+          )
+        }}
         onEndMerge={doc.endMerge}
         onDropFiles={(files, at) => void load(files, at)}
         onBlockChange={doc.updateBlock}
@@ -449,6 +483,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onMarkerEdit={setEditingMarker}
         onProperties={(id) => setEditing(selected.includes(id) ? selected : [id])}
         onEq={setEqTrack}
+        meter={p.settings.showMeters ? player.current.meter : undefined}
+        masterMeter={p.settings.showMeters ? player.current.masterMeters : undefined}
         onDuplicateTrack={doc.duplicateTrack}
         onRemoveTrack={(id) => {
           doc.removeTrack(id)
@@ -500,6 +536,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         playing={playing}
         cursor={playPos ?? cursor}
         livePos={livePos}
+        meter={p.settings.showMeters ? <LevelMeter source={player.current.masterMeters} rows={2} width={96} height={7} label={t('meter.master')} /> : null}
         end={end}
         range={range}
         repeat={repeat}
@@ -555,18 +592,16 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
 
       {!mobile && p.settings.showStatusBar && (
-        <StatusBar>
-          <StatusItem>{recording ? t('status.recording') : busy ? t('status.exporting') : pitching ? t('status.pitch') : playing ? t('status.playing') : t('status.ready')}</StatusItem>
-          {/* ピッチなどを作っている進み具合（WeVocalSynth のゲージと同じ） */}
-          {pitching && progress.total > 0 && (
-            <StatusItem>
-              <LinearProgress variant="determinate" value={(100 * progress.done) / progress.total} sx={{ width: 120 }} />
-              <span style={{ marginLeft: 6 }}>{Math.floor((100 * progress.done) / progress.total)}%</span>
-            </StatusItem>
-          )}
-          <StatusSpacer />
-          <StatusItem secondary>{BUILD}</StatusItem>
-        </StatusBar>
+        <StatusBar
+          fileName={fileName}
+          dirty={project !== savedProject.current}
+          onRename={setFileName}
+          sampleRate={48000}
+          tracks={project.tracks.length}
+          range={range}
+          onRange={setRange}
+          bpm={project.tempo.bpm}
+        />
       )}
 
       <Snackbar open={!!error} autoHideDuration={8000} onClose={() => setError(null)}>

@@ -88,6 +88,7 @@
   "menu.newProject": "New Project",
   "menu.cut": "Cut",
   "menu.follow": "Follow Playback",
+  "menu.meters": "Level Meters",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -120,6 +121,14 @@
   "status.pitch": "Changing pitch…",
   "status.recording": "Recording",
   "status.pitchBlock": "Processing",
+  "status.beats": "beats",
+  "status.noRange": "No selection",
+  "status.rangeStart": "Start (s)",
+  "status.rangeEnd": "End (s)",
+  "status.clearRange": "Clear",
+  "status.renameHint": "Click to rename the project (used for saved and exported files)",
+  "status.tracks": "{n} tracks",
+  "status.projectName": "Project name",
 
   "track.mute": "Mute",
   "track.solo": "Solo",
@@ -197,6 +206,13 @@
   "history.block": "Block settings",
   "history.title": "History",
   "history.restore": "Restore previous work",
+  "history.select": "Select",
 
-  "confirm.newProject": "Close the current work and start a new project? Unsaved changes will be lost."
+  "confirm.newProject": "Close the current work and start a new project? Unsaved changes will be lost.",
+
+  "meter.track": "{name} level",
+  "meter.master": "Master level",
+
+  "job.pitch": "Processing pitch",
+  "job.export": "Exporting"
 }

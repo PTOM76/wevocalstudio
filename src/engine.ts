@@ -30,6 +30,8 @@ const clipId = (c: Clip) => clipIds.get(c) ?? (clipIds.set(c, nextClipId), nextC
 interface TrackNodes {
   input: GainNode
   pan: StereoPannerNode
+  /** レベルメーター（パンのあと。WeVocalSynth と同じ） */
+  meter: AnalyserNode
   /** 鳴らしたまま値を変えられる EQ（WeVocalSynth の再生と同じ wevocal-lib のもの） */
   eq: LiveEq
 }
@@ -43,6 +45,8 @@ interface BlockNodes {
 /** 組んだノード（トラックごとの入口と、波形ブロックごとの音源） */
 class Graph {
   readonly out: GainNode
+  /** マスターの左右のレベルメーター */
+  readonly masterMeters: [AnalyserNode, AnalyserNode]
   private readonly master: GainNode
   private readonly masterPan: StereoPannerNode
   private readonly tracks = new Map<string, TrackNodes>()
@@ -58,6 +62,26 @@ class Graph {
     this.masterPan = ctx.createStereoPanner()
     this.out = ctx.createGain()
     this.master.connect(this.masterPan).connect(this.out).connect(ctx.destination)
+    // 左右に分けて別々に測る（AnalyserNode はチャンネルを混ぜて読むため。WeVocalSynth と同じ）
+    const split = ctx.createChannelSplitter(2)
+    this.out.connect(split)
+    const l = Graph.analyser(ctx)
+    const r = Graph.analyser(ctx)
+    split.connect(l, 0)
+    split.connect(r, 1)
+    this.masterMeters = [l, r]
+  }
+
+  /** レベルメーター用の AnalyserNode（時間波形を読むだけなので小さくてよい） */
+  private static analyser(ctx: BaseAudioContext) {
+    const a = ctx.createAnalyser()
+    a.fftSize = 1024
+    return a
+  }
+
+  /** トラックのレベルメーター */
+  meter(trackId: string) {
+    return this.tracks.get(trackId)?.meter ?? null
   }
 
   private buildTrack(t: Track): TrackNodes {
@@ -68,7 +92,9 @@ class Graph {
     input.connect(eq.input)
     eq.output.connect(pan)
     pan.connect(this.master)
-    return { input, pan, eq }
+    const meter = Graph.analyser(this.ctx)
+    pan.connect(meter)
+    return { input, pan, eq, meter }
   }
 
   /** 波形ブロックを比べる文字（変わったら差し替える） */
@@ -236,6 +262,11 @@ export class Player {
     this.graph = null
     this.playing = false
   }
+
+  /** トラックのレベルメーター（鳴らしていなければ null） */
+  meter = (trackId: string) => (this.playing ? (this.graph?.meter(trackId) ?? null) : null)
+  /** マスターの左右のレベルメーター */
+  masterMeters = () => (this.playing ? (this.graph?.masterMeters ?? null) : null)
 
   /** 今の位置（秒） */
   position() {

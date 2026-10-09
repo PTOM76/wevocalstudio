@@ -16,9 +16,10 @@ export interface DropAt {
   start: number
 }
 
-/** 履歴の 1 段（そのときのプロジェクトと、そこへ来た操作の名前） */
+/** 履歴の 1 段（そのときのプロジェクトと選んでいた波形ブロック、そこへ来た操作の名前）。選択も元に戻せる（REAPER の「選択も元に戻す」と同じ） */
 interface Step {
   project: Project
+  selected: string[]
   label: MessageKey
 }
 
@@ -29,7 +30,7 @@ interface History {
 }
 
 export function useProject(defaults: PitchDefaults) {
-  const [history, setHistory] = useState<History>(() => ({ past: [], present: { project: newProject(), label: 'history.new' }, future: [] }))
+  const [history, setHistory] = useState<History>(() => ({ past: [], present: { project: newProject(), selected: [], label: 'history.new' }, future: [] }))
   // 読み込みの途中で設定が変わっても、最新の既定値を使う
   const defaultsRef = useRef(defaults)
   defaultsRef.current = defaults
@@ -44,7 +45,21 @@ export function useProject(defaults: PitchDefaults) {
       const next = fn(h.present.project)
       if (next === h.present.project) return h
       // まとめるときは名前も前のまま
-      const present = { project: next, label: merged ? h.present.label : describeChange(h.present.project, next) }
+      // 消えた波形ブロックは選択から外す
+      const selected = h.present.selected.filter((id) => next.blocks.some((b) => b.id === id))
+      const present = { project: next, selected, label: merged ? h.present.label : describeChange(h.present.project, next) }
+      return { past: merged ? h.past : [...h.past, h.present].slice(-HISTORY_MAX), present, future: [] }
+    })
+  }, [])
+
+  /** 波形ブロックを選ぶ（履歴の 1 段になる。merge が同じなら、枠でのドラッグのように 1 段にまとめる） */
+  const select = useCallback((ids: string[], merge?: string) => {
+    const merged = merge !== undefined && merge === lastMerge.current
+    lastMerge.current = merge ?? null
+    setHistory((h) => {
+      const cur = h.present.selected
+      if (ids.length === cur.length && ids.every((id, i) => id === cur[i])) return h
+      const present = { ...h.present, selected: ids, label: 'history.select' as MessageKey }
       return { past: merged ? h.past : [...h.past, h.present].slice(-HISTORY_MAX), present, future: [] }
     })
   }, [])
@@ -77,7 +92,7 @@ export function useProject(defaults: PitchDefaults) {
   /** 開いたプロジェクトに入れ替える（履歴は消す） */
   const replace = useCallback((p: Project, label: MessageKey = 'history.open') => {
     lastMerge.current = null
-    setHistory({ past: [], present: { project: p, label }, future: [] })
+    setHistory({ past: [], present: { project: p, selected: [], label }, future: [] })
   }, [])
 
   /** 録った音を、指定したトラックの start 秒に波形ブロックとして置く */
@@ -213,6 +228,12 @@ export function useProject(defaults: PitchDefaults) {
     [change],
   )
 
+  /** 複数のトラックを一度に変える（選んだトラックをまとめて） */
+  const updateTracks = useCallback(
+    (patches: Record<string, Partial<Track>>, merge?: string) => change((p) => ({ ...p, tracks: p.tracks.map((t) => (patches[t.id] ? { ...t, ...patches[t.id] } : t)) }), merge),
+    [change],
+  )
+
   const updateBlock = useCallback(
     (id: string, patch: Partial<Block>, merge?: string) => change((p) => ({ ...p, blocks: p.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }), merge),
     [change],
@@ -278,6 +299,8 @@ export function useProject(defaults: PitchDefaults) {
 
   return {
     project: history.present.project,
+    selected: history.present.selected,
+    select,
     /** 操作履歴（古い順の名前と、今の位置） */
     steps: [...history.past, history.present, ...history.future].map((s) => s.label),
     stepIndex: history.past.length,
@@ -303,6 +326,7 @@ export function useProject(defaults: PitchDefaults) {
     removeMarker,
     updateMaster,
     updateTrack,
+    updateTracks,
     updateBlock,
     updateBlocks,
     removeBlocks,

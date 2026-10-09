@@ -55,6 +55,8 @@ export interface ActionContext {
   toggleGrid: () => void
   showAnalysis: boolean
   toggleAnalysis: () => void
+  showMeters: boolean
+  toggleMeters: () => void
   showMinimap: boolean
   toggleMinimap: () => void
   showStatusBar: boolean
@@ -268,7 +270,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.view'),
       accessKey: 'V',
-      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { ...item('follow'), checked: c.follow }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.analysis'), checked: c.showAnalysis, onClick: c.toggleAnalysis }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
+      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { ...item('follow'), checked: c.follow }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.analysis'), checked: c.showAnalysis, onClick: c.toggleAnalysis }, { label: t('menu.meters'), checked: c.showMeters, onClick: c.toggleMeters }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
     },
     {
       label: t('menu.help'),

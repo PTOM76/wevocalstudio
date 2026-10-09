@@ -22,6 +22,7 @@ src/
   HistoryDialog.tsx  操作履歴の一覧（WeVocalSynth と同じ）。押した所まで戻る、または進む
   i18n.ts  多言語化（訳文は lang/ の JSON）
   keymap.ts  キーの割り当て。既定の表（操作の名前 → キー）と、設定の「キーとマウス」で変えた分（PevenMUI の keymap と同じ形）
+  LevelMeter.tsx  音量メーター（wevocal-lib の部品にテーマの色を渡す。WeVocalSynth と同じ）
   main.tsx  起動。設定を読み、言語、テーマ、画面の大きさを PevenProvider に渡す
   MarkerDialog.tsx  マーカーの名前の変更と削除（目盛りの上のマーカーをダブルクリック）
   overlap.ts  重なった波形ブロックの段の割り当て（REAPER と同じく、重なっている所だけトラックの高さを段に分ける）。画面を知らない
@@ -31,6 +32,7 @@ src/
   projectFile.ts  プロジェクトファイル（.wvstudio）の読み書き。先頭に JSON（トラック、波形ブロック、元の音の形）、そのあとに元の音の PCM を並べる
   settings.ts  アプリの設定（localStorage に保存する）
   SettingsDialog.tsx  設定画面（外枠は PevenMUI の SettingsDialog）
+  StatusBar.tsx  PC の下のステータスバー（WeVocalSynth と同じ並び）。プロジェクト名、書き出しの形式、範囲選択、BPM、処理中のゲージ
   Timeline.tsx  時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
   Toolbar.tsx  メニューの下の小さなツールバー（WeVocalSynth と同じ形）。再生位置に追従するか、スナップ、拡大と縮小
   TrackHeader.tsx  トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
