@@ -51,6 +51,8 @@ export interface Block {
   preserveFormant: boolean
   /** フォルマントのずらし量（半音。WeVocalSynth の「フォルマント」と同じ。0 なら変えない） */
   formant: number
+  /** ピッチカーブ（なければ一定のピッチ）。元の音の時刻 from 秒から 10ms ごとの半音（pitch に足す）。元の音の時刻で持つので、分割や端の調整をしてもずれない */
+  curve?: PitchCurve
   /** フェードイン、フェードアウト（秒） */
   fadeIn: number
   fadeOut: number
@@ -83,6 +85,14 @@ export interface Marker {
   time: number
   name: string
 }
+
+/** ピッチカーブ（元の音の時刻 from 秒から CURVE_HOP 秒ごとの半音） */
+export interface PitchCurve {
+  from: number
+  st: number[]
+}
+/** ピッチカーブの間隔（秒。Analyzer の F0 と同じ 10ms） */
+export const CURVE_HOP = 0.01
 
 export interface Project {
   sources: Source[]

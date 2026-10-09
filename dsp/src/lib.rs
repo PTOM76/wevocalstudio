@@ -1,7 +1,7 @@
-//! WeVocal Studio の wasm。wevocal-lib のピッチ変更（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。
+//! WeVocal Studio の wasm。wevocal-lib のピッチ変更とピッチカーブ（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。
 
 use std::cell::RefCell;
-use wevocal_lib::{formant, process_with_progress, tempo, Algorithm, Formant};
+use wevocal_lib::{curve, formant, process_with_progress, tempo, Algorithm, Formant};
 
 thread_local! {
     static OUTPUT: RefCell<Vec<f32>> = const { RefCell::new(Vec::new()) };
@@ -47,6 +47,47 @@ pub unsafe extern "C" fn process_planar(
     let formant = if preserve_formant != 0 { Formant::Shift(formant_semitones) } else { Formant::Follow };
     formant::set_fast_math(true);
     let out = process_with_progress(&chans, sample_rate, semitones, stretch, Algorithm::from_id(algorithm), formant, &mut |_| {});
+    let out_frames = out.first().map_or(0, |c| c.len());
+    OUTPUT.with(|o| {
+        let mut o = o.borrow_mut();
+        o.clear();
+        for c in &out {
+            o.extend_from_slice(c);
+        }
+    });
+    out_frames
+}
+
+/// ピッチカーブ（`ratios` は `hop` サンプルおきのピッチ比）でピッチを変え、`stretch` が 1 でなければそのあと伸縮する。
+/// 出力のフレーム数を返し、結果は `output_ptr` で取得する（ピッチカーブは WeVocalSynth の `process_curve_planar` と同じ処理）
+///
+/// # Safety
+/// `input` は `frames * channels` 個、`ratios` は `ratio_count` 個の有効な f32 を指していること。
+#[no_mangle]
+pub unsafe extern "C" fn process_curve_planar(
+    input: *const f32,
+    frames: usize,
+    channels: usize,
+    sample_rate: f32,
+    ratios: *const f32,
+    ratio_count: usize,
+    hop: f64,
+    algorithm: u32,
+    preserve_formant: u32,
+    formant_semitones: f64,
+    stretch: f64,
+) -> usize {
+    let all = std::slice::from_raw_parts(input, frames * channels);
+    let chans: Vec<&[f32]> = all.chunks(frames.max(1)).take(channels).collect();
+    let ratios = std::slice::from_raw_parts(ratios, ratio_count);
+    let formant = if preserve_formant != 0 { Formant::Shift(formant_semitones) } else { Formant::Follow };
+    formant::set_fast_math(true);
+    let algorithm = Algorithm::from_id(algorithm);
+    let mut out = curve::process(&chans, sample_rate, ratios, hop, algorithm, formant, &mut |_| {});
+    if (stretch - 1.0).abs() > 1e-9 {
+        let refs: Vec<&[f32]> = out.iter().map(|c| c.as_slice()).collect();
+        out = process_with_progress(&refs, sample_rate, 0.0, stretch, algorithm, Formant::Follow, &mut |_| {});
+    }
     let out_frames = out.first().map_or(0, |c| c.len());
     OUTPUT.with(|o| {
         let mut o = o.borrow_mut();

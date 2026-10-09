@@ -369,6 +369,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           view={view}
           headerWidth={HEADER}
           version={madeVersion}
+          onCurve={(curve, merge) => {
+            const id = selected[0]
+            if (id) doc.updateBlock(id, { curve }, merge)
+          }}
+          onEndMerge={doc.endMerge}
         />
       )}
       {p.settings.showMinimap && project.blocks.length > 0 && (

@@ -156,6 +156,9 @@
   "analysis.title": "Analysis",
   "analysis.select": "Select a block to show its spectrogram and F0",
   "analysis.busy": "Analyzing…",
+  "analysis.pen": "Pen",
+  "analysis.penHelp": "Draw a pitch curve to the traced pitch. Hold Alt to erase",
+  "analysis.clearCurve": "Clear curve",
 
   "history.new": "New project",
   "history.open": "Open",

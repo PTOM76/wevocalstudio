@@ -156,6 +156,9 @@
   "analysis.title": "解析",
   "analysis.select": "波形ブロックを選ぶと、スペクトログラムと F0 を表示します",
   "analysis.busy": "解析中…",
+  "analysis.pen": "ペン",
+  "analysis.penHelp": "なぞった高さになるようにピッチカーブを描きます。Alt を押しながらなぞると元に戻します",
+  "analysis.clearCurve": "カーブを消す",
 
   "history.new": "新しいプロジェクト",
   "history.open": "開く",
