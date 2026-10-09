@@ -74,6 +74,7 @@
   "menu.detectTempo": "テンポを解析",
   "menu.minimap": "ミニマップ",
   "menu.analysis": "解析の欄",
+  "menu.splitSilence": "無音で区切る",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -114,6 +115,7 @@
   "track.arm": "録音待機",
   "track.recorded": "録音",
   "track.eq": "EQ",
+  "track.invert": "位相の反転",
 
   "export.title": "書き出す",
   "export.format": "形式",

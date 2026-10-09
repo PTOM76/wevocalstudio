@@ -1,7 +1,7 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
-import { decodeFile, type Clip } from 'wevocal-lib'
-import { newBlock, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
+import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip } from 'wevocal-lib'
+import { DEFAULT_FADE, newBlock, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。2 オクターブまで */
 const PITCH_MAX = 24
@@ -166,6 +166,30 @@ export function useProject(defaults: PitchDefaults) {
     [change],
   )
 
+  /** 無音で区切り、音のある所だけを残す（WeVocalSynth の「無音で区切る」と同じ判定。-40dB、200ms） */
+  const splitBySilence = useCallback(
+    (ids: string[]) =>
+      change((p) => ({
+        ...p,
+        blocks: p.blocks.flatMap((b) => {
+          const source = p.sources.find((s) => s.id === b.source)
+          if (!ids.includes(b.id) || !source) return [b]
+          const { clip } = source
+          const from = Math.floor(b.offset * clip.sampleRate)
+          const to = Math.min(clip.channels[0].length, from + Math.ceil(b.length * b.rate * clip.sampleRate))
+          const part = { sampleRate: clip.sampleRate, channels: clip.channels.map((c) => c.subarray(from, to)) }
+          const sounds = findSounds(part, DEFAULT_SILENCE)
+          if (!sounds.length) return [b]
+          // 範囲は元の音の上の秒。時間軸の上では速度で割る
+          return sounds.map((r, i) => {
+            const length = (r.end - r.start) / b.rate
+            return { ...b, id: i ? newId() : b.id, start: b.start + r.start / b.rate, offset: b.offset + r.start, length, fadeIn: Math.min(DEFAULT_FADE, length / 2), fadeOut: Math.min(DEFAULT_FADE, length / 2) }
+          })
+        }),
+      })),
+    [change],
+  )
+
   /** 位置 t で分ける。ids が空なら、t にかかる波形ブロックを全部分ける */
   const split = useCallback(
     (t: number, ids: string[] = []) => change((p) => ({ ...p, blocks: p.blocks.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitBlock(b, t) ?? [b]))) })),
@@ -197,5 +221,6 @@ export function useProject(defaults: PitchDefaults) {
     insertBlocks,
     nudgePitch,
     split,
+    splitBySilence,
   }
 }

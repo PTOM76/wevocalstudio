@@ -105,6 +105,7 @@ export function useActions(c: ActionContext) {
     nextMarker: { run: () => { const m = doc.project.markers.find((m) => m.time > c.cursor + 1e-3); if (m) c.seek(m.time) } },
     prevMarker: { run: () => { const m = doc.project.markers.findLast((m) => m.time < c.cursor - 1e-3); if (m) c.seek(m.time) } },
     split: { run: () => doc.split(c.cursor, ids) },
+    splitSilence: { enabled: any, run: () => doc.splitBySilence(ids) },
     selectAll: { run: () => c.select(doc.project.blocks.map((b) => b.id)) },
     // 範囲の両端で、かかっている波形ブロックを全部分ける
     splitRange: {
@@ -177,7 +178,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.edit'),
       accessKey: 'E',
-      entries: [item('undo'), item('redo'), divider, item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('delete'), divider, item('clearRange')],
+      entries: [item('undo'), item('redo'), divider, item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('splitSilence'), item('delete'), divider, item('clearRange')],
     },
     {
       label: t('menu.block'),

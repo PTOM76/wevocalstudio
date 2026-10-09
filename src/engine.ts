@@ -28,7 +28,7 @@ function schedule(ctx: BaseAudioContext, p: Project, from: number, when: number)
   for (const track of p.tracks) {
     if (!audible(p, track)) continue
     const gain = ctx.createGain()
-    gain.gain.value = dbToGain(track.volume)
+    gain.gain.value = dbToGain(track.volume) * (track.invert ? -1 : 1)
     const pan = ctx.createStereoPanner()
     pan.pan.value = track.pan
     // トラック: 音量 → EQ → パン → マスター（EQ は WeVocalSynth と同じ wevocal-lib のもの）

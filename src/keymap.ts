@@ -19,6 +19,7 @@ export type Action =
   | 'prevMarker'
   | 'split'
   | 'splitRange'
+  | 'splitSilence'
   | 'clearRange'
   | 'delete'
   | 'undo'
@@ -63,6 +64,7 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   prevMarker: ['BracketLeft'],
   split: ['KeyS'],
   splitRange: ['Shift+KeyS'],
+  splitSilence: [],
   clearRange: ['Escape'],
   delete: ['Delete'],
   undo: ['Ctrl+KeyZ'],

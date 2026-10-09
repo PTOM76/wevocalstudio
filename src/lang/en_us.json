@@ -74,6 +74,7 @@
   "menu.detectTempo": "Detect Tempo",
   "menu.minimap": "Minimap",
   "menu.analysis": "Analysis Panel",
+  "menu.splitSilence": "Split at Silence",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -114,6 +115,7 @@
   "track.arm": "Record arm",
   "track.recorded": "Recording",
   "track.eq": "EQ",
+  "track.invert": "Invert phase",
 
   "export.title": "Export",
   "export.format": "Format",

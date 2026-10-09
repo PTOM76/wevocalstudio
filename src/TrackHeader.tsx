@@ -1,5 +1,5 @@
-// トラックとマスタートラックの左の欄（名前、ミュート、ソロ、音量、パン）。名前はダブルクリックで変える
-import { useState } from 'react'
+// トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
+import { useState, type ReactNode } from 'react'
 import { Box, InputBase, Slider, ToggleButton, Typography } from '@mui/material'
 import { useT } from './i18n'
 import { isFlatEq } from 'wevocal-lib'
@@ -8,7 +8,7 @@ import type { Master, Track } from './project'
 const toggleSx = { py: 0, px: 0.75 }
 
 /** 音量とパンのスライダー。動かしている間の変更は 1 回分の履歴にまとめる */
-function Faders<T extends { volume: number; pan: number }>(p: { value: T; merge: string; onChange: (patch: Partial<T>, merge: string) => void; onEndMerge: () => void }) {
+function Faders<T extends { volume: number; pan: number }>(p: { value: T; merge: string; onChange: (patch: Partial<T>, merge: string) => void; onEndMerge: () => void; panExtra?: ReactNode }) {
   const t = useT()
   return (
     <>
@@ -25,18 +25,22 @@ function Faders<T extends { volume: number; pan: number }>(p: { value: T; merge:
         valueLabelFormat={(v) => `${v} dB`}
         aria-label={t('track.volume')}
       />
-      <Slider
-        size="small"
-        min={-1}
-        max={1}
-        step={0.01}
-        value={p.value.pan}
-        track={false}
-        onChange={(_, v) => p.onChange({ pan: v as number } as Partial<T>, `${p.merge}:pan`)}
-        onChangeCommitted={p.onEndMerge}
-        onDoubleClick={() => p.onChange({ pan: 0 } as Partial<T>, `${p.merge}:pan`)}
-        aria-label={t('track.pan')}
-      />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Slider
+          size="small"
+          min={-1}
+          max={1}
+          step={0.01}
+          value={p.value.pan}
+          track={false}
+          onChange={(_, v) => p.onChange({ pan: v as number } as Partial<T>, `${p.merge}:pan`)}
+          onChangeCommitted={p.onEndMerge}
+          onDoubleClick={() => p.onChange({ pan: 0 } as Partial<T>, `${p.merge}:pan`)}
+          aria-label={t('track.pan')}
+          sx={{ flex: 1 }}
+        />
+        {p.panExtra}
+      </Box>
     </>
   )
 }
@@ -92,10 +96,6 @@ export default function TrackHeader(p: {
             {track.name}
           </Typography>
         )}
-        {/* EQ。掛けているときは色を付ける */}
-        <ToggleButton size="small" value="eq" selected={!!track.eq && !isFlatEq(track.eq)} onChange={p.onEq} sx={{ ...toggleSx, fontSize: 10 }} title={t('track.eq')}>
-          EQ
-        </ToggleButton>
         <ToggleButton
           size="small"
           value="r"
@@ -113,7 +113,23 @@ export default function TrackHeader(p: {
           S
         </ToggleButton>
       </Box>
-      <Faders value={track} merge={`track:${track.id}`} onChange={p.onChange} onEndMerge={p.onEndMerge} />
+      <Faders
+        value={track}
+        merge={`track:${track.id}`}
+        onChange={p.onChange}
+        onEndMerge={p.onEndMerge}
+        panExtra={
+          <>
+            <ToggleButton size="small" value="inv" selected={!!track.invert} onChange={() => p.onChange({ invert: !track.invert })} sx={toggleSx} title={t('track.invert')}>
+              Ø
+            </ToggleButton>
+            {/* EQ。掛けているときは色を付ける */}
+            <ToggleButton size="small" value="eq" selected={!!track.eq && !isFlatEq(track.eq)} onChange={p.onEq} sx={{ ...toggleSx, fontSize: 10 }} title={t('track.eq')}>
+              EQ
+            </ToggleButton>
+          </>
+        }
+      />
     </Box>
   )
 }

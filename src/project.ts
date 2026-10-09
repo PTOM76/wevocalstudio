@@ -22,6 +22,8 @@ export interface Track {
   solo: boolean
   /** 録音待機（REAPER の録音アーム）。録った音はこのトラックに置く */
   armed?: boolean
+  /** 位相の反転（WeVocalSynth のフェーダーと同じ） */
+  invert?: boolean
   /** グラフィック EQ（WeVocalSynth と同じ。無ければ平ら） */
   eq?: TrackEq
 }
