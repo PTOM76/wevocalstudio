@@ -1,6 +1,8 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
 import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip } from 'wevocal-lib'
+import { describeChange } from './history'
+import type { MessageKey } from './i18n'
 import { DEFAULT_FADE, newBlock, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。2 オクターブまで */
@@ -14,14 +16,20 @@ export interface DropAt {
   start: number
 }
 
+/** 履歴の 1 段（そのときのプロジェクトと、そこへ来た操作の名前） */
+interface Step {
+  project: Project
+  label: MessageKey
+}
+
 interface History {
-  past: Project[]
-  present: Project
-  future: Project[]
+  past: Step[]
+  present: Step
+  future: Step[]
 }
 
 export function useProject(defaults: PitchDefaults) {
-  const [history, setHistory] = useState<History>(() => ({ past: [], present: newProject(), future: [] }))
+  const [history, setHistory] = useState<History>(() => ({ past: [], present: { project: newProject(), label: 'history.new' }, future: [] }))
   // 読み込みの途中で設定が変わっても、最新の既定値を使う
   const defaultsRef = useRef(defaults)
   defaultsRef.current = defaults
@@ -33,9 +41,11 @@ export function useProject(defaults: PitchDefaults) {
     const merged = merge !== undefined && merge === lastMerge.current
     lastMerge.current = merge ?? null
     setHistory((h) => {
-      const next = fn(h.present)
-      if (next === h.present) return h
-      return { past: merged ? h.past : [...h.past, h.present].slice(-HISTORY_MAX), present: next, future: [] }
+      const next = fn(h.present.project)
+      if (next === h.present.project) return h
+      // まとめるときは名前も前のまま
+      const present = { project: next, label: merged ? h.present.label : describeChange(h.present.project, next) }
+      return { past: merged ? h.past : [...h.past, h.present].slice(-HISTORY_MAX), present, future: [] }
     })
   }, [])
 
@@ -54,10 +64,20 @@ export function useProject(defaults: PitchDefaults) {
     setHistory((h) => (h.future.length ? { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) } : h))
   }, [])
 
-  /** 開いたプロジェクトに入れ替える（履歴は消す） */
-  const replace = useCallback((p: Project) => {
+  /** 履歴の index 番目（0 が一番古い。past の長さが今）へ行く（操作履歴の一覧から） */
+  const goto = useCallback((index: number) => {
     lastMerge.current = null
-    setHistory({ past: [], present: p, future: [] })
+    setHistory((h) => {
+      const all = [...h.past, h.present, ...h.future]
+      if (index < 0 || index >= all.length) return h
+      return { past: all.slice(0, index), present: all[index], future: all.slice(index + 1) }
+    })
+  }, [])
+
+  /** 開いたプロジェクトに入れ替える（履歴は消す） */
+  const replace = useCallback((p: Project, label: MessageKey = 'history.open') => {
+    lastMerge.current = null
+    setHistory({ past: [], present: { project: p, label }, future: [] })
   }, [])
 
   /** 録った音を、指定したトラックの start 秒に波形ブロックとして置く */
@@ -197,7 +217,11 @@ export function useProject(defaults: PitchDefaults) {
   )
 
   return {
-    project: history.present,
+    project: history.present.project,
+    /** 操作履歴（古い順の名前と、今の位置） */
+    steps: [...history.past, history.present, ...history.future].map((s) => s.label),
+    stepIndex: history.past.length,
+    goto,
     canUndo: history.past.length > 0,
     canRedo: history.future.length > 0,
     undo,

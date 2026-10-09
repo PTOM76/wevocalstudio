@@ -18,6 +18,8 @@ src/
   EqDialog.tsx  トラックのグラフィック EQ のダイアログ（WeVocalSynth と同じ EQ。グラフは wevocal-lib/react）
   ExportDialog.tsx  書き出しのダイアログ（形式、WAV のサンプル形式、ビットレート）。全トラックをマスターまで混ぜて書き出す
   grid.ts  時間軸の線（拍と小節、または時間）と、スナップの寄せ先。画面を知らない
+  history.ts  操作履歴の名前。変える前と後のプロジェクトを比べて、何をしたかを決める（呼び出す所ごとに名前を渡さずに済むように）
+  HistoryDialog.tsx  操作履歴の一覧（WeVocalSynth と同じ）。押した所まで戻る、または進む
   i18n.ts  多言語化（訳文は lang/ の JSON）
   keymap.ts  キーの割り当て。既定の表（操作の名前 → キー）と、設定の「キーとマウス」で変えた分（PevenMUI の keymap と同じ形）
   main.tsx  起動。設定を読み、言語、テーマ、画面の大きさを PevenProvider に渡す
@@ -29,7 +31,7 @@ src/
   settings.ts  アプリの設定（localStorage に保存する）
   SettingsDialog.tsx  設定画面（外枠は PevenMUI の SettingsDialog）
   Timeline.tsx  時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
-  TrackHeader.tsx  トラックとマスタートラックの左の欄（名前、ミュート、ソロ、音量、パン）。名前はダブルクリックで変える
+  TrackHeader.tsx  トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
   Transport.tsx  再生のボタン一式（REAPER のトランスポート。先頭へ、停止、再生、一時停止、リピート、末尾へ）と時間の表示。見た目は WeVocalSynth のツールバーと同じ
   useActions.ts  操作の表（キーとメニューから行うもの）と、メニューバーの並び
   useProject.ts  プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す

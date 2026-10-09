@@ -9,6 +9,7 @@ import { app } from './appConfig'
 import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
 import MarkerDialog from './MarkerDialog'
+import HistoryDialog from './HistoryDialog'
 import EqDialog from './EqDialog'
 import { flatEq } from 'wevocal-lib'
 import type { TimelineView } from './drawTimeline'
@@ -69,7 +70,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [notice, setNotice] = useState<string | null>(null)
   // 起動時の復元が終わるまでは自動保存しない（空のプロジェクトで前回の作業を上書きしないように）
   const [restored, setRestored] = useState(false)
-  const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | null>(null)
+  const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | 'history' | null>(null)
   const audioInput = useRef<HTMLInputElement>(null)
   const projectInput = useRef<HTMLInputElement>(null)
   const editingBlock = project.blocks.find((b) => b.id === editing) ?? null
@@ -224,6 +225,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     save,
     openExport: () => setDialog('export'),
     openSettings: () => setDialog('settings'),
+    openHistory: () => setDialog('history'),
     snap: p.settings.snap,
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
     beatGrid: p.settings.grid === 'beats',
@@ -243,7 +245,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     loadAutosave()
       .then((r) => {
         if (!r) return
-        doc.replace(r.project)
+        doc.replace(r.project, 'history.restore')
         setFileName(r.fileName)
         setNotice(t('toast.restored'))
       })
@@ -415,6 +417,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           }}
         />
       )}
+      <HistoryDialog open={dialog === 'history'} steps={doc.steps} index={doc.stepIndex} onGoto={doc.goto} onClose={() => setDialog(null)} />
       <MarkerDialog
         marker={project.markers.find((m) => m.id === editingMarker) ?? null}
         onClose={() => setEditingMarker(null)}

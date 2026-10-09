@@ -40,6 +40,7 @@ export interface ActionContext {
   save: () => void
   openExport: () => void
   openSettings: () => void
+  openHistory: () => void
   snap: boolean
   toggleSnap: () => void
   /** 線を拍と小節で取るか（でなければ秒） */
@@ -178,7 +179,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.edit'),
       accessKey: 'E',
-      entries: [item('undo'), item('redo'), divider, item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('splitSilence'), item('delete'), divider, item('clearRange')],
+      entries: [item('undo'), item('redo'), { label: t('menu.history'), onClick: c.openHistory }, divider, item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('splitSilence'), item('delete'), divider, item('clearRange')],
     },
     {
       label: t('menu.block'),

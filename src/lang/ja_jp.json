@@ -75,6 +75,7 @@
   "menu.minimap": "ミニマップ",
   "menu.analysis": "解析の欄",
   "menu.splitSilence": "無音で区切る",
+  "menu.history": "操作履歴…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -154,5 +155,26 @@
 
   "analysis.title": "解析",
   "analysis.select": "波形ブロックを選ぶと、スペクトログラムと F0 を表示します",
-  "analysis.busy": "解析中…"
+  "analysis.busy": "解析中…",
+
+  "history.new": "新しいプロジェクト",
+  "history.open": "開く",
+  "history.import": "音声の読み込み",
+  "history.addTrack": "トラックの追加",
+  "history.removeTrack": "トラックの削除",
+  "history.marker": "マーカー",
+  "history.tempo": "テンポ",
+  "history.master": "マスター",
+  "history.track": "トラックの設定",
+  "history.paste": "貼り付け",
+  "history.split": "分割",
+  "history.delete": "削除",
+  "history.pitch": "ピッチ",
+  "history.rate": "速度",
+  "history.trim": "長さ",
+  "history.fade": "フェード",
+  "history.move": "移動",
+  "history.block": "波形ブロックの設定",
+  "history.title": "操作履歴",
+  "history.restore": "前回の作業の復元"
 }

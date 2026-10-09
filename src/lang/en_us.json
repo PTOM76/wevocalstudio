@@ -75,6 +75,7 @@
   "menu.minimap": "Minimap",
   "menu.analysis": "Analysis Panel",
   "menu.splitSilence": "Split at Silence",
+  "menu.history": "History…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -154,5 +155,26 @@
 
   "analysis.title": "Analysis",
   "analysis.select": "Select a block to show its spectrogram and F0",
-  "analysis.busy": "Analyzing…"
+  "analysis.busy": "Analyzing…",
+
+  "history.new": "New project",
+  "history.open": "Open",
+  "history.import": "Import audio",
+  "history.addTrack": "Add track",
+  "history.removeTrack": "Remove track",
+  "history.marker": "Marker",
+  "history.tempo": "Tempo",
+  "history.master": "Master",
+  "history.track": "Track settings",
+  "history.paste": "Paste",
+  "history.split": "Split",
+  "history.delete": "Delete",
+  "history.pitch": "Pitch",
+  "history.rate": "Rate",
+  "history.trim": "Trim",
+  "history.fade": "Fade",
+  "history.move": "Move",
+  "history.block": "Block settings",
+  "history.title": "History",
+  "history.restore": "Restore previous work"
 }
