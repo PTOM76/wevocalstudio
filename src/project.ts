@@ -101,10 +101,13 @@ export const newBlock = (track: string, source: Source, start: number, defaults:
   gain: 0,
   pitch: 0,
   ...defaults,
-  fadeIn: 0,
-  fadeOut: 0,
+  fadeIn: Math.min(DEFAULT_FADE, source.duration / 2),
+  fadeOut: Math.min(DEFAULT_FADE, source.duration / 2),
   mute: false,
 })
+
+/** 新しい波形ブロックと、分割した切れ目に付けるフェード（秒。REAPER の既定と同じ 10ms。切れ目のプツッという音を防ぐ） */
+export const DEFAULT_FADE = 0.01
 
 /** 速度の範囲（REAPER と同じく 1/4 倍から 4 倍） */
 export const RATE_MIN = 0.25
@@ -126,7 +129,7 @@ export function splitBlock(b: Block, t: number): [Block, Block] | null {
   const at = t - b.start
   if (at <= 0.001 || at >= b.length - 0.001) return null
   return [
-    { ...b, length: at, fadeOut: 0 },
-    { ...b, id: newId(), start: t, offset: b.offset + at * b.rate, length: b.length - at, fadeIn: 0 },
+    { ...b, length: at, fadeIn: Math.min(b.fadeIn, at), fadeOut: Math.min(DEFAULT_FADE, at / 2) },
+    { ...b, id: newId(), start: t, offset: b.offset + at * b.rate, length: b.length - at, fadeIn: Math.min(DEFAULT_FADE, (b.length - at) / 2), fadeOut: Math.min(b.fadeOut, b.length - at) },
   ]
 }

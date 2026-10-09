@@ -55,7 +55,6 @@ export default function Transport(p: {
   onTempo: (patch: Partial<Tempo>) => void
   onToStart: () => void
   onStop: () => void
-  onPlay: () => void
   onPause: () => void
   onRepeat: () => void
   onToEnd: () => void
@@ -65,8 +64,8 @@ export default function Transport(p: {
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, height: 40, flexShrink: 0, borderTop: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
       <Button icon={faBackwardStep} label="transport.toStart" action="toStart" onClick={p.onToStart} />
       <Button icon={faStop} label="transport.stop" action="stop" onClick={p.onStop} />
-      <Button icon={faPlay} label="transport.play" action="playStop" onClick={p.onPlay} primary={p.playing} />
-      <Button icon={faPause} label="transport.pause" action="pause" onClick={p.onPause} />
+      {/* 再生と一時停止は 1 つのボタン（WeVocalSynth と同じ）。停止は止めて、再生を始めた位置に戻る */}
+      <Button icon={p.playing ? faPause : faPlay} label={p.playing ? 'transport.pause' : 'transport.play'} action="pause" onClick={p.onPause} primary />
       <Button icon={faCircle} label="transport.record" action="record" onClick={p.onRecord} pressed={p.recording} danger />
       <Button icon={faRepeat} label="transport.repeat" action="repeat" onClick={p.onRepeat} pressed={p.repeat} />
       <Button icon={faForwardStep} label="transport.toEnd" action="toEnd" onClick={p.onToEnd} />

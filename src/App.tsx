@@ -318,7 +318,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onTempo={(patch) => doc.updateTempo(patch)}
         onToStart={() => seek(0)}
         onStop={stop}
-        onPlay={play}
         onPause={() => (playing ? pause() : play())}
         onRepeat={() => setRepeat((r) => !r)}
         onToEnd={() => seek(end)}
