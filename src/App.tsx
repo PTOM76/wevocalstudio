@@ -9,7 +9,7 @@ import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
 import MarkerDialog from './MarkerDialog'
 import type { TimelineView } from './drawTimeline'
-import { pitchPending, preparePitch } from './dsp/pitch'
+import { analyzeTempo, pitchPending, preparePitch } from './dsp/pitch'
 import { Player, renderMix } from './engine'
 import ExportDialog, { type ExportChoice } from './ExportDialog'
 import { useT } from './i18n'
@@ -107,6 +107,33 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       fail(e)
     }
   }
+  /** 選んだ波形ブロック（なければ最初のもの）からテンポを解析して、プロジェクトのテンポにする（WeVocalSynth と同じ解析） */
+  const detectTempo = async () => {
+    const b = project.blocks.find((x) => selected.includes(x.id)) ?? project.blocks[0]
+    const source = b && sourceOf(b.source)
+    if (!b || !source) return
+    setBusy(true)
+    try {
+      const { clip } = source
+      const from = Math.floor(b.offset * clip.sampleRate)
+      const to = Math.min(clip.channels[0].length, from + Math.floor(b.length * b.rate * clip.sampleRate))
+      const mono = new Float32Array(to - from)
+      for (const ch of clip.channels) for (let i = 0; i < mono.length; i++) mono[i] += ch[from + i] / clip.channels.length
+      const [best] = await analyzeTempo(mono, clip.sampleRate)
+      if (!best) return fail(t('error.noTempo'))
+      // 速度を変えた波形ブロックは、そのぶん BPM も変わる
+      const bpm = Math.round(best.bpm * b.rate * 100) / 100
+      const beat = 60 / bpm
+      const first = b.start + best.offset / b.rate
+      doc.updateTempo({ bpm, beatOffset: ((first % beat) + beat) % beat })
+      setNotice(t('toast.tempo', { bpm }))
+    } catch (e) {
+      fail(e)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const toggleRecord = () => void (recording ? stopRecord() : startRecord())
 
   const pause = () => {
@@ -173,6 +200,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     pause,
     repeat,
     recording: !!recording,
+    detectTempo: () => void detectTempo(),
     toggleRecord,
     toggleRepeat: () => setRepeat((r) => !r),
     seek,

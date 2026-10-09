@@ -18,6 +18,7 @@
 
   "error.failed": "Failed: {error}",
   "error.noRecord": "Recording is not supported in this browser",
+  "error.noTempo": "Could not detect the tempo",
 
   "licenses.app": "This app",
 
@@ -70,6 +71,7 @@
   "menu.addMarker": "Add Marker",
   "menu.nextMarker": "Next Marker",
   "menu.prevMarker": "Previous Marker",
+  "menu.detectTempo": "Detect Tempo",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -131,6 +133,7 @@
   "transport.record": "Record",
 
   "toast.restored": "Restored your previous work",
+  "toast.tempo": "Set the tempo to {bpm} BPM",
 
   "marker.title": "Marker",
   "marker.name": "Name",

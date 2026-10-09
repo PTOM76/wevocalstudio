@@ -28,6 +28,7 @@ export interface ActionContext {
   pause: () => void
   repeat: boolean
   recording: boolean
+  detectTempo: () => void
   toggleRecord: () => void
   toggleRepeat: () => void
   seek: (t: number) => void
@@ -89,6 +90,7 @@ export function useActions(c: ActionContext) {
     pause: { run: () => (c.playing ? c.pause() : c.play()) },
     repeat: { run: c.toggleRepeat },
     record: { run: c.toggleRecord },
+    detectTempo: { enabled: doc.project.blocks.length > 0, run: c.detectTempo },
     toStart: { run: () => c.seek(0) },
     toEnd: { run: () => c.seek(doc.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)) },
     snap: { run: c.toggleSnap },
@@ -206,6 +208,7 @@ export function useActions(c: ActionContext) {
         item('toStart'),
         item('toEnd'),
         divider,
+        item('detectTempo'),
         item('addMarker'),
         item('prevMarker'),
         item('nextMarker'),

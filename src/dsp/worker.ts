@@ -1,4 +1,4 @@
-// wasm のピッチ変更を画面のスレッドの外で行う Worker
+// wasm の処理（ピッチと速度の変更、テンポの解析）を画面のスレッドの外で行う Worker
 import wasmUrl from './dsp.wasm?url'
 
 interface DspExports {
@@ -6,10 +6,12 @@ interface DspExports {
   alloc_f32(len: number): number
   free_f32(ptr: number, len: number): void
   process_planar(input: number, frames: number, channels: number, sampleRate: number, semitones: number, stretch: number, algorithm: number, preserveFormant: number, formantSemitones: number): number
+  analyze_tempo(input: number, frames: number, sampleRate: number): number
   output_ptr(): number
 }
 
 export interface PitchRequest {
+  kind: 'pitch'
   id: number
   channels: Float32Array[]
   sampleRate: number
@@ -22,6 +24,16 @@ export interface PitchRequest {
   /** フォルマントのずらし量（半音。preserveFormant のときだけ効く） */
   formantSemitones: number
 }
+
+/** テンポの解析（モノラル） */
+export interface TempoRequest {
+  kind: 'tempo'
+  id: number
+  samples: Float32Array
+  sampleRate: number
+}
+
+export type DspRequest = PitchRequest | TempoRequest
 
 export type PitchResponse = { id: number; channels: Float32Array[] } | { id: number; error: string }
 
@@ -47,10 +59,22 @@ function process(dsp: DspExports, r: PitchRequest): Float32Array[] {
   }
 }
 
-scope.onmessage = async (e: MessageEvent<PitchRequest>) => {
+function tempo(dsp: DspExports, r: TempoRequest): Float32Array[] {
+  const ptr = dsp.alloc_f32(r.samples.length)
+  try {
+    new Float32Array(dsp.memory.buffer, ptr, r.samples.length).set(r.samples)
+    const n = dsp.analyze_tempo(ptr, r.samples.length, r.sampleRate)
+    return [new Float32Array(dsp.memory.buffer, dsp.output_ptr(), n).slice()]
+  } finally {
+    dsp.free_f32(ptr, r.samples.length)
+  }
+}
+
+scope.onmessage = async (e: MessageEvent<DspRequest>) => {
   const req = e.data
   try {
-    const channels = process(await ready, req)
+    const dsp = await ready
+    const channels = req.kind === 'tempo' ? tempo(dsp, req) : process(dsp, req)
     scope.postMessage({ id: req.id, channels } satisfies PitchResponse, channels.map((c) => c.buffer))
   } catch (err) {
     scope.postMessage({ id: req.id, error: String(err) } satisfies PitchResponse)

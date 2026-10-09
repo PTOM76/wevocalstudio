@@ -1,13 +1,14 @@
-// 波形ブロックのピッチと速度を音に反映する。元の音全体を変えて作り、キャッシュする（再生のたびには計算しない）
+// wasm の処理の窓口。波形ブロックのピッチと速度を音に反映し（作ったものはキャッシュ）、テンポを解析する。元の音全体を変えて作り、キャッシュする（再生のたびには計算しない）
 import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
 import type { Block, Project, Source } from '../project'
-import type { PitchRequest, PitchResponse } from './worker'
+import type { DspRequest, PitchResponse } from './worker'
 
 let worker: Worker | null = null
 let nextId = 1
 const waiting = new Map<number, (r: PitchResponse) => void>()
 
-function request(r: Omit<PitchRequest, 'id'>) {
+/** Worker に頼む（id はここで付ける） */
+function request(r: DspRequest extends infer T ? (T extends { id: number } ? Omit<T, 'id'> : never) : never) {
   worker ??= new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' })
   worker.onmessage = (e: MessageEvent<PitchResponse>) => {
     waiting.get(e.data.id)?.(e.data)
@@ -16,7 +17,7 @@ function request(r: Omit<PitchRequest, 'id'>) {
   const id = nextId++
   return new Promise<Float32Array[]>((resolve, reject) => {
     waiting.set(id, (res) => ('error' in res ? reject(new Error(res.error)) : resolve(res.channels)))
-    worker!.postMessage({ ...r, id } satisfies PitchRequest)
+    worker!.postMessage({ ...r, id } as DspRequest)
   })
 }
 
@@ -51,7 +52,7 @@ export async function preparePitch(p: Project) {
     let job = jobs.get(key)
     if (!job) {
       const { clip } = source
-      job = request({ channels: clip.channels, sampleRate: clip.sampleRate, semitones: b.pitch, stretch: 1 / b.rate, algorithm: ALGORITHM_ID[b.algorithm], preserveFormant: b.preserveFormant || b.formant !== 0, formantSemitones: b.formant }).then((channels) => {
+      job = request({ kind: 'pitch', channels: clip.channels, sampleRate: clip.sampleRate, semitones: b.pitch, stretch: 1 / b.rate, algorithm: ALGORITHM_ID[b.algorithm], preserveFormant: b.preserveFormant || b.formant !== 0, formantSemitones: b.formant }).then((channels) => {
         const out = { sampleRate: clip.sampleRate, channels }
         // 待つ間に使われなくなったものは残さない
         if (jobs.get(key) === job) done.set(key, out)
@@ -70,4 +71,12 @@ export async function preparePitch(p: Project) {
   }
   await Promise.all(pending)
   return pending.length > 0
+}
+
+/** テンポの候補（強い順）。offset は 1 拍目の位置（秒、音の頭から） */
+export async function analyzeTempo(samples: Float32Array, sampleRate: number) {
+  const [raw] = await request({ kind: 'tempo', samples, sampleRate })
+  const out: { bpm: number; strength: number; offset: number }[] = []
+  for (let i = 0; i + 2 < raw.length; i += 3) out.push({ bpm: raw[i], strength: raw[i + 1], offset: raw[i + 2] })
+  return out
 }

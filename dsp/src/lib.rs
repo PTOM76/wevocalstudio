@@ -1,7 +1,7 @@
-//! WeVocal Studio の wasm。wevocal-lib のピッチ変更（WeVocalSynth と同じ処理方式）を、Worker から呼べる C ABI で公開するだけ。
+//! WeVocal Studio の wasm。wevocal-lib のピッチ変更（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。
 
 use std::cell::RefCell;
-use wevocal_lib::{formant, process_with_progress, Algorithm, Formant};
+use wevocal_lib::{formant, process_with_progress, tempo, Algorithm, Formant};
 
 thread_local! {
     static OUTPUT: RefCell<Vec<f32>> = const { RefCell::new(Vec::new()) };
@@ -56,6 +56,21 @@ pub unsafe extern "C" fn process_planar(
         }
     });
     out_frames
+}
+
+/// モノラル音声のテンポを解析し、結果の値の個数を返す。結果は `output_ptr` で取得する（WeVocalSynth の `analyze_tempo` と同じ）:
+/// [候補1の BPM, 強さ, 1拍目の位置（秒）, 候補2の BPM, …]（強い順）
+///
+/// # Safety
+/// `input` は `frames` 個の有効な f32 を指していること。
+#[no_mangle]
+pub unsafe extern "C" fn analyze_tempo(input: *const f32, frames: usize, sample_rate: f32) -> usize {
+    let x = std::slice::from_raw_parts(input, frames);
+    let env = tempo::onset_envelope(x, sample_rate, &mut |_| {});
+    let out: Vec<f32> = tempo::estimate(&env, &mut |_| {}).iter().flat_map(|c| [c.bpm as f32, c.strength as f32, c.offset as f32]).collect();
+    let n = out.len();
+    OUTPUT.with(|o| *o.borrow_mut() = out);
+    n
 }
 
 #[no_mangle]

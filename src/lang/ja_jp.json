@@ -18,6 +18,7 @@
 
   "error.failed": "処理に失敗しました: {error}",
   "error.noRecord": "このブラウザでは録音できません",
+  "error.noTempo": "テンポを見つけられませんでした",
 
   "licenses.app": "このアプリ",
 
@@ -70,6 +71,7 @@
   "menu.addMarker": "マーカーを追加",
   "menu.nextMarker": "次のマーカーへ",
   "menu.prevMarker": "前のマーカーへ",
+  "menu.detectTempo": "テンポを解析",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -131,6 +133,7 @@
   "transport.record": "録音",
 
   "toast.restored": "前回の作業を復元しました",
+  "toast.tempo": "テンポを {bpm} BPM にしました",
 
   "marker.title": "マーカー",
   "marker.name": "名前",
