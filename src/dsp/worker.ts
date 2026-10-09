@@ -7,6 +7,9 @@ interface DspExports {
   free_f32(ptr: number, len: number): void
   process_planar(input: number, frames: number, channels: number, sampleRate: number, semitones: number, stretch: number, algorithm: number, preserveFormant: number, formantSemitones: number): number
   process_curve_planar(input: number, frames: number, channels: number, sampleRate: number, ratios: number, ratioCount: number, hop: number, algorithm: number, preserveFormant: number, formantSemitones: number, stretch: number): number
+  segment_count(frames: number, sampleRate: number): number
+  segment_bound(frames: number, sampleRate: number, k: number, field: number): number
+  stitch_planar(input: number, frames: number, channels: number, sampleRate: number, stretch: number): number
   analyze_tempo(input: number, frames: number, sampleRate: number): number
   output_ptr(): number
 }
@@ -37,7 +40,26 @@ export interface TempoRequest {
   sampleRate: number
 }
 
-export type DspRequest = PitchRequest | TempoRequest
+/** 長い音を区間に分けるときの割り当て。結果は [start, end, ctxStart, ctxEnd] を区間の数だけ（Float64 を Float32Array に詰める） */
+export interface SegPlanRequest {
+  kind: 'segplan'
+  id: number
+  frames: number
+  sampleRate: number
+}
+
+/** 区間ごとに作った音をつなぐ（channels は区間の順、その中はチャンネルの順） */
+export interface StitchRequest {
+  kind: 'stitch'
+  id: number
+  channels: Float32Array[]
+  frames: number
+  channelCount: number
+  sampleRate: number
+  stretch: number
+}
+
+export type DspRequest = PitchRequest | TempoRequest | SegPlanRequest | StitchRequest
 
 export type PitchResponse = { id: number; channels: Float32Array[] } | { id: number; error: string }
 
@@ -84,11 +106,35 @@ function tempo(dsp: DspExports, r: TempoRequest): Float32Array[] {
   }
 }
 
+function segplan(dsp: DspExports, r: SegPlanRequest): Float32Array[] {
+  const n = dsp.segment_count(r.frames, r.sampleRate)
+  const plan = new Float64Array(n * 4)
+  for (let k = 0; k < n; k++) for (let f = 0; f < 4; f++) plan[k * 4 + f] = dsp.segment_bound(r.frames, r.sampleRate, k, f)
+  return [new Float32Array(plan.buffer)]
+}
+
+function stitch(dsp: DspExports, r: StitchRequest): Float32Array[] {
+  const total = r.channels.reduce((n, c) => n + c.length, 0)
+  const ptr = dsp.alloc_f32(total)
+  try {
+    let at = 0
+    for (const c of r.channels) {
+      new Float32Array(dsp.memory.buffer, ptr + at * 4, c.length).set(c)
+      at += c.length
+    }
+    const n = dsp.stitch_planar(ptr, r.frames, r.channelCount, r.sampleRate, r.stretch)
+    const out = new Float32Array(dsp.memory.buffer, dsp.output_ptr(), n * r.channelCount)
+    return Array.from({ length: r.channelCount }, (_, i) => out.slice(i * n, (i + 1) * n))
+  } finally {
+    dsp.free_f32(ptr, total)
+  }
+}
+
 scope.onmessage = async (e: MessageEvent<DspRequest>) => {
   const req = e.data
   try {
     const dsp = await ready
-    const channels = req.kind === 'tempo' ? tempo(dsp, req) : process(dsp, req)
+    const channels = req.kind === 'tempo' ? tempo(dsp, req) : req.kind === 'segplan' ? segplan(dsp, req) : req.kind === 'stitch' ? stitch(dsp, req) : process(dsp, req)
     scope.postMessage({ id: req.id, channels } satisfies PitchResponse, channels.map((c) => c.buffer))
   } catch (err) {
     scope.postMessage({ id: req.id, error: String(err) } satisfies PitchResponse)

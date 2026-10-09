@@ -101,10 +101,11 @@ class Graph {
       const source = p.sources.find((s) => s.id === b.source)
       const track = this.tracks.get(b.track)
       if (b.mute || !source || !track || b.start + b.length <= from) continue
-      // 作った音（できるまでは前の音）。どちらもなければ元の音
+      // 作った音（変えていなければ元の音）。作り直している間は鳴らさない
       const made = clipFor(b, source)
-      const clip = made?.clip ?? source.clip
-      const sig = Graph.sig(b, clip, made?.from ?? -1)
+      if (!made) continue
+      const clip = made.clip
+      const sig = Graph.sig(b, clip, made.from)
       live.add(b.id)
       const old = this.blocks.get(b.id)
       if (old?.sig === sig) continue

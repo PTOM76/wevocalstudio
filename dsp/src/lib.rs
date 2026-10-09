@@ -1,7 +1,7 @@
 //! WeVocal Studio の wasm。wevocal-lib のピッチ変更とピッチカーブ（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。
 
 use std::cell::RefCell;
-use wevocal_lib::{curve, formant, process_with_progress, tempo, Algorithm, Formant};
+use wevocal_lib::{curve, formant, process_with_progress, segment, tempo, Algorithm, Formant};
 
 thread_local! {
     static OUTPUT: RefCell<Vec<f32>> = const { RefCell::new(Vec::new()) };
@@ -140,6 +140,53 @@ pub unsafe extern "C" fn analyze_tempo(input: *const f32, frames: usize, sample_
     let n = out.len();
     OUTPUT.with(|o| *o.borrow_mut() = out);
     n
+}
+
+/// 長い音を区間に分けて別々の Worker で作るときの、区間の数（WeVocalSynth と同じ wevocal-lib の segment）
+#[no_mangle]
+pub extern "C" fn segment_count(frames: usize, sample_rate: f32) -> usize {
+    segment::plan(frames, sample_rate).len()
+}
+
+/// 区間 `k` の境界（`field`: 0 = start、1 = end、2 = ctx_start、3 = ctx_end。入力のサンプル位置）
+#[no_mangle]
+pub extern "C" fn segment_bound(frames: usize, sample_rate: f32, k: usize, field: u32) -> usize {
+    let s = segment::plan(frames, sample_rate)[k];
+    [s.start, s.end, s.ctx_start, s.ctx_end][field.min(3) as usize]
+}
+
+/// 区間ごとに作った音（区間の順、その中はチャンネルの順。長さは余白を含む範囲 × `stretch`）をつなぎ、出力のフレーム数を返す
+///
+/// # Safety
+/// `input` は、区間ごとの長さの和 × `channels` 個の有効な f32 を指していること。
+#[no_mangle]
+pub unsafe extern "C" fn stitch_planar(input: *const f32, frames: usize, channels: usize, sample_rate: f32, stretch: f64) -> usize {
+    let segs = segment::plan(frames, sample_rate);
+    let lens: Vec<usize> = segs.iter().map(|s| ((s.ctx_end - s.ctx_start) as f64 * stretch).round() as usize).collect();
+    let all = std::slice::from_raw_parts(input, lens.iter().sum::<usize>() * channels);
+    let mut at = 0;
+    let outs: Vec<Vec<Vec<f32>>> = lens
+        .iter()
+        .map(|&n| {
+            (0..channels)
+                .map(|_| {
+                    let c = all[at..at + n].to_vec();
+                    at += n;
+                    c
+                })
+                .collect()
+        })
+        .collect();
+    let out = segment::stitch(&segs, &outs, frames, stretch, sample_rate);
+    let out_frames = out.first().map_or(0, |c| c.len());
+    OUTPUT.with(|o| {
+        let mut o = o.borrow_mut();
+        o.clear();
+        for c in &out {
+            o.extend_from_slice(c);
+        }
+    });
+    out_frames
 }
 
 #[no_mangle]
