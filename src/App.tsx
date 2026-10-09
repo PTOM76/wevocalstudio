@@ -348,7 +348,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   useEffect(() => {
     let alive = true
     setPitching(pitchPending(project))
-    preparePitch(project)
+    preparePitch(project, player.current.playing ? player.current.position() : cursor)
       .then((made) => {
         if (!alive || !made) return
         replay()

@@ -1,12 +1,42 @@
 // トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
 import { useState, type ReactNode } from 'react'
-import { Box, InputBase, Slider, ToggleButton, Typography } from '@mui/material'
+import { Box, ButtonBase, InputBase, Slider, Tooltip, Typography } from '@mui/material'
+import { pevenFont } from 'pevenmui'
 import { ContextMenu } from 'pevenmui'
 import { useT } from './i18n'
 import { isFlatEq } from 'wevocal-lib'
 import type { Master, Track } from './project'
 
-const toggleSx = { py: 0, px: 0.75 }
+/** 入り切りの小さなボタン（WeVocalSynth の MixToggle と同じ見た目。入っているときだけ色で塗る） */
+function MixToggle(p: { label: string; title: string; on: boolean; color: string; onClick: () => void; wide?: boolean }) {
+  return (
+    <Tooltip title={p.title}>
+      <ButtonBase
+        aria-label={p.title}
+        aria-pressed={p.on}
+        onClick={(e) => {
+          // 欄を押したときの「選ぶ」と分ける
+          e.stopPropagation()
+          p.onClick()
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        sx={{
+          minWidth: 18,
+          px: p.wide ? 0.5 : 0,
+          height: 18,
+          flexShrink: 0,
+          fontSize: pevenFont('xs'),
+          fontWeight: 700,
+          borderRadius: 0.5,
+          bgcolor: p.on ? p.color : 'action.hover',
+          color: p.on ? 'common.white' : 'text.secondary',
+        }}
+      >
+        {p.label}
+      </ButtonBase>
+    </Tooltip>
+  )
+}
 
 /** 音量とパンのスライダー。動かしている間の変更は 1 回分の履歴にまとめる */
 function Faders<T extends { volume: number; pan: number }>(p: { value: T; merge: string; onChange: (patch: Partial<T>, merge: string) => void; onEndMerge: () => void; panExtra?: ReactNode }) {
@@ -81,6 +111,8 @@ export default function TrackHeader(p: {
         flexDirection: 'column',
         gap: 0.25,
         bgcolor: p.selected ? 'action.selected' : undefined,
+        // 選んでいるトラックは左端に色の帯を付ける（WeVocalSynth と同じ）
+        boxShadow: p.selected ? (theme) => `inset 3px 0 0 ${theme.palette.primary.main}` : 'none',
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -102,26 +134,13 @@ export default function TrackHeader(p: {
             }}
           />
         ) : (
-          <Typography variant="body2" noWrap sx={{ flex: 1 }} title={track.name} onDoubleClick={() => setEditing(true)}>
+          <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => setEditing(true)}>
             {track.name}
           </Typography>
         )}
-        <ToggleButton
-          size="small"
-          value="r"
-          selected={!!track.armed}
-          onChange={() => p.onChange({ armed: !track.armed })}
-          sx={{ ...toggleSx, color: track.armed ? 'error.main' : undefined, '&.Mui-selected': { color: 'error.main' } }}
-          title={t('track.arm')}
-        >
-          ●
-        </ToggleButton>
-        <ToggleButton size="small" value="m" selected={track.mute} onChange={() => p.onChange({ mute: !track.mute })} sx={toggleSx} title={t('track.mute')}>
-          M
-        </ToggleButton>
-        <ToggleButton size="small" value="s" selected={track.solo} onChange={() => p.onChange({ solo: !track.solo })} sx={toggleSx} title={t('track.solo')}>
-          S
-        </ToggleButton>
+        <MixToggle label="●" title={t('track.arm')} on={!!track.armed} color="error.main" onClick={() => p.onChange({ armed: !track.armed })} />
+        <MixToggle label="M" title={t('track.mute')} on={track.mute} color="warning.main" onClick={() => p.onChange({ mute: !track.mute })} />
+        <MixToggle label="S" title={t('track.solo')} on={track.solo} color="success.main" onClick={() => p.onChange({ solo: !track.solo })} />
       </Box>
       <Faders
         value={track}
@@ -130,13 +149,9 @@ export default function TrackHeader(p: {
         onEndMerge={p.onEndMerge}
         panExtra={
           <>
-            <ToggleButton size="small" value="inv" selected={!!track.invert} onChange={() => p.onChange({ invert: !track.invert })} sx={toggleSx} title={t('track.invert')}>
-              Ø
-            </ToggleButton>
+            <MixToggle label="Ø" title={t('track.invert')} on={!!track.invert} color="primary.main" onClick={() => p.onChange({ invert: !track.invert })} />
             {/* EQ。掛けているときは色を付ける */}
-            <ToggleButton size="small" value="eq" selected={!!track.eq && !isFlatEq(track.eq)} onChange={p.onEq} sx={{ ...toggleSx, fontSize: 10 }} title={t('track.eq')}>
-              EQ
-            </ToggleButton>
+            <MixToggle label="EQ" wide title={t('track.eq')} on={!!track.eq && !isFlatEq(track.eq)} color="primary.main" onClick={p.onEq} />
           </>
         }
       />
@@ -177,9 +192,7 @@ export function MasterHeader(p: { master: Master; height: number; onChange: (pat
         <Typography variant="body2" sx={{ flex: 1, fontWeight: 500, letterSpacing: 1 }}>
           {t('track.master')}
         </Typography>
-        <ToggleButton size="small" value="m" selected={master.mute} onChange={() => p.onChange({ mute: !master.mute })} sx={toggleSx} title={t('track.mute')}>
-          M
-        </ToggleButton>
+        <MixToggle label="M" title={t('track.mute')} on={master.mute} color="warning.main" onClick={() => p.onChange({ mute: !master.mute })} />
       </Box>
       <Faders value={master} merge="master" onChange={p.onChange} onEndMerge={p.onEndMerge} />
     </Box>

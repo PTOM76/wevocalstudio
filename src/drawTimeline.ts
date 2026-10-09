@@ -2,7 +2,7 @@
 import type { Range } from 'wevocal-lib'
 import { gridLines, type GridMode } from './grid'
 import { layoutRows } from './overlap'
-import type { Block, Project } from './project'
+import { audible, type Block, type Project } from './project'
 
 export const RULER = 24
 /** マスタートラックの行の高さ（目盛りのすぐ下。REAPER と同じく一番上） */
@@ -111,7 +111,8 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       const x = tx(b.start)
       const bw = b.length * view.pps
       if (x > w || x + bw < 0) continue
-      g.globalAlpha = b.mute ? 0.4 : 1
+      // 鳴らないトラック（ミュート、ほかのソロ）と、ミュートした波形ブロックは薄く出す（WeVocalSynth と同じ）
+      g.globalAlpha = b.mute || !audible(p, track) ? 0.35 : 1
       g.fillStyle = selected.includes(b.id) ? c.blockSelected : c.block
       g.fillRect(x, y + 2, bw, H - 5)
       g.fillStyle = c.wave

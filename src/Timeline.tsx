@@ -4,8 +4,8 @@ import { Box } from '@mui/material'
 import { useEdgeScroll } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
-import type { GridMode } from './grid'
-import { CURSOR, dragPatch, hitBlock, snapDelta, snapTargets, snapTime, type Drag } from './blockDrag'
+import { snapGrid, type GridMode } from './grid'
+import { CURSOR, dragPatch, hitBlock, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { LANE, MASTER, RULER, TOP, drawTimeline, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
@@ -151,6 +151,13 @@ export default function Timeline(p: {
     if (pos > view.scroll + visible || pos < view.scroll) setView((v) => ({ ...v, scroll: Math.max(0, pos) }))
   }, [p.playing, p.playPos, visible, view.scroll, setView])
   const snapping = { mode: p.grid, tempo: p.project.tempo, pps: view.pps }
+  /** 編集カーソルと範囲選択の端は、スナップが入っていればいちばん近いグリッドの線に合わせる（Shift で外す） */
+  const gridAt = (x: number, shift: boolean) => {
+    const t = Math.max(0, toTime(x))
+    if (!p.snap || shift) return t
+    const { origin, step } = snapGrid(p.grid, p.project.tempo, view.pps)
+    return Math.max(0, origin + Math.round((t - origin) / step) * step)
+  }
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // 時間軸を押したら、スライダーなどに残ったフォーカスを外す（キーが時間軸の操作に届くように）
@@ -168,7 +175,7 @@ export default function Timeline(p: {
     if (y < RULER) {
       e.currentTarget.setPointerCapture(e.pointerId)
       scrub.current = true
-      p.onSeek(Math.max(0, toTime(x)))
+      p.onSeek(gridAt(x, e.shiftKey))
       return
     }
     if (!hit) {
@@ -176,9 +183,9 @@ export default function Timeline(p: {
       if (!e.ctrlKey && !e.metaKey) p.onSelect([])
       const track = p.project.tracks[Math.floor((y - TOP) / LANE)]
       if (track) p.onSelectTrack(track.id)
-      p.onSeek(Math.max(0, toTime(x)))
+      p.onSeek(gridAt(x, e.shiftKey))
       e.currentTarget.setPointerCapture(e.pointerId)
-      rangeDrag.current = { t: Math.max(0, toTime(x)), x }
+      rangeDrag.current = { t: gridAt(x, e.shiftKey), x }
       return
     }
     const id = hit.block.id
@@ -197,7 +204,7 @@ export default function Timeline(p: {
     if (!e.ctrlKey && !e.metaKey) {
       const b = hit.block
       const t = hit.kind === 'left' || hit.kind === 'fadeIn' ? b.start : hit.kind === 'right' || hit.kind === 'fadeOut' ? b.start + b.length : toTime(x)
-      const snapped = hit.kind === 'move' && p.snap ? (snapTime(t, snapTargets(p.project, p.cursor, []), snapping) ?? t) : t
+      const snapped = hit.kind === 'move' ? gridAt(x, e.shiftKey) : t
       p.onCursor(Math.max(0, snapped))
     }
     // 選んでいるものをつまんだら、選んだもの全部を動かす。Ctrl は、動かせば複製（REAPER と同じ）、動かさずに離せば選択の足し引き
@@ -229,13 +236,12 @@ export default function Timeline(p: {
     }
     if (scrub.current) {
       edge.update(e.clientX)
-      return p.onSeek(Math.max(0, toTime(x)))
+      return p.onSeek(gridAt(x, e.shiftKey))
     }
     const r = rangeDrag.current
     if (r) {
       if (Math.abs(x - r.x) < 3) return
-      const t = Math.max(0, toTime(x))
-      const snapped = p.snap && !e.shiftKey ? (snapTime(t, snapTargets(p.project, p.cursor, []), snapping) ?? t) : t
+      const snapped = gridAt(x, e.shiftKey)
       p.onRange({ start: Math.min(r.t, snapped), end: Math.max(r.t, snapped) })
       return
     }

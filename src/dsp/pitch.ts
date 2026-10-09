@@ -215,7 +215,7 @@ function joinWants(list: Want[]) {
 }
 
 /** プロジェクトの波形ブロックの音をすべて用意する。使われなくなったキャッシュは消す。新しく作ったものがあれば true */
-export async function preparePitch(p: Project) {
+export async function preparePitch(p: Project, around = 0) {
   const keep = new Set<Made>()
   const list: Want[] = []
   for (const b of p.blocks) {
@@ -232,7 +232,13 @@ export async function preparePitch(p: Project) {
     list.push({ b, source, from: Math.max(0, a - MARGIN), to: Math.min(source.duration, z + MARGIN) })
   }
   made = made.filter((m) => keep.has(m))
-  wanted = joinWants(list)
+  // 再生位置（止まっていれば編集カーソル）に近い所から作る（すぐ聞く所を先に）
+  const distance = (w: Want) => {
+    const t0 = w.b.start + (w.from - w.b.offset) / w.b.rate
+    const t1 = w.b.start + (w.to - w.b.offset) / w.b.rate
+    return around < t0 ? t0 - around : around > t1 ? around - t1 : 0
+  }
+  wanted = joinWants(list).sort((x, y) => distance(x) - distance(y))
   const before = madeCount
   await run()
   // 途中のものを待つ（最初に頼んだ側の run が終わるまで）
