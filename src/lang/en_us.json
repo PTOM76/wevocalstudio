@@ -86,6 +86,8 @@
   "menu.nudgeLeft": "Nudge Blocks Left",
   "menu.nudgeRight": "Nudge Blocks Right",
   "menu.newProject": "New Project",
+  "menu.cut": "Cut",
+  "menu.follow": "Follow Playback",
 
   "settings.title": "Settings",
   "settings.general": "General",

@@ -5,8 +5,8 @@ import { describeChange } from './history'
 import type { MessageKey } from './i18n'
 import { DEFAULT_FADE, fitBlock, newBlock, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
-/** ピッチの範囲（半音）。2 オクターブまで */
-const PITCH_MAX = 24
+/** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
+const PITCH_MAX = 256
 /** 元に戻せる回数 */
 const HISTORY_MAX = 200
 

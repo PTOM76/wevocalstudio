@@ -16,6 +16,7 @@ export type Action =
   | 'newProject'
   | 'toEnd'
   | 'snap'
+  | 'follow'
   | 'zoomIn'
   | 'zoomOut'
   | 'detectTempo'
@@ -29,6 +30,7 @@ export type Action =
   | 'delete'
   | 'undo'
   | 'redo'
+  | 'cut'
   | 'copy'
   | 'paste'
   | 'duplicate'
@@ -67,6 +69,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   toEnd: ['End'],
   // スナップの切り替え（REAPER の既定の割り当ては確かめられなかったので Alt+S）
   snap: ['Alt+KeyS'],
+  // 再生位置に表示を追従させるか
+  follow: ['KeyF'],
   zoomIn: ['NumpadAdd', 'Equal'],
   zoomOut: ['NumpadSubtract', 'Minus'],
   // マーカー（REAPER と同じく M で足す）
@@ -81,6 +85,7 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   delete: ['Delete'],
   undo: ['Ctrl+KeyZ'],
   redo: ['Ctrl+Shift+KeyZ', 'Ctrl+KeyY'],
+  cut: ['Ctrl+KeyX'],
   copy: ['Ctrl+KeyC'],
   paste: ['Ctrl+KeyV'],
   duplicate: ['Ctrl+KeyD'],

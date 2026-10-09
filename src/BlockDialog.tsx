@@ -15,7 +15,7 @@ const NUMBERS: [NumberKey, MessageKey, number, number, number][] = [
   ['offset', 'block.offset', 0.001, 0, Infinity],
   ['rate', 'block.rate', 0.01, RATE_MIN, RATE_MAX],
   ['gain', 'block.gain', 0.1, -60, 24],
-  ['pitch', 'block.pitch', 0.01, -24, 24],
+  ['pitch', 'block.pitch', 0.01, -256, 256],
   ['formant', 'block.formant', 0.1, -12, 12],
   ['fadeIn', 'block.fadeIn', 0.01, 0, Infinity],
   ['fadeOut', 'block.fadeOut', 0.01, 0, Infinity],

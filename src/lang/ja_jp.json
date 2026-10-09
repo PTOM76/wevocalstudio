@@ -86,6 +86,8 @@
   "menu.nudgeLeft": "波形ブロックを左へ",
   "menu.nudgeRight": "波形ブロックを右へ",
   "menu.newProject": "新しいプロジェクト",
+  "menu.cut": "切り取り",
+  "menu.follow": "再生位置に追従",
 
   "settings.title": "設定",
   "settings.general": "全般",

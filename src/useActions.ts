@@ -48,6 +48,8 @@ export interface ActionContext {
   openHistory: () => void
   snap: boolean
   toggleSnap: () => void
+  follow: boolean
+  toggleFollow: () => void
   /** 線を拍と小節で取るか（でなければ秒） */
   beatGrid: boolean
   toggleGrid: () => void
@@ -121,6 +123,7 @@ export function useActions(c: ActionContext) {
     newProject: { run: c.newProject },
     toEnd: { run: () => c.seek(doc.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)) },
     snap: { run: c.toggleSnap },
+    follow: { run: c.toggleFollow },
     zoomIn: { run: () => c.zoom(1.5) },
     zoomOut: { run: () => c.zoom(1 / 1.5) },
     properties: { enabled: any, run: () => any && c.openProperties(chosen[0].id) },
@@ -149,6 +152,17 @@ export function useActions(c: ActionContext) {
     },
     undo: { enabled: doc.canUndo, run: doc.undo },
     redo: { enabled: doc.canRedo, run: doc.redo },
+    // 切り取り（コピーしてから消す）
+    cut: {
+      enabled: any,
+      run: () => {
+        clipboard.current = chosen
+        trackClipboard.current = null
+        setCopied((n) => n + 1)
+        doc.removeBlocks(ids)
+        c.select([])
+      },
+    },
     copy: {
       enabled: any || !!c.selectedTrack,
       run: () => {
@@ -210,7 +224,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.edit'),
       accessKey: 'E',
-      entries: [item('undo'), item('redo'), { label: t('menu.history'), onClick: c.openHistory }, divider, item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('splitSilence'), item('delete'), divider, item('clearRange')],
+      entries: [item('undo'), item('redo'), { label: t('menu.history'), onClick: c.openHistory }, divider, item('cut'), item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('splitSilence'), item('delete'), divider, item('clearRange')],
     },
     {
       label: t('menu.block'),
@@ -254,7 +268,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.view'),
       accessKey: 'V',
-      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.analysis'), checked: c.showAnalysis, onClick: c.toggleAnalysis }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
+      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { ...item('follow'), checked: c.follow }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.analysis'), checked: c.showAnalysis, onClick: c.toggleAnalysis }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
     },
     {
       label: t('menu.help'),
@@ -275,11 +289,12 @@ export function useActions(c: ActionContext) {
     item('pitchDown'),
     item('pitchReset'),
     divider,
+    item('cut'),
     item('copy'),
     item('duplicate'),
     item('split'),
     item('delete'),
   ]
 
-  return { menus, blockMenu }
+  return { menus, blockMenu, commands }
 }

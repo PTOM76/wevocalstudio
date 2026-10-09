@@ -26,6 +26,7 @@ import AnalysisPanel from './AnalysisPanel'
 import { snapGrid } from './grid'
 import { newProject } from './project'
 import Timeline, { HEADER } from './Timeline'
+import Toolbar from './Toolbar'
 import Transport from './Transport'
 import { useActions } from './useActions'
 import { useProject, type DropAt } from './useProject'
@@ -222,7 +223,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     }
   }
 
-  const { menus, blockMenu } = useActions({
+  const { menus, blockMenu, commands } = useActions({
     doc,
     cursor,
     playing,
@@ -264,6 +265,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     openHistory: () => setDialog('history'),
     snap: p.settings.snap,
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
+    follow: p.settings.follow,
+    toggleFollow: () => p.onSettingsChange({ follow: !p.settings.follow }),
     beatGrid: p.settings.grid === 'beats',
     toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
     showAnalysis: p.settings.showAnalysis,
@@ -371,6 +374,18 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       }}
     >
       <AppHeader icon={<AppIcon size={16} />} menus={menus} />
+      <Toolbar
+        follow={p.settings.follow}
+        snap={p.settings.snap}
+        canCut={commands.cut.enabled !== false}
+        canPaste={commands.paste.enabled !== false}
+        onFollow={commands.follow.run}
+        onSnap={commands.snap.run}
+        onZoom={(f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) }))}
+        onCut={commands.cut.run}
+        onCopy={commands.copy.run}
+        onPaste={commands.paste.run}
+      />
       <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load([...(e.target.files ?? [])]).finally(() => (e.target.value = ''))} />
       <input
         ref={projectInput}
@@ -414,7 +429,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         }}
         view={view}
         snap={p.settings.snap}
-        playing={playing}
+        playing={playing && p.settings.follow}
         grid={p.settings.grid}
         onView={setView}
         onWidth={setTimelineWidth}

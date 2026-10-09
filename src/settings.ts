@@ -22,6 +22,8 @@ export interface Settings {
   autoRestore: boolean
   /** ドラッグを目盛りの線や波形ブロックの端に吸い付ける */
   snap: boolean
+  /** 再生中に表示を再生位置に追従させる */
+  follow: boolean
   /** 時間軸の線を拍と小節で取るか、秒で取るか */
   grid: GridMode
   /** 録音の入力元（'' は既定の入力） */
@@ -34,7 +36,7 @@ export interface Settings {
   preserveFormant: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showAnalysis: false, snap: true, grid: 'beats', keys: {}, inputDevice: '', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showAnalysis: false, snap: true, follow: true, grid: 'beats', keys: {}, inputDevice: '', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
 
 const KEY = app.key('settings')
 

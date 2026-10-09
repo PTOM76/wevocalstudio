@@ -25,6 +25,34 @@ pub unsafe extern "C" fn free_f32(ptr: *mut f32, len: usize) {
     drop(Vec::from_raw_parts(ptr, len, len));
 }
 
+/// 一度に変えるピッチの上限（半音）。ピッチを上げる処理は途中で「上げる分だけ伸ばす」ので、
+/// 大きく上げると途中の音が長くなりすぎてメモリが足りなくなる。超える分は、長さを変えずに何回かに分けて変える
+const STEP_SEMITONES: f64 = 24.0;
+
+fn process_steps(chans: &[&[f32]], sample_rate: f32, semitones: f64, stretch: f64, algorithm: Algorithm, formant: Formant) -> Vec<Vec<f32>> {
+    let mut rest = semitones;
+    let mut owned: Option<Vec<Vec<f32>>> = None;
+    while rest.abs() > STEP_SEMITONES {
+        let step = STEP_SEMITONES.copysign(rest);
+        let input: Vec<&[f32]> = match &owned {
+            Some(o) => o.iter().map(|c| c.as_slice()).collect(),
+            None => chans.to_vec(),
+        };
+        // フォルマントをずらすのは最後の回だけ（途中は保つかどうかだけをそろえる）
+        let keep = match formant {
+            Formant::Shift(_) => Formant::Shift(0.0),
+            Formant::Follow => Formant::Follow,
+        };
+        owned = Some(process_with_progress(&input, sample_rate, step, 1.0, algorithm, keep, &mut |_| {}));
+        rest -= step;
+    }
+    let input: Vec<&[f32]> = match &owned {
+        Some(o) => o.iter().map(|c| c.as_slice()).collect(),
+        None => chans.to_vec(),
+    };
+    process_with_progress(&input, sample_rate, rest, stretch, algorithm, formant, &mut |_| {})
+}
+
 /// プレーナー形式の音声（`frames` サンプルのブロックが `channels` 個）のピッチと長さを変え、出力のフレーム数を返す。
 /// 結果は `output_ptr` で取得する。引数は WeVocalSynth の `process_planar` と同じ。
 ///
@@ -46,7 +74,7 @@ pub unsafe extern "C" fn process_planar(
     let chans: Vec<&[f32]> = all.chunks(frames.max(1)).take(channels).collect();
     let formant = if preserve_formant != 0 { Formant::Shift(formant_semitones) } else { Formant::Follow };
     formant::set_fast_math(true);
-    let out = process_with_progress(&chans, sample_rate, semitones, stretch, Algorithm::from_id(algorithm), formant, &mut |_| {});
+    let out = process_steps(&chans, sample_rate, semitones, stretch, Algorithm::from_id(algorithm), formant);
     let out_frames = out.first().map_or(0, |c| c.len());
     OUTPUT.with(|o| {
         let mut o = o.borrow_mut();

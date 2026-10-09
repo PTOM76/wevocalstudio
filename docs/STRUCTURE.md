@@ -7,14 +7,14 @@
 <!-- map:start -->
 ```
 src/
-  AnalysisPanel.tsx  解析の欄（WeVocalAnalyzer のスペクトログラムと F0）。選んだ波形ブロックの音を、時間軸とそろえて下に描く
+  AnalysisPanel.tsx  解析の欄（WeVocalAnalyzer のスペクトログラムと F0）。選んだ波形ブロックの音を、時間軸とそろえて下に描く。ペンでピッチカーブを描く
   App.tsx  画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
   appConfig.ts  アプリの定義（名前、URL、保存のキー）を画面から使う形にする
   appInfo.ts  アプリの定義。vite.config.ts からも読み込むので、ほかのファイルを import しない（画面からは appConfig.ts の app を使う）
-  BlockDialog.tsx  波形ブロックのプロパティ（REAPER のアイテムのプロパティ）。位置、長さ、音量、ピッチ、処理方式、フェードを数値で指定する
+  BlockDialog.tsx  波形ブロックのプロパティ（REAPER のアイテムのプロパティ）。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
   blockDrag.ts  波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
   drawTimeline.ts  時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
-  engine.ts  再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）
+  engine.ts  再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）。
   EqDialog.tsx  トラックのグラフィック EQ のダイアログ（WeVocalSynth と同じ EQ。グラフは wevocal-lib/react）
   ExportDialog.tsx  書き出しのダイアログ（形式、WAV のサンプル形式、ビットレート）。全トラックをマスターまで混ぜて書き出す
   grid.ts  時間軸の線（拍と小節、または時間）と、スナップの寄せ先。画面を知らない
@@ -31,13 +31,14 @@ src/
   settings.ts  アプリの設定（localStorage に保存する）
   SettingsDialog.tsx  設定画面（外枠は PevenMUI の SettingsDialog）
   Timeline.tsx  時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
+  Toolbar.tsx  メニューの下の小さなツールバー（WeVocalSynth と同じ形）。再生位置に追従するか、スナップ、拡大と縮小
   TrackHeader.tsx  トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
   Transport.tsx  再生のボタン一式（REAPER のトランスポート。先頭へ、停止、再生、一時停止、リピート、末尾へ）と時間の表示。見た目は WeVocalSynth のツールバーと同じ
   useActions.ts  操作の表（キーとメニューから行うもの）と、メニューバーの並び
   useProject.ts  プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 
 src/dsp/
-  pitch.ts  wasm の処理の窓口。波形ブロックのピッチと速度を音に反映し（作ったものはキャッシュ）、テンポを解析する。元の音全体を変えて作り、キャッシュする（再生のたびには計算しない）
+  pitch.ts  wasm の処理の窓口。波形ブロックのピッチと速度を音に反映し（作ったものはキャッシュ）、テンポを解析する。
   worker.ts  wasm の処理（ピッチと速度の変更、テンポの解析）を画面のスレッドの外で行う Worker
 
 src/storage/
@@ -46,6 +47,6 @@ src/storage/
   idb.ts  IndexedDB の小さな読み書き（キーと値だけ）。画面と Worker の両方から使う
 
 dsp/src/
-  lib.rs  WeVocal Studio の wasm。wevocal-lib のピッチ変更（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。
+  lib.rs  WeVocal Studio の wasm。wevocal-lib のピッチ変更とピッチカーブ（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。
 ```
 <!-- map:end -->
