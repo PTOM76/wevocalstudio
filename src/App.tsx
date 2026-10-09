@@ -1,5 +1,5 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
 import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, useConfirm, usePalette, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
 import { UpdatePrompt } from 'pevenmui/pwa'
@@ -54,6 +54,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [playPos, setPlayPos] = useState<number | null>(null)
   // 一時停止した位置（編集カーソルを動かしたら消す）
   const [paused, setPaused] = useState<number | null>(null)
+  // 再生中の位置は状態に入れず、描く所が毎フレーム読む（画面全体を毎フレーム描き直さないように。WeVocalSynth と同じ）
+  const livePos = useCallback(() => (player.current.playing ? player.current.position() : playPos), [playPos])
   const [selected, setSelected] = useState<string[]>([])
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
   const [range, setRange] = useState<Range | null>(null)
@@ -325,7 +327,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         setPlayPos(null)
         setPlaying(false)
         return
-      } else setPlayPos(pos)
+      }
       id = requestAnimationFrame(tick)
     }
     id = requestAnimationFrame(tick)
@@ -402,7 +404,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <Timeline
         project={project}
         cursor={cursor}
-        playPos={playPos}
+        livePos={livePos}
+        follow={p.settings.follow}
         onCursor={moveCursor}
         selected={selected}
         onSelect={setSelected}
@@ -429,7 +432,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         }}
         view={view}
         snap={p.settings.snap}
-        playing={playing && p.settings.follow}
+        playing={playing}
         grid={p.settings.grid}
         onView={setView}
         onWidth={setTimelineWidth}
@@ -460,6 +463,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           scrollTo={(start) => setView((v) => ({ ...v, scroll: Math.max(0, start) }))}
           label={t('menu.minimap')}
           position={playPos ?? cursor}
+          livePosition={() => livePos() ?? cursor}
           playing={playing}
           showPlayhead
         />
@@ -468,6 +472,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <Transport
         playing={playing}
         cursor={playPos ?? cursor}
+        livePos={livePos}
         end={end}
         range={range}
         repeat={repeat}

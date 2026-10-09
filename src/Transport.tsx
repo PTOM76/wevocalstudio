@@ -43,9 +43,27 @@ function NumberField(p: { value: number; min: number; max: number; step: number;
   )
 }
 
+/** 時間の表示。再生中はこの部品だけが毎フレーム位置を読んで描き直す */
+function LiveTime(p: { playing: boolean; cursor: number; livePos: () => number | null }) {
+  const [now, setNow] = useState(p.cursor)
+  useEffect(() => {
+    setNow(p.livePos() ?? p.cursor)
+    if (!p.playing) return
+    let id = 0
+    const tick = () => {
+      setNow(p.livePos() ?? p.cursor)
+      id = requestAnimationFrame(tick)
+    }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [p.playing, p.cursor, p.livePos])
+  return <>{formatTime(now)}</>
+}
+
 export default function Transport(p: {
   playing: boolean
   cursor: number
+  livePos: () => number | null
   end: number
   range: Range | null
   repeat: boolean
@@ -70,7 +88,7 @@ export default function Transport(p: {
       <Button icon={faRepeat} label="transport.repeat" action="repeat" onClick={p.onRepeat} pressed={p.repeat} />
       <Button icon={faForwardStep} label="transport.toEnd" action="toEnd" onClick={p.onToEnd} />
       <Typography className="selectable" sx={{ ml: 1.5, fontFamily: 'monospace', fontSize: 16 }}>
-        {formatTime(p.cursor)}
+        <LiveTime playing={p.playing} cursor={p.cursor} livePos={p.livePos} />
       </Typography>
       <Typography sx={{ color: 'text.secondary', fontSize: 12, fontFamily: 'monospace' }}>/ {formatTime(p.end)}</Typography>
       <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', fontSize: 12 }}>

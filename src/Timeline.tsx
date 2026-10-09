@@ -6,7 +6,7 @@ import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { usePalette } from 'pevenmui'
 import { snapGrid, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, snapDelta, snapTargets, type Drag } from './blockDrag'
-import { LANE, MASTER, RULER, TOP, drawTimeline, type TimelineView } from './drawTimeline'
+import { LANE, MASTER, RULER, TOP, drawCursors, drawTimeline, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
@@ -18,8 +18,10 @@ export default function Timeline(p: {
   project: Project
   /** 編集カーソル */
   cursor: number
-  /** 再生カーソル（再生中と一時停止中だけ） */
-  playPos: number | null
+  /** 再生カーソルの今の位置（再生中と一時停止中だけ。再生中は毎フレーム読む） */
+  livePos: () => number | null
+  /** 再生位置に表示を追従させる */
+  follow: boolean
   /** 編集カーソルだけを動かす（波形ブロックを押したとき） */
   onCursor: (t: number) => void
   selected: string[]
@@ -52,7 +54,7 @@ export default function Timeline(p: {
   view: TimelineView
   /** 目盛りの線、波形ブロックの端、再生位置に吸い付けるか */
   snap: boolean
-  /** 再生中（再生位置が画面の外に出たら表示を送る） */
+  /** 再生中（カーソルの線を毎フレーム描き直す） */
   playing: boolean
   /** 線の取り方（拍と小節か、秒） */
   grid: GridMode
@@ -97,7 +99,7 @@ export default function Timeline(p: {
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
-    drawTimeline(canvas, p.project, view, p.selected, p.cursor, p.range, { grid: p.grid, playPos: p.playPos }, {
+    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid }, {
       bg: pal.background.default,
       lane: pal.divider,
       line: alpha(pal.divider, 0.5),
@@ -111,7 +113,32 @@ export default function Timeline(p: {
       marker: '#ffb300',
       range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
     })
-  }, [p.project, view, p.selected, p.cursor, p.playPos, p.range, width, height, dark, pal, p.grid])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid])
+
+  // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
+  const overlayRef = useRef<HTMLCanvasElement>(null)
+  const followRef = useRef({ follow: p.follow, visible: 0, scroll: 0 })
+  followRef.current = { follow: p.follow, visible: width / view.pps, scroll: view.scroll }
+  useEffect(() => {
+    const canvas = overlayRef.current!
+    canvas.width = width * devicePixelRatio
+    canvas.height = height * devicePixelRatio
+    const colors = { editCursor: '#e53935', playhead: pal.text.primary }
+    const draw = () => drawCursors(canvas, view, p.cursor, p.livePos(), colors)
+    draw()
+    if (!p.playing) return
+    let id = 0
+    const tick = () => {
+      draw()
+      // 再生位置が画面の外に出たら、そこが左端になるように送る（REAPER と同じ）
+      const pos = p.livePos()
+      const f = followRef.current
+      if (f.follow && pos !== null && f.visible && (pos > f.scroll + f.visible || pos < f.scroll)) setView((v) => ({ ...v, scroll: Math.max(0, pos) }))
+      id = requestAnimationFrame(tick)
+    }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [p.playing, p.cursor, p.livePos, view, width, height, pal, setView])
 
   // ホイール: Shift で横に動かす。Ctrl で拡大と縮小（マウスの位置を中心に）
   useEffect(() => {
@@ -144,12 +171,6 @@ export default function Timeline(p: {
     seek: (t) => p.onSeek(Math.max(0, t)),
   })
 
-  // 再生中に再生位置が画面の外に出たら、そこが左端になるように送る（REAPER と同じ）
-  useEffect(() => {
-    const pos = p.playPos
-    if (!p.playing || !visible || pos === null) return
-    if (pos > view.scroll + visible || pos < view.scroll) setView((v) => ({ ...v, scroll: Math.max(0, pos) }))
-  }, [p.playing, p.playPos, visible, view.scroll, setView])
   const snapping = { mode: p.grid, tempo: p.project.tempo, pps: view.pps }
   /** 編集カーソルと範囲選択の端は、スナップが入っていればいちばん近いグリッドの線に合わせる（Shift で外す） */
   const gridAt = (x: number, shift: boolean) => {
@@ -328,6 +349,8 @@ export default function Timeline(p: {
         {box && (
           <Box sx={{ position: 'absolute', left: box.x0, top: box.y0, width: box.x1 - box.x0, height: box.y1 - box.y0, border: 1, borderColor: 'primary.main', bgcolor: alpha(pal.primary.main, 0.12), pointerEvents: 'none' }} />
         )}
+        {/* カーソルの線だけを描く canvas（押す操作は下の canvas が受ける） */}
+        <canvas ref={overlayRef} style={{ position: 'absolute', left: 0, top: 0, width, height, pointerEvents: 'none' }} />
         <canvas
           ref={canvasRef}
           style={{ display: 'block', width, height, touchAction: 'none', cursor }}

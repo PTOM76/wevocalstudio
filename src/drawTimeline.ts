@@ -2,6 +2,7 @@
 import type { Range } from 'wevocal-lib'
 import { gridLines, type GridMode } from './grid'
 import { layoutRows } from './overlap'
+import { peakRange } from './peaks'
 import { audible, type Block, type Project } from './project'
 
 export const RULER = 24
@@ -21,8 +22,6 @@ export interface TimelineView {
 /** 線の取り方とテンポ以外に描くときに使うもの */
 export interface DrawOptions {
   grid: GridMode
-  /** 再生カーソル（なければ描かない） */
-  playPos: number | null
 }
 
 export interface TimelineColors {
@@ -49,27 +48,19 @@ function drawBlockWave(g: CanvasRenderingContext2D, b: Block, p: Project, x: num
   const source = p.sources.find((s) => s.id === b.source)
   if (!source) return
   const { clip } = source
-  const data = clip.channels[0]
   const mid = y + h / 2
   const perPx = (b.length * b.rate * clip.sampleRate) / w
   const amp = (h / 2) * Math.min(4, 10 ** (b.gain / 20))
+  // ピークは元の音ごとに前もって作ったものを使う（peaks.ts）
+  const pk = { lo: 0, hi: 0 }
   for (let px = Math.max(0, Math.floor(x)); px < Math.min(width, Math.ceil(x + w)); px++) {
-    const a = Math.max(0, Math.floor(b.offset * clip.sampleRate + (px - x) * perPx))
-    const e = Math.min(data.length, Math.floor(a + perPx) + 1)
-    // 1 列で見るサンプルは多くても 256 個（長い音を縮めたときに重くならないように）
-    const step = Math.max(1, Math.floor((e - a) / 256))
-    let lo = 0
-    let hi = 0
-    for (let i = a; i < e; i += step) {
-      const v = data[i]
-      if (v < lo) lo = v
-      if (v > hi) hi = v
-    }
-    g.fillRect(px, mid - hi * amp, 1, Math.max(1, (hi - lo) * amp))
+    const a = Math.floor(b.offset * clip.sampleRate + (px - x) * perPx)
+    peakRange(clip, a, Math.floor(a + perPx) + 1, perPx, pk)
+    g.fillRect(px, mid - pk.hi * amp, 1, Math.max(1, (pk.hi - pk.lo) * amp))
   }
 }
 
-export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: TimelineView, selected: string[], cursor: number, range: Range | null, o: DrawOptions, c: TimelineColors) {
+export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: TimelineView, selected: string[], range: Range | null, o: DrawOptions, c: TimelineColors) {
   const g = canvas.getContext('2d')!
   const w = canvas.width / devicePixelRatio
   const h = canvas.height / devicePixelRatio
@@ -178,7 +169,16 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
     g.globalAlpha = 1
   }
 
-  // 編集カーソル（上に小さな三角）と、再生カーソル
+}
+
+/** 上に重ねた canvas に、編集カーソル（上に小さな三角）と再生カーソルだけを描く（再生中は毎フレームこれだけを描き直す。WeVocalSynth と同じ） */
+export function drawCursors(canvas: HTMLCanvasElement, view: TimelineView, cursor: number, playPos: number | null, c: { editCursor: string; playhead: string }) {
+  const g = canvas.getContext('2d')!
+  const w = canvas.width / devicePixelRatio
+  const h = canvas.height / devicePixelRatio
+  g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
+  g.clearRect(0, 0, w, h)
+  const tx = (t: number) => (t - view.scroll) * view.pps
   const ex = Math.round(tx(cursor))
   g.fillStyle = c.editCursor
   g.fillRect(ex, 0, 1, h)
@@ -187,8 +187,8 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   g.lineTo(ex + 6, 0)
   g.lineTo(ex + 0.5, 7)
   g.fill()
-  if (o.playPos !== null) {
+  if (playPos !== null) {
     g.fillStyle = c.playhead
-    g.fillRect(Math.round(tx(o.playPos)), 0, 2, h)
+    g.fillRect(Math.round(tx(playPos)), 0, 2, h)
   }
 }
