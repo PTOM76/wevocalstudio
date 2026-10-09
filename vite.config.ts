@@ -20,7 +20,7 @@ const wevocalLib = submodule('wevocal-lib', 'web/src/index.ts', process.env.WEVO
 // WeVocalAnalyzer のライブラリ（スペクトログラム、F0。src/ は画面を持たない）。WeVocalSynth の中の analyzer/ を使う
 const analyzer = submodule('analyzer', 'src/index.ts', process.env.ANALYZER_PATH)
 // 場所が決まるのは実行時なので、動的に読み込む（Node が .ts の型を取り除いて読む）
-const { pevenApp, pevenManifest }: typeof import('../wevocalsynth/pevenmui/src/vite.ts') = await import(pathToFileURL(resolve(pevenmui, 'src/vite.ts')).href)
+const { pevenApp, pevenManifest }: typeof import('./pevenmui/src/vite.ts') = await import(pathToFileURL(resolve(pevenmui, 'src/vite.ts')).href)
 
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
