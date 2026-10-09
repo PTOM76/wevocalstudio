@@ -19,7 +19,7 @@ for (const [name, size, pad, rx] of shots) {
   // マスク用と apple は角を丸めず、塗りを全面に広げる
   const body = rx ? svg : svg.replace('rx="96"', 'rx="0"')
   const inner = size * (1 - pad * 2)
-  const html = `<html><body style="margin:0;background:${rx ? 'transparent' : '#1976d2'}"><div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center">${body.replace('<svg ', `<svg width="${inner}" height="${inner}" `)}</div></body></html>`
+  const html = `<html><body style="margin:0;background:${rx ? 'transparent' : '#14213d'}"><div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center">${body.replace('<svg ', `<svg width="${inner}" height="${inner}" `)}</div></body></html>`
   await b.call('Emulation.setDefaultBackgroundColorOverride', { color: { r: 0, g: 0, b: 0, a: 0 } })
   await b.call('Page.navigate', { url: 'data:text/html;base64,' + Buffer.from(html).toString('base64') })
   await sleep(500)
