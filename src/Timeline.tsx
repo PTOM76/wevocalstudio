@@ -35,8 +35,12 @@ export default function Timeline(p: {
   onBlockMenu: (id: string, x: number, y: number) => void
   /** 目盛りの上のマーカーをダブルクリック */
   onMarkerEdit: (id: string) => void
+  /** 波形ブロックのダブルクリック（プロパティ） */
+  onProperties: (id: string) => void
   /** トラックの EQ を開く */
   onEq: (track: string) => void
+  onDuplicateTrack: (id: string) => void
+  onRemoveTrack: (id: string) => void
   /** 表示範囲（拡大縮小をキーからも変えるので App が持つ） */
   view: TimelineView
   /** 目盛りの線、波形ブロックの端、再生位置に吸い付けるか */
@@ -60,6 +64,11 @@ export default function Timeline(p: {
   const rangeDrag = useRef<{ t: number; x: number } | null>(null)
   // 目盛りの上で押している間は、再生位置が付いてくる（範囲選択にしない。WeVocalSynth と同じ）
   const scrub = useRef(false)
+  // Shift+クリックの起点（前に押した波形ブロック）
+  const anchor = useRef<string | null>(null)
+  // 右ドラッグの枠で選ぶ（REAPER と同じ）。moved なら右クリックのメニューは出さない
+  const marquee = useRef<{ x: number; y: number; moved: boolean } | null>(null)
+  const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const dragCount = useRef(0)
   const [cursor, setCursor] = useState('default')
   const height = TOP + Math.max(1, p.project.tracks.length) * LANE
@@ -137,9 +146,15 @@ export default function Timeline(p: {
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // 時間軸を押したら、スライダーなどに残ったフォーカスを外す（キーが時間軸の操作に届くように）
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-    // 右クリックはメニュー（onContextMenu）だけ
-    if (e.button === 2) return
     const { offsetX: x, offsetY: y } = e.nativeEvent
+    // 右ボタン: ドラッグすれば枠で選ぶ。動かさなければ右クリックのメニュー（onContextMenu）
+    if (e.button === 2) {
+      if (y > TOP) {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        marquee.current = { x, y, moved: false }
+      }
+      return
+    }
     const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
     if (y < RULER) {
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -158,6 +173,17 @@ export default function Timeline(p: {
       return
     }
     const id = hit.block.id
+    // Shift: 起点から押したものまでの、トラックと時間の範囲の波形ブロックを選ぶ
+    const from = anchor.current && p.project.blocks.find((b) => b.id === anchor.current)
+    if (e.shiftKey && from) {
+      const row = (b: Block) => p.project.tracks.findIndex((t) => t.id === b.track)
+      const [r0, r1] = [Math.min(row(from), row(hit.block)), Math.max(row(from), row(hit.block))]
+      const t0 = Math.min(from.start, hit.block.start)
+      const t1 = Math.max(from.start + from.length, hit.block.start + hit.block.length)
+      p.onSelect(p.project.blocks.filter((b) => row(b) >= r0 && row(b) <= r1 && b.start < t1 && b.start + b.length > t0).map((b) => b.id))
+      return
+    }
+    anchor.current = id
     // Ctrl で足し引き。選んでいるものをつまんだら、選んだもの全部を動かす
     let group = p.selected.includes(id) ? p.selected : [id]
     if (e.ctrlKey || e.metaKey) {
@@ -174,6 +200,19 @@ export default function Timeline(p: {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const { offsetX: x, offsetY: y } = e.nativeEvent
+    const mq = marquee.current
+    if (mq) {
+      if (!mq.moved && Math.hypot(x - mq.x, y - mq.y) < 4) return
+      mq.moved = true
+      setBox({ x0: Math.min(mq.x, x), y0: Math.min(mq.y, y), x1: Math.max(mq.x, x), y1: Math.max(mq.y, y) })
+      // 枠にかかる波形ブロックを選ぶ
+      const ta = toTime(Math.min(mq.x, x))
+      const tb = toTime(Math.max(mq.x, x))
+      const ra = Math.floor((Math.min(mq.y, y) - TOP) / LANE)
+      const rb = Math.floor((Math.max(mq.y, y) - TOP) / LANE)
+      p.onSelect(p.project.blocks.filter((b) => { const r = p.project.tracks.findIndex((t) => t.id === b.track); return r >= ra && r <= rb && b.start < tb && b.start + b.length > ta }).map((b) => b.id))
+      return
+    }
     if (scrub.current) {
       edge.update(e.clientX)
       return p.onSeek(Math.max(0, toTime(x)))
@@ -209,6 +248,11 @@ export default function Timeline(p: {
   }
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (marquee.current) {
+      // 動かしたら、このあとの右クリックのメニューは出さない
+      if (!marquee.current.moved) marquee.current = null
+      setBox(null)
+    }
     // 範囲を作らずに離したら、範囲を消す（REAPER と同じ）
     if (rangeDrag.current && Math.abs(e.nativeEvent.offsetX - rangeDrag.current.x) < 3) p.onRange(null)
     rangeDrag.current = null
@@ -242,10 +286,15 @@ export default function Timeline(p: {
             onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
             onEndMerge={p.onEndMerge}
             onEq={() => p.onEq(track.id)}
+            onDuplicate={() => p.onDuplicateTrack(track.id)}
+            onRemove={() => p.onRemoveTrack(track.id)}
           />
         ))}
       </Box>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
+      <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
+        {box && (
+          <Box sx={{ position: 'absolute', left: box.x0, top: box.y0, width: box.x1 - box.x0, height: box.y1 - box.y0, border: 1, borderColor: 'primary.main', bgcolor: alpha(pal.primary.main, 0.12), pointerEvents: 'none' }} />
+        )}
         <canvas
           ref={canvasRef}
           style={{ display: 'block', width, height, touchAction: 'none', cursor }}
@@ -254,6 +303,11 @@ export default function Timeline(p: {
           onPointerUp={onPointerUp}
           onDoubleClick={(e) => {
             const { offsetX: x, offsetY: y } = e.nativeEvent
+            if (y > TOP) {
+              const hit = hitBlock(p.project, x, y, toTime, view.pps)
+              if (hit) p.onProperties(hit.block.id)
+              return
+            }
             if (y >= RULER) return
             // 旗の幅の中か、線の近く
             const m = p.project.markers.find((m) => { const mx = (m.time - view.scroll) * view.pps; return x >= mx - 4 && x <= mx + 60 })
@@ -261,6 +315,11 @@ export default function Timeline(p: {
           }}
           onContextMenu={(e) => {
             e.preventDefault()
+            if (marquee.current?.moved) {
+              marquee.current = null
+              return
+            }
+            marquee.current = null
             const { offsetX: x, offsetY: y } = e.nativeEvent
             const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
             if (!hit) return

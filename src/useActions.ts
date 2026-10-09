@@ -34,6 +34,9 @@ export interface ActionContext {
   seek: (t: number) => void
   /** 表示の拡大（factor > 1）と縮小 */
   zoom: (factor: number) => void
+  /** 線の 1 目盛り（秒。拍か秒） */
+  gridStep: () => number
+  newProject: () => void
   openProperties: (id: string) => void
   openFile: () => void
   importFiles: () => void
@@ -97,6 +100,11 @@ export function useActions(c: ActionContext) {
     record: { run: c.toggleRecord },
     detectTempo: { enabled: doc.project.blocks.length > 0, run: c.detectTempo },
     toStart: { run: () => c.seek(0) },
+    cursorLeft: { run: () => c.seek(Math.max(0, c.cursor - c.gridStep())) },
+    cursorRight: { run: () => c.seek(c.cursor + c.gridStep()) },
+    nudgeLeft: { enabled: any, run: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { start: Math.max(0, b.start - c.gridStep()) }]))) },
+    nudgeRight: { enabled: any, run: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { start: b.start + c.gridStep() }]))) },
+    newProject: { run: c.newProject },
     toEnd: { run: () => c.seek(doc.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)) },
     snap: { run: c.toggleSnap },
     zoomIn: { run: () => c.zoom(1.5) },
@@ -174,7 +182,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.file'),
       accessKey: 'F',
-      entries: [item('open'), item('save'), divider, item('import'), item('export'), divider, { label: t('menu.settings'), onClick: c.openSettings }],
+      entries: [item('newProject'), item('open'), item('save'), divider, item('import'), item('export'), divider, { label: t('menu.settings'), onClick: c.openSettings }],
     },
     {
       label: t('menu.edit'),

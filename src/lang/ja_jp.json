@@ -15,6 +15,11 @@
   "block.offset": "元の音の開始位置 (秒)",
   "block.rate": "速度 (倍)",
   "block.formant": "フォルマント (半音)",
+  "block.propertiesMany": "{n} 個の波形ブロックのプロパティ",
+  "block.manyHelp": "変えた欄だけを、選んだ波形ブロックすべてに反映します",
+  "block.mixed": "（混在）",
+  "block.source": "元の音",
+  "block.sourceFile": "ファイルから読み込む…",
 
   "error.failed": "処理に失敗しました: {error}",
   "error.noRecord": "このブラウザでは録音できません",
@@ -76,6 +81,11 @@
   "menu.analysis": "解析の欄",
   "menu.splitSilence": "無音で区切る",
   "menu.history": "操作履歴…",
+  "menu.cursorLeft": "再生位置を左へ",
+  "menu.cursorRight": "再生位置を右へ",
+  "menu.nudgeLeft": "波形ブロックを左へ",
+  "menu.nudgeRight": "波形ブロックを右へ",
+  "menu.newProject": "新しいプロジェクト",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -117,6 +127,9 @@
   "track.recorded": "録音",
   "track.eq": "EQ",
   "track.invert": "位相の反転",
+  "track.rename": "名前を変更",
+  "track.duplicate": "トラックを複製",
+  "track.remove": "トラックを削除",
 
   "export.title": "書き出す",
   "export.format": "形式",
@@ -179,5 +192,7 @@
   "history.move": "移動",
   "history.block": "波形ブロックの設定",
   "history.title": "操作履歴",
-  "history.restore": "前回の作業の復元"
+  "history.restore": "前回の作業の復元",
+
+  "confirm.newProject": "今の作業を閉じて、新しいプロジェクトにしますか？（保存していない変更は失われます）"
 }

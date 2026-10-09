@@ -1,6 +1,7 @@
 // トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
 import { useState, type ReactNode } from 'react'
 import { Box, InputBase, Slider, ToggleButton, Typography } from '@mui/material'
+import { ContextMenu } from 'pevenmui'
 import { useT } from './i18n'
 import { isFlatEq } from 'wevocal-lib'
 import type { Master, Track } from './project'
@@ -53,13 +54,22 @@ export default function TrackHeader(p: {
   onChange: (patch: Partial<Track>, merge?: string) => void
   onEndMerge: () => void
   onEq: () => void
+  onDuplicate: () => void
+  onRemove: () => void
 }) {
   const t = useT()
   const { track } = p
   const [editing, setEditing] = useState(false)
+  // 右クリックのメニュー（名前の変更、複製、削除）
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   return (
     <Box
       onPointerDown={p.onSelect}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        p.onSelect()
+        setMenu({ x: e.clientX, y: e.clientY })
+      }}
       sx={{
         height: p.height,
         boxSizing: 'border-box',
@@ -129,6 +139,16 @@ export default function TrackHeader(p: {
             </ToggleButton>
           </>
         }
+      />
+      <ContextMenu
+        position={menu}
+        onClose={() => setMenu(null)}
+        entries={[
+          { label: t('track.rename'), onClick: () => setEditing(true) },
+          { label: t('track.duplicate'), onClick: p.onDuplicate },
+          { divider: true },
+          { label: t('track.remove'), onClick: p.onRemove },
+        ]}
       />
     </Box>
   )

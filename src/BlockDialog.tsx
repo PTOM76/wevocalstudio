@@ -1,75 +1,108 @@
-// 波形ブロックのプロパティ（REAPER のアイテムのプロパティ）。位置、長さ、音量、ピッチ、処理方式、フェードを数値で指定する
+// 波形ブロックのプロパティ（REAPER のアイテムのプロパティ）。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
 import { useEffect, useState } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { enterToSubmit } from 'pevenmui'
 import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
 import { useT, type MessageKey } from './i18n'
-import { RATE_MAX, RATE_MIN, type Block } from './project'
+import { RATE_MAX, RATE_MIN, type Block, type Source } from './project'
 
-/** 数値で指定する項目（名前、刻み、下限） */
-const NUMBERS: [keyof Block & ('start' | 'length' | 'offset' | 'rate' | 'gain' | 'pitch' | 'formant' | 'fadeIn' | 'fadeOut'), MessageKey, number, number][] = [
-  ['start', 'block.start', 0.001, 0],
-  ['length', 'block.length', 0.001, 0.01],
-  ['offset', 'block.offset', 0.001, 0],
-  ['rate', 'block.rate', 0.01, RATE_MIN],
-  ['gain', 'block.gain', 0.1, -60],
-  ['pitch', 'block.pitch', 0.01, -24],
-  ['formant', 'block.formant', 0.1, -12],
-  ['fadeIn', 'block.fadeIn', 0.01, 0],
-  ['fadeOut', 'block.fadeOut', 0.01, 0],
+type NumberKey = 'start' | 'length' | 'offset' | 'rate' | 'gain' | 'pitch' | 'formant' | 'fadeIn' | 'fadeOut'
+
+/** 数値で指定する項目（名前、刻み、下限、上限） */
+const NUMBERS: [NumberKey, MessageKey, number, number, number][] = [
+  ['start', 'block.start', 0.001, 0, Infinity],
+  ['length', 'block.length', 0.001, 0.01, Infinity],
+  ['offset', 'block.offset', 0.001, 0, Infinity],
+  ['rate', 'block.rate', 0.01, RATE_MIN, RATE_MAX],
+  ['gain', 'block.gain', 0.1, -60, 24],
+  ['pitch', 'block.pitch', 0.01, -24, 24],
+  ['formant', 'block.formant', 0.1, -12, 12],
+  ['fadeIn', 'block.fadeIn', 0.01, 0, Infinity],
+  ['fadeOut', 'block.fadeOut', 0.01, 0, Infinity],
 ]
 
-export default function BlockDialog(p: { block: Block | null; name: string; duration: number; onClose: () => void; onApply: (patch: Partial<Block>) => void }) {
-  const t = useT()
-  const [draft, setDraft] = useState<Block | null>(p.block)
-  useEffect(() => setDraft(p.block), [p.block])
-  if (!draft) return <Dialog open={false} />
+/** 変えた値（触った欄だけ） */
+export type BlockEdit = Partial<Pick<Block, NumberKey | 'algorithm' | 'preserveFormant' | 'mute' | 'source'>>
 
-  // 元の音を越えないように、長さと開始位置をそろえる
-  const fit = (b: Block): Block => {
-    const rate = Math.max(RATE_MIN, Math.min(RATE_MAX, b.rate))
-    const offset = Math.min(Math.max(0, b.offset), p.duration - 0.01)
-    // 時間軸の上の長さは、残りの元の音を速度で割ったものまで
-    const length = Math.min(Math.max(0.01, b.length), (p.duration - offset) / rate)
-    const pitch = Math.max(-24, Math.min(24, b.pitch))
-    const formant = Math.max(-12, Math.min(12, b.formant))
-    return { ...b, rate, offset, length, pitch, formant, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length - Math.min(b.fadeIn, length)) }
-  }
+/** みんな同じ値ならそれ、違えば null（空の欄にする） */
+function common<K extends keyof Block>(blocks: Block[], key: K): Block[K] | null {
+  return blocks.every((b) => b[key] === blocks[0][key]) ? blocks[0][key] : null
+}
+
+export default function BlockDialog(p: {
+  blocks: Block[]
+  sources: Source[]
+  onClose: () => void
+  onApply: (edit: BlockEdit) => void
+  /** ファイルから元の音を読み込んで選ぶ */
+  onPickFile: () => void
+}) {
+  const t = useT()
+  const [edit, setEdit] = useState<BlockEdit>({})
+  const [text, setText] = useState<Partial<Record<NumberKey, string>>>({})
+  const open = p.blocks.length > 0
+  useEffect(() => {
+    setEdit({})
+    setText({})
+  }, [open])
+  if (!open) return <Dialog open={false} />
+
+  const many = p.blocks.length > 1
+  const value = <K extends keyof BlockEdit>(key: K) => (key in edit ? edit[key] : common(p.blocks, key as keyof Block)) as Block[K] | null
   const apply = () => {
-    p.onApply(fit(draft))
+    p.onApply(edit)
     p.onClose()
   }
+  const source = value('source')
 
   return (
-    <Dialog open={!!p.block} onClose={p.onClose} maxWidth="xs" fullWidth onKeyDown={enterToSubmit(apply)}>
-      <DialogTitle>{t('block.properties')}</DialogTitle>
+    <Dialog open onClose={p.onClose} maxWidth="xs" fullWidth onKeyDown={enterToSubmit(apply)}>
+      <DialogTitle>{many ? t('block.propertiesMany', { n: p.blocks.length }) : t('block.properties')}</DialogTitle>
       <DialogContent>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }} noWrap title={p.name}>
-          {p.name}
-        </Typography>
-        <Stack spacing={2}>
-          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
-            {NUMBERS.map(([key, label, step, min]) => (
-              <TextField
-                key={key}
-                size="small"
-                type="number"
-                label={t(label)}
-                value={draft[key]}
-                slotProps={{ htmlInput: { step, min } }}
-                onChange={(e) => {
-                  const v = Number(e.target.value)
-                  if (!Number.isFinite(v)) return
-                  const value = Math.max(min, v)
-                  // 速度を変えたら、使う元の音の範囲はそのままで長さが変わる（REAPER と同じ）
-                  if (key === 'rate' && value > 0) setDraft({ ...draft, rate: value, length: (draft.length * draft.rate) / value })
-                  else setDraft({ ...draft, [key]: value })
-                }}
-                sx={{ width: 150 }}
-              />
+        {many && (
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
+            {t('block.manyHelp')}
+          </Typography>
+        )}
+        <Stack spacing={2} sx={{ pt: 1 }}>
+          <TextField
+            select
+            size="small"
+            label={t('block.source')}
+            value={source ?? ''}
+            onChange={(e) => (e.target.value === '__file' ? p.onPickFile() : setEdit({ ...edit, source: e.target.value }))}
+          >
+            {p.sources.map((s) => (
+              <MenuItem key={s.id} value={s.id}>
+                {s.name}
+              </MenuItem>
             ))}
+            <MenuItem value="__file">{t('block.sourceFile')}</MenuItem>
+          </TextField>
+          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2 }}>
+            {NUMBERS.filter(([key]) => !many || (key !== 'start' && key !== 'offset')).map(([key, label, step, min, max]) => {
+              const v = value(key)
+              return (
+                <TextField
+                  key={key}
+                  size="small"
+                  type="number"
+                  label={t(label)}
+                  value={text[key] ?? (v === null ? '' : String(v))}
+                  placeholder={v === null ? t('block.mixed') : undefined}
+                  slotProps={{ htmlInput: { step, min, max: Number.isFinite(max) ? max : undefined }, inputLabel: { shrink: true } }}
+                  onChange={(e) => {
+                    setText({ ...text, [key]: e.target.value })
+                    const n = Number(e.target.value)
+                    if (e.target.value === '' || !Number.isFinite(n)) return
+                    setEdit({ ...edit, [key]: Math.max(min, Math.min(max, n)) })
+                  }}
+                  sx={{ width: 150 }}
+                />
+              )
+            })}
           </Stack>
-          <TextField select size="small" label={t('block.algorithm')} value={draft.algorithm} onChange={(e) => setDraft({ ...draft, algorithm: e.target.value as Algorithm })}>
+          <TextField select size="small" label={t('block.algorithm')} value={value('algorithm') ?? ''} onChange={(e) => setEdit({ ...edit, algorithm: e.target.value as Algorithm })}>
             {(Object.entries(ALGORITHM_NAMES) as [Algorithm, string][]).map(([id, name]) => (
               <MenuItem key={id} value={id}>
                 {name}
@@ -77,8 +110,13 @@ export default function BlockDialog(p: { block: Block | null; name: string; dura
             ))}
           </TextField>
           <Stack direction="row" sx={{ flexWrap: 'wrap' }}>
-            <FormControlLabel control={<Checkbox checked={draft.preserveFormant} onChange={(e) => setDraft({ ...draft, preserveFormant: e.target.checked })} />} label={t('block.preserveFormant')} />
-            <FormControlLabel control={<Checkbox checked={draft.mute} onChange={(e) => setDraft({ ...draft, mute: e.target.checked })} />} label={t('block.mute')} />
+            {(['preserveFormant', 'mute'] as const).map((key) => (
+              <FormControlLabel
+                key={key}
+                control={<Checkbox checked={value(key) === true} indeterminate={value(key) === null} onChange={(e) => setEdit({ ...edit, [key]: e.target.checked })} />}
+                label={t(key === 'mute' ? 'block.mute' : 'block.preserveFormant')}
+              />
+            ))}
           </Stack>
         </Stack>
       </DialogContent>

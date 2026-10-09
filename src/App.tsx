@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
-import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, usePalette, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
+import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, useConfirm, usePalette, LicensesDialog, StatusBar, StatusItem, StatusSpacer, useMobileLayout } from 'pevenmui'
 import { UpdatePrompt } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { AUDIO_ACCEPT, EXPORT_EXT, SELECTION_DARK, SELECTION_LIGHT, canRecord, downloadBlob, exportAudio, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
@@ -23,6 +23,8 @@ import { PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings'
 import SettingsDialog from './SettingsDialog'
 import AnalysisPanel from './AnalysisPanel'
+import { snapGrid } from './grid'
+import { newProject } from './project'
 import Timeline, { HEADER } from './Timeline'
 import Transport from './Transport'
 import { useActions } from './useActions'
@@ -38,6 +40,7 @@ const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noref
 
 export default function App(p: { settings: Settings; onSettingsChange: (patch: Partial<Settings>) => void }) {
   const t = useT()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
   setKeyOverrides(p.settings.keys)
   const mobile = useMobileLayout()
@@ -57,7 +60,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 再生を始めた位置（停止で戻る）
   const playFrom = useRef(0)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
-  const [editing, setEditing] = useState<string | null>(null)
+  // プロパティを開いている波形ブロック（複数なら一括で変える）
+  const [editing, setEditing] = useState<string[]>([])
+  const sourceInput = useRef<HTMLInputElement>(null)
   const [editingMarker, setEditingMarker] = useState<string | null>(null)
   const [eqTrack, setEqTrack] = useState<string | null>(null)
   const eqOf = project.tracks.find((tr) => tr.id === eqTrack)
@@ -73,7 +78,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | 'history' | null>(null)
   const audioInput = useRef<HTMLInputElement>(null)
   const projectInput = useRef<HTMLInputElement>(null)
-  const editingBlock = project.blocks.find((b) => b.id === editing) ?? null
+  const editingBlocks = project.blocks.filter((b) => editing.includes(b.id))
   const sourceOf = (id: string | undefined) => project.sources.find((s) => s.id === id)
   const { pal, dark } = usePalette()
   // ミニマップ（全体を縮めた波形。WeVocalSynth と同じ部品）
@@ -218,8 +223,20 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleRecord,
     toggleRepeat: () => setRepeat((r) => !r),
     seek,
+    gridStep: () => snapGrid(p.settings.grid, project.tempo, view.pps).step,
+    newProject: () =>
+      void confirm({ message: t('confirm.newProject'), okLabel: t('menu.newProject'), danger: true }).then((ok) => {
+        if (!ok) return
+        stop()
+        doc.replace(newProject(), 'history.new')
+        setFileName('untitled')
+        setSelected([])
+        setRange(null)
+        setCursor(0)
+      }),
     zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
-    openProperties: setEditing,
+    // 選んでいるものの中を開いたら、選んでいるもの全部を一括で
+    openProperties: (id: string) => setEditing(selected.includes(id) ? selected : [id]),
     openFile: () => projectInput.current?.click(),
     importFiles: () => audioInput.current?.click(),
     save,
@@ -354,7 +371,13 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlocksChange={doc.updateBlocks}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         onMarkerEdit={setEditingMarker}
+        onProperties={(id) => setEditing(selected.includes(id) ? selected : [id])}
         onEq={setEqTrack}
+        onDuplicateTrack={doc.duplicateTrack}
+        onRemoveTrack={(id) => {
+          doc.removeTrack(id)
+          setSelected([])
+        }}
         view={view}
         snap={p.settings.snap}
         playing={playing}
@@ -430,11 +453,22 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onRemove={() => editingMarker && doc.removeMarker(editingMarker)}
       />
       <BlockDialog
-        block={editingBlock}
-        name={sourceOf(editingBlock?.source)?.name ?? ''}
-        duration={sourceOf(editingBlock?.source)?.duration ?? 0}
-        onClose={() => setEditing(null)}
-        onApply={(b) => editingBlock && doc.updateBlock(editingBlock.id, b)}
+        blocks={editingBlocks}
+        sources={project.sources}
+        onClose={() => setEditing([])}
+        onApply={(edit) => doc.editBlocks(editing, edit)}
+        onPickFile={() => sourceInput.current?.click()}
+      />
+      <input
+        ref={sourceInput}
+        type="file"
+        accept={AUDIO_ACCEPT}
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (file) doc.replaceSource(editing, file).then(() => setEditing([]), fail)
+        }}
       />
 
       {!mobile && p.settings.showStatusBar && (
@@ -450,6 +484,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           {t('error.failed', { error: error ?? '' })}
         </Alert>
       </Snackbar>
+      {confirmDialog}
       <UpdatePrompt build={BUILD} />
       <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(null)}>
         <Alert severity="info" onClose={() => setNotice(null)}>

@@ -9,6 +9,11 @@ export type Action =
   | 'repeat'
   | 'record'
   | 'toStart'
+  | 'cursorLeft'
+  | 'cursorRight'
+  | 'nudgeLeft'
+  | 'nudgeRight'
+  | 'newProject'
   | 'toEnd'
   | 'snap'
   | 'zoomIn'
@@ -52,6 +57,13 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   // 録音（REAPER と同じ Ctrl+R）
   record: ['Ctrl+KeyR'],
   toStart: ['Home'],
+  // 再生位置を 1 拍（線の 1 目盛り）ずつ動かす
+  cursorLeft: ['ArrowLeft'],
+  cursorRight: ['ArrowRight'],
+  // 選んだ波形ブロックを 1 拍ずつ動かす（REAPER と同じテンキーの 4 と 6）
+  nudgeLeft: ['Numpad4'],
+  nudgeRight: ['Numpad6'],
+  newProject: ['Ctrl+KeyN'],
   toEnd: ['End'],
   // スナップの切り替え（REAPER の既定の割り当ては確かめられなかったので Alt+S）
   snap: ['Alt+KeyS'],

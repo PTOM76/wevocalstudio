@@ -15,6 +15,11 @@
   "block.offset": "Source offset (s)",
   "block.rate": "Rate (x)",
   "block.formant": "Formant (st)",
+  "block.propertiesMany": "Properties of {n} blocks",
+  "block.manyHelp": "Only the fields you change are applied to all selected blocks",
+  "block.mixed": "(mixed)",
+  "block.source": "Source",
+  "block.sourceFile": "Load from file…",
 
   "error.failed": "Failed: {error}",
   "error.noRecord": "Recording is not supported in this browser",
@@ -76,6 +81,11 @@
   "menu.analysis": "Analysis Panel",
   "menu.splitSilence": "Split at Silence",
   "menu.history": "History…",
+  "menu.cursorLeft": "Move Cursor Left",
+  "menu.cursorRight": "Move Cursor Right",
+  "menu.nudgeLeft": "Nudge Blocks Left",
+  "menu.nudgeRight": "Nudge Blocks Right",
+  "menu.newProject": "New Project",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -117,6 +127,9 @@
   "track.recorded": "Recording",
   "track.eq": "EQ",
   "track.invert": "Invert phase",
+  "track.rename": "Rename",
+  "track.duplicate": "Duplicate Track",
+  "track.remove": "Remove Track",
 
   "export.title": "Export",
   "export.format": "Format",
@@ -179,5 +192,7 @@
   "history.move": "Move",
   "history.block": "Block settings",
   "history.title": "History",
-  "history.restore": "Restore previous work"
+  "history.restore": "Restore previous work",
+
+  "confirm.newProject": "Close the current work and start a new project? Unsaved changes will be lost."
 }

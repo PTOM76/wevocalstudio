@@ -142,6 +142,15 @@ export const RATE_MAX = 4
 /** 古いファイルの波形ブロックに無い項目を既定値で埋める（保存したデータは壊さない） */
 export const fillBlock = (b: Partial<Block> & Pick<Block, 'id'>): Block => ({ rate: 1, gain: 0, pitch: 0, formant: 0, algorithm: 'sola3', preserveFormant: true, fadeIn: 0, fadeOut: 0, mute: false, ...b }) as Block
 
+/** 元の音を越えないように、長さ、開始位置、フェードをそろえる */
+export function fitBlock(b: Block, duration: number): Block {
+  const rate = Math.max(RATE_MIN, Math.min(RATE_MAX, b.rate))
+  const offset = Math.min(Math.max(0, b.offset), Math.max(0, duration - 0.01))
+  const length = Math.max(0.01, Math.min(b.length, (duration - offset) / rate))
+  const fadeIn = Math.min(b.fadeIn, length)
+  return { ...b, rate, offset, length, fadeIn, fadeOut: Math.min(b.fadeOut, length - fadeIn) }
+}
+
 /** 全体の長さ（秒） */
 export const projectEnd = (p: Project) => p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
 

@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip } from 'wevocal-lib'
 import { describeChange } from './history'
 import type { MessageKey } from './i18n'
-import { DEFAULT_FADE, newBlock, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
+import { DEFAULT_FADE, fitBlock, newBlock, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。2 オクターブまで */
 const PITCH_MAX = 24
@@ -89,6 +89,38 @@ export function useProject(defaults: PitchDefaults) {
     [change],
   )
 
+  /** 選んだ波形ブロックに、プロパティで変えた値をまとめて掛ける。速度だけ変えたら長さも合わせる（REAPER と同じ）。元の音の長さに収める */
+  const editBlocks = useCallback(
+    (ids: string[], edit: Partial<Block>) =>
+      change((p) => ({
+        ...p,
+        blocks: p.blocks.map((b) => {
+          if (!ids.includes(b.id)) return b
+          const next = { ...b, ...edit }
+          if (edit.rate !== undefined && edit.length === undefined) next.length = (b.length * b.rate) / edit.rate
+          // 元の音を変えたら、ピッチカーブは合わなくなるので外す
+          if (edit.source && edit.source !== b.source) next.curve = undefined
+          const source = p.sources.find((s) => s.id === next.source)
+          return source ? fitBlock(next, source.duration) : next
+        }),
+      })),
+    [change],
+  )
+
+  /** ファイルを読み込んで、選んだ波形ブロックの元の音にする */
+  const replaceSource = useCallback(
+    async (ids: string[], file: File) => {
+      const clip = await decodeFile(file)
+      const source: Source = { id: newId(), name: file.name, clip, duration: clip.channels[0].length / clip.sampleRate }
+      change((p) => ({
+        ...p,
+        sources: [...p.sources, source],
+        blocks: p.blocks.map((b) => (ids.includes(b.id) ? fitBlock({ ...b, source: source.id, curve: undefined }, source.duration) : b)),
+      }))
+    },
+    [change],
+  )
+
   /** 新しいトラックを足して、その id を返す */
   const addTrackNow = useCallback(() => {
     const track = newTrack(0)
@@ -124,6 +156,19 @@ export function useProject(defaults: PitchDefaults) {
   )
 
   const addTrack = useCallback(() => change((p) => ({ ...p, tracks: [...p.tracks, newTrack(p.tracks.length + 1)] })), [change])
+
+  /** トラックを波形ブロックごと写して、すぐ下に置く */
+  const duplicateTrack = useCallback(
+    (id: string) =>
+      change((p) => {
+        const i = p.tracks.findIndex((t) => t.id === id)
+        if (i < 0) return p
+        const copy = { ...p.tracks[i], id: newId(), name: `${p.tracks[i].name} (2)`, armed: false }
+        const blocks = p.blocks.filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
+        return { ...p, tracks: [...p.tracks.slice(0, i + 1), copy, ...p.tracks.slice(i + 1)], blocks: [...p.blocks, ...blocks] }
+      }),
+    [change],
+  )
 
   /** トラックとその波形ブロックを消す。使われなくなった元の音も消す */
   const removeTrack = useCallback(
@@ -230,9 +275,12 @@ export function useProject(defaults: PitchDefaults) {
     replace,
     addFiles,
     addClip,
+    editBlocks,
+    replaceSource,
     addTrackNow,
     addTrack,
     removeTrack,
+    duplicateTrack,
     updateTempo,
     addMarker,
     updateMarker,
