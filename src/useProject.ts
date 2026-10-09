@@ -111,31 +111,37 @@ export function useProject(defaults: PitchDefaults) {
     [change],
   )
 
-  const removeBlock = useCallback((id: string) => change((p) => ({ ...p, blocks: p.blocks.filter((b) => b.id !== id) })), [change])
+  /** 複数の波形ブロックを一度に変える（まとめて動かすとき）。id → 変える値 */
+  const updateBlocks = useCallback(
+    (patches: Record<string, Partial<Block>>, merge?: string) => change((p) => ({ ...p, blocks: p.blocks.map((b) => (patches[b.id] ? { ...b, ...patches[b.id] } : b)) }), merge),
+    [change],
+  )
 
-  /** 波形ブロックの写しを置き、その id を返す（複製、貼り付け） */
-  const insertBlock = useCallback(
-    (b: Block, patch: Partial<Block>) => {
-      const id = newId()
-      change((p) => (p.sources.some((s) => s.id === b.source) ? { ...p, blocks: [...p.blocks, { ...b, ...patch, id }] } : p))
-      return id
+  const removeBlocks = useCallback((ids: string[]) => change((p) => ({ ...p, blocks: p.blocks.filter((b) => !ids.includes(b.id)) })), [change])
+
+  /** 波形ブロックの写しを置き、新しい id を返す（複製、貼り付け）。元の音がもう無いものは置かない */
+  const insertBlocks = useCallback(
+    (blocks: Block[]) => {
+      const copies = blocks.map((b) => ({ ...b, id: newId() }))
+      change((p) => ({ ...p, blocks: [...p.blocks, ...copies.filter((b) => p.sources.some((s) => s.id === b.source))] }))
+      return copies.map((b) => b.id)
     },
     [change],
   )
 
   /** ピッチを delta 半音だけ変える。delta が null なら 0 に戻す。小数の誤差は 0.01 半音（1 セント）に丸める */
   const nudgePitch = useCallback(
-    (id: string, delta: number | null) =>
+    (ids: string[], delta: number | null) =>
       change((p) => ({
         ...p,
-        blocks: p.blocks.map((b) => (b.id === id ? { ...b, pitch: delta === null ? 0 : Math.max(-PITCH_MAX, Math.min(PITCH_MAX, Math.round((b.pitch + delta) * 100) / 100)) } : b)),
+        blocks: p.blocks.map((b) => (ids.includes(b.id) ? { ...b, pitch: delta === null ? 0 : Math.max(-PITCH_MAX, Math.min(PITCH_MAX, Math.round((b.pitch + delta) * 100) / 100)) } : b)),
       })),
     [change],
   )
 
-  /** 位置 t で分ける。id を渡さなければ、t にかかる波形ブロックを全部分ける */
+  /** 位置 t で分ける。ids が空なら、t にかかる波形ブロックを全部分ける */
   const split = useCallback(
-    (t: number, id?: string) => change((p) => ({ ...p, blocks: p.blocks.flatMap((b) => (id && b.id !== id ? [b] : (splitBlock(b, t) ?? [b]))) })),
+    (t: number, ids: string[] = []) => change((p) => ({ ...p, blocks: p.blocks.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitBlock(b, t) ?? [b]))) })),
     [change],
   )
 
@@ -153,8 +159,9 @@ export function useProject(defaults: PitchDefaults) {
     updateMaster,
     updateTrack,
     updateBlock,
-    removeBlock,
-    insertBlock,
+    updateBlocks,
+    removeBlocks,
+    insertBlocks,
     nudgePitch,
     split,
   }

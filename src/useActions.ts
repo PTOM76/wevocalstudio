@@ -13,12 +13,13 @@ export interface ActionContext {
   doc: ProjectApi
   cursor: number
   playing: boolean
-  selected: string | null
+  /** 選んでいる波形ブロック（複数） */
+  selected: string[]
   selectedTrack: string | null
   /** 範囲選択（REAPER のタイムセレクション） */
   range: Range | null
   setRange: (r: Range | null) => void
-  select: (id: string | null) => void
+  select: (ids: string[]) => void
   selectTrack: (id: string | null) => void
   play: () => void
   /** 止めて、再生を始めた位置に戻る */
@@ -52,16 +53,29 @@ interface Command {
 export function useActions(c: ActionContext) {
   const t = useT()
   const { doc } = c
-  const block = doc.project.blocks.find((b) => b.id === c.selected)
+  const chosen = doc.project.blocks.filter((b) => c.selected.includes(b.id))
+  const ids = chosen.map((b) => b.id)
+  const any = chosen.length > 0
   // コピーした波形ブロック。元の音はプロジェクトにあるものを指す
-  const clipboard = useRef<Block | null>(null)
+  const clipboard = useRef<Block[]>([])
 
+  /** 選んでいるトラックの再生位置に置く（REAPER と同じ）。複数なら、トラックと時間の並びを保つ */
   const paste = () => {
-    const b = clipboard.current
-    if (!b) return
-    // 選んでいるトラックの再生位置に置く（REAPER と同じ）
-    const track = doc.project.tracks.find((tr) => tr.id === c.selectedTrack) ?? doc.project.tracks.find((tr) => tr.id === b.track) ?? doc.project.tracks[0]
-    if (track) c.select(doc.insertBlock(b, { track: track.id, start: c.cursor }))
+    const blocks = clipboard.current
+    if (!blocks.length) return
+    const { tracks } = doc.project
+    const first = Math.min(...blocks.map((b) => b.start))
+    const top = Math.min(...blocks.map((b) => tracks.findIndex((tr) => tr.id === b.track)))
+    const target = Math.max(0, tracks.findIndex((tr) => tr.id === c.selectedTrack))
+    const at = (b: Block) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
+    c.select(doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: c.cursor + b.start - first }))))
+  }
+
+  /** 選んでいるものをまとめて、すぐ後ろに並べる */
+  const duplicate = () => {
+    const first = Math.min(...chosen.map((b) => b.start))
+    const last = Math.max(...chosen.map((b) => b.start + b.length))
+    c.select(doc.insertBlocks(chosen.map((b) => ({ ...b, start: b.start + last - first }))))
   }
 
   const commands: Record<Action, Command> = {
@@ -74,8 +88,9 @@ export function useActions(c: ActionContext) {
     snap: { run: c.toggleSnap },
     zoomIn: { run: () => c.zoom(1.5) },
     zoomOut: { run: () => c.zoom(1 / 1.5) },
-    properties: { enabled: !!block, run: () => block && c.openProperties(block.id) },
-    split: { run: () => doc.split(c.cursor, c.selected ?? undefined) },
+    properties: { enabled: any, run: () => any && c.openProperties(chosen[0].id) },
+    split: { run: () => doc.split(c.cursor, ids) },
+    selectAll: { run: () => c.select(doc.project.blocks.map((b) => b.id)) },
     // 範囲の両端で、かかっている波形ブロックを全部分ける
     splitRange: {
       enabled: !!c.range,
@@ -87,27 +102,26 @@ export function useActions(c: ActionContext) {
     },
     clearRange: { enabled: !!c.range, run: () => c.setRange(null) },
     delete: {
-      enabled: !!block,
+      enabled: any,
       run: () => {
-        if (block) doc.removeBlock(block.id)
-        c.select(null)
+        doc.removeBlocks(ids)
+        c.select([])
       },
     },
     undo: { enabled: doc.canUndo, run: doc.undo },
     redo: { enabled: doc.canRedo, run: doc.redo },
-    copy: { enabled: !!block, run: () => (clipboard.current = block ?? null) },
-    paste: { enabled: !!clipboard.current, run: paste },
-    // すぐ後ろに並べる
-    duplicate: { enabled: !!block, run: () => block && c.select(doc.insertBlock(block, { start: block.start + block.length })) },
+    copy: { enabled: any, run: () => (clipboard.current = chosen) },
+    paste: { enabled: clipboard.current.length > 0, run: paste },
+    duplicate: { enabled: any, run: duplicate },
     open: { run: c.openFile },
     save: { run: c.save },
     import: { run: c.importFiles },
     export: { enabled: doc.project.blocks.length > 0, run: c.openExport },
-    pitchUp: { enabled: !!block, run: () => block && doc.nudgePitch(block.id, 1) },
-    pitchDown: { enabled: !!block, run: () => block && doc.nudgePitch(block.id, -1) },
-    pitchUpFine: { enabled: !!block, run: () => block && doc.nudgePitch(block.id, 0.1) },
-    pitchDownFine: { enabled: !!block, run: () => block && doc.nudgePitch(block.id, -0.1) },
-    pitchReset: { enabled: !!block, run: () => block && doc.nudgePitch(block.id, null) },
+    pitchUp: { enabled: any, run: () => doc.nudgePitch(ids, 1) },
+    pitchDown: { enabled: any, run: () => doc.nudgePitch(ids, -1) },
+    pitchUpFine: { enabled: any, run: () => doc.nudgePitch(ids, 0.1) },
+    pitchDownFine: { enabled: any, run: () => doc.nudgePitch(ids, -0.1) },
+    pitchReset: { enabled: any, run: () => doc.nudgePitch(ids, null) },
   }
 
   // キーの割り当ては keymap.ts の表。文字の入力中は奪わない
@@ -115,7 +129,11 @@ export function useActions(c: ActionContext) {
   latest.current = commands
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      // 文字を打つ欄にいるときと、日本語の変換中は奪わない。スライダーやチェックの input は文字を打たないので奪う
+      // （スライダーを触ったあとにフォーカスが残り、Shift+0 などが効かなかった）
+      const el = e.target
+      if (e.isComposing || el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !['range', 'checkbox', 'radio', 'button'].includes(el.type))) return
+      if (el instanceof HTMLElement && el.isContentEditable) return
       const action = actionOf(e)
       if (!action) return
       e.preventDefault()
@@ -144,7 +162,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.edit'),
       accessKey: 'E',
-      entries: [item('undo'), item('redo'), divider, item('copy'), item('paste'), item('duplicate'), item('split'), item('splitRange'), item('delete'), divider, item('clearRange')],
+      entries: [item('undo'), item('redo'), divider, item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('delete'), divider, item('clearRange')],
     },
     {
       label: t('menu.block'),
@@ -162,7 +180,7 @@ export function useActions(c: ActionContext) {
           onClick: () => {
             if (c.selectedTrack) doc.removeTrack(c.selectedTrack)
             c.selectTrack(null)
-            c.select(null)
+            c.select([])
           },
         },
       ],

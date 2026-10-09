@@ -14,8 +14,8 @@ const HEADER = 200
 export default function Timeline(p: {
   project: Project
   cursor: number
-  selected: string | null
-  onSelect: (id: string | null) => void
+  selected: string[]
+  onSelect: (ids: string[]) => void
   selectedTrack: string | null
   onSelectTrack: (id: string) => void
   onSeek: (t: number) => void
@@ -27,6 +27,7 @@ export default function Timeline(p: {
   onEndMerge: () => void
   onDropFiles: (files: File[], at?: DropAt) => void
   onBlockChange: (id: string, patch: Partial<Block>, merge?: string) => void
+  onBlocksChange: (patches: Record<string, Partial<Block>>, merge?: string) => void
   /** 波形ブロックの右クリック（画面の座標） */
   onBlockMenu: (id: string, x: number, y: number) => void
   /** 表示範囲（拡大縮小をキーからも変えるので App が持つ） */
@@ -97,13 +98,15 @@ export default function Timeline(p: {
   const toTime = (x: number) => view.scroll + x / view.pps
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // 時間軸を押したら、スライダーなどに残ったフォーカスを外す（キーが時間軸の操作に届くように）
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     // 右クリックはメニュー（onContextMenu）だけ
     if (e.button === 2) return
     const { offsetX: x, offsetY: y } = e.nativeEvent
     const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
     if (!hit) {
       // 目盛りか空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択
-      p.onSelect(null)
+      if (!e.ctrlKey && !e.metaKey) p.onSelect([])
       const track = p.project.tracks[Math.floor((y - TOP) / LANE)]
       if (track) p.onSelectTrack(track.id)
       p.onSeek(Math.max(0, toTime(x)))
@@ -111,11 +114,19 @@ export default function Timeline(p: {
       rangeDrag.current = { t: Math.max(0, toTime(x)), x }
       return
     }
-    p.onSelect(hit.block.id)
+    const id = hit.block.id
+    // Ctrl で足し引き。選んでいるものをつまんだら、選んだもの全部を動かす
+    let group = p.selected.includes(id) ? p.selected : [id]
+    if (e.ctrlKey || e.metaKey) {
+      group = p.selected.includes(id) ? p.selected.filter((s) => s !== id) : [...p.selected, id]
+      p.onSelect(group)
+      if (!group.includes(id)) return
+    } else p.onSelect(group)
     p.onSelectTrack(hit.block.track)
     e.currentTarget.setPointerCapture(e.pointerId)
     const trackIndex = p.project.tracks.findIndex((t) => t.id === hit.block.track)
-    drag.current = { kind: hit.kind, block: hit.block, x, y, trackIndex, merge: `drag${dragCount.current++}` }
+    const others = hit.kind === 'move' ? p.project.blocks.filter((b) => group.includes(b.id) && b.id !== id) : []
+    drag.current = { kind: hit.kind, block: hit.block, others, x, y, trackIndex, merge: `drag${dragCount.current++}` }
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -124,7 +135,7 @@ export default function Timeline(p: {
     if (r) {
       if (Math.abs(x - r.x) < 3) return
       const t = Math.max(0, toTime(x))
-      const snapped = p.snap && !e.shiftKey ? (snapTime(t, snapTargets(p.project, p.cursor, null), view.pps) ?? t) : t
+      const snapped = p.snap && !e.shiftKey ? (snapTime(t, snapTargets(p.project, p.cursor, []), view.pps) ?? t) : t
       p.onRange({ start: Math.min(r.t, snapped), end: Math.max(r.t, snapped) })
       return
     }
@@ -137,8 +148,16 @@ export default function Timeline(p: {
     }
     // Shift を押している間は吸い付けない（REAPER と同じ）
     const raw = (x - d.x) / view.pps
-    const dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, d.block.id), view.pps) : raw
-    p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, Math.round((y - d.y) / LANE)), d.merge)
+    const exclude = [d.block.id, ...d.others.map((b) => b.id)]
+    let dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), view.pps) : raw
+    const di = Math.round((y - d.y) / LANE)
+    if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di), d.merge)
+    // まとめて動かす。一番前のものが 0 より前に出ない所、トラックの外に出ない所で止める
+    const all = [d.block, ...d.others]
+    dt = Math.max(dt, -Math.min(...all.map((b) => b.start)))
+    const rows = all.map((b) => p.project.tracks.findIndex((t) => t.id === b.track))
+    const shift = Math.max(-Math.min(...rows), Math.min(p.project.tracks.length - 1 - Math.max(...rows), di))
+    p.onBlocksChange(Object.fromEntries(all.map((b, i) => [b.id, { start: b.start + dt, track: p.project.tracks[rows[i] + shift].id }])), d.merge)
   }
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -187,7 +206,7 @@ export default function Timeline(p: {
             const { offsetX: x, offsetY: y } = e.nativeEvent
             const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
             if (!hit) return
-            p.onSelect(hit.block.id)
+            if (!p.selected.includes(hit.block.id)) p.onSelect([hit.block.id])
             p.onSelectTrack(hit.block.track)
             p.onBlockMenu(hit.block.id, e.clientX, e.clientY)
           }}

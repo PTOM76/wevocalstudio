@@ -34,7 +34,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const player = useRef(new Player())
   const [playing, setPlaying] = useState(false)
   const [cursor, setCursor] = useState(0)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string[]>([])
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
   const [range, setRange] = useState<Range | null>(null)
   const [repeat, setRepeat] = useState(false)
@@ -87,7 +87,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       doc.replace(await readProject(file))
       setRange(null)
       setFileName(file.name.replace(/\.[^.]+$/, ''))
-      setSelected(null)
+      setSelected([])
       setSelectedTrack(null)
       setCursor(0)
     } catch (e) {
@@ -224,6 +224,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onEndMerge={doc.endMerge}
         onDropFiles={(files, at) => void load(files, at)}
         onBlockChange={doc.updateBlock}
+        onBlocksChange={doc.updateBlocks}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         view={view}
         snap={p.settings.snap}

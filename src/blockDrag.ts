@@ -16,6 +16,8 @@ export interface Drag {
   kind: DragKind
   /** つまんだときの波形ブロック */
   block: Block
+  /** 一緒に動かす、選んでいるほかの波形ブロック（つまんだときのもの） */
+  others: Block[]
   x: number
   y: number
   trackIndex: number
@@ -76,9 +78,9 @@ export function dragPatch(p: Project, d: Drag, dt: number, di: number): Partial<
 const SNAP_PX = 8
 
 /** 吸い付ける先（目盛りの線は近くのものだけ作る）。exclude の波形ブロックの端は除く */
-export function snapTargets(p: Project, cursor: number, exclude: string | null) {
+export function snapTargets(p: Project, cursor: number, exclude: string[]) {
   const edges = [0, cursor]
-  for (const b of p.blocks) if (b.id !== exclude) edges.push(b.start, b.start + b.length)
+  for (const b of p.blocks) if (!exclude.includes(b.id)) edges.push(b.start, b.start + b.length)
   return edges
 }
 

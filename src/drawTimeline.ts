@@ -67,7 +67,7 @@ function drawBlockWave(g: CanvasRenderingContext2D, b: Block, p: Project, x: num
   }
 }
 
-export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: TimelineView, selected: string | null, cursor: number, range: Range | null, c: TimelineColors) {
+export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: TimelineView, selected: string[], cursor: number, range: Range | null, c: TimelineColors) {
   const g = canvas.getContext('2d')!
   const w = canvas.width / devicePixelRatio
   const h = canvas.height / devicePixelRatio
@@ -105,7 +105,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       const bw = b.length * view.pps
       if (x > w || x + bw < 0) continue
       g.globalAlpha = b.mute ? 0.4 : 1
-      g.fillStyle = b.id === selected ? c.blockSelected : c.block
+      g.fillStyle = selected.includes(b.id) ? c.blockSelected : c.block
       g.fillRect(x, y + 2, bw, LANE - 5)
       g.fillStyle = c.wave
       drawBlockWave(g, b, p, x, y + 16, bw, LANE - 20, w)

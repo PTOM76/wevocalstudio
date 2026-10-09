@@ -20,6 +20,7 @@ export type Action =
   | 'copy'
   | 'paste'
   | 'duplicate'
+  | 'selectAll'
   | 'properties'
   | 'open'
   | 'save'
@@ -56,6 +57,7 @@ export const KEYMAP: Record<Action, string[]> = {
   copy: ['Ctrl+KeyC'],
   paste: ['Ctrl+KeyV'],
   duplicate: ['Ctrl+KeyD'],
+  selectAll: ['Ctrl+KeyA'],
   // 波形ブロックのプロパティ（REAPER のアイテムのプロパティ）
   properties: ['F2', 'Shift+F2'],
   open: ['Ctrl+KeyO'],
