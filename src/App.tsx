@@ -120,6 +120,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   }
   const seek = (time: number) => {
     setCursor(time)
+    // 動かした所が、停止で戻る位置になる（REAPER と同じ。前は再生を始めた位置に戻ってしまった）
+    playFrom.current = time
     if (playing) player.current.play(project, time)
   }
 
