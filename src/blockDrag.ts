@@ -1,5 +1,5 @@
 // 波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
-import { TOP, trackTop } from './drawTimeline'
+import { trackTop } from './drawTimeline'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { layoutRows } from './overlap'
 import { ENV_MAX, ENV_MIN, RATE_MAX, RATE_MIN, trackHeight, type Block, type Marker, type Project, type Tempo } from './project'
