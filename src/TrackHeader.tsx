@@ -1,7 +1,7 @@
 // トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
 import { useState, type ReactNode } from 'react'
 import { Box, ButtonBase, InputBase, Tooltip, Typography } from '@mui/material'
-import { pevenFont } from 'pevenmui'
+import { pevenFont, useDoubleTap, useLongPress } from 'pevenmui'
 import { ContextMenu } from 'pevenmui'
 import { MeterFader, PanBar } from './MeterFader'
 import { useT } from './i18n'
@@ -85,9 +85,21 @@ export default function TrackHeader(p: {
   const [editing, setEditing] = useState(false)
   // 右クリックのメニュー（名前の変更、複製、削除）
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  // タッチの長押しでメニュー、名前のダブルタップで名前の変更（PevenMUI。iPhone、iPad は contextmenu と dblclick が来ない）
+  const longPress = useLongPress()
+  const doubleTap = useDoubleTap()
   return (
     <Box
-      onPointerDown={p.onSelect}
+      onPointerDown={(e) => {
+        p.onSelect(e)
+        if (e.pointerType === 'touch') {
+          const { clientX: x, clientY: y } = e
+          longPress.start(x, y, () => setMenu({ x, y }))
+        }
+      }}
+      onPointerMove={(e) => longPress.move(e.clientX, e.clientY)}
+      onPointerUp={longPress.cancel}
+      onPointerCancel={longPress.cancel}
       onContextMenu={(e) => {
         e.preventDefault()
         p.onSelect(e as unknown as React.PointerEvent)
@@ -141,7 +153,7 @@ export default function TrackHeader(p: {
           />
         ) : (
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => setEditing(true)}>
+            <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => setEditing(true)} onPointerUp={(e) => e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY) && setEditing(true)}>
             {track.name}
           </Typography>
           </Box>

@@ -1,6 +1,6 @@
 // 再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）。
 // 再生中に変えたときは、変わった波形ブロックだけを差し替え、トラックとマスターの音量などは値だけを変える（全部を鳴らし直すと一瞬止まるため）
-import { createLiveEq, flatEq, updateLiveEq, type Clip, type LiveEq } from 'wevocal-lib'
+import { createLiveEq, flatEq, startContext, updateLiveEq, type Clip, type LiveEq } from 'wevocal-lib'
 import { piecesFor, preparePitch, type Piece } from './dsp/pitch'
 import { audible, dbToGain, envAt, projectEnd, type Block, type Project, type Track } from './project'
 
@@ -266,7 +266,8 @@ export class Player {
     const again = this.playing
     this.stop()
     this.ctx ??= new AudioContext()
-    void this.ctx.resume()
+    // iPhone、iPad はマナーモードでも鳴るように、再生の音声セッションにしてから起こす（wevocal-lib。WeVocalSynth と同じ）
+    void startContext(this.ctx, 'player')
     this.from = from
     // 鳴らし直すときは待たずに続ける（前の音は stop で消えていく）
     this.startedAt = this.ctx.currentTime + (again ? 0.01 : 0.05)

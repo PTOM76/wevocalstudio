@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
 import { useEdgeScroll } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
-import { usePalette } from 'pevenmui'
+import { useDoubleTap, useLongPress, usePalette } from 'pevenmui'
 import { layoutRows } from './overlap'
 import { ENV_MAX, ENV_MIN, depthOf } from './project'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
@@ -135,20 +135,28 @@ export default function Timeline(p: {
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
-    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, showEnvelope: p.envelope, vscroll: vs }, {
-      bg: pal.background.default,
-      lane: pal.divider,
-      line: alpha(pal.divider, 0.5),
-      text: pal.text.primary,
-      block: alpha(pal.primary.main, dark ? 0.18 : 0.12),
-      blockSelected: alpha(pal.primary.main, dark ? 0.36 : 0.26),
-      wave: pal.primary.main,
-      playhead: pal.text.primary,
-      editCursor: '#e53935',
-      master: alpha(pal.text.primary, 0.04),
-      marker: '#ffb300',
-      range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
-    })
+    drawTimeline(
+      canvas,
+      p.project,
+      view,
+      p.selected,
+      p.range,
+      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, showEnvelope: p.envelope, vscroll: vs },
+      {
+        bg: pal.background.default,
+        lane: pal.divider,
+        line: alpha(pal.divider, 0.5),
+        text: pal.text.primary,
+        block: alpha(pal.primary.main, dark ? 0.18 : 0.12),
+        blockSelected: alpha(pal.primary.main, dark ? 0.36 : 0.26),
+        wave: pal.primary.main,
+        playhead: pal.text.primary,
+        editCursor: '#e53935',
+        master: alpha(pal.text.primary, 0.04),
+        marker: '#ffb300',
+        range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
+      },
+    )
   }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envelope, vs])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
@@ -226,11 +234,67 @@ export default function Timeline(p: {
     return Math.max(0, origin + Math.round((t - origin) / step) * step)
   }
 
+  /** ダブルクリック（タッチはダブルタップ）。波形ブロックはプロパティ、エンベロープの点は消す、マーカーは編集 */
+  const doubleAt = (x: number, oy: number) => {
+    const y = cy(oy)
+    if (y > TOP) {
+      const hit = hitBlock(p.project, x, y, toTime, view.pps)
+      if (!hit) return
+      // エンベロープの点のダブルクリックは、その点を消す
+      if (p.envelope) {
+        const g = blockGeom(hit.block)
+        const i = hitEnvPoint(hit.block, x, y, g.x, g.top, g.h, view.pps)
+        if (i >= 0) return p.onBlockChange(hit.block.id, { envelope: hit.block.envelope!.filter((_, k) => k !== i) })
+      }
+      p.onProperties(hit.block.id)
+      return
+    }
+    if (y >= RULER) return
+    // 旗の幅の中か、線の近く
+    const m = p.project.markers.find((m) => {
+      const mx = (m.time - view.scroll) * view.pps
+      return x >= mx - 4 && x <= mx + 60
+    })
+    if (m) p.onMarkerEdit(m.id)
+  }
+
+  /** 右クリック（タッチは長押し）のメニュー。押した所が波形ブロックならその操作、空いている所ならその場所の操作 */
+  const menuAt = (x: number, oy: number, cx: number, cyClient: number, shift: boolean) => {
+    if (marquee.current?.moved) {
+      marquee.current = null
+      return
+    }
+    marquee.current = null
+    const y = cy(oy)
+    const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
+    if (!hit) {
+      const track = y > TOP ? (p.project.tracks[Math.floor((y - TOP) / LANE)]?.id ?? null) : null
+      if (track) p.onSelectTrack(track)
+      return p.onEmptyMenu(y < RULER ? 'ruler' : 'lane', gridAt(x, shift), track, cx, cyClient)
+    }
+    if (!p.selected.includes(hit.block.id)) p.onSelect([hit.block.id])
+    p.onSelectTrack(hit.block.track)
+    p.onBlockMenu(hit.block.id, cx, cyClient)
+  }
+
+  // タッチの長押しとダブルタップ（iPhone、iPad は contextmenu と dblclick が来ない。PevenMUI。WeVocalSynth と同じ）
+  const longPress = useLongPress()
+  const doubleTap = useDoubleTap()
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // 時間軸を押したら、スライダーなどに残ったフォーカスを外す（キーが時間軸の操作に届くように）
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     const { offsetX: x } = e.nativeEvent
     const y = cy(e.nativeEvent.offsetY)
+    if (e.pointerType === 'touch') {
+      const { offsetY: oy } = e.nativeEvent
+      const { clientX, clientY } = e
+      longPress.start(clientX, clientY, () => {
+        // 長押しになったら、始めたドラッグはやめる
+        drag.current = null
+        menuAt(x, oy, clientX, clientY, false)
+      })
+    }
     // 右ボタン: ドラッグすれば枠で選ぶ。動かさなければ右クリックのメニュー（onContextMenu）
     if (e.button === 2) {
       if (y > TOP) {
@@ -306,6 +370,7 @@ export default function Timeline(p: {
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    longPress.move(e.clientX, e.clientY)
     const { offsetX: x } = e.nativeEvent
     const y = cy(e.nativeEvent.offsetY)
     const ed = envDrag.current
@@ -333,7 +398,12 @@ export default function Timeline(p: {
       const ra = Math.floor((Math.min(mq.y, y) - TOP) / LANE)
       const rb = Math.floor((Math.max(mq.y, y) - TOP) / LANE)
       p.onSelect(
-        p.project.blocks.filter((b) => { const r = p.project.tracks.findIndex((t) => t.id === b.track); return r >= ra && r <= rb && b.start < tb && b.start + b.length > ta }).map((b) => b.id),
+        p.project.blocks
+          .filter((b) => {
+            const r = p.project.tracks.findIndex((t) => t.id === b.track)
+            return r >= ra && r <= rb && b.start < tb && b.start + b.length > ta
+          })
+          .map((b) => b.id),
         `marquee${mq.x},${mq.y}`,
       )
       return
@@ -383,6 +453,8 @@ export default function Timeline(p: {
   }
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    longPress.cancel()
+    if (e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY)) doubleAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
     envDrag.current = null
     if (marquee.current) {
       // 動かしたら、このあとの右クリックのメニューは出さない
@@ -411,103 +483,81 @@ export default function Timeline(p: {
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-    <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
-      <Box sx={{ width: HEADER, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0 }} />
-        <MasterHeader master={p.project.master} height={MASTER} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
-        {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
-        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }} onWheel={(e) => setVscroll((v) => Math.max(0, Math.min(maxV, v + e.deltaY)))}>
-        <Box sx={{ transform: `translateY(${-vs}px)` }}>
-        {p.project.tracks.map((track) => (
-          <TrackHeader
-            key={track.id}
-            track={track}
-            height={LANE}
-            selected={p.selectedTracks.includes(track.id)}
-            onSelect={(e) => {
-              // トラックの欄を押したらトラックだけを選ぶ（Ctrl+C でトラックをコピーできるように）。
-              // Ctrl で足し引き、Shift で前に選んだトラックからの範囲。選んでいるものを押したら選択はそのまま（まとめて音量を動かせるように）
-              p.onSelect([])
-              const ids = p.project.tracks.map((tr) => tr.id)
-              const sel = p.selectedTracks
-              if (e.ctrlKey || e.metaKey) p.onSelectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
-              else if (e.shiftKey && p.selectedTrack) {
-                const [i0, i1] = [ids.indexOf(p.selectedTrack), ids.indexOf(track.id)].sort((x, y) => x - y)
-                p.onSelectTracks([...ids.slice(i0, i1 + 1).filter((x) => x !== p.selectedTrack), p.selectedTrack])
-              } else if (!sel.includes(track.id)) p.onSelectTrack(track.id)
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
+        <Box sx={{ width: HEADER, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0 }} />
+          <MasterHeader master={p.project.master} height={MASTER} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
+          {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }} onWheel={(e) => setVscroll((v) => Math.max(0, Math.min(maxV, v + e.deltaY)))}>
+            <Box sx={{ transform: `translateY(${-vs}px)` }}>
+              {p.project.tracks.map((track) => (
+                <TrackHeader
+                  key={track.id}
+                  track={track}
+                  height={LANE}
+                  selected={p.selectedTracks.includes(track.id)}
+                  onSelect={(e) => {
+                    // トラックの欄を押したらトラックだけを選ぶ（Ctrl+C でトラックをコピーできるように）。
+                    // Ctrl で足し引き、Shift で前に選んだトラックからの範囲。選んでいるものを押したら選択はそのまま（まとめて音量を動かせるように）
+                    p.onSelect([])
+                    const ids = p.project.tracks.map((tr) => tr.id)
+                    const sel = p.selectedTracks
+                    if (e.ctrlKey || e.metaKey) p.onSelectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
+                    else if (e.shiftKey && p.selectedTrack) {
+                      const [i0, i1] = [ids.indexOf(p.selectedTrack), ids.indexOf(track.id)].sort((x, y) => x - y)
+                      p.onSelectTracks([...ids.slice(i0, i1 + 1).filter((x) => x !== p.selectedTrack), p.selectedTrack])
+                    } else if (!sel.includes(track.id)) p.onSelectTrack(track.id)
+                  }}
+                  onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
+                  onEndMerge={p.onEndMerge}
+                  onEq={() => p.onEq(track.id)}
+                  meter={p.meter && (() => p.meter!(track.id))}
+                  depth={depthOf(p.tree, track)}
+                  hasChildren={p.tree.tracks.some((t) => t.parent === track.id)}
+                  onAddSubtrack={() => p.onTrackOp('addSubtrack', track.id)}
+                  onIndent={() => p.onTrackOp('indent', track.id)}
+                  onOutdent={() => p.onTrackOp('outdent', track.id)}
+                  onDuplicate={() => p.onDuplicateTrack(track.id)}
+                  onRemove={() => p.onRemoveTrack(track.id)}
+                />
+              ))}
+            </Box>
+          </Box>
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
+          {box && (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: box.x0,
+                top: box.y0,
+                width: box.x1 - box.x0,
+                height: box.y1 - box.y0,
+                border: 1,
+                borderColor: 'primary.main',
+                bgcolor: alpha(pal.primary.main, 0.12),
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+          {/* カーソルの線だけを描く canvas（押す操作は下の canvas が受ける） */}
+          <canvas ref={overlayRef} style={{ position: 'absolute', left: 0, top: 0, width, height, pointerEvents: 'none' }} />
+          <canvas
+            ref={canvasRef}
+            style={{ display: 'block', width, height, touchAction: 'none', cursor }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onDoubleClick={(e) => doubleAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              menuAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY, e.clientX, e.clientY, e.shiftKey)
             }}
-            onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
-            onEndMerge={p.onEndMerge}
-            onEq={() => p.onEq(track.id)}
-            meter={p.meter && (() => p.meter!(track.id))}
-            depth={depthOf(p.tree, track)}
-            hasChildren={p.tree.tracks.some((t) => t.parent === track.id)}
-            onAddSubtrack={() => p.onTrackOp('addSubtrack', track.id)}
-            onIndent={() => p.onTrackOp('indent', track.id)}
-            onOutdent={() => p.onTrackOp('outdent', track.id)}
-            onDuplicate={() => p.onDuplicateTrack(track.id)}
-            onRemove={() => p.onRemoveTrack(track.id)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={onDrop}
           />
-        ))}
-        </Box>
         </Box>
       </Box>
-      <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
-        {box && (
-          <Box sx={{ position: 'absolute', left: box.x0, top: box.y0, width: box.x1 - box.x0, height: box.y1 - box.y0, border: 1, borderColor: 'primary.main', bgcolor: alpha(pal.primary.main, 0.12), pointerEvents: 'none' }} />
-        )}
-        {/* カーソルの線だけを描く canvas（押す操作は下の canvas が受ける） */}
-        <canvas ref={overlayRef} style={{ position: 'absolute', left: 0, top: 0, width, height, pointerEvents: 'none' }} />
-        <canvas
-          ref={canvasRef}
-          style={{ display: 'block', width, height, touchAction: 'none', cursor }}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onDoubleClick={(e) => {
-            const { offsetX: x } = e.nativeEvent
-            const y = cy(e.nativeEvent.offsetY)
-            if (y > TOP) {
-              const hit = hitBlock(p.project, x, y, toTime, view.pps)
-              if (!hit) return
-              // エンベロープの点のダブルクリックは、その点を消す
-              if (p.envelope) {
-                const g = blockGeom(hit.block)
-                const i = hitEnvPoint(hit.block, x, y, g.x, g.top, g.h, view.pps)
-                if (i >= 0) return p.onBlockChange(hit.block.id, { envelope: hit.block.envelope!.filter((_, k) => k !== i) })
-              }
-              p.onProperties(hit.block.id)
-              return
-            }
-            if (y >= RULER) return
-            // 旗の幅の中か、線の近く
-            const m = p.project.markers.find((m) => { const mx = (m.time - view.scroll) * view.pps; return x >= mx - 4 && x <= mx + 60 })
-            if (m) p.onMarkerEdit(m.id)
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            if (marquee.current?.moved) {
-              marquee.current = null
-              return
-            }
-            marquee.current = null
-            const { offsetX: x } = e.nativeEvent
-            const y = cy(e.nativeEvent.offsetY)
-            const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
-            if (!hit) {
-              const track = y > TOP ? (p.project.tracks[Math.floor((y - TOP) / LANE)]?.id ?? null) : null
-              if (track) p.onSelectTrack(track)
-              return p.onEmptyMenu(y < RULER ? 'ruler' : 'lane', gridAt(x, e.shiftKey), track, e.clientX, e.clientY)
-            }
-            if (!p.selected.includes(hit.block.id)) p.onSelect([hit.block.id])
-            p.onSelectTrack(hit.block.track)
-            p.onBlockMenu(hit.block.id, e.clientX, e.clientY)
-          }}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={onDrop}
-        />
-      </Box>
-    </Box>
     </Box>
   )
 }
