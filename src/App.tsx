@@ -8,11 +8,8 @@ import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
 import { app } from './appConfig'
-import BlockDialog from './BlockDialog'
-import MarkerDialog from './MarkerDialog'
-import AppDialogs, { type AppDialog } from './AppDialogs'
-import EqDialog from './EqDialog'
-import { flatEq } from 'wevocal-lib'
+import AppDialogs from './AppDialogs'
+import { useDialogs } from './useDialogs'
 import type { TimelineView } from './drawTimeline'
 import { Player } from './engine'
 import { buildOverview } from './overview'
@@ -71,11 +68,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 「ここに読み込む」の行き先（ファイルを選んだら使う）
   const importTarget = useRef<DropAt | undefined>(undefined)
   // プロパティを開いている波形ブロック（複数なら一括で変える）
-  const [editing, setEditing] = useState<string[]>([])
-  const sourceInput = useRef<HTMLInputElement>(null)
-  const [editingMarker, setEditingMarker] = useState<string | null>(null)
-  const [eqTrack, setEqTrack] = useState<string | null>(null)
-  const eqOf = project.tracks.find((tr) => tr.id === eqTrack)
   const [fileName, setFileName] = useState('untitled')
   // ピッチや速度を変えた音ができるたびに増やす（解析の欄が作り直した音で解析し直す）
   const [madeVersion, setMadeVersion] = useState(0)
@@ -83,11 +75,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [notice, setNotice] = useState<string | null>(null)
   // 起動時の復元が終わるまでは自動保存しない（空のプロジェクトで前回の作業を上書きしないように）
   const [restored, setRestored] = useState(false)
-  const [dialog, setDialog] = useState<AppDialog | null>(null)
+  // ダイアログの開閉（PevenMUI の useDialogs。WeVocalSynth と同じ）。描画は AppDialogs.tsx
+  const dialogs = useDialogs()
   const audioInput = useRef<HTMLInputElement>(null)
   // 時間軸に出すのは見えているトラックだけ（たたんだ親の子孫は隠す）
   const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project])
-  const editingBlocks = project.blocks.filter((b) => editing.includes(b.id))
   const sourceOf = (id: string | undefined) => project.sources.find((s) => s.id === id)
   const { pal, dark } = usePalette()
   // ミニマップ（全体を縮めた波形。WeVocalSynth と同じ部品）
@@ -165,7 +157,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     confirmDiscard: () => confirm({ message: t('confirm.discard'), okLabel: t('confirm.discardOk'), danger: true }),
     fail,
     notify: setNotice,
-    onExported: () => setDialog(null),
+    onExported: () => dialogs.close('export'),
   })
 
 
@@ -219,7 +211,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     end,
     zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
     // 選んでいるものの中を開いたら、選んでいるもの全部を一括で
-    openProperties: (id: string) => setEditing(selected.includes(id) ? selected : [id]),
+    openProperties: (id: string) => dialogs.open('block', selected.includes(id) ? selected : [id]),
     openFile: files.picker.open,
     importFiles: () => {
       importTarget.current = undefined
@@ -232,9 +224,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     save: files.save,
     saveAs: files.saveAs,
     recent: files.recent,
-    openExport: () => setDialog('export'),
-    openSettings: () => setDialog('settings'),
-    openHistory: () => setDialog('history'),
+    openExport: () => dialogs.open('export'),
+    openSettings: () => dialogs.open('settings'),
+    openHistory: () => dialogs.open('history'),
     snap: p.settings.snap,
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
     follow: p.settings.follow,
@@ -253,7 +245,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
     help: {
       guide: () => openExternal(app.repository),
-      shortcuts: () => setDialog('shortcuts'),
+      shortcuts: () => dialogs.open('shortcuts'),
       // 新しい版があれば右下の通知から更新できる。ここでは結果だけを知らせる（WeVocalSynth と同じ）
       checkUpdate: () =>
         void checkForUpdate().then((r) => {
@@ -261,7 +253,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           if (r.kind === 'failed') return fail(t('toast.updateFailed'))
           setNotice(t(r.kind === 'latest' ? 'toast.updateLatest' : 'toast.updateUnsupported'))
         }),
-      licenses: () => setDialog('licenses'), about: () => setDialog('about') },
+      licenses: () => dialogs.open('licenses'), about: () => dialogs.open('about') },
   })
 
   // 起動時の復元と自動保存（WeVocalSynth と同じ）
@@ -346,9 +338,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         onEmptyMenu={(kind, time, track, x, y) => setEmptyAt({ kind, time, track, x, y })}
         onCopyBlocks={(blocks) => void doc.insertBlocks(blocks)}
-        onMarkerEdit={setEditingMarker}
-        onProperties={(id) => setEditing(selected.includes(id) ? selected : [id])}
-        onEq={setEqTrack}
+        onMarkerEdit={(id) => dialogs.open('marker', id)}
+        onProperties={(id) => dialogs.open('block', selected.includes(id) ? selected : [id])}
+        onEq={(id) => dialogs.open('eq', id)}
         meter={p.settings.showMeters ? player.current.meter : undefined}
         masterMeter={p.settings.showMeters ? player.current.masterMeters : undefined}
         onDuplicateTrack={doc.duplicateTrack}
@@ -422,45 +414,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
       <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track) : []} onClose={() => setEmptyAt(null)} />
-      {eqOf && (
-        <EqDialog
-          open
-          trackName={eqOf.name}
-          eq={eqOf.eq ?? flatEq()}
-          onChange={(eq) => doc.updateTrack(eqOf.id, { eq }, `eq:${eqOf.id}`)}
-          onClose={() => {
-            doc.endMerge()
-            setEqTrack(null)
-          }}
-        />
-      )}
-      <AppDialogs dialog={dialog} onClose={() => setDialog(null)} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} />
-      <MarkerDialog
-        marker={project.markers.find((m) => m.id === editingMarker) ?? null}
-        onClose={() => setEditingMarker(null)}
-        bpm={project.tempo.bpm}
-        beatsPerBar={project.tempo.beatsPerBar}
-        onChange={(patch) => editingMarker && doc.updateMarker(editingMarker, patch)}
-        onRemove={() => editingMarker && doc.removeMarker(editingMarker)}
-      />
-      <BlockDialog
-        blocks={editingBlocks}
-        sources={project.sources}
-        onClose={() => setEditing([])}
-        onApply={(edit) => doc.editBlocks(editing, edit)}
-        onPickFile={() => sourceInput.current?.click()}
-      />
-      <input
-        ref={sourceInput}
-        type="file"
-        accept={AUDIO_ACCEPT}
-        hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          e.target.value = ''
-          if (file) doc.replaceSource(editing, file).then(() => setEditing([]), fail)
-        }}
-      />
+      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} fail={fail} />
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar
