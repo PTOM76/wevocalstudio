@@ -19,6 +19,7 @@ export type Action =
   | 'snap'
   | 'follow'
   | 'envelope'
+  | 'pitchEnvelope'
   | 'zoomIn'
   | 'zoomOut'
   | 'detectTempo'
@@ -92,6 +93,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   follow: ['KeyF'],
   // 音量のエンベロープを出して編集する
   envelope: ['KeyE'],
+  // ピッチのエンベロープを出して編集する
+  pitchEnvelope: ['Shift+KeyE'],
   zoomIn: ['NumpadAdd', 'Equal'],
   zoomOut: ['NumpadSubtract', 'Minus'],
   // マーカー（M で足す）

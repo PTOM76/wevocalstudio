@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { SmallButton, ToolbarDivider } from 'pevenmui'
-import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faScissors, faCopy, faPaste, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faWaveSquare, faScissors, faCopy, faPaste, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 
@@ -22,6 +22,8 @@ export default function Toolbar(p: {
   snap: boolean
   envelope: boolean
   onEnvelope: () => void
+  pitchEnvelope: boolean
+  onPitchEnvelope: () => void
   canCut: boolean
   canPaste: boolean
   onFollow: () => void
@@ -41,6 +43,7 @@ export default function Toolbar(p: {
       <ToolButton icon={faArrowsLeftRightToLine} label="menu.follow" action="follow" pressed={p.follow} onClick={p.onFollow} />
       <ToolButton icon={faMagnet} label="menu.snap" action="snap" pressed={p.snap} onClick={p.onSnap} />
       <ToolButton icon={faChartLine} label="menu.envelope" action="envelope" pressed={p.envelope} onClick={p.onEnvelope} />
+      <ToolButton icon={faWaveSquare} label="menu.pitchEnvelope" action="pitchEnvelope" pressed={p.pitchEnvelope} onClick={p.onPitchEnvelope} />
       <Divider />
       <ToolButton icon={faMagnifyingGlassPlus} label="menu.zoomIn" action="zoomIn" onClick={() => p.onZoom(1.5)} />
       <ToolButton icon={faMagnifyingGlassMinus} label="menu.zoomOut" action="zoomOut" onClick={() => p.onZoom(1 / 1.5)} />

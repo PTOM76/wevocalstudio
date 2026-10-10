@@ -59,6 +59,8 @@ export interface Block {
   curve?: PitchCurve
   /** 音量のエンベロープ。無ければ平ら。gain とフェードに重ねて掛ける */
   envelope?: EnvPoint[]
+  /** ピッチのエンベロープ（半音。pitch とピッチカーブに足す）。元の音の時刻で持つ（ピッチカーブと同じく、分割や端の調整をしてもずれない） */
+  pitchEnvelope?: PitchPoint[]
   /** フェードイン、フェードアウト（秒） */
   fadeIn: number
   fadeOut: number
@@ -114,6 +116,27 @@ export function envAt(env: EnvPoint[] | undefined, t: number): number {
     if (t <= b.t) return b.t === a.t ? b.db : a.db + ((b.db - a.db) * (t - a.t)) / (b.t - a.t)
   }
   return env[env.length - 1].db
+}
+
+/** ピッチのエンベロープの点（元の音の時刻 s 秒と半音。s の順に並べる） */
+export interface PitchPoint {
+  s: number
+  st: number
+}
+
+/** ピッチのエンベロープの範囲（半音。上下とも） */
+export const PITCH_ENV_MAX = 12
+
+/** 元の音の時刻 s 秒のピッチのエンベロープの値（半音）。点の間はまっすぐ、外は端の点の値 */
+export function pitchEnvAt(env: PitchPoint[] | undefined, s: number): number {
+  if (!env?.length) return 0
+  if (s <= env[0].s) return env[0].st
+  for (let i = 1; i < env.length; i++) {
+    const a = env[i - 1]
+    const b = env[i]
+    if (s <= b.s) return b.s === a.s ? b.st : a.st + ((b.st - a.st) * (s - a.s)) / (b.s - a.s)
+  }
+  return env[env.length - 1].st
 }
 
 /** ピッチカーブ（元の音の時刻 from 秒から CURVE_HOP 秒ごとの半音） */

@@ -1,7 +1,7 @@
 // 時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
 import { alpha, type Range } from 'wevocal-lib'
 import { gridLines, type GridDivision, type GridMode } from './grid'
-import { envY } from './blockDrag'
+import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
@@ -28,7 +28,8 @@ export interface DrawOptions {
   /** 作り直している波形ブロックに出す文字 */
   pendingLabel: string
   /** 音量のエンベロープを描く */
-  showEnvelope: boolean
+  /** 出すエンベロープ（音量かピッチ。出さなければ null） */
+  envKind: EnvKind | null
   /** 縦のスクロール量（px。トラックの行だけをずらす。目盛りとマスターは固定） */
   vscroll: number
 }
@@ -152,24 +153,27 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
         g.fillText(`${name}  ${info}`, x + 4, y + 9)
         g.restore()
       }
-      // 音量のエンベロープ（橙の線と点。無ければ 0 dB の線）
-      if (o.showEnvelope) {
+      // エンベロープ（音量は橙、ピッチは水色の線と点。無ければ 0 の線）
+      if (o.envKind) {
         const top = y + 2
         const eh = H - 5
-        const env = b.envelope?.length ? b.envelope : [{ t: 0, db: 0 }]
+        const spec = ENVELOPES[o.envKind]
+        const pts = spec.points(b)
+        const env = pts.length ? pts : [{ t: 0, v: spec.zero }]
+        const color = o.envKind === 'pitch' ? '#29b6f6' : '#ff9800'
         g.save()
         g.beginPath()
         g.rect(x, top, bw, eh)
         g.clip()
-        g.strokeStyle = '#ff9800'
+        g.strokeStyle = color
         g.lineWidth = 1.5
         g.beginPath()
-        g.moveTo(x, top + envY(env[0].db) * eh)
-        for (const pt of env) g.lineTo(x + pt.t * view.pps, top + envY(pt.db) * eh)
-        g.lineTo(x + bw, top + envY(env[env.length - 1].db) * eh)
+        g.moveTo(x, top + spec.y(env[0].v) * eh)
+        for (const pt of env) g.lineTo(x + pt.t * view.pps, top + spec.y(pt.v) * eh)
+        g.lineTo(x + bw, top + spec.y(env[env.length - 1].v) * eh)
         g.stroke()
-        g.fillStyle = '#ff9800'
-        for (const pt of b.envelope ?? []) g.fillRect(x + pt.t * view.pps - 3, top + envY(pt.db) * eh - 3, 6, 6)
+        g.fillStyle = color
+        for (const pt of pts) g.fillRect(x + pt.t * view.pps - 3, top + spec.y(pt.v) * eh - 3, 6, 6)
         g.restore()
       }
       // 作り直している波形ブロックは斜線と「処理中 n%」（できた所から鳴る）

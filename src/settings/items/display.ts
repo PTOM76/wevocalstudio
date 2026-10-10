@@ -31,6 +31,8 @@ export const view = defineItems(null, {
   follow: value(true, { label: 'menu.follow' }),
   // 音量のエンベロープを出して編集する
   envelope: value(false, { label: 'menu.envelope' }),
+  // ピッチのエンベロープを出して編集する（音量のエンベロープとはどちらか一方）
+  pitchEnvelope: value(false, { label: 'menu.pitchEnvelope' }),
 })
 
 /** 画面の操作で覚えておく値（設定画面には出さない。WeVocalSynth の stored と同じ） */

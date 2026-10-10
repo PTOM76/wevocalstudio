@@ -115,6 +115,7 @@
   "menu.newWindow": "New window",
   "menu.saveRangeToFolder": "Save range to folder",
   "menu.saveBlocksToFolder": "Save blocks separately to folder",
+  "menu.pitchEnvelope": "Pitch envelope",
 
   "settings.title": "Settings",
   "settings.general": "General",

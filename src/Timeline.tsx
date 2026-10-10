@@ -5,9 +5,10 @@ import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { useDoubleTap, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
 import { layoutRows } from './overlap'
-import { ENV_MAX, ENV_MIN, depthOf } from './project'
+import { depthOf } from './project'
+import { ENVELOPES, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
-import { CURSOR, dragPatch, envDb, hitBlock, hitEnvPoint, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
+import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { LANE, MASTER, RULER, TOP, drawCursors, drawTimeline, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
@@ -77,7 +78,8 @@ export default function Timeline(p: {
   /** グリッドの細かさ */
   division: GridDivision
   /** 音量のエンベロープを描いて編集する */
-  envelope: boolean
+  /** 編集するエンベロープ（音量かピッチ。出さなければ null） */
+  envKind: EnvKind | null
   onView: (fn: (v: TimelineView) => TimelineView) => void
   /** 波形を描く所の幅（px。ミニマップの枠に使う） */
   onWidth: (w: number) => void
@@ -142,7 +144,7 @@ export default function Timeline(p: {
       view,
       p.selected,
       p.range,
-      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, showEnvelope: p.envelope, vscroll: vs },
+      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, vscroll: vs },
       {
         bg: pal.background.default,
         lane: pal.divider,
@@ -158,7 +160,7 @@ export default function Timeline(p: {
         range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
       },
     )
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envelope, vs])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, vs])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -242,10 +244,11 @@ export default function Timeline(p: {
       const hit = hitBlock(p.project, x, y, toTime, view.pps)
       if (!hit) return
       // エンベロープの点のダブルクリックは、その点を消す
-      if (p.envelope) {
+      if (p.envKind) {
         const g = blockGeom(hit.block)
-        const i = hitEnvPoint(hit.block, x, y, g.x, g.top, g.h, view.pps)
-        if (i >= 0) return p.onBlockChange(hit.block.id, { envelope: hit.block.envelope!.filter((_, k) => k !== i) })
+        const spec = ENVELOPES[p.envKind]
+        const i = hitEnvPoint(p.envKind, hit.block, x, y, g.x, g.top, g.h, view.pps)
+        if (i >= 0) return p.onBlockChange(hit.block.id, spec.patch(hit.block, spec.points(hit.block).filter((_, k) => k !== i)))
       }
       p.onProperties(hit.block.id)
       return
@@ -353,17 +356,17 @@ export default function Timeline(p: {
     }
     const id = hit.block.id
     // エンベロープを出しているときは、点を足すか動かす
-    if (p.envelope && !e.altKey) {
+    if (p.envKind && !e.altKey) {
       const b = hit.block
       const g = blockGeom(b)
-      const env = [...(b.envelope ?? [])]
-      let index = hitEnvPoint(b, x, y, g.x, g.top, g.h, view.pps)
+      const spec = ENVELOPES[p.envKind]
+      const env = spec.points(b)
+      let index = hitEnvPoint(p.envKind, b, x, y, g.x, g.top, g.h, view.pps)
       if (index < 0) {
         const t = Math.max(0, Math.min(b.length, (x - g.x) / view.pps))
-        const db = Math.round(envDb((y - g.top) / g.h) * 10) / 10
         index = env.filter((pt) => pt.t <= t).length
-        env.splice(index, 0, { t, db })
-        p.onBlockChange(b.id, { envelope: env }, `env${dragCount.current}`)
+        env.splice(index, 0, { t, v: spec.value((y - g.top) / g.h) })
+        p.onBlockChange(b.id, spec.patch(b, env), `env${dragCount.current}`)
       }
       p.onSelect([b.id])
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -414,14 +417,16 @@ export default function Timeline(p: {
     const ed = envDrag.current
     if (ed) {
       const b = p.project.blocks.find((x) => x.id === ed.block)
-      if (!b?.envelope) return
+      if (!b || !p.envKind) return
       const g = blockGeom(b)
-      const env = [...b.envelope]
+      const spec = ENVELOPES[p.envKind]
+      const env = spec.points(b)
+      if (!env[ed.index]) return
       // 前後の点は越えない
       const lo = env[ed.index - 1]?.t ?? 0
       const hi = env[ed.index + 1]?.t ?? b.length
-      env[ed.index] = { t: Math.max(lo, Math.min(hi, (x - g.x) / view.pps)), db: Math.round(Math.max(ENV_MIN, Math.min(ENV_MAX, envDb((y - g.top) / g.h))) * 10) / 10 }
-      return p.onBlockChange(b.id, { envelope: env }, ed.merge)
+      env[ed.index] = { t: Math.max(lo, Math.min(hi, (x - g.x) / view.pps)), v: spec.value((y - g.top) / g.h) }
+      return p.onBlockChange(b.id, spec.patch(b, env), ed.merge)
     }
     const mq = marquee.current
     if (mq) {

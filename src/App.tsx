@@ -246,7 +246,10 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
     follow: p.settings.follow,
     envelope: p.settings.envelope,
-    toggleEnvelope: () => p.onSettingsChange({ envelope: !p.settings.envelope }),
+    // 音量とピッチのエンベロープは、どちらか一方だけを出す
+    toggleEnvelope: () => p.onSettingsChange({ envelope: !p.settings.envelope, pitchEnvelope: false }),
+    pitchEnvelope: p.settings.pitchEnvelope,
+    togglePitchEnvelope: () => p.onSettingsChange({ pitchEnvelope: !p.settings.pitchEnvelope, envelope: false }),
     toggleFollow: () => p.onSettingsChange({ follow: !p.settings.follow }),
     beatGrid: p.settings.grid === 'beats',
     toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
@@ -294,6 +297,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         snap={p.settings.snap}
         envelope={p.settings.envelope}
         onEnvelope={commands.envelope.run}
+        pitchEnvelope={p.settings.pitchEnvelope}
+        onPitchEnvelope={commands.pitchEnvelope.run}
         canCut={commands.cut.enabled !== false}
         canPaste={commands.paste.enabled !== false}
         onFollow={commands.follow.run}
@@ -369,7 +374,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         playing={playing}
         grid={p.settings.grid}
         division={p.settings.gridDivision}
-        envelope={p.settings.envelope}
+        envKind={p.settings.envelope ? 'volume' : p.settings.pitchEnvelope ? 'pitch' : null}
         onView={setView}
         onWidth={setTimelineWidth}
         madeVersion={madeVersion}

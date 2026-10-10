@@ -3,7 +3,7 @@
 // 再生位置（止まっていれば編集カーソル）に近いかたまりから作り、できたものから鳴らす。
 // Worker は CPU のコアに合わせて複数使う。作ったかたまりは、使われなくなってもしばらく残す（戻したときに作り直さない）
 import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
-import { CURVE_HOP, type Block, type Project, type Source } from '../project'
+import { CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
 import type { DspRequest, PitchResponse } from './worker'
 
 type Req = DspRequest extends infer T ? (T extends { id: number } ? Omit<T, 'id'> : never) : never
@@ -77,10 +77,12 @@ const made = new Map<string, Made>()
 
 /** カーブの中身を短い文字にする（キャッシュのキー） */
 function curveKey(b: Block) {
-  if (!b.curve) return ''
+  // ピッチのエンベロープも、音を作り直す条件に入れる
+  const env = (b.pitchEnvelope ?? []).map((p) => `${Math.round(p.s * 1000)}:${Math.round(p.st * 100)}`).join(',')
+  if (!b.curve) return env
   let h = 0
   for (const v of b.curve.st) h = (Math.imul(h, 31) + Math.round(v * 100)) | 0
-  return `${b.curve.from}:${b.curve.st.length}:${h}`
+  return `${b.curve.from}:${b.curve.st.length}:${h}|${env}`
 }
 
 /** 範囲のほかに、作る音を決める値 */
@@ -98,7 +100,7 @@ function chunksOf(b: Block) {
 }
 
 /** 元の音から作り直す要るか（ピッチ、速度、フォルマント、カーブを変えたとき） */
-export const needsProcess = (b: Block) => b.pitch !== 0 || b.rate !== 1 || b.formant !== 0 || !!b.curve?.st.some((v) => v !== 0)
+export const needsProcess = (b: Block) => b.pitch !== 0 || b.rate !== 1 || b.formant !== 0 || !!b.curve?.st.some((v) => v !== 0) || !!b.pitchEnvelope?.some((p) => p.st !== 0)
 
 /** 鳴らす音の 1 片。元の音の a〜z 秒を、clip（頭が元の音の from 秒）から鳴らす */
 export interface Piece {
@@ -200,10 +202,12 @@ const notify = () => listeners.forEach((fn) => fn())
 function ratiosOf(b: Block, frames: number, sampleRate: number, from: number) {
   const hop = Math.round(CURVE_HOP * sampleRate)
   const out = new Float32Array(Math.ceil(frames / hop) + 1)
-  const c = b.curve!
+  const c = b.curve
   for (let k = 0; k < out.length; k++) {
-    const i = Math.round((from + k * CURVE_HOP - c.from) / CURVE_HOP)
-    out[k] = 2 ** ((b.pitch + (i >= 0 && i < c.st.length ? c.st[i] : 0)) / 12)
+    const s = from + k * CURVE_HOP
+    const i = c ? Math.round((s - c.from) / CURVE_HOP) : -1
+    // 基本のピッチ + ピッチカーブ + ピッチのエンベロープ
+    out[k] = 2 ** ((b.pitch + (c && i >= 0 && i < c.st.length ? c.st[i] : 0) + pitchEnvAt(b.pitchEnvelope, s)) / 12)
   }
   return { ratios: out, hopSamples: hop }
 }
@@ -227,7 +231,7 @@ async function processChunk(w: Want): Promise<Made> {
       algorithm: ALGORITHM_ID[b.algorithm],
       preserveFormant: b.preserveFormant || b.formant !== 0,
       formantSemitones: b.formant,
-      ...(b.curve ? ratiosOf(b, z - a, sr, a / sr) : {}),
+      ...(b.curve || b.pitchEnvelope?.length ? ratiosOf(b, z - a, sr, a / sr) : {}),
     },
     (p) => {
       inflight.set(w.key, p)

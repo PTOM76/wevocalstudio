@@ -115,6 +115,7 @@
   "menu.newWindow": "新しいウィンドウ",
   "menu.saveRangeToFolder": "範囲をフォルダーへ保存",
   "menu.saveBlocksToFolder": "波形ブロックを別々にフォルダーへ保存",
+  "menu.pitchEnvelope": "ピッチのエンベロープ",
 
   "settings.title": "設定",
   "settings.general": "全般",
