@@ -23,7 +23,7 @@ import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
 import { newProject, visibleTracks, type Track } from './project'
-import Timeline, { HEADER } from './Timeline'
+import Timeline, { useHeaderWidth } from './Timeline'
 import Toolbar from './Toolbar'
 import Transport from './Transport'
 import { useActions } from './useActions'
@@ -50,6 +50,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
   setKeyOverrides(p.settings.keys)
   const mobile = useMobileLayout()
+  const header = useHeaderWidth()
   // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
   useEffect(() => setOutputDevice(p.settings.outputDevice), [p.settings.outputDevice])
   useEffect(() => setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null), [p.settings.outputLimit, p.settings.outputLimitDb])
@@ -376,7 +377,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
         {/* 波形ブロックが 1 つもないときは、開く、録音、最近使用したファイルを重ねて出す（PevenMUI の EmptyState。WeVocalSynth と同じ） */}
         {project.blocks.length === 0 && !recording && (
-          <Box sx={{ position: 'absolute', left: HEADER, right: 0, top: '40%', bottom: 0, pointerEvents: 'none' }}>
+          <Box sx={{ position: 'absolute', left: header, right: 0, top: '40%', bottom: 0, pointerEvents: 'none' }}>
             <Box sx={{ height: '100%', '& button': { pointerEvents: 'auto' } }}>
               <EmptyState
                 message={t('empty.formats')}
@@ -393,7 +394,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           block={project.blocks.find((b) => b.id === selected[0]) ?? null}
           source={sourceOf(project.blocks.find((b) => b.id === selected[0])?.source)}
           view={view}
-          headerWidth={HEADER}
+          headerWidth={header}
           version={madeVersion}
           range={range}
           onCurve={(curve, merge) => {

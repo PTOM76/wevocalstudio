@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBackwardStep, faCircle, faForwardStep, faPause, faPlay, faRepeat, faStop } from '@fortawesome/free-solid-svg-icons'
-import { InlineEdit, LiveTime, SmallButton, ToolbarDivider, pevenFont } from 'pevenmui'
+import { InlineEdit, LiveTime, OverflowRow, SmallButton, ToolbarDivider, pevenFont } from 'pevenmui'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 import type { Tempo } from './project'
@@ -12,7 +12,11 @@ import { GRID_MAX, GRID_MIN, type GridDivision } from './grid'
 export { formatTime } from 'pevenmui'
 
 /** 数の欄の前の小さな名前 */
-const Label = ({ children }: { children: ReactNode }) => <Typography component="span" sx={{ fontSize: pevenFont('sm'), color: 'text.secondary', mr: 0.75 }}>{children}</Typography>
+const Label = ({ children }: { children: ReactNode }) => (
+  <Typography component="span" sx={{ fontSize: pevenFont('sm'), color: 'text.secondary', mr: 0.75 }}>
+    {children}
+  </Typography>
+)
 
 /** 打った文字を範囲内の整数にして渡す。読めなければ false（入力を続ける） */
 function commitInt(text: string, min: number, max: number, set: (n: number) => void) {
@@ -72,19 +76,26 @@ export default function Transport(p: {
         <Typography variant="body2" sx={{ fontFamily: 'monospace', ml: 1, minWidth: 150 }}>
           <LiveTime position={p.position} playing={p.playing} livePosition={p.livePosition} duration={p.end} onSeek={p.onSeek} inputLabel={t('transport.timeInput')} />
         </Typography>
-        {p.meter}
       </Stack>
-      {/* 拍子とグリッド。再生位置と同じく、ふだんは文字で、押すとその場で入力できる */}
-      <Typography variant="body2" sx={{ fontFamily: 'monospace', px: 1, display: 'flex', gap: 1.5 }}>
-        <span>
+      {/* メーター、拍子、グリッドは、入りきらなければ後ろから ▼ の中に入れる（WeVocalSynth のツールバーと同じ。再生まわりは常に出す） */}
+      <OverflowRow>
+        {p.meter}
+        {/* 拍子とグリッド。再生位置と同じく、ふだんは文字で、押すとその場で入力できる */}
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', px: 1 }}>
           <Label>{t('transport.beatsPerBar')}</Label>
-          <InlineEdit text={`${p.tempo.beatsPerBar}/4`} draftOf={() => String(p.tempo.beatsPerBar)} width="3ch" label={t('transport.beatsPerBar')} onCommit={(v) => commitInt(v, 1, 16, (beatsPerBar) => p.onTempo({ beatsPerBar }))} />
-        </span>
-        <span>
+          <InlineEdit
+            text={`${p.tempo.beatsPerBar}/4`}
+            draftOf={() => String(p.tempo.beatsPerBar)}
+            width="3ch"
+            label={t('transport.beatsPerBar')}
+            onCommit={(v) => commitInt(v, 1, 16, (beatsPerBar) => p.onTempo({ beatsPerBar }))}
+          />
+        </Typography>
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', px: 1 }}>
           <Label>{t('transport.grid')}</Label>
           <InlineEdit text={`1/${p.division}`} draftOf={() => String(p.division)} width="4ch" label={t('transport.grid')} onCommit={(v) => commitInt(v, GRID_MIN, GRID_MAX, p.onDivision)} />
-        </span>
-      </Typography>
+        </Typography>
+      </OverflowRow>
     </Stack>
   )
 }

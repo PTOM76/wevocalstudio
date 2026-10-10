@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
-import { useDoubleTap, useLongPress, usePalette } from 'pevenmui'
+import { useDoubleTap, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
 import { layoutRows } from './overlap'
 import { ENV_MAX, ENV_MIN, depthOf } from './project'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
@@ -14,7 +14,8 @@ import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
 
 /** 左のトラックの欄の幅（解析の欄もそろえる） */
-export const HEADER = 200
+/** トラックの欄の幅（スマホは時間軸を広く取るため狭くする） */
+export const useHeaderWidth = () => (useMobileLayout() ? 136 : 200)
 
 export default function Timeline(p: {
   project: Project
@@ -278,6 +279,7 @@ export default function Timeline(p: {
   }
 
   // タッチの長押しとダブルタップ（iPhone、iPad は contextmenu と dblclick が来ない。PevenMUI。WeVocalSynth と同じ）
+  const header = useHeaderWidth()
   const longPress = useLongPress()
   const doubleTap = useDoubleTap()
   // 2 本指のピンチで拡大縮小、目盛りはタップで移動、ドラッグで再生位置、長押しで横移動（wevocal-lib。WeVocalSynth の波形と同じ）
@@ -528,7 +530,7 @@ export default function Timeline(p: {
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
-        <Box sx={{ width: HEADER, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ width: header, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0 }} />
           <MasterHeader master={p.project.master} height={MASTER} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
           {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
