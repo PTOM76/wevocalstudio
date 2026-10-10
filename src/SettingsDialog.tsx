@@ -5,9 +5,10 @@ import { Check, Choice, Group, KeymapEditor, Row, SettingsDialog as PevenSetting
 import { i18n, useT, type LangSetting, type MessageKey } from './i18n'
 import { ACTIONS } from './keymap'
 import type { GridMode } from './grid'
+import type { StartFolder } from 'pevenmui/web'
 import { DEFAULT_SETTINGS, type Settings } from './settings'
 
-type Category = 'general' | 'appearance' | 'edit' | 'pitch' | 'record' | 'keys'
+type Category = 'general' | 'file' | 'appearance' | 'edit' | 'pitch' | 'record' | 'keys'
 
 const SCALES: ['0.9' | '1' | '1.1' | '1.25', string][] = [
   ['0.9', '90%'],
@@ -28,7 +29,8 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
   const keyActions = ACTIONS.map((a) => ({ ...a, label: t(`menu.${a.id}` as MessageKey) }))
   // texts は設定の検索の対象。項目を足したらここにも足す
   const categories: SettingsCategory<Category>[] = [
-    { id: 'general', label: t('settings.general'), texts: [t('settings.language'), t('settings.autoRestore')] },
+    { id: 'general', label: t('settings.general'), texts: [t('settings.language'), t('settings.autoRestore'), t('settings.confirmClose')] },
+    { id: 'file', label: t('settings.file'), texts: [t('settings.rememberFolder'), t('settings.startFolder'), t('settings.recentFiles')] },
     { id: 'appearance', label: t('settings.appearance'), texts: [t('settings.theme'), t('settings.uiScale')] },
     { id: 'edit', label: t('settings.edit'), texts: [t('settings.snap'), t('settings.grid')] },
     { id: 'record', label: t('settings.record'), texts: [t('settings.inputDevice')] },
@@ -51,6 +53,25 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
               <Choice<LangSetting> value={draft.language} onChange={(language) => set({ language })} options={[['auto', t('settings.languageAuto')], ...i18n.options()]} />
             </Row>
             <Check label={t('settings.autoRestore')} checked={draft.autoRestore} onChange={(autoRestore) => set({ autoRestore })} />
+            <Check label={t('settings.confirmClose')} help={t('settings.confirmCloseHelp')} checked={draft.confirmClose} disabled={draft.autoRestore} onChange={(confirmClose) => set({ confirmClose })} />
+          </Group>
+        ),
+        file: (
+          <Group title={t('settings.file')}>
+            <Check label={t('settings.rememberFolder')} help={t('settings.rememberFolderHelp')} checked={draft.rememberFolder} onChange={(rememberFolder) => set({ rememberFolder })} />
+            <Row label={t('settings.startFolder')}>
+              <Choice<StartFolder>
+                value={draft.startFolder}
+                onChange={(startFolder) => set({ startFolder })}
+                options={[
+                  ['downloads', t('settings.folderDownloads')],
+                  ['documents', t('settings.folderDocuments')],
+                  ['desktop', t('settings.folderDesktop')],
+                  ['music', t('settings.folderMusic')],
+                ]}
+              />
+            </Row>
+            <Check label={t('settings.recentFiles')} help={t('settings.recentFilesHelp')} checked={draft.recentFiles} onChange={(recentFiles) => set({ recentFiles })} />
           </Group>
         ),
         appearance: (

@@ -39,6 +39,7 @@ export type Action =
   | 'properties'
   | 'open'
   | 'save'
+  | 'saveAs'
   | 'import'
   | 'export'
   | 'pitchUp'
@@ -97,6 +98,7 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   properties: ['F2', 'Shift+F2'],
   open: ['Ctrl+KeyO'],
   save: ['Ctrl+KeyS'],
+  saveAs: ['Ctrl+Shift+KeyS'],
   import: ['Insert'],
   // REAPER の「書き出し（Render）」と同じ
   export: ['Ctrl+Alt+KeyR'],

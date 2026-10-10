@@ -19,6 +19,8 @@ const pevenmui = submodule('pevenmui', 'src/index.ts', process.env.PEVENMUI_PATH
 const wevocalLib = submodule('wevocal-lib', 'web/src/index.ts', process.env.WEVOCAL_LIB_PATH)
 // WeVocalAnalyzer のライブラリ（スペクトログラム、F0。src/ は画面を持たない）。WeVocalSynth の中の analyzer/ を使う
 const analyzer = submodule('analyzer', 'src/index.ts', process.env.ANALYZER_PATH)
+// WeVocalExtractor（ボーカル抽出）。本体は追加機能として配り、アプリは手順（src/host.ts）だけを使う
+const extractor = submodule('extractor', 'src/host.ts', process.env.EXTRACTOR_PATH)
 // 場所が決まるのは実行時なので、動的に読み込む（Node が .ts の型を取り除いて読む）
 const { pevenApp, pevenManifest }: typeof import('./pevenmui/src/vite.ts') = await import(pathToFileURL(resolve(pevenmui, 'src/vite.ts')).href)
 
@@ -29,6 +31,7 @@ export default defineConfig({
       { find: /^pevenmui$/, replacement: resolve(pevenmui, 'src/index.ts') },
       { find: /^pevenmui\/web$/, replacement: resolve(pevenmui, 'src/web/index.ts') },
       { find: /^pevenmui\/pwa$/, replacement: resolve(pevenmui, 'src/pwa/index.ts') },
+      { find: /^wevocalextractor\/host$/, replacement: resolve(extractor, 'src/host.ts') },
       { find: /^wevocalanalyzer$/, replacement: resolve(analyzer, 'src/index.ts') },
       { find: /^wevocal-lib\/react$/, replacement: resolve(wevocalLib, 'web/src/react/index.ts') },
       { find: /^wevocal-lib$/, replacement: resolve(wevocalLib, 'web/src/index.ts') },
@@ -36,7 +39,7 @@ export default defineConfig({
     // 外にある pevenmui から読み込む React、MUI も、このアプリと同じものにする（2 つになると動かない）
     dedupe: ['react', 'react-dom', '@mui/material', '@emotion/react', '@emotion/styled', '@fortawesome/react-fontawesome'],
   },
-  server: { fs: { allow: [root, pevenmui, wevocalLib, analyzer, resolve(pevenmui, '..')] } },
+  server: { fs: { allow: [root, pevenmui, wevocalLib, analyzer, extractor, resolve(pevenmui, '..')] } },
   // 版（__APP_VERSION__、__APP_COMMIT__、version.json）と、index.html の名前、言語、配信先の URL
   plugins: [
     react(),
@@ -57,6 +60,9 @@ export default defineConfig({
           { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
+        // インストールした PWA を .wvstudio を開くアプリとして登録する（音声ファイルは登録しない。WeVocalSynth と同じ）。受け取りは src/useProjectFile.ts の launchQueue
+        file_handlers: [{ action: './', accept: { 'application/x-wevocalstudio-project': ['.wvstudio'] } }],
+        launch_handler: { client_mode: 'focus-existing' },
       },
       workbox: {
         inlineWorkboxRuntime: true,

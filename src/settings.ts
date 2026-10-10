@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { Algorithm } from 'wevocal-lib'
 import type { KeymapOverrides } from 'pevenmui'
+import type { PickerMode, StartFolder } from 'pevenmui/web'
 import type { GridDivision, GridMode } from './grid'
 import type { Action } from './keymap'
 import type { LangSetting } from './i18n'
@@ -22,6 +23,16 @@ export interface Settings {
   showAnalysis: boolean
   /** 作業を自動保存し、次に開いたときに復元する */
   autoRestore: boolean
+  /** 保存していない変更があれば、閉じる前に確かめる（自動保存がオフのとき） */
+  confirmClose: boolean
+  /** 開く場所と保存先を用途ごとに覚える（Chrome、Edge。PevenMUI の fileAccess） */
+  rememberFolder: boolean
+  /** 保存先の画面で最初に開くフォルダー */
+  startFolder: StartFolder
+  /** 最近使用したファイルを記録する */
+  recentFiles: boolean
+  /** ファイルを選ぶ画面の方式（WeVocalSynth と同じ） */
+  filePicker: PickerMode
   /** ドラッグを目盛りの線や波形ブロックの端に吸い付ける */
   snap: boolean
   /** 再生中に表示を再生位置に追従させる */
@@ -42,7 +53,7 @@ export interface Settings {
   preserveFormant: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showMeters: true, showAnalysis: false, snap: true, follow: true, envelope: false, grid: 'beats', gridDivision: 4, keys: {}, inputDevice: '', autoRestore: true, algorithm: 'sola3', preserveFormant: true }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showMeters: true, showAnalysis: false, snap: true, follow: true, envelope: false, grid: 'beats', gridDivision: 4, keys: {}, inputDevice: '', autoRestore: true, confirmClose: true, rememberFolder: true, startFolder: 'downloads', recentFiles: true, filePicker: 'auto', algorithm: 'sola3', preserveFormant: true }
 
 const KEY = app.key('settings')
 

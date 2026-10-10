@@ -50,7 +50,7 @@
   "menu.pitchUpFine": "Pitch Up 10 Cents",
   "menu.pitchDownFine": "Pitch Down 10 Cents",
   "menu.pitchReset": "Reset Pitch",
-  "menu.open": "Open Project…",
+  "menu.open": "Open…",
   "menu.save": "Save Project",
   "menu.export": "Export…",
   "menu.undo": "Undo",
@@ -93,6 +93,10 @@
   "menu.addMarkerHere": "Add Marker Here",
   "menu.pasteHere": "Paste Here",
   "menu.importHere": "Import Audio Here…",
+  "menu.saveAs": "Save Project As…",
+  "menu.recent": "Recent files",
+  "menu.recentClear": "Clear list",
+  "menu.recentEmpty": "(none)",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -118,6 +122,18 @@
   "settings.record": "Recording",
   "settings.inputDevice": "Input",
   "settings.inputDefault": "Default input",
+  "settings.file": "Files",
+  "settings.rememberFolder": "Remember folders for open and save",
+  "settings.rememberFolderHelp": "Opens the picker in the last used folder (Chrome and Edge only)",
+  "settings.startFolder": "Initial folder",
+  "settings.folderDownloads": "Downloads",
+  "settings.folderDocuments": "Documents",
+  "settings.folderDesktop": "Desktop",
+  "settings.folderMusic": "Music",
+  "settings.recentFiles": "Keep recent files",
+  "settings.recentFilesHelp": "Reopen from the File menu (Chrome and Edge only)",
+  "settings.confirmClose": "Confirm before closing",
+  "settings.confirmCloseHelp": "Asks before closing if there are unsaved changes (when autosave is off)",
 
   "status.ready": "Ready",
   "status.playing": "Playing",
@@ -176,6 +192,8 @@
 
   "toast.restored": "Restored your previous work",
   "toast.tempo": "Set the tempo to {bpm} BPM",
+  "toast.recentMissing": "Could not open \"{file}\" (it may have been moved or deleted)",
+  "toast.saved": "Saved",
 
   "marker.title": "Marker",
   "marker.name": "Name",
@@ -222,10 +240,16 @@
   "history.envelope": "Envelope",
 
   "confirm.newProject": "Close the current work and start a new project? Unsaved changes will be lost.",
+  "confirm.discard": "There are unsaved changes. Discard them and open?",
+  "confirm.discardOk": "Discard and open",
 
   "meter.track": "{name} level",
   "meter.master": "Master level",
 
   "job.pitch": "Processing pitch",
-  "job.export": "Exporting"
+  "job.export": "Exporting",
+
+  "file.projectType": "WeVocal Studio project",
+  "file.audioType": "Audio file",
+  "file.openType": "Audio and project files"
 }

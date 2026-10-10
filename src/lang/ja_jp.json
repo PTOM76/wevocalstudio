@@ -50,7 +50,7 @@
   "menu.pitchUpFine": "ピッチを 10 セント上げる",
   "menu.pitchDownFine": "ピッチを 10 セント下げる",
   "menu.pitchReset": "ピッチを元に戻す",
-  "menu.open": "プロジェクトを開く…",
+  "menu.open": "開く…",
   "menu.save": "プロジェクトを保存",
   "menu.export": "書き出す…",
   "menu.undo": "元に戻す",
@@ -93,6 +93,10 @@
   "menu.addMarkerHere": "ここにマーカーを追加",
   "menu.pasteHere": "ここに貼り付け",
   "menu.importHere": "ここに音声ファイルを読み込む…",
+  "menu.saveAs": "名前を付けて保存…",
+  "menu.recent": "最近使用したファイル",
+  "menu.recentClear": "一覧を消去",
+  "menu.recentEmpty": "（なし）",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -118,6 +122,18 @@
   "settings.record": "録音",
   "settings.inputDevice": "入力元",
   "settings.inputDefault": "既定の入力",
+  "settings.file": "ファイル",
+  "settings.rememberFolder": "開く場所と保存先を記憶する",
+  "settings.rememberFolderHelp": "前回のフォルダーから選択画面を開きます（Chrome、Edge のみ）",
+  "settings.startFolder": "最初に開くフォルダー",
+  "settings.folderDownloads": "ダウンロード",
+  "settings.folderDocuments": "ドキュメント",
+  "settings.folderDesktop": "デスクトップ",
+  "settings.folderMusic": "ミュージック",
+  "settings.recentFiles": "最近使用したファイルを記録する",
+  "settings.recentFilesHelp": "「ファイル」メニューから開き直せます（Chrome、Edge のみ）",
+  "settings.confirmClose": "閉じるときに保存を確認する",
+  "settings.confirmCloseHelp": "保存していない変更があれば、閉じる前に確認します（自動保存がオフのとき）",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
@@ -176,6 +192,8 @@
 
   "toast.restored": "前回の作業を復元しました",
   "toast.tempo": "テンポを {bpm} BPM にしました",
+  "toast.recentMissing": "「{file}」を開けませんでした（移動または削除された可能性があります）",
+  "toast.saved": "保存しました",
 
   "marker.title": "マーカー",
   "marker.name": "名前",
@@ -222,10 +240,16 @@
   "history.envelope": "エンベロープ",
 
   "confirm.newProject": "今の作業を閉じて、新しいプロジェクトにしますか？（保存していない変更は失われます）",
+  "confirm.discard": "保存していない変更があります。破棄して開きますか？",
+  "confirm.discardOk": "破棄して開く",
 
   "meter.track": "{name} の音量",
   "meter.master": "全体の音量",
 
   "job.pitch": "ピッチなどを処理中",
-  "job.export": "書き出し中"
+  "job.export": "書き出し中",
+
+  "file.projectType": "WeVocal Studio プロジェクト",
+  "file.audioType": "音声ファイル",
+  "file.openType": "音声とプロジェクトのファイル"
 }

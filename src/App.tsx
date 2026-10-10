@@ -5,7 +5,7 @@ import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, LicensesDialog, start
 import StatusBar from './StatusBar'
 import { UpdatePrompt } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
-import { AUDIO_ACCEPT, EXPORT_EXT, SELECTION_DARK, SELECTION_LIGHT, canRecord, downloadBlob, exportAudio, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
+import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, canRecord, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
 import { app } from './appConfig'
 import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
@@ -15,12 +15,11 @@ import EqDialog from './EqDialog'
 import { flatEq } from 'wevocal-lib'
 import type { TimelineView } from './drawTimeline'
 import { analyzeTempo, onPitchProgress, pitchProgress, preparePitch } from './dsp/pitch'
-import { Player, renderMix } from './engine'
+import { Player } from './engine'
 import { buildOverview } from './overview'
-import ExportDialog, { type ExportChoice } from './ExportDialog'
+import ExportDialog from './ExportDialog'
 import { useT } from './i18n'
 import { setKeyOverrides } from './keymap'
-import { PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings'
 import SettingsDialog from './SettingsDialog'
 import AnalysisPanel from './AnalysisPanel'
@@ -32,6 +31,7 @@ import Toolbar from './Toolbar'
 import Transport from './Transport'
 import { useActions } from './useActions'
 import { useProject, type DropAt } from './useProject'
+import { useProjectFile } from './useProjectFile'
 
 /** 今動いている版 */
 const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`
@@ -89,7 +89,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [restored, setRestored] = useState(false)
   const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | 'history' | null>(null)
   const audioInput = useRef<HTMLInputElement>(null)
-  const projectInput = useRef<HTMLInputElement>(null)
   // 時間軸に出すのは見えているトラックだけ（たたんだ親の子孫は隠す）
   const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project])
   const editingBlocks = project.blocks.filter((b) => editing.includes(b.id))
@@ -102,8 +101,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const end = project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
 
   const fail = (e: unknown) => setError(String(e))
-  // 保存したとき（開いたとき）のプロジェクト。今と違えば、名前の後ろに * を付ける
-  const savedProject = useRef(project)
 
   const play = () => {
     // 範囲選択があれば、その中だけを鳴らす（外にいたら範囲の頭から）
@@ -205,39 +202,27 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
   const load = (files: File[], at?: DropAt) => doc.addFiles(files, at).catch(fail)
 
-  const openProject = async (file: File) => {
-    try {
+  const files = useProjectFile({
+    t,
+    settings: p.settings,
+    project,
+    fileName,
+    range,
+    onOpened: (proj, name) => {
       stop()
-      doc.replace(await readProject(file))
+      doc.replace(proj)
       setRange(null)
-      setFileName(file.name.replace(/\.[^.]+$/, ''))
+      setFileName(name)
       setSelected([])
       setSelectedTrack(null)
       setCursor(0)
-    } catch (e) {
-      fail(e)
-    }
-  }
+    },
+    onAudio: (list) => void load(list),
+    confirmDiscard: () => confirm({ message: t('confirm.discard'), okLabel: t('confirm.discardOk'), danger: true }),
+    fail,
+    notify: setNotice,
+  })
 
-  const save = () => {
-    downloadBlob(writeProject(project), fileName + PROJECT_EXT)
-    savedProject.current = project
-  }
-
-  const runExport = async (c: ExportChoice) => {
-    // 進み具合はステータスバーのゲージに出す（WeVocalSynth と同じ startJob）
-    const job = startJob('export', t('job.export'))
-    job.update(-1)
-    try {
-      const mix = await renderMix(project, c.rangeOnly && range ? range.end : 0)
-      const blob = await exportAudio(mix, { ...c, sampleRate: mix.sampleRate, mono: false, range: c.rangeOnly ? range : null })
-      downloadBlob(blob, fileName + EXPORT_EXT[c.format])
-    } catch (e) {
-      fail(e)
-    } finally {
-      job.end()
-    }
-  }
 
   const { menus, blockMenu, emptyMenu, commands } = useActions({
     doc,
@@ -261,10 +246,13 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     moveCursor,
     gridStep: () => snapGrid(p.settings.grid, project.tempo, view.pps, p.settings.gridDivision, project.markers, cursor).step,
     newProject: () =>
-      void confirm({ message: t('confirm.newProject'), okLabel: t('menu.newProject'), danger: true }).then((ok) => {
+      // 保存していない変更があるときだけ確かめる
+      void (files.dirty ? confirm({ message: t('confirm.newProject'), okLabel: t('menu.newProject'), danger: true }) : Promise.resolve(true)).then((ok) => {
         if (!ok) return
         stop()
-        doc.replace(newProject(), 'history.new')
+        const fresh = newProject()
+        doc.replace(fresh, 'history.new')
+        files.markSaved(fresh)
         setFileName('untitled')
         setSelected([])
         setRange(null)
@@ -273,7 +261,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
     // 選んでいるものの中を開いたら、選んでいるもの全部を一括で
     openProperties: (id: string) => setEditing(selected.includes(id) ? selected : [id]),
-    openFile: () => projectInput.current?.click(),
+    openFile: files.picker.open,
     importFiles: () => {
       importTarget.current = undefined
       audioInput.current?.click()
@@ -282,7 +270,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       importTarget.current = track ? { track, start: time } : undefined
       audioInput.current?.click()
     },
-    save,
+    save: files.save,
+    saveAs: files.saveAs,
+    recent: files.recent,
     openExport: () => setDialog('export'),
     openSettings: () => setDialog('settings'),
     openHistory: () => setDialog('history'),
@@ -423,10 +413,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault()
-        const files = [...e.dataTransfer.files]
-        const proj = files.find((f) => f.name.endsWith(PROJECT_EXT))
-        if (proj) void openProject(proj)
-        else void load(files)
+        files.openFiles([...e.dataTransfer.files])
       }}
     >
       <AppHeader icon={<AppIcon size={16} />} menus={menus} />
@@ -445,17 +432,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onPaste={commands.paste.run}
       />
       <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load([...(e.target.files ?? [])], importTarget.current).finally(() => (e.target.value = ''))} />
-      <input
-        ref={projectInput}
-        type="file"
-        accept={PROJECT_EXT}
-        hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          e.target.value = ''
-          if (file) void openProject(file)
-        }}
-      />
+      {files.picker.input}
 
       <Timeline
         project={shown}
@@ -623,7 +600,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       {!mobile && p.settings.showStatusBar && (
         <StatusBar
           fileName={fileName}
-          dirty={project !== savedProject.current}
+          dirty={files.dirty}
           onRename={setFileName}
           sampleRate={48000}
           tracks={project.tracks.length}
@@ -645,7 +622,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           {notice}
         </Alert>
       </Snackbar>
-      <ExportDialog hasRange={!!range} open={dialog === 'export'} onClose={() => setDialog(null)} onExport={(c) => void runExport(c)} />
+      <ExportDialog hasRange={!!range} open={dialog === 'export'} onClose={() => setDialog(null)} onExport={files.runExport} />
       <SettingsDialog open={dialog === 'settings'} onClose={() => setDialog(null)} settings={p.settings} onChange={p.onSettingsChange} />
       <LicensesDialog
         open={dialog === 'licenses'}

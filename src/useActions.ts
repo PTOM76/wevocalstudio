@@ -45,6 +45,10 @@ export interface ActionContext {
   /** その時刻とトラックへ音声ファイルを読み込む（トラックが無ければ空いているトラック） */
   importAt: (time: number, track: string | null) => void
   save: () => void
+  /** 名前を付けて保存 */
+  saveAs: () => void
+  /** 最近使用したファイル（PevenMUI の useRecentFiles） */
+  recent: { supported: boolean; names: string[]; open: (i: number) => void; clear: () => void }
   openExport: () => void
   openSettings: () => void
   openHistory: () => void
@@ -187,6 +191,7 @@ export function useActions(c: ActionContext) {
     duplicate: { enabled: any, run: duplicate },
     open: { run: c.openFile },
     save: { run: c.save },
+    saveAs: { run: c.saveAs },
     import: { run: c.importFiles },
     export: { enabled: doc.project.blocks.length > 0, run: c.openExport },
     pitchUp: { enabled: any, run: () => doc.nudgePitch(ids, 1) },
@@ -224,12 +229,17 @@ export function useActions(c: ActionContext) {
     onClick: commands[a].run,
   })
   const divider: MenuEntry = { divider: true }
+  // 最近使用したファイル（使えないブラウザでは出さない。WeVocalSynth と同じ）
+  const r = c.recent
+  const recent: MenuEntry[] = r.supported
+    ? [{ label: t('menu.recent'), onClick: () => {}, submenu: r.names.length ? [...r.names.map((name, i): MenuEntry => ({ label: name, onClick: () => r.open(i) })), divider, { label: t('menu.recentClear'), onClick: r.clear }] : [{ label: t('menu.recentEmpty'), disabled: true, onClick: () => {} }] }]
+    : []
 
   const menus: MenuGroup[] = [
     {
       label: t('menu.file'),
       accessKey: 'F',
-      entries: [item('newProject'), item('open'), item('save'), divider, item('import'), item('export'), divider, { label: t('menu.settings'), onClick: c.openSettings }],
+      entries: [item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), divider, { label: t('menu.settings'), onClick: c.openSettings }],
     },
     {
       label: t('menu.edit'),
