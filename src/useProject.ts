@@ -105,6 +105,37 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     [change],
   )
 
+  /** ピッチカーブとピッチのエンベロープは元の音の時刻で持つので、元の音の頭が変わったらずらす */
+  const shiftSourceTime = (b: Block, d: number): Partial<Block> => ({
+    curve: b.curve && { ...b.curve, from: b.curve.from + d },
+    pitchEnvelope: b.pitchEnvelope?.map((pt) => ({ ...pt, s: pt.s + d })),
+  })
+
+  /**
+   * 分けた音（ボーカル抽出など）を、元の波形ブロックのトラックのすぐ下に、1 つずつ新しいトラックとして並べる（履歴は 1 段）。
+   * 分けた音は波形ブロックの範囲（元の音の offset から）だけなので、元の音の開始位置は 0 にし、位置、速度、ピッチなどは元の値を写す
+   */
+  const addStems = useCallback(
+    (blockId: string, stems: { name: string; clip: Clip }[]) =>
+      change((p) => {
+        const b = p.blocks.find((x) => x.id === blockId)
+        if (!b) return p
+        const sources: Source[] = stems.map((st) => ({ id: newId(), name: st.name, clip: st.clip, duration: st.clip.channels[0].length / st.clip.sampleRate }))
+        // 元のトラックと同じ親の下に置く（サブトラックの並びを崩さない）
+        const parent = p.tracks.find((tr) => tr.id === b.track)?.parent
+        const tracks = stems.map((st) => ({ ...newTrack(0), name: st.name, parent }))
+        // 元のトラックの子孫（サブトラック）の後ろ
+        const at = subtreeEnd(p, p.tracks.findIndex((tr) => tr.id === b.track))
+        return {
+          ...p,
+          sources: [...p.sources, ...sources],
+          tracks: [...p.tracks.slice(0, at), ...tracks, ...p.tracks.slice(at)],
+          blocks: [...p.blocks, ...sources.map((src, i) => ({ ...b, id: newId(), track: tracks[i].id, source: src.id, offset: 0, ...shiftSourceTime(b, -b.offset) }))],
+        }
+      }),
+    [change],
+  )
+
   /** 選んだ波形ブロックに、プロパティで変えた値をまとめて掛ける。速度だけ変えたら長さも合わせる。元の音の長さに収める */
   const editBlocks = useCallback(
     (ids: string[], edit: Partial<Block>) =>
@@ -366,6 +397,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     replace,
     addFiles,
     addClip,
+    addStems,
     editBlocks,
     replaceSource,
     addTrackNow,

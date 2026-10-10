@@ -22,7 +22,7 @@ const analyzer = submodule('analyzer', 'src/index.ts', process.env.ANALYZER_PATH
 // WeVocalExtractor（ボーカル抽出）。本体は追加機能として配り、アプリは手順（src/host.ts）だけを使う
 const extractor = submodule('extractor', 'src/host.ts', process.env.EXTRACTOR_PATH)
 // 場所が決まるのは実行時なので、動的に読み込む（Node が .ts の型を取り除いて読む）
-const { pevenApp, pevenManifest }: typeof import('./pevenmui/src/vite.ts') = await import(pathToFileURL(resolve(pevenmui, 'src/vite.ts')).href)
+const { pevenAddonsRoute, pevenApp, pevenManifest }: typeof import('./pevenmui/src/vite.ts') = await import(pathToFileURL(resolve(pevenmui, 'src/vite.ts')).href)
 
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
@@ -70,6 +70,13 @@ export default defineConfig({
         // 更新で切り替わったときに、名前の違う古い版のキャッシュを消す
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,wasm}'],
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        // 追加機能はアプリ本体のプリキャッシュに入れず、導入した人だけ別のキャッシュに保存する（WeVocalSynth と同じ）
+        globIgnores: ['addons/**'],
+        // 追加機能のページ（addons/ 以下）を開いたときにアプリ本体の index.html を返さない
+        navigateFallbackDenylist: [/\/addons\//],
+        // 追加機能のファイルを保存先から返す（保存先の名前は app.id から決まる。pevenmui/src/addons/store.ts）
+        runtimeCaching: [pevenAddonsRoute(APP_INFO.id)],
       },
     }),
   ],
