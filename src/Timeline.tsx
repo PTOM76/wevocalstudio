@@ -105,7 +105,15 @@ export default function Timeline(p: {
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const dragCount = useRef(0)
   const [cursor, setCursor] = useState('default')
-  const height = TOP + Math.max(1, p.project.tracks.length) * LANE
+  // 縦のスクロール。canvas は見える高さに固定し、トラックの行だけをずらす（目盛りとマスターは上に固定）
+  const [vh, setVh] = useState(0)
+  const [vscroll, setVscroll] = useState(0)
+  const content = TOP + Math.max(1, p.project.tracks.length) * LANE
+  const maxV = Math.max(0, content - vh)
+  const vs = Math.min(vscroll, maxV)
+  const height = Math.max(TOP + LANE, vh)
+  /** 画面の y を、トラックの行の位置（スクロールを足したもの）にする。目盛りとマスターの所はそのまま */
+  const cy = (y: number) => (y < TOP ? y : y + vs)
 
   // 幅を App に知らせる
   const { onWidth } = p
@@ -114,7 +122,10 @@ export default function Timeline(p: {
   // 幅に合わせる
   useLayoutEffect(() => {
     const box = canvasRef.current!.parentElement!
-    const ro = new ResizeObserver(() => setWidth(box.clientWidth))
+    const ro = new ResizeObserver(() => {
+      setWidth(box.clientWidth)
+      setVh(box.clientHeight)
+    })
     ro.observe(box)
     return () => ro.disconnect()
   }, [])
@@ -124,7 +135,7 @@ export default function Timeline(p: {
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
-    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, showEnvelope: p.envelope }, {
+    drawTimeline(canvas, p.project, view, p.selected, p.range, { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, showEnvelope: p.envelope, vscroll: vs }, {
       bg: pal.background.default,
       lane: pal.divider,
       line: alpha(pal.divider, 0.5),
@@ -138,7 +149,7 @@ export default function Timeline(p: {
       marker: '#ffb300',
       range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
     })
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envelope])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envelope, vs])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -169,8 +180,9 @@ export default function Timeline(p: {
   useEffect(() => {
     const canvas = canvasRef.current!
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.shiftKey && !e.deltaX) return
       e.preventDefault()
+      // 何も押していなければ縦にスクロール
+      if (!e.ctrlKey && !e.shiftKey && !e.deltaX) return setVscroll((v) => Math.max(0, Math.min(maxRef.current, v + e.deltaY)))
       const x = e.offsetX
       setView((v) => {
         if (e.ctrlKey) {
@@ -183,6 +195,8 @@ export default function Timeline(p: {
     canvas.addEventListener('wheel', onWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', onWheel)
   }, [setView])
+  const maxRef = useRef(0)
+  maxRef.current = maxV
 
   const toTime = (x: number) => view.scroll + x / view.pps
   /** 波形ブロックの画面の上の位置（重なって段に分けたときはその段。エンベロープの線を描く所と同じ） */
@@ -190,7 +204,7 @@ export default function Timeline(p: {
     const row = p.project.tracks.findIndex((t) => t.id === b.track)
     const slot = layoutRows(p.project.blocks.filter((x) => x.track === b.track)).get(b.id) ?? { row: 0, rows: 1 }
     const H = LANE / slot.rows
-    return { x: (b.start - view.scroll) * view.pps, top: TOP + row * LANE + slot.row * H + 2, h: H - 5 }
+    return { x: (b.start - view.scroll) * view.pps, top: TOP + row * LANE + slot.row * H + 2 - vs, h: H - 5 }
   }
   // 目盛りのドラッグで端に来たら表示を流す（WeVocalSynth と同じ wevocal-lib の部品）。流せる先は曲の終わりの少し先まで
   const visible = width / view.pps
@@ -215,7 +229,8 @@ export default function Timeline(p: {
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // 時間軸を押したら、スライダーなどに残ったフォーカスを外す（キーが時間軸の操作に届くように）
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-    const { offsetX: x, offsetY: y } = e.nativeEvent
+    const { offsetX: x } = e.nativeEvent
+    const y = cy(e.nativeEvent.offsetY)
     // 右ボタン: ドラッグすれば枠で選ぶ。動かさなければ右クリックのメニュー（onContextMenu）
     if (e.button === 2) {
       if (y > TOP) {
@@ -291,7 +306,8 @@ export default function Timeline(p: {
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const { offsetX: x, offsetY: y } = e.nativeEvent
+    const { offsetX: x } = e.nativeEvent
+    const y = cy(e.nativeEvent.offsetY)
     const ed = envDrag.current
     if (ed) {
       const b = p.project.blocks.find((x) => x.id === ed.block)
@@ -308,7 +324,9 @@ export default function Timeline(p: {
     if (mq) {
       if (!mq.moved && Math.hypot(x - mq.x, y - mq.y) < 4) return
       mq.moved = true
-      setBox({ x0: Math.min(mq.x, x), y0: Math.min(mq.y, y), x1: Math.max(mq.x, x), y1: Math.max(mq.y, y) })
+      // 枠の表示は画面の位置（スクロールした分を引く）
+      const sy = (v: number) => (v >= TOP ? v - vs : v)
+      setBox({ x0: Math.min(mq.x, x), y0: sy(Math.min(mq.y, y)), x1: Math.max(mq.x, x), y1: sy(Math.max(mq.y, y)) })
       // 枠にかかる波形ブロックを選ぶ
       const ta = toTime(Math.min(mq.x, x))
       const tb = toTime(Math.max(mq.x, x))
@@ -387,16 +405,19 @@ export default function Timeline(p: {
   const onDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    const track = p.project.tracks[Math.floor((e.nativeEvent.offsetY - TOP) / LANE)]
+    const track = p.project.tracks[Math.floor((cy(e.nativeEvent.offsetY) - TOP) / LANE)]
     p.onDropFiles([...e.dataTransfer.files], track && { track: track.id, start: Math.max(0, toTime(e.nativeEvent.offsetX)) })
   }
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-    <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: 'flex-start' }}>
-      <Box sx={{ width: HEADER, flexShrink: 0, borderRight: 1, borderColor: 'divider' }}>
-        <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box' }} />
+    <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
+      <Box sx={{ width: HEADER, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0 }} />
         <MasterHeader master={p.project.master} height={MASTER} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
+        {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }} onWheel={(e) => setVscroll((v) => Math.max(0, Math.min(maxV, v + e.deltaY)))}>
+        <Box sx={{ transform: `translateY(${-vs}px)` }}>
         {p.project.tracks.map((track) => (
           <TrackHeader
             key={track.id}
@@ -428,6 +449,8 @@ export default function Timeline(p: {
             onRemove={() => p.onRemoveTrack(track.id)}
           />
         ))}
+        </Box>
+        </Box>
       </Box>
       <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
         {box && (
@@ -442,7 +465,8 @@ export default function Timeline(p: {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onDoubleClick={(e) => {
-            const { offsetX: x, offsetY: y } = e.nativeEvent
+            const { offsetX: x } = e.nativeEvent
+            const y = cy(e.nativeEvent.offsetY)
             if (y > TOP) {
               const hit = hitBlock(p.project, x, y, toTime, view.pps)
               if (!hit) return
@@ -467,7 +491,8 @@ export default function Timeline(p: {
               return
             }
             marquee.current = null
-            const { offsetX: x, offsetY: y } = e.nativeEvent
+            const { offsetX: x } = e.nativeEvent
+            const y = cy(e.nativeEvent.offsetY)
             const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
             if (!hit) {
               const track = y > TOP ? (p.project.tracks[Math.floor((y - TOP) / LANE)]?.id ?? null) : null

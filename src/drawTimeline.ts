@@ -29,6 +29,8 @@ export interface DrawOptions {
   pendingLabel: string
   /** 音量のエンベロープを描く */
   showEnvelope: boolean
+  /** 縦のスクロール量（px。トラックの行だけをずらす。目盛りとマスターは固定） */
+  vscroll: number
 }
 
 export interface TimelineColors {
@@ -98,10 +100,15 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   g.fillStyle = c.lane
   g.fillRect(0, TOP - 1, w, 1)
 
-  // トラックと波形ブロック。重なったものは段に分ける
+  // トラックと波形ブロック。重なったものは段に分ける。目盛りとマスターの下だけに描く（縦にスクロールしても上は固定）
+  g.save()
+  g.beginPath()
+  g.rect(0, TOP, w, h - TOP)
+  g.clip()
   const slots = layoutRows(p.blocks)
   p.tracks.forEach((track, i) => {
-    const laneY = TOP + i * LANE
+    const laneY = TOP + i * LANE - o.vscroll
+    if (laneY > h || laneY + LANE < TOP) return
     g.fillStyle = c.lane
     g.fillRect(0, laneY + LANE - 1, w, 1)
     for (const b of p.blocks) {
@@ -187,6 +194,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       g.globalAlpha = 1
     }
   })
+  g.restore()
 
   // 範囲選択（全トラックにかかる。REAPER のタイムセレクション）
   if (range) {
