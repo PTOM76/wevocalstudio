@@ -57,7 +57,7 @@ export default function Timeline(p: {
   /** トラックの EQ を開く */
   onEq: (track: string) => void
   /** レベルメーター（出さなければ省く） */
-  meter?: (trackId: string) => AnalyserNode | null
+  meter?: (trackId: string) => readonly AnalyserNode[] | null
   masterMeter?: () => readonly AnalyserNode[] | null
   onDuplicateTrack: (id: string) => void
   /** サブトラックの操作 */

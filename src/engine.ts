@@ -30,8 +30,9 @@ const clipId = (c: Clip) => clipIds.get(c) ?? (clipIds.set(c, nextClipId), nextC
 interface TrackNodes {
   input: GainNode
   pan: StereoPannerNode
-  /** レベルメーター（パンのあと。WeVocalSynth と同じ） */
-  meter: AnalyserNode
+  /** レベルメーターの入口（パンのあと）と、左右の AnalyserNode（WeVocalSynth と同じく左右を別に測る） */
+  split: ChannelSplitterNode
+  meter: [AnalyserNode, AnalyserNode]
   /** 出し先（親のトラックの id か 'master'。変わったときだけつなぎ直す） */
   dest: string
   /** 鳴らしたまま値を変えられる EQ（WeVocalSynth の再生と同じ wevocal-lib のもの） */
@@ -93,10 +94,13 @@ class Graph {
     const eq = createLiveEq(this.ctx, t.eq ?? flatEq())
     input.connect(eq.input)
     eq.output.connect(pan)
-    const meter = Graph.analyser(this.ctx)
-    pan.connect(meter)
+    const split = this.ctx.createChannelSplitter(2)
+    const meter: [AnalyserNode, AnalyserNode] = [Graph.analyser(this.ctx), Graph.analyser(this.ctx)]
+    pan.connect(split)
+    split.connect(meter[0], 0)
+    split.connect(meter[1], 1)
     // 出し先（マスターか親のトラック）は sync でつなぐ
-    return { input, pan, eq, meter, dest: '' }
+    return { input, pan, eq, split, meter, dest: '' }
   }
 
   /** 波形ブロックを比べる文字（変わったら差し替える） */
@@ -128,7 +132,7 @@ class Graph {
       if (n.dest === dest) continue
       if (n.dest) {
         n.pan.disconnect()
-        n.pan.connect(n.meter)
+        n.pan.connect(n.split)
       }
       n.pan.connect(parent ? parent.input : this.master)
       n.dest = dest

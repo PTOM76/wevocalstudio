@@ -72,7 +72,7 @@ export default function TrackHeader(p: {
   onDuplicate: () => void
   onRemove: () => void
   /** レベルメーター（出さなければ省く） */
-  meter?: () => AnalyserNode | null
+  meter?: () => readonly AnalyserNode[] | null
   /** サブトラックの階層の深さ（字下げ）と、子があるか */
   depth: number
   hasChildren: boolean
@@ -156,6 +156,7 @@ export default function TrackHeader(p: {
         onChange={p.onChange}
         onEndMerge={p.onEndMerge}
         meter={p.meter}
+        rows={2}
         panExtra={
           <>
             <MixToggle label="Ø" title={t('track.invert')} on={!!track.invert} color="primary.main" onClick={() => p.onChange({ invert: !track.invert })} />
