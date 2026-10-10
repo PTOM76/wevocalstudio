@@ -97,6 +97,7 @@
   "menu.recent": "Recent files",
   "menu.recentClear": "Clear list",
   "menu.recentEmpty": "(none)",
+  "menu.checkUpdate": "Check for updates",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -134,6 +135,9 @@
   "settings.recentFilesHelp": "Reopen from the File menu (Chrome and Edge only)",
   "settings.confirmClose": "Confirm before closing",
   "settings.confirmCloseHelp": "Asks before closing if there are unsaved changes (when autosave is off)",
+  "settings.devUpdates": "Receive development updates",
+  "settings.devUpdatesHelp": "Notify about new commits even when the version number is the same",
+  "settings.groupUpdate": "Updates",
 
   "status.ready": "Ready",
   "status.playing": "Playing",
@@ -194,6 +198,9 @@
   "toast.tempo": "Set the tempo to {bpm} BPM",
   "toast.recentMissing": "Could not open \"{file}\" (it may have been moved or deleted)",
   "toast.saved": "Saved",
+  "toast.updateLatest": "You are on the latest version",
+  "toast.updateUnsupported": "Updates cannot be checked here",
+  "toast.updateFailed": "Could not check for updates",
 
   "marker.title": "Marker",
   "marker.name": "Name",

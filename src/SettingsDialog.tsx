@@ -6,6 +6,7 @@ import { i18n, useT, type LangSetting, type MessageKey } from './i18n'
 import { ACTIONS } from './keymap'
 import type { GridMode } from './grid'
 import type { StartFolder } from 'pevenmui/web'
+import { UpdateSection } from 'pevenmui/pwa'
 import { DEFAULT_SETTINGS, type Settings } from './settings'
 
 type Category = 'general' | 'file' | 'appearance' | 'edit' | 'pitch' | 'record' | 'keys'
@@ -29,7 +30,7 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
   const keyActions = ACTIONS.map((a) => ({ ...a, label: t(`menu.${a.id}` as MessageKey) }))
   // texts は設定の検索の対象。項目を足したらここにも足す
   const categories: SettingsCategory<Category>[] = [
-    { id: 'general', label: t('settings.general'), texts: [t('settings.language'), t('settings.autoRestore'), t('settings.confirmClose')] },
+    { id: 'general', label: t('settings.general'), texts: [t('settings.language'), t('settings.autoRestore'), t('settings.confirmClose'), t('settings.groupUpdate'), t('settings.devUpdates')] },
     { id: 'file', label: t('settings.file'), texts: [t('settings.rememberFolder'), t('settings.startFolder'), t('settings.recentFiles')] },
     { id: 'appearance', label: t('settings.appearance'), texts: [t('settings.theme'), t('settings.uiScale')] },
     { id: 'edit', label: t('settings.edit'), texts: [t('settings.snap'), t('settings.grid')] },
@@ -48,6 +49,7 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
       categories={categories}
       pages={(draft, set) => ({
         general: (
+          <>
           <Group title={t('settings.general')}>
             <Row label={t('settings.language')}>
               <Choice<LangSetting> value={draft.language} onChange={(language) => set({ language })} options={[['auto', t('settings.languageAuto')], ...i18n.options()]} />
@@ -55,6 +57,11 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
             <Check label={t('settings.autoRestore')} checked={draft.autoRestore} onChange={(autoRestore) => set({ autoRestore })} />
             <Check label={t('settings.confirmClose')} help={t('settings.confirmCloseHelp')} checked={draft.confirmClose} disabled={draft.autoRestore} onChange={(confirmClose) => set({ confirmClose })} />
           </Group>
+          <Group title={t('settings.groupUpdate')}>
+            <UpdateSection />
+            <Check label={t('settings.devUpdates')} help={t('settings.devUpdatesHelp')} checked={draft.devUpdates} onChange={(devUpdates) => set({ devUpdates })} />
+          </Group>
+          </>
         ),
         file: (
           <Group title={t('settings.file')}>

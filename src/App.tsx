@@ -4,7 +4,7 @@ import { Alert, Box, Link, Snackbar } from '@mui/material'
 import { AboutDialog, ContextMenu, FULL_HEIGHT, LicensesDialog, WindowModeContext, autoWindowMode, startJob, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader, { AppIcon } from './AppHeader'
-import { UpdatePrompt } from 'pevenmui/pwa'
+import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, canRecord, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
 import { app } from './appConfig'
@@ -290,7 +290,16 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleMinimap: () => p.onSettingsChange({ showMinimap: !p.settings.showMinimap }),
     showStatusBar: p.settings.showStatusBar,
     toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
-    help: { guide: () => openExternal(app.repository), licenses: () => setDialog('licenses'), about: () => setDialog('about') },
+    help: {
+      guide: () => openExternal(app.repository),
+      // 新しい版があれば右下の通知から更新できる。ここでは結果だけを知らせる（WeVocalSynth と同じ）
+      checkUpdate: () =>
+        void checkForUpdate().then((r) => {
+          if (r.kind === 'found') return promptUpdate(r.build)
+          if (r.kind === 'failed') return fail(t('toast.updateFailed'))
+          setNotice(t(r.kind === 'latest' ? 'toast.updateLatest' : 'toast.updateUnsupported'))
+        }),
+      licenses: () => setDialog('licenses'), about: () => setDialog('about') },
   })
 
   // 起動時に前回の作業を復元する（WeVocalSynth と同じ）
@@ -616,7 +625,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         </Alert>
       </Snackbar>
       {confirmDialog}
-      <UpdatePrompt build={BUILD} />
+      <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
       <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(null)}>
         <Alert severity="info" onClose={() => setNotice(null)}>
           {notice}

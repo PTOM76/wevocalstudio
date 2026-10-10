@@ -25,6 +25,8 @@ export interface Settings {
   autoRestore: boolean
   /** 保存していない変更があれば、閉じる前に確かめる（自動保存がオフのとき） */
   confirmClose: boolean
+  /** バージョンが同じでも、新しいコミットがあれば更新を知らせる（開発中は既定でオン） */
+  devUpdates: boolean
   /** 開く場所と保存先を用途ごとに覚える（Chrome、Edge。PevenMUI の fileAccess） */
   rememberFolder: boolean
   /** 保存先の画面で最初に開くフォルダー */
@@ -53,7 +55,7 @@ export interface Settings {
   preserveFormant: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showMeters: true, showAnalysis: false, snap: true, follow: true, envelope: false, grid: 'beats', gridDivision: 4, keys: {}, inputDevice: '', autoRestore: true, confirmClose: true, rememberFolder: true, startFolder: 'downloads', recentFiles: true, filePicker: 'auto', algorithm: 'sola3', preserveFormant: true }
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', language: 'auto', uiScale: 1, showStatusBar: true, showMinimap: true, showMeters: true, showAnalysis: false, snap: true, follow: true, envelope: false, grid: 'beats', gridDivision: 4, keys: {}, inputDevice: '', autoRestore: true, confirmClose: true, devUpdates: true, rememberFolder: true, startFolder: 'downloads', recentFiles: true, filePicker: 'auto', algorithm: 'sola3', preserveFormant: true }
 
 const KEY = app.key('settings')
 

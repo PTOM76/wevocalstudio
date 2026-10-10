@@ -69,7 +69,7 @@ export interface ActionContext {
   toggleMinimap: () => void
   showStatusBar: boolean
   toggleStatusBar: () => void
-  help: { guide: () => void; licenses: () => void; about: () => void }
+  help: { guide: () => void; checkUpdate: () => void; licenses: () => void; about: () => void }
 }
 
 interface Command {
@@ -296,6 +296,8 @@ export function useActions(c: ActionContext) {
       accessKey: 'H',
       entries: [
         { label: t('menu.guide'), onClick: c.help.guide },
+        divider,
+        { label: t('menu.checkUpdate'), onClick: c.help.checkUpdate },
         { label: t('menu.licenses'), onClick: c.help.licenses },
         { label: t('menu.about'), onClick: c.help.about },
       ],
