@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        # pevenmui/、wevocal-lib/、analyzer/ は submodule（手元では隣の WeVocalSynth の中のものを使う）
+        # pevenmui/、wevocal-lib/、analyzer/、extractor/ は submodule（手元では隣の WeVocalSynth の中のものを使う）
         with:
           submodules: true
       - uses: actions/setup-node@v4
@@ -35,6 +35,13 @@ jobs:
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
           SITE_URL: ${{ steps.pages.outputs.base_url }}/
+      # 取得したモデルは次からキャッシュを使う
+      - uses: actions/cache@v4
+        with:
+          path: .cache/addon-models
+          key: addon-models-${{ hashFiles('extractor/scripts/addons.mjs') }}
+      # 追加機能（ボーカル抽出の実行環境とモデル。導入した人だけが取得する）
+      - run: npm run build:addons
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

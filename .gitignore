@@ -3,3 +3,5 @@ dist
 *.local
 dsp/target
 *.tsbuildinfo
+.cache/
+public/addons/
