@@ -1,4 +1,4 @@
-// 波形ブロックのプロパティ（REAPER のアイテムのプロパティ）。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
+// 波形ブロックのプロパティ。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
 import { useEffect, useState } from 'react'
 import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { enterToSubmit } from 'pevenmui'

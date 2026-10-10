@@ -8,7 +8,7 @@ import { blockReady } from './dsp/pitch'
 import { audible, type Block, type Project } from './project'
 
 export const RULER = 24
-/** マスタートラックの行の高さ（目盛りのすぐ下。REAPER と同じく一番上） */
+/** マスタートラックの行の高さ（目盛りのすぐ下。一番上） */
 export const MASTER = 96
 /** トラックの行が始まる位置 */
 export const TOP = RULER + MASTER
@@ -42,7 +42,7 @@ export interface TimelineColors {
   blockSelected: string
   wave: string
   playhead: string
-  /** 編集カーソル（REAPER と同じく再生カーソルとは別の線） */
+  /** 編集カーソル（再生カーソルとは別の線） */
   editCursor: string
   /** マスタートラックの帯の色 */
   master: string
@@ -196,7 +196,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   })
   g.restore()
 
-  // 範囲選択（全トラックにかかる。REAPER のタイムセレクション）
+  // 範囲選択（全トラックにかかる）
   if (range) {
     g.fillStyle = c.range
     g.fillRect(tx(range.start), 0, (range.end - range.start) * view.pps, h)

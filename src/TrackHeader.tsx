@@ -111,7 +111,7 @@ export default function TrackHeader(p: {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        {/* 子があるトラックは、たたむ、開くの印（REAPER のフォルダー） */}
+        {/* 子があるトラックは、たたむ、開くの印 */}
         {p.hasChildren && (
           <ButtonBase
             aria-label={t(track.collapsed ? 'track.expand' : 'track.collapse')}
@@ -183,7 +183,7 @@ export default function TrackHeader(p: {
   )
 }
 
-/** マスタートラックの欄（トラックの一番上。REAPER と同じく、トラックと同じ形で波形ブロックは置かない） */
+/** マスタートラックの欄（トラックの一番上。トラックと同じ形で波形ブロックは置かない） */
 export function MasterHeader(p: { master: Master; height: number; onChange: (patch: Partial<Master>, merge?: string) => void; onEndMerge: () => void; meter?: () => readonly AnalyserNode[] | null }) {
   const t = useT()
   const { master } = p

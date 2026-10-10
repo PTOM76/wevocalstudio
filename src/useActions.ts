@@ -16,7 +16,7 @@ export interface ActionContext {
   /** 選んでいる波形ブロック（複数） */
   selected: string[]
   selectedTrack: string | null
-  /** 範囲選択（REAPER のタイムセレクション） */
+  /** 範囲選択 */
   range: Range | null
   setRange: (r: Range | null) => void
   select: (ids: string[]) => void
@@ -91,7 +91,7 @@ export function useActions(c: ActionContext) {
   // コピーしたら描き直す（「貼り付け」を押せるようにする。ref だけでは古いまま押せなかった）
   const [, setCopied] = useState(0)
 
-  /** 選んでいるトラックの再生位置に置く（REAPER と同じ）。複数なら、トラックと時間の並びを保つ */
+  /** 選んでいるトラックの再生位置に置く。複数なら、トラックと時間の並びを保つ */
   /** 貼り付ける。at を渡せば、その時刻とトラックに（何もない所の右クリックの「ここに貼り付け」） */
   const paste = (place?: { time: number; track: string | null }) => {
     const cursor = place?.time ?? c.cursor
@@ -110,7 +110,7 @@ export function useActions(c: ActionContext) {
     const target = Math.max(0, tracks.findIndex((tr) => tr.id === selectedTrack))
     const at = (b: Block) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
     c.select(doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))))
-    // 貼り付けたものの右端に再生位置を移す（Ctrl+V を続けると、すき間なく並ぶ。REAPER と同じ）
+    // 貼り付けたものの右端に再生位置を移す（Ctrl+V を続けると、すき間なく並ぶ）
     c.moveCursor(cursor + Math.max(...blocks.map((b) => b.start + b.length)) - first)
   }
 
@@ -319,7 +319,7 @@ export function useActions(c: ActionContext) {
     item('delete'),
   ]
 
-  /** 何もない所の右クリックのメニュー（REAPER のように、押した所に合わせた中身）。time と track は押した所 */
+  /** 何もない所の右クリックのメニュー。time と track は押した所 */
   const emptyMenu = (kind: 'lane' | 'ruler', time: number, track: string | null): MenuEntry[] =>
     kind === 'ruler'
       ? [

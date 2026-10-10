@@ -100,7 +100,7 @@ export default function Timeline(p: {
   const envDrag = useRef<{ block: string; index: number; merge: string } | null>(null)
   // Shift+クリックの起点（前に押した波形ブロック）
   const anchor = useRef<string | null>(null)
-  // 右ドラッグの枠で選ぶ（REAPER と同じ）。moved なら右クリックのメニューは出さない
+  // 右ドラッグの枠で選ぶ。moved なら右クリックのメニューは出さない
   const marquee = useRef<{ x: number; y: number; moved: boolean } | null>(null)
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const dragCount = useRef(0)
@@ -166,7 +166,7 @@ export default function Timeline(p: {
     let id = 0
     const tick = () => {
       draw()
-      // 再生位置が画面の外に出たら、そこが左端になるように送る（REAPER と同じ）
+      // 再生位置が画面の外に出たら、そこが左端になるように送る
       const pos = p.livePos()
       const f = followRef.current
       if (f.follow && pos !== null && f.visible && (pos > f.scroll + f.visible || pos < f.scroll)) setView((v) => ({ ...v, scroll: Math.max(0, pos) }))
@@ -286,14 +286,14 @@ export default function Timeline(p: {
       return
     }
     anchor.current = id
-    // 押した所に再生位置を移す。端（長さを変える所）ならその端（REAPER と同じ）
+    // 押した所に再生位置を移す。端（長さを変える所）ならその端
     if (!e.ctrlKey && !e.metaKey) {
       const b = hit.block
       const t = hit.kind === 'left' || hit.kind === 'fadeIn' ? b.start : hit.kind === 'right' || hit.kind === 'fadeOut' ? b.start + b.length : toTime(x)
       const snapped = hit.kind === 'move' ? gridAt(x, e.shiftKey) : t
       p.onCursor(Math.max(0, snapped))
     }
-    // 選んでいるものをつまんだら、選んだもの全部を動かす。Ctrl は、動かせば複製（REAPER と同じ）、動かさずに離せば選択の足し引き
+    // 選んでいるものをつまんだら、選んだもの全部を動かす。Ctrl は、動かせば複製、動かさずに離せば選択の足し引き
     const ctrl = e.ctrlKey || e.metaKey
     const wasSelected = p.selected.includes(id)
     const group = wasSelected ? p.selected : ctrl ? [...p.selected, id] : [id]
@@ -362,17 +362,17 @@ export default function Timeline(p: {
       d.copy.done = true
       p.onCopyBlocks([d.block, ...d.others])
     }
-    // Shift を押している間は吸い付けない（REAPER と同じ）
+    // Shift を押している間は吸い付けない
     const raw = (x - d.x) / view.pps
     const exclude = [d.block.id, ...d.others.map((b) => b.id)]
-    // Alt で本体をつまんだら、中の音だけをずらす（REAPER のスリップ編集。吸い付けない）
+    // Alt で本体をつまんだら、中の音だけをずらす（吸い付けない）
     if (e.altKey && d.kind === 'move') {
       const all = [d.block, ...d.others]
       return p.onBlocksChange(Object.fromEntries(all.map((b) => [b.id, slipPatch(p.project, b, raw)])), d.merge)
     }
     let dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), snapping) : raw
     const di = Math.round((y - d.y) / LANE)
-    // Alt を押しながら端をドラッグすると速度ごと伸び縮みする（REAPER と同じ）
+    // Alt を押しながら端をドラッグすると速度ごと伸び縮みする
     if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di, e.altKey), d.merge)
     // まとめて動かす。一番前のものが 0 より前に出ない所、トラックの外に出ない所で止める
     const all = [d.block, ...d.others]
@@ -389,7 +389,7 @@ export default function Timeline(p: {
       if (!marquee.current.moved) marquee.current = null
       setBox(null)
     }
-    // 範囲を作らずに離したら、範囲を消す（REAPER と同じ）
+    // 範囲を作らずに離したら、範囲を消す
     if (rangeDrag.current && Math.abs(e.nativeEvent.offsetX - rangeDrag.current.x) < 3) p.onRange(null)
     // Ctrl で押して動かさずに離したら、選択の足し引き（選んでいたものは外す）
     const d = drag.current

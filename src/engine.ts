@@ -124,7 +124,7 @@ class Graph {
       n.input.gain.setTargetAtTime(audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, at, 0.01)
       n.pan.pan.setTargetAtTime(t.pan, at, 0.01)
     }
-    // 出し先をつなぐ。サブトラックは親のトラックの入口へ、ほかはマスターへ（REAPER のフォルダートラックと同じ）
+    // 出し先をつなぐ。サブトラックは親のトラックの入口へ、ほかはマスターへ
     for (const t of p.tracks) {
       const n = this.tracks.get(t.id)!
       const parent = t.parent ? this.tracks.get(t.parent) : undefined

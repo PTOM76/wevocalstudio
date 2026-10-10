@@ -72,14 +72,14 @@ export function hitEnvPoint(b: Block, x: number, y: number, blockX: number, top:
   return (b.envelope ?? []).findIndex((pt) => Math.hypot(blockX + pt.t * pps - x, top + envY(pt.db) * h - y) < 7)
 }
 
-/** Alt を押して本体をドラッグしたとき: 位置と長さはそのままで、中の音だけをずらす（REAPER のスリップ編集）。元の音の端より外へはずらさない */
+/** Alt を押して本体をドラッグしたとき: 位置と長さはそのままで、中の音だけをずらす。元の音の端より外へはずらさない */
 export function slipPatch(p: Project, b: Block, dt: number): Partial<Block> {
   const total = p.sources.find((s) => s.id === b.source)?.duration ?? b.offset + b.length * b.rate
   // 右へドラッグすると音が右へずれる（元の音の前の所が見えてくる）
   return { offset: Math.max(0, Math.min(total - b.length * b.rate, b.offset - dt * b.rate)) }
 }
 
-/** ドラッグで変える値。dt は動かした時間（秒）、di は動かしたトラックの数。stretch なら端で速度ごと伸び縮みする（REAPER の Alt+ドラッグ） */
+/** ドラッグで変える値。dt は動かした時間（秒）、di は動かしたトラックの数。stretch なら端で速度ごと伸び縮みする */
 export function dragPatch(p: Project, d: Drag, dt: number, di: number, stretch = false): Partial<Block> {
   const b = d.block
   const source = p.sources.find((s) => s.id === b.source)

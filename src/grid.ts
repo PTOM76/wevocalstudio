@@ -2,7 +2,7 @@
 import { segmentAt, tempoSegments } from 'wevocal-lib'
 import type { Marker, Tempo } from './project'
 
-/** 線の取り方。beats は拍と小節（REAPER の既定）、time は秒 */
+/** 線の取り方。beats は拍と小節、time は秒 */
 export type GridMode = 'beats' | 'time'
 
 export interface GridLine {

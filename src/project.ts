@@ -10,7 +10,7 @@ export interface Source {
   duration: number
 }
 
-/** トラック（REAPER のトラック）。波形ブロックを時間軸に並べる */
+/** トラック。波形ブロックを時間軸に並べる */
 export interface Track {
   id: string
   name: string
@@ -20,11 +20,11 @@ export interface Track {
   pan: number
   mute: boolean
   solo: boolean
-  /** 録音待機（REAPER の録音アーム）。録った音はこのトラックに置く */
+  /** 録音待機。録った音はこのトラックに置く */
   armed?: boolean
   /** 位相の反転（WeVocalSynth のフェーダーと同じ） */
   invert?: boolean
-  /** 親のトラック（サブトラック。REAPER のフォルダートラック）。音は親を通ってからマスターへ行く。子は親のすぐ後ろに並べる */
+  /** 親のトラック（サブトラック）。音は親を通ってからマスターへ行く。子は親のすぐ後ろに並べる */
   parent?: string
   /** 子のトラックをたたんで隠す */
   collapsed?: boolean
@@ -32,7 +32,7 @@ export interface Track {
   eq?: TrackEq
 }
 
-/** 波形ブロック（REAPER のアイテム）。元の音のどこを、いつ、どう鳴らすか */
+/** 波形ブロック。元の音のどこを、いつ、どう鳴らすか */
 export interface Block {
   id: string
   track: string
@@ -43,7 +43,7 @@ export interface Block {
   offset: number
   /** 長さ（秒。時間軸の上での長さ） */
   length: number
-  /** 速度（1 が元の速さ、2 で倍の速さ）。ピッチは変えずに長さが変わる（REAPER のアイテムの再生速度）。元の音の上では length × rate 秒を使う */
+  /** 速度（1 が元の速さ、2 で倍の速さ）。ピッチは変えずに長さが変わる。元の音の上では length × rate 秒を使う */
   rate: number
   /** 音量（dB） */
   gain: number
@@ -57,7 +57,7 @@ export interface Block {
   formant: number
   /** ピッチカーブ（なければ一定のピッチ）。元の音の時刻 from 秒から 10ms ごとの半音（pitch に足す）。元の音の時刻で持つので、分割や端の調整をしてもずれない */
   curve?: PitchCurve
-  /** 音量のエンベロープ（REAPER のアイテムの音量エンベロープ）。無ければ平ら。gain とフェードに重ねて掛ける */
+  /** 音量のエンベロープ。無ければ平ら。gain とフェードに重ねて掛ける */
   envelope?: EnvPoint[]
   /** フェードイン、フェードアウト（秒） */
   fadeIn: number
@@ -162,10 +162,10 @@ export const newBlock = (track: string, source: Source, start: number, defaults:
   mute: false,
 })
 
-/** 新しい波形ブロックと、分割した切れ目に付けるフェード（秒。REAPER の既定と同じ 10ms。切れ目のプツッという音を防ぐ） */
+/** 新しい波形ブロックと、分割した切れ目に付けるフェード（秒） */
 export const DEFAULT_FADE = 0.01
 
-/** 速度の範囲（REAPER と同じく 1/4 倍から 4 倍） */
+/** 速度の範囲（1/4 倍から 4 倍） */
 export const RATE_MIN = 0.25
 export const RATE_MAX = 4
 
@@ -187,7 +187,7 @@ export const projectEnd = (p: Project) => p.blocks.reduce((m, b) => Math.max(m, 
 /** 鳴らすトラックか（ソロがあればソロだけ、なければミュート以外） */
 export function audible(p: Project, track: Track) {
   if (!p.tracks.some((t) => t.solo)) return !track.mute
-  // ソロのとき: 自分か先祖がソロなら鳴る。子孫がソロなら、その音を通すために鳴らす（REAPER と同じ）
+  // ソロのとき: 自分か先祖がソロなら鳴る。子孫がソロなら、その音を通すために鳴らす
   return track.solo || ancestors(p, track).some((t) => t.solo) || descendants(p, track).some((t) => t.solo)
 }
 
@@ -217,7 +217,7 @@ export function subtreeEnd(p: Project, index: number) {
   return i
 }
 
-/** 位置 t で波形ブロックを 2 つに分ける（REAPER の S） */
+/** 位置 t で波形ブロックを 2 つに分ける */
 export function splitBlock(b: Block, t: number): [Block, Block] | null {
   const at = t - b.start
   if (at <= 0.001 || at >= b.length - 0.001) return null

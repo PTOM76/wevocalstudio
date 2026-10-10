@@ -16,7 +16,7 @@ export interface DropAt {
   start: number
 }
 
-/** 履歴の 1 段（そのときのプロジェクトと選んでいた波形ブロック、そこへ来た操作の名前）。選択も元に戻せる（REAPER の「選択も元に戻す」と同じ） */
+/** 履歴の 1 段（そのときのプロジェクトと選んでいた波形ブロック、そこへ来た操作の名前）。選択も元に戻せる */
 interface Step {
   project: Project
   selected: string[]
@@ -104,7 +104,7 @@ export function useProject(defaults: PitchDefaults) {
     [change],
   )
 
-  /** 選んだ波形ブロックに、プロパティで変えた値をまとめて掛ける。速度だけ変えたら長さも合わせる（REAPER と同じ）。元の音の長さに収める */
+  /** 選んだ波形ブロックに、プロパティで変えた値をまとめて掛ける。速度だけ変えたら長さも合わせる。元の音の長さに収める */
   const editBlocks = useCallback(
     (ids: string[], edit: Partial<Block>) =>
       change((p) => ({
@@ -229,7 +229,7 @@ export function useProject(defaults: PitchDefaults) {
     [change],
   )
 
-  /** 上の同じ階層のトラックの中に入れる（REAPER の字下げ） */
+  /** 上の同じ階層のトラックの中に入れる */
   const indentTrack = useCallback(
     (id: string) =>
       change((p) => {
