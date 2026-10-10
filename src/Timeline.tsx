@@ -1,7 +1,7 @@
 // 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
-import { useEdgeScroll } from 'wevocal-lib/react'
+import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { useDoubleTap, useLongPress, usePalette } from 'pevenmui'
 import { layoutRows } from './overlap'
@@ -280,12 +280,33 @@ export default function Timeline(p: {
   // タッチの長押しとダブルタップ（iPhone、iPad は contextmenu と dblclick が来ない。PevenMUI。WeVocalSynth と同じ）
   const longPress = useLongPress()
   const doubleTap = useDoubleTap()
+  // 2 本指のピンチで拡大縮小、目盛りはタップで移動、ドラッグで再生位置、長押しで横移動（wevocal-lib。WeVocalSynth の波形と同じ）
+  const touch = useTouchGestures({
+    canvasRef,
+    view: { start: view.scroll, dur: width / view.pps },
+    setRange: (start, dur) => setView(() => ({ scroll: Math.max(0, start), pps: Math.min(2000, Math.max(2, width / dur)) })),
+    seekAt: (clientX) => p.onSeek(gridAt(clientX - canvasRef.current!.getBoundingClientRect().left, false)),
+  })
+  // 空いている所を 1 本指でなぞったときのスクロール（始めた位置と、そのときの表示）
+  const pan = useRef<{ x0: number; y0: number; scroll0: number; v0: number } | null>(null)
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // 時間軸を押したら、スライダーなどに残ったフォーカスを外す（キーが時間軸の操作に届くように）
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     const { offsetX: x } = e.nativeEvent
     const y = cy(e.nativeEvent.offsetY)
+    // 2 本目の指が触れたらピンチにする（始めたドラッグはやめる）
+    if (touch.down(e)) {
+      longPress.cancel()
+      drag.current = null
+      rangeDrag.current = null
+      pan.current = null
+      return
+    }
+    if (e.pointerType === 'touch' && y < RULER) {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      return touch.rulerDown(e)
+    }
     if (e.pointerType === 'touch') {
       const { offsetY: oy } = e.nativeEvent
       const { clientX, clientY } = e
@@ -308,6 +329,14 @@ export default function Timeline(p: {
       e.currentTarget.setPointerCapture(e.pointerId)
       scrub.current = true
       p.onSeek(gridAt(x, e.shiftKey))
+      return
+    }
+    // タッチで空いている所: なぞるとスクロール（長押しはメニュー）
+    if (!hit && e.pointerType === 'touch') {
+      const track = p.project.tracks[Math.floor((y - TOP) / LANE)]
+      if (track) p.onSelectTrack(track.id)
+      e.currentTarget.setPointerCapture(e.pointerId)
+      pan.current = { x0: e.clientX, y0: e.clientY, scroll0: view.scroll, v0: vscroll }
       return
     }
     if (!hit) {
@@ -371,6 +400,13 @@ export default function Timeline(p: {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     longPress.move(e.clientX, e.clientY)
+    if (touch.move(e)) return
+    const pn = pan.current
+    if (pn) {
+      setView((v) => ({ ...v, scroll: Math.max(0, pn.scroll0 - (e.clientX - pn.x0) / v.pps) }))
+      setVscroll(Math.max(0, Math.min(maxRef.current, pn.v0 - (e.clientY - pn.y0))))
+      return
+    }
     const { offsetX: x } = e.nativeEvent
     const y = cy(e.nativeEvent.offsetY)
     const ed = envDrag.current
@@ -454,6 +490,14 @@ export default function Timeline(p: {
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     longPress.cancel()
+    if (touch.up(e)) return
+    // なぞらずに離したら、押した所へ再生位置を移す
+    const pn = pan.current
+    pan.current = null
+    if (pn && Math.hypot(e.clientX - pn.x0, e.clientY - pn.y0) < 8) {
+      p.onSelect([])
+      p.onSeek(gridAt(e.nativeEvent.offsetX, false))
+    }
     if (e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY)) doubleAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
     envDrag.current = null
     if (marquee.current) {
