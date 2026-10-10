@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
-import { AboutDialog, ContextMenu, FULL_HEIGHT, LicensesDialog, WindowModeContext, autoWindowMode, startJob, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
+import { AboutDialog, ContextMenu, TempoField, type TempoCandidate, FULL_HEIGHT, LicensesDialog, WindowModeContext, autoWindowMode, startJob, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader, { AppIcon } from './AppHeader'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
@@ -50,7 +50,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const setSelected = doc.select
   const player = useRef(new Player())
   const [playing, setPlaying] = useState(false)
-  // 編集カーソル（押した所、貼り付ける所。再生では動かない）と、再生カーソル（再生中と一時停止中だけ。REAPER と同じく 2 本）
+  // 編集カーソル（押した所、貼り付ける所。再生では動かない）と、再生カーソル（再生中と一時停止中だけ。 2 本）
   const [cursor, setCursor] = useState(0)
   const [playPos, setPlayPos] = useState<number | null>(null)
   // 一時停止した位置（編集カーソルを動かしたら消す）
@@ -110,7 +110,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     player.current.play(project, from)
     setPlaying(true)
   }
-  /** 録音を始める（再生位置から、ほかのトラックを鳴らしながら録る。REAPER と同じ） */
+  /** 録音を始める（再生位置から、ほかのトラックを鳴らしながら録る） */
   const startRecord = async () => {
     if (!canRecord()) return fail(t('error.noRecord'))
     try {
@@ -142,27 +142,35 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     }
   }
   /** 選んだ波形ブロック（なければ最初のもの）からテンポを解析して、プロジェクトのテンポにする（WeVocalSynth と同じ解析） */
+  const [tempoCandidates, setTempoCandidates] = useState<TempoCandidate[]>([])
+  const [analyzingTempo, setAnalyzingTempo] = useState(false)
+  /** BPM と 1 拍目の位置（秒）をプロジェクトのテンポにする */
+  const setBpm = (bpm: number, first?: number) => {
+    const beat = 60 / bpm
+    doc.updateTempo(first === undefined ? { bpm } : { bpm, beatOffset: ((first % beat) + beat) % beat })
+  }
   const detectTempo = async () => {
     const b = project.blocks.find((x) => selected.includes(x.id)) ?? project.blocks[0]
     const source = b && sourceOf(b.source)
     if (!b || !source) return
+    setAnalyzingTempo(true)
     try {
       const { clip } = source
       const from = Math.floor(b.offset * clip.sampleRate)
       const to = Math.min(clip.channels[0].length, from + Math.floor(b.length * b.rate * clip.sampleRate))
       const mono = new Float32Array(to - from)
       for (const ch of clip.channels) for (let i = 0; i < mono.length; i++) mono[i] += ch[from + i] / clip.channels.length
-      const [best] = await analyzeTempo(mono, clip.sampleRate)
+      // 速度を変えた波形ブロックは、そのぶん BPM も変わる。1 拍目の位置はプロジェクトの時間にする
+      const found = (await analyzeTempo(mono, clip.sampleRate)).map((c) => ({ bpm: Math.round(c.bpm * b.rate * 100) / 100, offset: b.start + c.offset / b.rate, strength: c.strength }))
+      setTempoCandidates(found)
+      const [best] = found
       if (!best) return fail(t('error.noTempo'))
-      // 速度を変えた波形ブロックは、そのぶん BPM も変わる
-      const bpm = Math.round(best.bpm * b.rate * 100) / 100
-      const beat = 60 / bpm
-      const first = b.start + best.offset / b.rate
-      doc.updateTempo({ bpm, beatOffset: ((first % beat) + beat) % beat })
-      setNotice(t('toast.tempo', { bpm }))
+      setBpm(best.bpm, best.offset)
+      setNotice(t('toast.tempo', { bpm: best.bpm }))
     } catch (e) {
       fail(e)
     } finally {
+      setAnalyzingTempo(false)
     }
   }
 
@@ -189,7 +197,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     setCursor(time)
     setPaused(null)
   }
-  /** 編集カーソルを動かし、再生中なら再生もそこへ（目盛りと空いている所。REAPER の既定と同じ） */
+  /** 編集カーソルを動かし、再生中なら再生もそこへ（目盛りと空いている所） */
   const seek = (time: number) => {
     moveCursor(time)
     if (playing) {
@@ -466,7 +474,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onRange={setRange}
         onMasterChange={doc.updateMaster}
         onTrackChange={(id, patch, merge) => {
-          // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量とパンは差分で。REAPER と同じ）
+          // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量とパンは差分で）
           if (selectedTracks.length < 2 || !selectedTracks.includes(id) || 'name' in patch || 'eq' in patch) return doc.updateTrack(id, patch, merge)
           const base = project.tracks.find((tr) => tr.id === id)!
           doc.updateTracks(
@@ -546,11 +554,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       )}
       <Transport
         playing={playing}
-        cursor={playPos ?? cursor}
-        livePos={livePos}
+        position={playPos ?? cursor}
+        livePosition={() => livePos() ?? cursor}
+        onSeek={seek}
         meter={p.settings.showMeters ? <LevelMeter source={player.current.masterMeters} rows={2} width={96} height={7} label={t('meter.master')} /> : null}
         end={end}
-        range={range}
         repeat={repeat}
         recording={!!recording}
         onRecord={toggleRecord}
@@ -615,6 +623,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           tracks={project.tracks.length}
           range={range}
           onRange={setRange}
+          tempo={<TempoField bpm={project.tempo.bpm} candidates={tempoCandidates} analyzing={analyzingTempo} onChange={setBpm} onAnalyze={() => void detectTempo()} labels={{ tap: t('tempo.tap'), tapHint: t('tempo.tapHint'), candidates: t('tempo.candidates'), analyze: t('tempo.analyze'), analyzing: t('tempo.analyzing') }} />}
           bpm={project.tempo.bpm}
         />
       )}

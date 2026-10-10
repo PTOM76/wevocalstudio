@@ -1,5 +1,5 @@
 // PC の下のステータスバー（WeVocalSynth と同じ並び）。プロジェクト名、書き出しの形式、範囲選択、BPM、処理中のゲージ
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Box, Button, ButtonBase, Dialog, DialogActions, DialogContent, Popover, Stack, TextField } from '@mui/material'
 import { JobGauge, StatusBar as Bar, StatusButton, StatusItem, StatusSpacer, enterToSubmit, pevenFont } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
@@ -49,6 +49,8 @@ export default function StatusBar(p: {
   range: Range | null
   onRange: (r: Range | null) => void
   bpm: number
+  /** BPM の表示と入力（PevenMUI の TempoField。WeVocalSynth と同じ） */
+  tempo: ReactNode
 }) {
   const t = useT()
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -67,7 +69,7 @@ export default function StatusBar(p: {
         {p.sampleRate} Hz・Stereo・{t('status.tracks', { n: p.tracks })}
       </StatusItem>
       <SelectionField range={p.range} bpm={p.bpm} onChange={p.onRange} />
-      <StatusItem secondary>{p.bpm} BPM</StatusItem>
+      {p.tempo}
       <StatusSpacer />
       {/* 処理中の進み具合（ピッチなどを作る、書き出し。PevenMUI の JobGauge。WeVocalSynth と同じ） */}
       <JobGauge<string> kindLabel={(k) => t(`job.${k}` as Parameters<typeof t>[0])} />

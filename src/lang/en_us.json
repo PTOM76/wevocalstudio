@@ -193,6 +193,7 @@
   "transport.beatsPerBar": "Time sig.",
   "transport.record": "Record",
   "transport.grid": "Grid",
+  "transport.timeInput": "Enter position",
 
   "toast.restored": "Restored your previous work",
   "toast.tempo": "Set the tempo to {bpm} BPM",
@@ -258,5 +259,10 @@
 
   "file.projectType": "WeVocal Studio project",
   "file.audioType": "Audio file",
-  "file.openType": "Audio and project files"
+  "file.openType": "Audio and project files",
+  "tempo.tap": "Tap tempo",
+  "tempo.tapHint": "Tap on the beat a few times to set the BPM from the interval",
+  "tempo.candidates": "Detected candidates",
+  "tempo.analyze": "Re-analyze",
+  "tempo.analyzing": "Analyzing…"
 }

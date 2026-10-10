@@ -193,6 +193,7 @@
   "transport.beatsPerBar": "拍子",
   "transport.record": "録音",
   "transport.grid": "グリッド",
+  "transport.timeInput": "再生位置を入力",
 
   "toast.restored": "前回の作業を復元しました",
   "toast.tempo": "テンポを {bpm} BPM にしました",
@@ -258,5 +259,10 @@
 
   "file.projectType": "WeVocal Studio プロジェクト",
   "file.audioType": "音声ファイル",
-  "file.openType": "音声とプロジェクトのファイル"
+  "file.openType": "音声とプロジェクトのファイル",
+  "tempo.tap": "タップで計測",
+  "tempo.tapHint": "拍に合わせてタップした間隔から BPM を算出します",
+  "tempo.candidates": "自動解析の候補",
+  "tempo.analyze": "再解析",
+  "tempo.analyzing": "解析中…"
 }
