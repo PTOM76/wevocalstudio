@@ -400,5 +400,13 @@
   "data.persistDenied": "Denied by the browser (more likely granted for frequently used or installed apps)",
   "data.delete": "Delete",
   "data.deleteAll": "Delete all",
-  "data.reset": "Reset"
+  "data.reset": "Reset",
+
+  "empty.formats": "WAV / AIFF / MP3 / MP4 etc. (drag & drop supported)",
+  "empty.choose": "Choose a file",
+  "empty.showMore": "Show more ({n})",
+  "empty.showLess": "Show less",
+  "empty.record": "Record",
+
+  "record.title": "Record"
 }

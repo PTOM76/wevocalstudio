@@ -1,11 +1,11 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Snackbar } from '@mui/material'
-import { ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
+import { EmptyState, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
-import { configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
+import { canRecord, configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
@@ -29,6 +29,7 @@ import { useActions } from './useActions'
 import { useProject, type DropAt } from './useProject'
 import { useProjectFile } from './useProjectFile'
 import { useTempoDetect } from './useTempoDetect'
+import { faFolderOpen, faMicrophone } from '@fortawesome/free-solid-svg-icons'
 import { useRecorder } from './useRecorder'
 import { useAutosave } from './useAutosave'
 import { usePlayerSync } from './usePlayerSync'
@@ -300,6 +301,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load([...(e.target.files ?? [])], importTarget.current).finally(() => (e.target.value = ''))} />
       {files.picker.input}
 
+      <Box sx={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <Timeline
         project={shown}
         tree={project}
@@ -368,6 +370,20 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         madeVersion={madeVersion}
         pendingLabel={t('status.pitchBlock')}
       />
+        {/* 波形ブロックが 1 つもないときは、開く、録音、最近使用したファイルを重ねて出す（PevenMUI の EmptyState。WeVocalSynth と同じ） */}
+        {project.blocks.length === 0 && !recording && (
+          <Box sx={{ position: 'absolute', left: HEADER, right: 0, top: '40%', bottom: 0, pointerEvents: 'none' }}>
+            <Box sx={{ height: '100%', '& button': { pointerEvents: 'auto' } }}>
+              <EmptyState
+                message={t('empty.formats')}
+                primary={{ label: t('empty.choose'), icon: faFolderOpen, onClick: files.picker.open }}
+                actions={canRecord() ? [{ label: t('empty.record'), icon: faMicrophone, onClick: toggleRecord }] : []}
+                recent={files.recent.supported ? { title: t('menu.recent'), names: files.recent.names, open: files.recent.open, more: (n) => t('empty.showMore', { n }), less: t('empty.showLess') } : undefined}
+              />
+            </Box>
+          </Box>
+        )}
+      </Box>
       {p.settings.showAnalysis && (
         <AnalysisPanel
           block={project.blocks.find((b) => b.id === selected[0]) ?? null}
