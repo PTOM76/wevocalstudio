@@ -216,7 +216,7 @@ export const projectEnd = (p: Project) => p.blocks.reduce((m, b) => Math.max(m, 
 
 /** 鳴らすトラックか（ソロがあればソロだけ、なければミュート以外） */
 export function audible(p: Project, track: Track) {
-  if (!p.tracks.some((t) => t.solo)) return !track.mute
+  if (!p.tracks.some((t) => t.solo)) return !track.mute && !ancestors(p, track).some((t) => t.mute)
   // ソロのとき: 自分か先祖がソロなら鳴る。子孫がソロなら、その音を通すために鳴らす
   return track.solo || ancestors(p, track).some((t) => t.solo) || descendants(p, track).some((t) => t.solo)
 }
