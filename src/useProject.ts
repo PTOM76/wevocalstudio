@@ -359,6 +359,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     canUndo: history.past.length > 0,
     canRedo: history.future.length > 0,
     undo,
+    // プロジェクト全体への変更（範囲の編集など。名前は差分から付く）
+    apply: change,
     redo,
     endMerge,
     replace,

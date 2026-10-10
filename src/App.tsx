@@ -265,6 +265,20 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         setRange(null)
         setCursor(0)
       }),
+    fit: (from, to) => {
+      // 両端に少し余白を残す
+      const len = Math.max(0.1, to - from)
+      const pps = Math.min(2000, Math.max(2, (timelineWidth * 0.9) / len))
+      setView({ pps, scroll: Math.max(0, from - (len * 0.05)) })
+    },
+    playAt: (at) => {
+      setCursor(at)
+      setPaused(null)
+      setPlayPos(at)
+      player.current.play(project, at)
+      setPlaying(true)
+    },
+    end,
     zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
     // 選んでいるものの中を開いたら、選んでいるもの全部を一括で
     openProperties: (id: string) => setEditing(selected.includes(id) ? selected : [id]),

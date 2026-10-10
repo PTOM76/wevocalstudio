@@ -28,6 +28,18 @@ export type Action =
   | 'splitRange'
   | 'splitSilence'
   | 'clearRange'
+  | 'trimRange'
+  | 'deleteRange'
+  | 'insertSilence'
+  | 'repeatRange'
+  | 'normalize'
+  | 'showAll'
+  | 'zoomRange'
+  | 'playRange'
+  | 'duplicateTrack'
+  | 'muteTrack'
+  | 'soloTrack'
+  | 'clearMarkers'
   | 'delete'
   | 'undo'
   | 'redo'
@@ -86,6 +98,22 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   splitRange: ['Shift+KeyS'],
   splitSilence: [],
   clearRange: ['Escape'],
+  // 範囲選択への編集（範囲だけ残す、消して詰める、無音を挿入、すぐ後ろに繰り返す）
+  trimRange: [],
+  deleteRange: ['Ctrl+Delete'],
+  insertSilence: [],
+  repeatRange: [],
+  // 選んだ波形ブロックのピークを -1 dB にそろえる（WeVocalSynth と同じ）
+  normalize: [],
+  // 全体を表示、範囲に合わせて拡大
+  showAll: ['Ctrl+Digit9'],
+  zoomRange: ['Ctrl+Digit8'],
+  playRange: [],
+  // 選んでいるトラック
+  duplicateTrack: [],
+  muteTrack: [],
+  soloTrack: [],
+  clearMarkers: [],
   delete: ['Delete'],
   undo: ['Ctrl+KeyZ'],
   redo: ['Ctrl+Shift+KeyZ', 'Ctrl+KeyY'],

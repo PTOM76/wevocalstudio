@@ -4,7 +4,8 @@ import type { MenuEntry, MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { actionOf, keyLabel, type Action } from './keymap'
-import type { Block, Track } from './project'
+import { newId, type Block, type Track } from './project'
+import { cropToRange, deleteRange, insertSilence, normalizeBlocks, repeatRange } from './rangeEdit'
 import type { useProject } from './useProject'
 
 type ProjectApi = ReturnType<typeof useProject>
@@ -36,6 +37,12 @@ export interface ActionContext {
   moveCursor: (t: number) => void
   /** 表示の拡大（factor > 1）と縮小 */
   zoom: (factor: number) => void
+  /** from〜to 秒が画面に収まるように表示する */
+  fit: (from: number, to: number) => void
+  /** その位置から鳴らす */
+  playAt: (t: number) => void
+  /** 波形ブロックがある最後の位置 */
+  end: number
   /** 線の 1 目盛り（秒。拍か秒） */
   gridStep: () => number
   newProject: () => void
@@ -84,6 +91,7 @@ export function useActions(c: ActionContext) {
   const chosen = doc.project.blocks.filter((b) => c.selected.includes(b.id))
   const ids = chosen.map((b) => b.id)
   const any = chosen.length > 0
+  const track = doc.project.tracks.find((tr) => tr.id === c.selectedTrack)
   // コピーした波形ブロック。元の音はプロジェクトにあるものを指す
   const clipboard = useRef<Block[]>([])
   // コピーしたトラック（波形ブロックを選ばずにトラックを選んで Ctrl+C）
@@ -156,7 +164,20 @@ export function useActions(c: ActionContext) {
         doc.split(c.range.end)
       },
     },
-    clearRange: { enabled: !!c.range, run: () => c.setRange(null) },
+    // 選択の解除（範囲と波形ブロック）
+    clearRange: { enabled: !!c.range || any, run: () => (c.setRange(null), c.select([])) },
+    trimRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => cropToRange(p, c.range!)) },
+    deleteRange: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => deleteRange(p, c.range!)), c.setRange(null)) },
+    insertSilence: { enabled: !!c.range, run: () => c.range && doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start)) },
+    repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId)) },
+    normalize: { enabled: any, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
+    showAll: { enabled: c.end > 0, run: () => c.fit(0, c.end) },
+    zoomRange: { enabled: !!c.range || any, run: () => (c.range ? c.fit(c.range.start, c.range.end) : c.fit(Math.min(...chosen.map((b) => b.start)), Math.max(...chosen.map((b) => b.start + b.length)))) },
+    playRange: { enabled: !!c.range, run: () => c.range && c.playAt(c.range.start) },
+    duplicateTrack: { enabled: !!c.selectedTrack, run: () => c.selectedTrack && doc.duplicateTrack(c.selectedTrack) },
+    muteTrack: { enabled: !!track, run: () => track && doc.updateTrack(track.id, { mute: !track.mute }) },
+    soloTrack: { enabled: !!track, run: () => track && doc.updateTrack(track.id, { solo: !track.solo }) },
+    clearMarkers: { enabled: doc.project.markers.length > 0, run: () => doc.apply((p) => ({ ...p, markers: [] })) },
     delete: {
       enabled: any,
       run: () => {
@@ -244,18 +265,19 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.edit'),
       accessKey: 'E',
-      entries: [item('undo'), item('redo'), { label: t('menu.history'), onClick: c.openHistory }, divider, item('cut'), item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('splitSilence'), item('delete'), divider, item('clearRange')],
+      entries: [item('undo'), item('redo'), { label: t('menu.history'), onClick: c.openHistory }, divider, item('cut'), item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('splitSilence'), item('delete'), divider, item('trimRange'), item('deleteRange'), item('insertSilence'), item('repeatRange'), divider, item('clearRange'), divider, { label: t('menu.marker'), onClick: () => {}, submenu: [item('addMarker'), item('prevMarker'), item('nextMarker'), item('clearMarkers')] }],
     },
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset')],
+      entries: [item('properties'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize')],
     },
     {
       label: t('menu.track'),
       accessKey: 'T',
       entries: [
         { label: t('menu.addTrack'), onClick: doc.addTrack },
+        item('duplicateTrack'),
         { label: t('track.addSubtrack'), disabled: !c.selectedTrack, onClick: () => c.selectedTrack && c.selectTrack(doc.addSubtrack(c.selectedTrack)) },
         {
           label: t('menu.removeTrack'),
@@ -266,6 +288,9 @@ export function useActions(c: ActionContext) {
             c.select([])
           },
         },
+        divider,
+        { ...item('muteTrack'), checked: !!track?.mute },
+        { ...item('soloTrack'), checked: !!track?.solo },
       ],
     },
     {
@@ -274,6 +299,7 @@ export function useActions(c: ActionContext) {
       entries: [
         item('playStop', c.playing ? t('menu.stop') : t('menu.play')),
         item('pause'),
+        item('playRange'),
         { ...item('record'), checked: c.recording },
         { ...item('repeat'), checked: c.repeat },
         divider,
@@ -289,7 +315,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.view'),
       accessKey: 'V',
-      entries: [item('zoomIn'), item('zoomOut'), divider, { ...item('snap'), checked: c.snap }, { ...item('follow'), checked: c.follow }, { ...item('envelope'), checked: c.envelope }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.analysis'), checked: c.showAnalysis, onClick: c.toggleAnalysis }, { label: t('menu.meters'), checked: c.showMeters, onClick: c.toggleMeters }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
+      entries: [item('zoomIn'), item('zoomOut'), item('showAll'), item('zoomRange'), divider, { ...item('snap'), checked: c.snap }, { ...item('follow'), checked: c.follow }, { ...item('envelope'), checked: c.envelope }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.analysis'), checked: c.showAnalysis, onClick: c.toggleAnalysis }, { label: t('menu.meters'), checked: c.showMeters, onClick: c.toggleMeters }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
     },
     {
       label: t('menu.help'),
