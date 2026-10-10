@@ -5,7 +5,9 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const MODULES = ['pevenmui', 'wevocal-lib', 'analyzer', 'extractor']
-const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+// フックの中では git が GIT_INDEX_FILE などを入れるので、submodule の git に渡さない
+const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')))
+const git = (cwd, ...args) => execFileSync('git', args, { cwd, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 
 if (process.argv.includes('--check')) {
   // 指しているコミットが、それぞれの GitHub（origin）にあるか

@@ -235,10 +235,28 @@
   "export.bitrate": "ビットレート",
   "export.run": "書き出す",
   "export.rangeOnly": "選択範囲だけを書き出す",
+  "export.unsupported": "このブラウザは{formats}の書き出しに対応していません",
+  "export.sampleFormat": "サンプル形式",
+  "export.sampleRate": "サンプルレート",
+  "export.originalRate": "元のまま（{rate} Hz）",
+  "export.channels": "チャンネル",
+  "export.keepChannels": "元のまま（{n} ch）",
+  "export.target": "書き出す対象",
+  "export.targetMix": "全トラックのミックス",
+  "export.targetActive": "選択中のトラックのみ",
+  "export.range": "範囲",
+  "export.folderLabel": "保存先フォルダー",
+  "export.folderUnset": "未選択（書き出すときに選択）",
+  "export.folderBrowse": "参照…",
+  "export.fileName": "ファイル名",
+  "export.fade": "両端のフェード",
+  "export.fadeNone": "なし",
 
   "common.cancel": "キャンセル",
   "common.ok": "OK",
   "common.close": "閉じる",
+  "common.whole": "全体",
+  "common.selection": "選択範囲",
 
   "transport.toStart": "先頭へ",
   "transport.stop": "停止",
@@ -339,5 +357,7 @@
   "shortcuts.wheel": "ホイール",
   "shortcuts.scroll": "縦にスクロール（Shift で横、Ctrl で拡大縮小）",
   "shortcuts.shiftDrag": "Shift+ドラッグ",
-  "shortcuts.noSnap": "吸い付けずに動かす"
+  "shortcuts.noSnap": "吸い付けずに動かす",
+
+  "volume.normalize": "ノーマライズ"
 }

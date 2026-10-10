@@ -32,3 +32,10 @@ export const view = defineItems(null, {
   // 音量のエンベロープを出して編集する
   envelope: value(false, { label: 'menu.envelope' }),
 })
+
+/** 画面の操作で覚えておく値（設定画面には出さない。WeVocalSynth の stored と同じ） */
+export const stored = defineItems(null, {
+  // 書き出しの仕上げ（ノーマライズ、両端のフェード）
+  exportNormalize: value(false),
+  exportFadeMs: value(0),
+})

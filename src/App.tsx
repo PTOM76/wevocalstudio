@@ -19,7 +19,7 @@ import type { TimelineView } from './drawTimeline'
 import { analyzeTempo, onPitchProgress, pitchProgress, preparePitch } from './dsp/pitch'
 import { Player } from './engine'
 import { buildOverview } from './overview'
-import ExportDialog from './ExportDialog'
+import { ExportDialog } from 'wevocal-lib/react'
 import { useT } from './i18n'
 import { setKeyOverrides } from './keymap'
 import type { Settings } from './settings/settings'
@@ -228,6 +228,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     confirmDiscard: () => confirm({ message: t('confirm.discard'), okLabel: t('confirm.discardOk'), danger: true }),
     fail,
     notify: setNotice,
+    onExported: () => setDialog(null),
   })
 
 
@@ -658,7 +659,21 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           {notice}
         </Alert>
       </Snackbar>
-      <ExportDialog hasRange={!!range} open={dialog === 'export'} onClose={() => setDialog(null)} onExport={files.runExport} />
+      <ExportDialog
+        t={t}
+        open={dialog === 'export'}
+        onClose={() => setDialog(null)}
+        baseName={fileName}
+        sourceRate={48000}
+        sourceChannels={2}
+        hasSelection={!!range}
+        trackCount={1}
+        busy={false}
+        progress={0}
+        onExport={files.runExport}
+        finish={{ normalize: p.settings.exportNormalize, fadeMs: p.settings.exportFadeMs }}
+        onFinishChange={(f) => p.onSettingsChange({ exportNormalize: f.normalize, exportFadeMs: f.fadeMs })}
+      />
       <SettingsDialog open={dialog === 'settings'} onClose={() => setDialog(null)} settings={p.settings} onChange={p.onSettingsChange} />
       <LicensesDialog
         open={dialog === 'licenses'}

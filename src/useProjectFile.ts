@@ -2,9 +2,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { startJob, useFilesPicker, useLeaveGuard, useRecentFiles } from 'pevenmui'
 import { configureFileAccess, fileRefOf, initFileAccess, overwriteTarget, pickSaveTarget, rememberLaunched, type SavedFile } from 'pevenmui/web'
-import { AUDIO_ACCEPT, EXPORT_EXT, EXPORT_MIME, exportAudio, type Range } from 'wevocal-lib'
+import { AUDIO_ACCEPT, EXPORT_EXT, EXPORT_MIME, exportAudio, finishClip, toFrames, type Range } from 'wevocal-lib'
 import { renderMix } from './engine'
-import type { ExportChoice } from './ExportDialog'
+import type { ExportSettings } from 'wevocal-lib/react'
 import type { useT } from './i18n'
 import type { Project } from './project'
 import { PROJECT_EXT, readProject, writeProject } from './projectFile'
@@ -29,6 +29,8 @@ export function useProjectFile(o: {
   /** 保存していない変更を捨ててよいか確かめる */
   confirmDiscard: () => Promise<boolean>
   fail: (e: unknown) => void
+  /** 書き出し終わったとき（ダイアログを閉じる） */
+  onExported: () => void
   notify: (message: string) => void
 }) {
   const { t, settings } = o
@@ -81,18 +83,25 @@ export function useProjectFile(o: {
     }
   }
 
-  const runExport = async (c: ExportChoice) => {
+  const runExport = async (c: ExportSettings, win?: Window | null) => {
     // 保存先は作る前に選ぶ（時間がかかると、選ぶ画面を出せなくなる）
     const ext = EXPORT_EXT[c.format]
-    const target = await pickSaveTarget(`${o.fileName}${ext}`, 'audio', { description: t('file.audioType'), mime: EXPORT_MIME[c.format], ext })
+    const target = await pickSaveTarget(`${c.fileName.trim()}${ext}`, 'audio', { description: t('file.audioType'), mime: EXPORT_MIME[c.format], ext }, win ?? window)
     if (!target) return
     // 進み具合はステータスバーのゲージに出す（WeVocalSynth と同じ startJob）
     const job = startJob('export', t('job.export'))
     job.update(-1)
     try {
-      const range = c.rangeOnly ? o.range : null
-      const mix = await renderMix(o.project, range ? range.end : 0)
-      await target.write(await exportAudio(mix, { ...c, sampleRate: mix.sampleRate, mono: false, range }))
+      const range = c.selectionOnly ? o.range : null
+      let mix = await renderMix(o.project, range ? range.end : 0)
+      // 範囲を切り出してから仕上げ（ノーマライズ、両端のフェード）を掛ける（WeVocalSynth と同じ）
+      if (range) {
+        const [s, e] = toFrames(mix, range)
+        mix = { sampleRate: mix.sampleRate, channels: mix.channels.map((ch) => ch.slice(s, e)) }
+      }
+      mix = finishClip(mix, { normalize: settings.exportNormalize, fadeMs: settings.exportFadeMs })
+      await target.write(await exportAudio(mix, { ...c, sampleRate: c.sampleRate || mix.sampleRate, range: null }))
+      o.onExported()
     } catch (e) {
       o.fail(e)
     } finally {
@@ -130,6 +139,6 @@ export function useProjectFile(o: {
     recent,
     save: () => void save(),
     saveAs: () => void save(true),
-    runExport: (c: ExportChoice) => void runExport(c),
+    runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
   }
 }

@@ -235,10 +235,28 @@
   "export.bitrate": "Bitrate",
   "export.run": "Export",
   "export.rangeOnly": "Export the time selection only",
+  "export.unsupported": "This browser cannot export {formats}",
+  "export.sampleFormat": "Sample format",
+  "export.sampleRate": "Sample rate",
+  "export.originalRate": "Original ({rate} Hz)",
+  "export.channels": "Channels",
+  "export.keepChannels": "Original ({n} ch)",
+  "export.target": "Export",
+  "export.targetMix": "Mix of all tracks",
+  "export.targetActive": "Selected track only",
+  "export.range": "Range",
+  "export.folderLabel": "Folder",
+  "export.folderUnset": "Not set (choose when exporting)",
+  "export.folderBrowse": "Browse…",
+  "export.fileName": "File name",
+  "export.fade": "Edge fade",
+  "export.fadeNone": "None",
 
   "common.cancel": "Cancel",
   "common.ok": "OK",
   "common.close": "Close",
+  "common.whole": "Whole",
+  "common.selection": "Selection",
 
   "transport.toStart": "Go to start",
   "transport.stop": "Stop",
@@ -339,5 +357,7 @@
   "shortcuts.wheel": "Wheel",
   "shortcuts.scroll": "Scroll vertically (Shift: horizontal, Ctrl: zoom)",
   "shortcuts.shiftDrag": "Shift+drag",
-  "shortcuts.noSnap": "Move without snapping"
+  "shortcuts.noSnap": "Move without snapping",
+
+  "volume.normalize": "Normalize"
 }
