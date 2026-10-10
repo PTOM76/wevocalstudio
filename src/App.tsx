@@ -1,8 +1,9 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
-import { AboutDialog, AppHeader, ContextMenu, FULL_HEIGHT, LicensesDialog, startJob, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
+import { AboutDialog, ContextMenu, FULL_HEIGHT, LicensesDialog, WindowModeContext, autoWindowMode, startJob, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
 import StatusBar from './StatusBar'
+import AppHeader, { AppIcon } from './AppHeader'
 import { UpdatePrompt } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, canRecord, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
@@ -35,9 +36,6 @@ import { useProjectFile } from './useProjectFile'
 
 /** 今動いている版 */
 const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`
-
-/** アプリのアイコン（public/icon.svg）。サブパスで配信されても読めるよう BASE_URL から組み立てる */
-const AppIcon = ({ size }: { size: number }) => <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={size} height={size} style={{ display: 'block' }} />
 
 const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
@@ -408,6 +406,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   }, [project])
 
   return (
+    // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）
+    <WindowModeContext.Provider value={autoWindowMode()}>
     <Box
       sx={{ height: FULL_HEIGHT, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: 'background.default' }}
       onDragOver={(e) => e.preventDefault()}
@@ -416,7 +416,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         files.openFiles([...e.dataTransfer.files])
       }}
     >
-      <AppHeader icon={<AppIcon size={16} />} menus={menus} />
+      <AppHeader menus={menus} canUndo={doc.canUndo} canRedo={doc.canRedo} onUndo={doc.undo} onRedo={doc.redo} projectName={fileName} dirty={files.dirty} />
       <Toolbar
         follow={p.settings.follow}
         snap={p.settings.snap}
@@ -654,5 +654,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         ]}
       />
     </Box>
+    </WindowModeContext.Provider>
   )
 }
