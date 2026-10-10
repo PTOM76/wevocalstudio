@@ -5,7 +5,7 @@ import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
-import { audible, type Block, type Project } from './project'
+import { audible, trackHeight, type Block, type Project } from './project'
 
 export const RULER = 24
 /** マスタートラックの行の高さ（目盛りのすぐ下。一番上） */
@@ -13,6 +13,8 @@ export const MASTER = 96
 /** トラックの行が始まる位置 */
 export const TOP = RULER + MASTER
 export const LANE = 96
+export const trackTop = (p: Project, index: number) => TOP + p.tracks.slice(0, index).reduce((sum, t) => sum + trackHeight(t), 0)
+export const totalTrackHeight = (p: Project) => p.tracks.reduce((sum, t) => sum + trackHeight(t), 0)
 
 export interface TimelineView {
   /** 左端の時刻（秒） */
@@ -108,14 +110,15 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   g.clip()
   const slots = layoutRows(p.blocks)
   p.tracks.forEach((track, i) => {
-    const laneY = TOP + i * LANE - o.vscroll
-    if (laneY > h || laneY + LANE < TOP) return
+    const laneH = trackHeight(track)
+    const laneY = trackTop(p, i) - o.vscroll
+    if (laneY > h || laneY + laneH < TOP) return
     g.fillStyle = c.lane
-    g.fillRect(0, laneY + LANE - 1, w, 1)
+    g.fillRect(0, laneY + laneH - 1, w, 1)
     for (const b of p.blocks) {
       if (b.track !== track.id) continue
       const slot = slots.get(b.id) ?? { row: 0, rows: 1 }
-      const H = LANE / slot.rows
+      const H = laneH / slot.rows
       const y = laneY + slot.row * H
       const x = tx(b.start)
       const bw = b.length * view.pps

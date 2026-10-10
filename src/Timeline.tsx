@@ -5,11 +5,11 @@ import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
 import { useDoubleTap, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
 import { layoutRows } from './overlap'
-import { depthOf } from './project'
+import { depthOf, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN } from './project'
 import { ENVELOPES, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
-import { LANE, MASTER, RULER, TOP, drawCursors, drawTimeline, type TimelineView } from './drawTimeline'
+import { MASTER, RULER, TOP, drawCursors, drawTimeline, totalTrackHeight, trackTop, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
@@ -64,6 +64,8 @@ export default function Timeline(p: {
   onDuplicateTrack: (id: string) => void
   /** サブトラックの操作 */
   onTrackOp: (op: 'addSubtrack' | 'indent' | 'outdent', id: string) => void
+  /** トラックをスロット to（0〜N）へ並び替える */
+  onMoveTrack: (id: string, to: number) => void
   /** 隠したトラックも含む、全部のトラック（階層を調べる。project は見えているトラックだけ） */
   tree: Project
   onRemoveTrack: (id: string) => void
@@ -111,12 +113,38 @@ export default function Timeline(p: {
   // 縦のスクロール。canvas は見える高さに固定し、トラックの行だけをずらす（目盛りとマスターは上に固定）
   const [vh, setVh] = useState(0)
   const [vscroll, setVscroll] = useState(0)
-  const content = TOP + Math.max(1, p.project.tracks.length) * LANE
+  const content = TOP + Math.max(TRACK_HEIGHT_DEFAULT, totalTrackHeight(p.project))
   const maxV = Math.max(0, content - vh)
   const vs = Math.min(vscroll, maxV)
-  const height = Math.max(TOP + LANE, vh)
+  const height = Math.max(TOP + TRACK_HEIGHT_DEFAULT, vh)
   /** 画面の y を、トラックの行の位置（スクロールを足したもの）にする。目盛りとマスターの所はそのまま */
   const cy = (y: number) => (y < TOP ? y : y + vs)
+  const trackAt = (y: number) => p.project.tracks.find((_, i) => y >= trackTop(p.project, i) && y < trackTop(p.project, i) + trackHeight(p.project.tracks[i]))
+  const trackIndexAt = (y: number) => p.project.tracks.findIndex((_, i) => y >= trackTop(p.project, i) && y < trackTop(p.project, i) + trackHeight(p.project.tracks[i]))
+  const rowDelta = (from: number, to: number) => {
+    const a = trackIndexAt(from)
+    const b = trackIndexAt(Math.max(TOP, to))
+    return a < 0 || b < 0 ? 0 : b - a
+  }
+  const slotAt = (y: number) => {
+    const center = Math.max(TOP, y)
+    let best = p.project.tracks.length
+    for (let i = 0; i < p.project.tracks.length; i++) {
+      const mid = trackTop(p.project, i) + trackHeight(p.project.tracks[i]) / 2
+      if (center < mid) return i
+      best = i + 1
+    }
+    return best
+  }
+
+  // トラックのドラッグ並び替え
+  const headerContainerRef = useRef<HTMLDivElement | null>(null)
+  const trackDragRef = useRef<{ id: string } | null>(null)
+  const trackResizeRef = useRef<{ id: string; y: number; height: number; merge: string } | null>(null)
+  const [draggingTrackId, setDraggingTrackId] = useState<string | null>(null)
+  const [dropSlot, setDropSlot] = useState<number | null>(null)
+  const vsRef = useRef(0)
+  vsRef.current = vs
 
   // 幅を App に知らせる
   const { onWidth } = p
@@ -214,8 +242,8 @@ export default function Timeline(p: {
   const blockGeom = (b: Block) => {
     const row = p.project.tracks.findIndex((t) => t.id === b.track)
     const slot = layoutRows(p.project.blocks.filter((x) => x.track === b.track)).get(b.id) ?? { row: 0, rows: 1 }
-    const H = LANE / slot.rows
-    return { x: (b.start - view.scroll) * view.pps, top: TOP + row * LANE + slot.row * H + 2 - vs, h: H - 5 }
+    const H = trackHeight(p.project.tracks[row]) / slot.rows
+    return { x: (b.start - view.scroll) * view.pps, top: trackTop(p.project, row) + slot.row * H + 2 - vs, h: H - 5 }
   }
   // 目盛りのドラッグで端に来たら表示を流す（WeVocalSynth と同じ wevocal-lib の部品）。流せる先は曲の終わりの少し先まで
   const visible = width / view.pps
@@ -272,7 +300,7 @@ export default function Timeline(p: {
     const y = cy(oy)
     const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
     if (!hit) {
-      const track = y > TOP ? (p.project.tracks[Math.floor((y - TOP) / LANE)]?.id ?? null) : null
+      const track = y > TOP ? (trackAt(y)?.id ?? null) : null
       if (track) p.onSelectTrack(track)
       return p.onEmptyMenu(y < RULER ? 'ruler' : 'lane', gridAt(x, shift), track, cx, cyClient)
     }
@@ -338,7 +366,7 @@ export default function Timeline(p: {
     }
     // タッチで空いている所: なぞるとスクロール（長押しはメニュー）
     if (!hit && e.pointerType === 'touch') {
-      const track = p.project.tracks[Math.floor((y - TOP) / LANE)]
+      const track = trackAt(y)
       if (track) p.onSelectTrack(track.id)
       e.currentTarget.setPointerCapture(e.pointerId)
       pan.current = { x0: e.clientX, y0: e.clientY, scroll0: view.scroll, v0: vscroll }
@@ -347,7 +375,7 @@ export default function Timeline(p: {
     if (!hit) {
       // 空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択
       if (!e.ctrlKey && !e.metaKey) p.onSelect([])
-      const track = p.project.tracks[Math.floor((y - TOP) / LANE)]
+      const track = trackAt(y)
       if (track) p.onSelectTrack(track.id)
       p.onSeek(gridAt(x, e.shiftKey))
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -438,8 +466,8 @@ export default function Timeline(p: {
       // 枠にかかる波形ブロックを選ぶ
       const ta = toTime(Math.min(mq.x, x))
       const tb = toTime(Math.max(mq.x, x))
-      const ra = Math.floor((Math.min(mq.y, y) - TOP) / LANE)
-      const rb = Math.floor((Math.max(mq.y, y) - TOP) / LANE)
+      const ra = slotAt(Math.min(mq.y, y))
+      const rb = slotAt(Math.max(mq.y, y))
       p.onSelect(
         p.project.blocks
           .filter((b) => {
@@ -469,6 +497,10 @@ export default function Timeline(p: {
       setCursor(hit ? CURSOR[hit.kind] : 'default')
       return
     }
+    edge.update(e.clientX)
+    const oy = e.nativeEvent.offsetY
+    if (oy > height - 24) setVscroll((v) => Math.min(maxRef.current, v + 8))
+    else if (oy > TOP && oy < TOP + 24) setVscroll((v) => Math.max(0, v - 8))
     // Ctrl で始めたら、動かし始めたときに写しをその場に残す（動かすのは元のもの）
     if (d.copy && !d.copy.done) {
       if (Math.hypot(x - d.x, y - d.y) < 4) return
@@ -484,7 +516,7 @@ export default function Timeline(p: {
       return p.onBlocksChange(Object.fromEntries(all.map((b) => [b.id, slipPatch(p.project, b, raw)])), d.merge)
     }
     let dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), snapping) : raw
-    const di = Math.round((y - d.y) / LANE)
+    const di = rowDelta(d.y, y)
     // Alt を押しながら端をドラッグすると速度ごと伸び縮みする
     if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di, e.altKey), d.merge)
     // まとめて動かす。一番前のものが 0 より前に出ない所、トラックの外に出ない所で止める
@@ -528,8 +560,8 @@ export default function Timeline(p: {
   const onDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    const track = p.project.tracks[Math.floor((cy(e.nativeEvent.offsetY) - TOP) / LANE)]
-    p.onDropFiles([...e.dataTransfer.files], track && { track: track.id, start: Math.max(0, toTime(e.nativeEvent.offsetX)) })
+    const track = trackAt(cy(e.nativeEvent.offsetY))
+    p.onDropFiles(Array.from(e.dataTransfer.files), track && { track: track.id, start: Math.max(0, toTime(e.nativeEvent.offsetX)) })
   }
 
   return (
@@ -539,14 +571,59 @@ export default function Timeline(p: {
           <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0 }} />
           <MasterHeader master={p.project.master} height={MASTER} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
           {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
-          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }} onWheel={(e) => setVscroll((v) => Math.max(0, Math.min(maxV, v + e.deltaY)))}>
-            <Box sx={{ transform: `translateY(${-vs}px)` }}>
-              {p.project.tracks.map((track) => (
+          <Box
+            ref={headerContainerRef as React.RefObject<HTMLDivElement>}
+            sx={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
+            onWheel={(e) => setVscroll((v) => Math.max(0, Math.min(maxV, v + e.deltaY)))}
+            onPointerMove={(e) => {
+              const resizing = trackResizeRef.current
+              if (resizing) {
+                p.onTrackChange(resizing.id, { height: Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, resizing.height + e.clientY - resizing.y)) }, resizing.merge)
+                return
+              }
+              if (!trackDragRef.current) return
+              const rect = e.currentTarget.getBoundingClientRect()
+              const y = e.clientY - rect.top + vsRef.current
+              setDropSlot(slotAt(y))
+            }}
+            onPointerUp={() => {
+              if (trackDragRef.current && dropSlot !== null) p.onMoveTrack(trackDragRef.current.id, dropSlot)
+              if (trackResizeRef.current) p.onEndMerge()
+              trackResizeRef.current = null
+              trackDragRef.current = null
+              setDraggingTrackId(null)
+              setDropSlot(null)
+            }}
+            onPointerCancel={() => { trackResizeRef.current = null; trackDragRef.current = null; setDraggingTrackId(null); setDropSlot(null) }}
+          >
+            <Box sx={{ transform: `translateY(${-vs}px)`, position: 'relative' }}>
+              {/* ドロップ位置の線 */}
+              {dropSlot !== null && (
+                <Box sx={{ position: 'absolute', left: 0, right: 0, top: (dropSlot >= p.project.tracks.length ? totalTrackHeight(p.project) : trackTop(p.project, dropSlot) - TOP) - 1, height: 2, bgcolor: 'primary.main', zIndex: 10, pointerEvents: 'none' }} />
+              )}
+              {p.project.tracks.map((track) => {
+                const i = p.project.tracks.findIndex((t) => t.id === track.id)
+                return (
                 <TrackHeader
                   key={track.id}
                   track={track}
-                  height={LANE}
+                  height={trackHeight(track)}
                   selected={p.selectedTracks.includes(track.id)}
+                  dragging={draggingTrackId === track.id}
+                  onReorderStart={(e) => {
+                    const el = headerContainerRef.current
+                    if (!el) return
+                    el.setPointerCapture(e.nativeEvent.pointerId)
+                    trackDragRef.current = { id: track.id }
+                    setDraggingTrackId(track.id)
+                    setDropSlot(i)
+                  }}
+                  onResizeStart={(e) => {
+                    const el = headerContainerRef.current
+                    if (!el) return
+                    el.setPointerCapture(e.nativeEvent.pointerId)
+                    trackResizeRef.current = { id: track.id, y: e.clientY, height: trackHeight(track), merge: `track:${track.id}:height` }
+                  }}
                   onSelect={(e) => {
                     // トラックの欄を押したらトラックだけを選ぶ（Ctrl+C でトラックをコピーできるように）。
                     // Ctrl で足し引き、Shift で前に選んだトラックからの範囲。選んでいるものを押したら選択はそのまま（まとめて音量を動かせるように）
@@ -568,10 +645,12 @@ export default function Timeline(p: {
                   onAddSubtrack={() => p.onTrackOp('addSubtrack', track.id)}
                   onIndent={() => p.onTrackOp('indent', track.id)}
                   onOutdent={() => p.onTrackOp('outdent', track.id)}
+                  onMoveUp={() => i > 0 && p.onMoveTrack(track.id, i - 1)}
+                  onMoveDown={() => i < p.project.tracks.length - 1 && p.onMoveTrack(track.id, i + 2)}
                   onDuplicate={() => p.onDuplicateTrack(track.id)}
                   onRemove={() => p.onRemoveTrack(track.id)}
                 />
-              ))}
+              )})
             </Box>
           </Box>
         </Box>

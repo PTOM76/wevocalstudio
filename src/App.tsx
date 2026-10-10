@@ -92,6 +92,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const audioInput = useRef<HTMLInputElement>(null)
   // 時間軸に出すのは見えているトラックだけ（たたんだ親の子孫は隠す）
   const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project])
+  const moveVisibleTrack = (id: string, visibleTo: number) => {
+    const visible = shown.tracks
+    const before = visible[visibleTo]
+    const fullTo = before ? project.tracks.findIndex((tr) => tr.id === before.id) : project.tracks.length
+    doc.reorderTrack(id, fullTo)
+  }
   const sourceOf = (id: string | undefined) => project.sources.find((s) => s.id === id)
   const { pal, dark } = usePalette()
   // ミニマップ（全体を縮めた波形。WeVocalSynth と同じ部品）
@@ -109,8 +115,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     const from = range && (at < range.start || at >= range.end) ? range.start : at
     setPaused(null)
     setPlayPos(from)
-    player.current.play(project, from)
-    setPlaying(true)
+    void player.current.play(project, from).then(() => setPlaying(true)).catch(fail)
   }
   // テンポの解析（候補、BPM の設定）
   const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice })
@@ -143,7 +148,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const seek = (time: number) => {
     moveCursor(time)
     if (playing) {
-      player.current.play(project, time)
+      void player.current.play(project, time).catch(fail)
       setPlayPos(time)
     } else setPlayPos(null)
   }
@@ -217,8 +222,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       setCursor(at)
       setPaused(null)
       setPlayPos(at)
-      player.current.play(project, at)
-      setPlaying(true)
+      void player.current.play(project, at).then(() => setPlaying(true)).catch(fail)
     },
     end,
     newWindow: () =>
@@ -288,7 +292,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault()
-        files.openFiles([...e.dataTransfer.files])
+        files.openFiles(Array.from(e.dataTransfer.files))
       }}
     >
       <AppHeader menus={menus} canUndo={doc.canUndo} canRedo={doc.canRedo} onUndo={doc.undo} onRedo={doc.redo} projectName={fileName} dirty={files.dirty} />
@@ -308,7 +312,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onCopy={commands.copy.run}
         onPaste={commands.paste.run}
       />
-      <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load([...(e.target.files ?? [])], importTarget.current).finally(() => (e.target.value = ''))} />
+      <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load(Array.from(e.target.files ?? []), importTarget.current).finally(() => (e.target.value = ''))} />
       {files.picker.input}
 
       <Box sx={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
@@ -320,6 +324,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           else if (op === 'indent') doc.indentTrack(id)
           else doc.outdentTrack(id)
         }}
+        onMoveTrack={moveVisibleTrack}
         cursor={cursor}
         livePos={livePos}
         follow={p.settings.follow}

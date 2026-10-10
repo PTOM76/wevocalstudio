@@ -246,6 +246,8 @@
   "track.addSubtrack": "Add Subtrack",
   "track.indent": "Move into Track Above",
   "track.outdent": "Move Out of Parent",
+  "track.moveUp": "Move Up",
+  "track.moveDown": "Move Down",
   "track.collapse": "Collapse Subtracks",
   "track.expand": "Expand Subtracks",
 

@@ -35,7 +35,7 @@ export function usePlayerSync(o: {
       // 範囲の終わりで止める。リピートなら範囲の頭に戻る
       if (range && pos >= range.end) {
         if (repeat) {
-          player.current.play(project, range.start)
+          void player.current.play(project, range.start).catch(fail)
           setPlayPos(range.start)
         } else {
           player.current.stop()

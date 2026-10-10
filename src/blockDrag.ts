@@ -1,8 +1,8 @@
 // 波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
-import { LANE, TOP } from './drawTimeline'
+import { TOP, trackTop } from './drawTimeline'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { layoutRows } from './overlap'
-import { ENV_MAX, ENV_MIN, RATE_MAX, RATE_MIN, type Block, type Marker, type Project, type Tempo } from './project'
+import { ENV_MAX, ENV_MIN, RATE_MAX, RATE_MIN, trackHeight, type Block, type Marker, type Project, type Tempo } from './project'
 
 /** つまむ所。move は本体、left / right は端、fadeIn / fadeOut は上の角 */
 export type DragKind = 'move' | 'left' | 'right' | 'fadeIn' | 'fadeOut'
@@ -31,23 +31,24 @@ export interface Drag {
 
 /** (x, y) にある波形ブロックと、つまむ所。後に置いたものが上に描かれるので、後ろから探す */
 export function hitBlock(p: Project, x: number, y: number, toTime: (x: number) => number, pps: number): { block: Block; kind: DragKind } | null {
-  const i = Math.floor((y - TOP) / LANE)
+  const i = p.tracks.findIndex((_, k) => y >= trackTop(p, k) && y < trackTop(p, k) + trackHeight(p.tracks[k]))
   const track = p.tracks[i]
   if (!track) return null
+  const laneH = trackHeight(track)
   const t = toTime(x)
   // 重なって段に分けたものは、押した段のものだけを見る
   const slots = layoutRows(p.blocks.filter((b) => b.track === track.id))
-  const inLane = y - (TOP + i * LANE)
+  const inLane = y - trackTop(p, i)
   const inRow = (b: Block) => {
     const s = slots.get(b.id) ?? { row: 0, rows: 1 }
-    return Math.floor((inLane / LANE) * s.rows) === s.row
+    return Math.floor((inLane / laneH) * s.rows) === s.row
   }
   const block = p.blocks.findLast((b) => b.track === track.id && inRow(b) && t >= b.start - EDGE / pps && t < b.start + b.length + EDGE / pps)
   if (!block) return null
   const slot = slots.get(block.id) ?? { row: 0, rows: 1 }
   const left = (t - block.start) * pps
   const right = (block.start + block.length - t) * pps
-  const top = inLane - (slot.row * LANE) / slot.rows < CORNER
+  const top = inLane - (slot.row * laneH) / slot.rows < CORNER
   // 上の角はフェード（フェードの終わりの位置もつまめる）
   if (top && left < EDGE + block.fadeIn * pps && left < (block.length * pps) / 2) return { block, kind: 'fadeIn' }
   if (top && right < EDGE + block.fadeOut * pps) return { block, kind: 'fadeOut' }

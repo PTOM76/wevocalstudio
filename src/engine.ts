@@ -263,12 +263,12 @@ export class Player {
   playing = false
 
   /** from 秒から鳴らす（鳴っていれば、古い音を消して新しく始める） */
-  play(p: Project, from: number) {
+  async play(p: Project, from: number) {
     const again = this.playing
     this.stop()
     this.ctx ??= new AudioContext()
     // iPhone、iPad はマナーモードでも鳴るように、再生の音声セッションにしてから起こす（wevocal-lib。WeVocalSynth と同じ）
-    void startContext(this.ctx, 'player')
+    await startContext(this.ctx, 'player')
     this.from = from
     // 鳴らし直すときは待たずに続ける（前の音は stop で消えていく）
     this.startedAt = this.ctx.currentTime + (again ? 0.01 : 0.05)

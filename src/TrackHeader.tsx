@@ -79,6 +79,14 @@ export default function TrackHeader(p: {
   onAddSubtrack: () => void
   onIndent: () => void
   onOutdent: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  /** ドラッグで並び替えを始める */
+  onReorderStart: (e: React.PointerEvent) => void
+  /** 下端ドラッグで高さ変更を始める */
+  onResizeStart: (e: React.PointerEvent) => void
+  /** ドラッグ中（半透明で表示） */
+  dragging?: boolean
 }) {
   const t = useT()
   const { track } = p
@@ -106,7 +114,9 @@ export default function TrackHeader(p: {
         setMenu({ x: e.clientX, y: e.clientY })
       }}
       sx={{
+        position: 'relative',
         height: p.height,
+        opacity: p.dragging ? 0.4 : 1,
         boxSizing: 'border-box',
         pr: 1,
         // サブトラックは深さだけ字下げする
@@ -123,6 +133,16 @@ export default function TrackHeader(p: {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        {/* ドラッグハンドル（並び替え） */}
+        <Box
+          onPointerDown={(e) => {
+            e.stopPropagation()
+            p.onReorderStart(e)
+          }}
+          sx={{ cursor: 'grab', touchAction: 'none', color: 'text.disabled', fontSize: 11, lineHeight: 1, flexShrink: 0, userSelect: 'none', px: 0.25 }}
+        >
+          ⠿
+        </Box>
         {/* 子があるトラックは、たたむ、開くの印 */}
         {p.hasChildren && (
           <ButtonBase
@@ -188,8 +208,18 @@ export default function TrackHeader(p: {
           { label: t('track.indent'), onClick: p.onIndent },
           { label: t('track.outdent'), disabled: !track.parent, onClick: p.onOutdent },
           { divider: true },
+          { label: t('track.moveUp'), onClick: p.onMoveUp },
+          { label: t('track.moveDown'), onClick: p.onMoveDown },
+          { divider: true },
           { label: t('track.remove'), onClick: p.onRemove },
         ]}
+      />
+      <Box
+        onPointerDown={(e) => {
+          e.stopPropagation()
+          p.onResizeStart(e)
+        }}
+        sx={{ position: 'absolute', left: 0, right: 0, bottom: -3, height: 6, cursor: 'ns-resize', touchAction: 'none', zIndex: 2 }}
       />
     </Box>
   )

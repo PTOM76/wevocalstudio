@@ -30,6 +30,8 @@ export interface Track {
   collapsed?: boolean
   /** グラフィック EQ（WeVocalSynth と同じ。無ければ平ら） */
   eq?: TrackEq
+  /** 時間軸での縦の大きさ（px）。なければ既定値 */
+  height?: number
 }
 
 /** 波形ブロック。元の音のどこを、いつ、どう鳴らすか */
@@ -167,6 +169,11 @@ export const newId = () => crypto.randomUUID()
 export const dbToGain = (db: number) => (db <= -60 ? 0 : 10 ** (db / 20))
 
 export const newTrack = (n: number): Track => ({ id: newId(), name: `Track ${n}`, volume: 0, pan: 0, mute: false, solo: false })
+
+export const TRACK_HEIGHT_MIN = 56
+export const TRACK_HEIGHT_MAX = 220
+export const TRACK_HEIGHT_DEFAULT = 96
+export const trackHeight = (track: Track) => Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, track.height ?? TRACK_HEIGHT_DEFAULT))
 
 export const newBlock = (track: string, source: Source, start: number, defaults: PitchDefaults): Block => ({
   id: newId(),

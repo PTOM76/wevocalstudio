@@ -292,6 +292,23 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     [change],
   )
 
+  /** トラックを指定のスロットに移動する。to は「この番号のトラックの前」（0～N） */
+  const reorderTrack = useCallback(
+    (id: string, to: number) =>
+      change((p) => {
+        const from = p.tracks.findIndex((t) => t.id === id)
+        if (from < 0) return p
+        const end = subtreeEnd(p, from)
+        const mine = p.tracks.slice(from, end)
+        const rest = p.tracks.filter((t) => !mine.includes(t))
+        const clamped = Math.max(0, Math.min(rest.length, to))
+        if (clamped === from) return p
+        const tracks = [...rest.slice(0, clamped), ...mine, ...rest.slice(clamped)]
+        return { ...p, tracks }
+      }),
+    [change],
+  )
+
   /** マーカーを足す（同じ位置にあれば足さない）。名前は M1、M2… */
   const addMarker = useCallback(
     (time: number) =>
@@ -407,6 +424,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     addSubtrack,
     indentTrack,
     outdentTrack,
+    reorderTrack,
     insertTrack,
     updateTempo,
     addMarker,

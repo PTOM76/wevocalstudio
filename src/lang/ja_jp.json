@@ -246,6 +246,8 @@
   "track.addSubtrack": "サブトラックを追加",
   "track.indent": "上のトラックの中に入れる",
   "track.outdent": "外に出す",
+  "track.moveUp": "上へ移動",
+  "track.moveDown": "下へ移動",
   "track.collapse": "子のトラックをたたむ",
   "track.expand": "子のトラックを開く",
 
