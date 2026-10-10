@@ -90,6 +90,8 @@ export interface Marker {
   /** 位置（秒） */
   time: number
   name: string
+  /** ここからテンポを変える（WeVocalSynth と同じ。無ければ前のテンポが続く） */
+  tempo?: { bpm: number; beatsPerBar: number }
 }
 
 /** エンベロープの点（波形ブロックの頭からの秒と dB。t の順に並べる） */

@@ -203,12 +203,12 @@ export default function Timeline(p: {
     seek: (t) => p.onSeek(Math.max(0, t)),
   })
 
-  const snapping = { mode: p.grid, division: p.division, tempo: p.project.tempo, pps: view.pps }
+  const snapping = { mode: p.grid, division: p.division, tempo: p.project.tempo, markers: p.project.markers, pps: view.pps }
   /** 編集カーソルと範囲選択の端は、スナップが入っていればいちばん近いグリッドの線に合わせる（Shift で外す） */
   const gridAt = (x: number, shift: boolean) => {
     const t = Math.max(0, toTime(x))
     if (!p.snap || shift) return t
-    const { origin, step } = snapGrid(p.grid, p.project.tempo, view.pps, p.division)
+    const { origin, step } = snapGrid(p.grid, p.project.tempo, view.pps, p.division, p.project.markers, t)
     return Math.max(0, origin + Math.round((t - origin) / step) * step)
   }
 

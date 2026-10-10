@@ -259,7 +259,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleRepeat: () => setRepeat((r) => !r),
     seek,
     moveCursor,
-    gridStep: () => snapGrid(p.settings.grid, project.tempo, view.pps, p.settings.gridDivision).step,
+    gridStep: () => snapGrid(p.settings.grid, project.tempo, view.pps, p.settings.gridDivision, project.markers, cursor).step,
     newProject: () =>
       void confirm({ message: t('confirm.newProject'), okLabel: t('menu.newProject'), danger: true }).then((ok) => {
         if (!ok) return
@@ -596,7 +596,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <MarkerDialog
         marker={project.markers.find((m) => m.id === editingMarker) ?? null}
         onClose={() => setEditingMarker(null)}
-        onRename={(name) => editingMarker && doc.updateMarker(editingMarker, { name })}
+        bpm={project.tempo.bpm}
+        beatsPerBar={project.tempo.beatsPerBar}
+        onChange={(patch) => editingMarker && doc.updateMarker(editingMarker, patch)}
         onRemove={() => editingMarker && doc.removeMarker(editingMarker)}
       />
       <BlockDialog

@@ -180,6 +180,7 @@
   "marker.title": "Marker",
   "marker.name": "Name",
   "marker.remove": "Remove",
+  "marker.tempo": "Change tempo from here",
 
   "eq.title": "EQ ({name})",
   "eq.on": "On",

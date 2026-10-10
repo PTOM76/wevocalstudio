@@ -79,7 +79,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   // 目盛りと線（拍と小節か、秒）。小節の頭は濃く描く
   g.font = '11px Roboto, sans-serif'
   g.textBaseline = 'middle'
-  for (const line of gridLines(o.grid, p.tempo, view.pps, view.scroll, view.scroll + w / view.pps, o.division)) {
+  for (const line of gridLines(o.grid, p.tempo, view.pps, view.scroll, view.scroll + w / view.pps, o.division, p.markers)) {
     const x = Math.round(tx(line.t)) + 0.5
     g.fillStyle = line.strong ? c.lane : c.line
     // グリッドの細かい線は薄く
@@ -202,7 +202,8 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
     g.globalAlpha = 0.5
     g.fillRect(x, RULER, 1, h)
     g.globalAlpha = 1
-    const label = m.name
+    // テンポを変えるマーカーは、名前の後ろにテンポを出す
+    const label = m.tempo ? `${m.name} ♩=${m.tempo.bpm} ${m.tempo.beatsPerBar}/4` : m.name
     const lw = g.measureText(label).width + 8
     g.fillRect(x, 0, lw, 12)
     g.fillStyle = '#000'

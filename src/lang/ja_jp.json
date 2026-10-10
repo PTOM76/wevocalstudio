@@ -180,6 +180,7 @@
   "marker.title": "マーカー",
   "marker.name": "名前",
   "marker.remove": "削除",
+  "marker.tempo": "ここからテンポを変える",
 
   "eq.title": "EQ（{name}）",
   "eq.on": "オン",
