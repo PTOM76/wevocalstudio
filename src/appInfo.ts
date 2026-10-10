@@ -7,7 +7,7 @@ export const APP_INFO = {
   author: 'PitaQ',
   repository: 'https://github.com/PTOM76/wevocalstudio',
   // OGP の絶対 URL（ビルド時は SITE_URL が優先）
-  site: 'https://example.com/',
+  site: 'https://wevocalstudio.pitan76.net/',
   // <html lang> と og:locale
   lang: 'ja_jp',
 }
