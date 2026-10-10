@@ -9,6 +9,7 @@
     "build:wasm": "node scripts/build-wasm.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "lint": "tsc --noEmit",
     "preview": "vite preview",
     "i18n": "node scripts/i18n.mjs",
     "map": "node scripts/map.mjs",
