@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBackwardStep, faCircle, faForwardStep, faPause, faPlay, faRepeat, faStop } from '@fortawesome/free-solid-svg-icons'
-import { LiveTime, NumberInput, SmallButton, ToolbarDivider, pevenFont } from 'pevenmui'
+import { InlineEdit, LiveTime, SmallButton, ToolbarDivider, pevenFont } from 'pevenmui'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 import type { Tempo } from './project'
@@ -12,7 +12,15 @@ import { GRID_MAX, GRID_MIN, type GridDivision } from './grid'
 export { formatTime } from 'pevenmui'
 
 /** 数の欄の前の小さな名前 */
-const Label = ({ children }: { children: ReactNode }) => <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary', mx: 0.5 }}>{children}</Typography>
+const Label = ({ children }: { children: ReactNode }) => <Typography component="span" sx={{ fontSize: pevenFont('sm'), color: 'text.secondary', mr: 0.75 }}>{children}</Typography>
+
+/** 打った文字を範囲内の整数にして渡す。読めなければ false（入力を続ける） */
+function commitInt(text: string, min: number, max: number, set: (n: number) => void) {
+  const n = Math.round(Number(text.replace(/^1\//, '').replace(/\/4$/, '')))
+  if (!Number.isFinite(n) || n < min || n > max) return false
+  set(n)
+  return true
+}
 
 export default function Transport(p: {
   playing: boolean
@@ -66,12 +74,17 @@ export default function Transport(p: {
         </Typography>
         {p.meter}
       </Stack>
-      <Stack direction="row" sx={{ alignItems: 'center' }}>
-        <Label>{t('transport.beatsPerBar')}</Label>
-        <NumberInput value={p.tempo.beatsPerBar} min={1} max={16} step={1} width={44} unit="/4" ariaLabel={t('transport.beatsPerBar')} onChange={(n) => p.onTempo({ beatsPerBar: Math.round(n) })} />
-        <Label>{t('transport.grid')} 1/</Label>
-        <NumberInput value={p.division} min={GRID_MIN} max={GRID_MAX} step={1} width={52} ariaLabel={t('transport.grid')} onChange={(d) => p.onDivision(Math.round(d))} />
-      </Stack>
+      {/* 拍子とグリッド。再生位置と同じく、ふだんは文字で、押すとその場で入力できる */}
+      <Typography variant="body2" sx={{ fontFamily: 'monospace', px: 1, display: 'flex', gap: 1.5 }}>
+        <span>
+          <Label>{t('transport.beatsPerBar')}</Label>
+          <InlineEdit text={`${p.tempo.beatsPerBar}/4`} draftOf={() => String(p.tempo.beatsPerBar)} width="3ch" label={t('transport.beatsPerBar')} onCommit={(v) => commitInt(v, 1, 16, (beatsPerBar) => p.onTempo({ beatsPerBar }))} />
+        </span>
+        <span>
+          <Label>{t('transport.grid')}</Label>
+          <InlineEdit text={`1/${p.division}`} draftOf={() => String(p.division)} width="4ch" label={t('transport.grid')} onCommit={(v) => commitInt(v, GRID_MIN, GRID_MAX, p.onDivision)} />
+        </span>
+      </Typography>
     </Stack>
   )
 }
