@@ -7,3 +7,6 @@
 [submodule "analyzer"]
 	path = analyzer
 	url = https://github.com/PTOM76/wevocalanalyzer.git
+[submodule "extractor"]
+	path = extractor
+	url = https://github.com/PTOM76/wevocalextractor.git
