@@ -1,29 +1,24 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Box, Link, Snackbar } from '@mui/material'
-import { AboutDialog, ContextMenu, SliderResetContext, TempoField, type TempoCandidate, FULL_HEIGHT, LicensesDialog, WindowModeContext, autoWindowMode, startJob, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
+import { Alert, Box, Snackbar } from '@mui/material'
+import { ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
 import StatusBar from './StatusBar'
-import AppHeader, { AppIcon } from './AppHeader'
+import AppHeader from './AppHeader'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
-import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, canRecord, openInput, startRecording, type Range, type Recording } from 'wevocal-lib'
+import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
 import { app } from './appConfig'
-import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
 import MarkerDialog from './MarkerDialog'
-import HistoryDialog from './HistoryDialog'
-import ShortcutsDialog from './ShortcutsDialog'
+import AppDialogs, { type AppDialog } from './AppDialogs'
 import EqDialog from './EqDialog'
 import { flatEq } from 'wevocal-lib'
 import type { TimelineView } from './drawTimeline'
-import { analyzeTempo, onPitchProgress, pitchProgress, preparePitch } from './dsp/pitch'
 import { Player } from './engine'
 import { buildOverview } from './overview'
-import { ExportDialog } from 'wevocal-lib/react'
 import { useT } from './i18n'
 import { setKeyOverrides } from './keymap'
 import type { Settings } from './settings/settings'
-import SettingsDialog from './settings/SettingsDialog'
 import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
@@ -34,6 +29,10 @@ import Transport from './Transport'
 import { useActions } from './useActions'
 import { useProject, type DropAt } from './useProject'
 import { useProjectFile } from './useProjectFile'
+import { useTempoDetect } from './useTempoDetect'
+import { useRecorder } from './useRecorder'
+import { useAutosave } from './useAutosave'
+import { usePlayerSync } from './usePlayerSync'
 
 /** 今動いている版 */
 const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`
@@ -64,8 +63,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const setSelectedTrack = (id: string | null) => setSelectedTracks(id ? [id] : [])
   const [range, setRange] = useState<Range | null>(null)
   const [repeat, setRepeat] = useState(false)
-  // 録音中のものと、録り始めた位置
-  const [recording, setRecording] = useState<{ rec: Recording; start: number; track: string } | null>(null)
   const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
   const [timelineWidth, setTimelineWidth] = useState(0)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
@@ -86,7 +83,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [notice, setNotice] = useState<string | null>(null)
   // 起動時の復元が終わるまでは自動保存しない（空のプロジェクトで前回の作業を上書きしないように）
   const [restored, setRestored] = useState(false)
-  const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | 'history' | 'shortcuts' | null>(null)
+  const [dialog, setDialog] = useState<AppDialog | null>(null)
   const audioInput = useRef<HTMLInputElement>(null)
   // 時間軸に出すのは見えているトラックだけ（たたんだ親の子孫は隠す）
   const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project])
@@ -111,71 +108,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     player.current.play(project, from)
     setPlaying(true)
   }
-  /** 録音を始める（再生位置から、ほかのトラックを鳴らしながら録る） */
-  const startRecord = async () => {
-    if (!canRecord()) return fail(t('error.noRecord'))
-    try {
-      // 録音待機のトラック、なければ選んでいるトラック、空いているトラック、新しいトラックの順に置く
-      const track =
-        project.tracks.find((tr) => tr.armed)?.id ??
-        selectedTrack ??
-        project.tracks.find((tr) => !project.blocks.some((b) => b.track === tr.id))?.id ??
-        doc.addTrackNow()
-      const rec = await startRecording(await openInput({ deviceId: p.settings.inputDevice, echoCancellation: p.settings.recordEchoCancellation, noiseSuppression: p.settings.recordNoiseSuppression, autoGainControl: p.settings.recordAutoGain }))
-      setRecording({ rec, start: cursor, track })
-      play()
-    } catch (e) {
-      fail(e)
-    }
-  }
-  /** 録音を止めて、録った音を波形ブロックとして置く */
-  const stopRecord = async () => {
-    const r = recording
-    if (!r) return
-    setRecording(null)
-    player.current.stop()
-    setPlaying(false)
-    try {
-      const clip = await r.rec.stop()
-      if (clip.channels[0]?.length) doc.addClip(clip, `${t('track.recorded')} ${new Date().toLocaleTimeString()}`, r.track, r.start)
-    } catch (e) {
-      fail(e)
-    }
-  }
-  /** 選んだ波形ブロック（なければ最初のもの）からテンポを解析して、プロジェクトのテンポにする（WeVocalSynth と同じ解析） */
-  const [tempoCandidates, setTempoCandidates] = useState<TempoCandidate[]>([])
-  const [analyzingTempo, setAnalyzingTempo] = useState(false)
-  /** BPM と 1 拍目の位置（秒）をプロジェクトのテンポにする */
-  const setBpm = (bpm: number, first?: number) => {
-    const beat = 60 / bpm
-    doc.updateTempo(first === undefined ? { bpm } : { bpm, beatOffset: ((first % beat) + beat) % beat })
-  }
-  const detectTempo = async () => {
-    const b = project.blocks.find((x) => selected.includes(x.id)) ?? project.blocks[0]
-    const source = b && sourceOf(b.source)
-    if (!b || !source) return
-    setAnalyzingTempo(true)
-    try {
-      const { clip } = source
-      const from = Math.floor(b.offset * clip.sampleRate)
-      const to = Math.min(clip.channels[0].length, from + Math.floor(b.length * b.rate * clip.sampleRate))
-      const mono = new Float32Array(to - from)
-      for (const ch of clip.channels) for (let i = 0; i < mono.length; i++) mono[i] += ch[from + i] / clip.channels.length
-      // 速度を変えた波形ブロックは、そのぶん BPM も変わる。1 拍目の位置はプロジェクトの時間にする
-      const found = (await analyzeTempo(mono, clip.sampleRate)).map((c) => ({ bpm: Math.round(c.bpm * b.rate * 100) / 100, offset: b.start + c.offset / b.rate, strength: c.strength }))
-      setTempoCandidates(found)
-      const [best] = found
-      if (!best) return fail(t('error.noTempo'))
-      setBpm(best.bpm, best.offset)
-      setNotice(t('toast.tempo', { bpm: best.bpm }))
-    } catch (e) {
-      fail(e)
-    } finally {
-      setAnalyzingTempo(false)
-    }
-  }
+  // テンポの解析（候補、BPM の設定）
+  const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice })
 
-  const toggleRecord = () => void (recording ? stopRecord() : startRecord())
+  // 録音（再生位置から、ほかのトラックを鳴らしながら録る）
+  const { recording, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), fail })
 
   /** 一時停止。再生カーソルはその場に残す */
   const pause = () => {
@@ -247,7 +184,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     pause,
     repeat,
     recording: !!recording,
-    detectTempo: () => void detectTempo(),
+    detectTempo: () => void tempo.detect(),
     toggleRecord,
     toggleRepeat: () => setRepeat((r) => !r),
     seek,
@@ -327,117 +264,10 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       licenses: () => setDialog('licenses'), about: () => setDialog('about') },
   })
 
-  // 起動時に前回の作業を復元する（WeVocalSynth と同じ）
-  useEffect(() => {
-    if (!p.settings.autoRestore) return setRestored(true)
-    loadAutosave()
-      .then((r) => {
-        if (!r) return
-        doc.replace(r.project, 'history.restore')
-        setFileName(r.fileName)
-        setNotice(t('toast.restored'))
-      })
-      .catch(fail)
-      .finally(() => setRestored(true))
-    // 起動時に 1 回だけ
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // 変わったら少し待って書く。設定で切ったら消す
-  useEffect(() => {
-    if (!restored) return
-    if (!p.settings.autoRestore) return void clearAutosave().catch(fail)
-    const id = setTimeout(() => saveAutosave(project, fileName).catch(fail), 500)
-    return () => clearTimeout(id)
-  }, [project, fileName, restored, p.settings.autoRestore])
-
-  // 再生中は位置を動かす
-  useEffect(() => {
-    if (!playing) return
-    let id = 0
-    const tick = () => {
-      const pos = player.current.position()
-      // 範囲の終わりで止める。リピートなら範囲の頭に戻る
-      if (range && pos >= range.end) {
-        if (repeat) {
-          player.current.play(project, range.start)
-          setPlayPos(range.start)
-        } else {
-          player.current.stop()
-          setPlayPos(null)
-          setPlaying(false)
-          return
-        }
-      } else if (!range && end > 0 && pos >= end) {
-        // 曲の終わり（最後の波形ブロックの終わり）で止める
-        player.current.stop()
-        setPlayPos(null)
-        setPlaying(false)
-        return
-      }
-      id = requestAnimationFrame(tick)
-    }
-    id = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(id)
-  }, [playing, range, repeat, project, end])
-
-  // 再生中に変えた値を音に反映する（今の位置から組み直す）
-  // 変わった波形ブロックだけを差し替える（全部を鳴らし直さない）
-  const replay = () => player.current.update(project)
-  // 続けて変えている間（ドラッグなど）は少し待ってから差し替える
-  useEffect(() => {
-    if (!player.current.playing) return
-    const id = setTimeout(replay, 30)
-    return () => clearTimeout(id)
-    // project が変わったときだけ
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project])
-
-  // かたまりが 1 つできるたびに、ゲージを動かし、再生中ならその波形ブロックを差し替え、時間軸の「処理中」を描き直す（まとめて 0.1 秒に 1 回）
-  const projectRef = useRef(project)
-  projectRef.current = project
-  useEffect(() => {
-    let timer = 0
-    let lastDone = 0
-    let pitchJob: ReturnType<typeof startJob> | null = null
-    return onPitchProgress(() => {
-      if (timer) return
-      timer = window.setTimeout(() => {
-        timer = 0
-        const pr = pitchProgress()
-        // ピッチなどを作っている間はゲージに出す
-        if (pr.total > 0) {
-          pitchJob ??= startJob('pitch', t('job.pitch'))
-          pitchJob.update(pr.done / pr.total)
-        } else {
-          pitchJob?.end()
-          pitchJob = null
-        }
-        // できたかたまりが増えていれば鳴らす音を差し替える
-        const whole = Math.floor(pr.done)
-        if (whole !== lastDone) {
-          lastDone = whole
-          player.current.update(projectRef.current)
-          setMadeVersion((v) => v + 1)
-        }
-      }, 100)
-    })
-  }, [])
-
-  // ピッチを変えた音を用意する（再生位置か編集カーソルに近い所から。できたかたまりから鳴らす）
-  useEffect(() => {
-    let alive = true
-    preparePitch(project, player.current.playing ? player.current.position() : cursor)
-      .then((made) => {
-        if (!alive || !made) return
-        replay()
-        setMadeVersion((v) => v + 1)
-      })
-      .catch((e: unknown) => alive && fail(e))
-    return () => {
-      alive = false
-    }
-  }, [project])
+  // 起動時の復元と自動保存（WeVocalSynth と同じ）
+  useAutosave({ project, fileName, autoRestore: p.settings.autoRestore, replace: doc.replace, setFileName, fail, notify: setNotice, onRestored: () => setRestored(true), restored })
+  // 再生中の同期（範囲の終わりで止める、変更の反映、ピッチを変えた音の準備と進み具合）
+  usePlayerSync({ player: player.current, project, cursor, playing, range, repeat, end, setPlayPos, setPlaying, fail, onMade: () => setMadeVersion((v) => v + 1) })
 
   return (
     // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）
@@ -604,8 +434,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           }}
         />
       )}
-      <ShortcutsDialog open={dialog === 'shortcuts'} onClose={() => setDialog(null)} />
-      <HistoryDialog open={dialog === 'history'} steps={doc.steps} index={doc.stepIndex} onGoto={doc.goto} onClose={() => setDialog(null)} />
+      <AppDialogs dialog={dialog} onClose={() => setDialog(null)} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} />
       <MarkerDialog
         marker={project.markers.find((m) => m.id === editingMarker) ?? null}
         onClose={() => setEditingMarker(null)}
@@ -642,7 +471,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           tracks={project.tracks.length}
           range={range}
           onRange={setRange}
-          tempo={<TempoField bpm={project.tempo.bpm} candidates={tempoCandidates} analyzing={analyzingTempo} onChange={setBpm} onAnalyze={() => void detectTempo()} labels={{ tap: t('tempo.tap'), tapHint: t('tempo.tapHint'), candidates: t('tempo.candidates'), analyze: t('tempo.analyze'), analyzing: t('tempo.analyzing') }} />}
+          tempo={<TempoField bpm={project.tempo.bpm} candidates={tempo.candidates} analyzing={tempo.analyzing} onChange={tempo.setBpm} onAnalyze={() => void tempo.detect()} labels={{ tap: t('tempo.tap'), tapHint: t('tempo.tapHint'), candidates: t('tempo.candidates'), analyze: t('tempo.analyze'), analyzing: t('tempo.analyzing') }} />}
           bpm={project.tempo.bpm}
         />
       )}
@@ -659,51 +488,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           {notice}
         </Alert>
       </Snackbar>
-      <ExportDialog
-        t={t}
-        open={dialog === 'export'}
-        onClose={() => setDialog(null)}
-        baseName={fileName}
-        sourceRate={48000}
-        sourceChannels={2}
-        hasSelection={!!range}
-        trackCount={1}
-        busy={false}
-        progress={0}
-        onExport={files.runExport}
-        finish={{ normalize: p.settings.exportNormalize, fadeMs: p.settings.exportFadeMs }}
-        onFinishChange={(f) => p.onSettingsChange({ exportNormalize: f.normalize, exportFadeMs: f.fadeMs })}
-      />
-      <SettingsDialog open={dialog === 'settings'} onClose={() => setDialog(null)} settings={p.settings} onChange={p.onSettingsChange} />
-      <LicensesDialog
-        open={dialog === 'licenses'}
-        onClose={() => setDialog(null)}
-        title={t('menu.licenses')}
-        entries={[
-          { name: app.name, license: 'MIT', url: app.repository, note: t('licenses.app') },
-          { name: 'PevenMUI', license: 'MIT', url: 'https://github.com/PTOM76/pevenmui' },
-          { name: 'wevocal-lib', license: 'MIT', url: 'https://github.com/PTOM76/wevocal-lib' },
-          { name: 'React', license: 'MIT', url: 'https://react.dev/' },
-          { name: 'MUI', license: 'MIT', url: 'https://mui.com/' },
-          { name: 'Font Awesome Free', license: 'CC BY 4.0 / MIT', url: 'https://fontawesome.com/' },
-          { name: 'Roboto', license: 'OFL-1.1', url: 'https://fonts.google.com/specimen/Roboto' },
-        ]}
-      />
-      <AboutDialog
-        open={dialog === 'about'}
-        onClose={() => setDialog(null)}
-        icon={<AppIcon size={56} />}
-        rows={[
-          [t('about.version'), <span className="selectable">{BUILD}</span>],
-          [t('about.author'), app.author],
-          [
-            'GitHub',
-            <Link className="selectable" href={app.repository} target="_blank" rel="noopener noreferrer">
-              {app.repository.replace('https://', '')}
-            </Link>,
-          ],
-        ]}
-      />
     </Box>
     </SliderResetContext.Provider>
     </WindowModeContext.Provider>
