@@ -90,6 +90,7 @@ export function settingsPages({ draft, set, t, onClose }: { draft: Settings; set
     ),
     debug: (
       <Group title={t('settings.groupDebug')}>
+        {S('showDebug')}
         {S('devUpdates')}
         {S('filePicker')}
         <Row label={t('settings.dialogWindow')}>

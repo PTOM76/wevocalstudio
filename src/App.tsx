@@ -4,6 +4,8 @@ import { Alert, Box, Snackbar } from '@mui/material'
 import { ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader from './AppHeader'
+import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
+import { configurePlayback } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
@@ -36,7 +38,11 @@ const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`
 
 const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
+// デバッグ表示に AudioContext の状態を出す（iPhone で音が出ないときの調査。WeVocalSynth と同じ）
+configurePlayback({ report: reportAudioContext })
+
 export default function App(p: { settings: Settings; onSettingsChange: (patch: Partial<Settings>) => void }) {
+  countRender('App')
   const t = useT()
   const { confirm, dialog: confirmDialog } = useConfirm()
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
@@ -436,6 +442,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         </Alert>
       </Snackbar>
       {confirmDialog}
+      {p.settings.showDebug && <DebugOverlay build={BUILD} />}
       <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
       <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(null)}>
         <Alert severity="info" onClose={() => setNotice(null)}>

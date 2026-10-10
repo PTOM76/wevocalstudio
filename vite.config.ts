@@ -31,6 +31,7 @@ export default defineConfig({
       { find: /^pevenmui$/, replacement: resolve(pevenmui, 'src/index.ts') },
       { find: /^pevenmui\/web$/, replacement: resolve(pevenmui, 'src/web/index.ts') },
       { find: /^pevenmui\/pwa$/, replacement: resolve(pevenmui, 'src/pwa/index.ts') },
+      { find: /^pevenmui\/debug$/, replacement: resolve(pevenmui, 'src/debug/index.ts') },
       { find: /^wevocalextractor\/host$/, replacement: resolve(extractor, 'src/host.ts') },
       { find: /^wevocalanalyzer$/, replacement: resolve(analyzer, 'src/index.ts') },
       { find: /^wevocal-lib\/react$/, replacement: resolve(wevocalLib, 'web/src/react/index.ts') },

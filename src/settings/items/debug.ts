@@ -5,6 +5,8 @@ import { check, choice, defineItems, value } from './define'
 
 /** 「開発者向け」 */
 export const debug = defineItems('debug', {
+  // デバッグ表示（FPS、描画回数、メモリ、AudioContext の状態。PevenMUI の DebugOverlay）
+  showDebug: check(false, { label: 'settings.showDebug', help: 'settings.showDebugHelp' }),
   // 版の番号が同じでも、新しいコミットがあれば更新を知らせる
   devUpdates: check(true, { label: 'settings.devUpdates', help: 'settings.devUpdatesHelp' }),
   filePicker: choice<PickerMode>('auto', {

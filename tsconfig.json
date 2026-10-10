@@ -14,6 +14,7 @@
     // 隣の WeVocalSynth の中の pevenmui、wevocal-lib を先に探し、なければ自分の submodule
     "paths": {
       "pevenmui": ["../wevocalsynth/pevenmui/src/index.ts", "./pevenmui/src/index.ts"],
+      "pevenmui/debug": ["../wevocalsynth/pevenmui/src/debug/index.ts", "./pevenmui/src/debug/index.ts"],
       "pevenmui/pwa": ["../wevocalsynth/pevenmui/src/pwa/index.ts", "./pevenmui/src/pwa/index.ts"],
       "pevenmui/web": ["../wevocalsynth/pevenmui/src/web/index.ts", "./pevenmui/src/web/index.ts"],
       "wevocalextractor/host": ["../wevocalsynth/extractor/src/host.ts", "./extractor/src/host.ts"],
