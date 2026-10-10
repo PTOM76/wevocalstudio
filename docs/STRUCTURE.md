@@ -53,6 +53,7 @@ src/dsp/
   worker.ts  wasm の処理（ピッチと速度の変更、テンポの解析）を画面のスレッドの外で行う Worker
 
 src/settings/
+  DataSection.tsx  設定の「データ」（使用量と削除。部品と処理は PevenMUI。WeVocalSynth と同じ）
   settings.ts  設定の保存と読み込み、Context（PevenMUI の createSettingsStore。WeVocalSynth と同じ）。項目の定義は items/ にある
   SettingsDialog.tsx  設定のダイアログ（PevenMUI の設定画面に、分類と中身を渡す。WeVocalSynth と同じ）
   SettingsPages.tsx  設定画面の分類ごとの中身（定義のある項目は S(名前) の 1 行。WeVocalSynth と同じ形）

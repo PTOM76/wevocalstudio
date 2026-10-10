@@ -6,6 +6,7 @@ import { UpdateSection } from 'pevenmui/pwa'
 import { i18n, type LangSetting, type MessageKey } from '../i18n'
 import { ACTIONS } from '../keymap'
 import SettingRow from './items/SettingRow'
+import DataSection from './DataSection'
 import type { Category } from './settingsSearch'
 import type { Settings } from './settings'
 
@@ -21,7 +22,7 @@ function InputDeviceRow(p: { value: string; onChange: (v: string) => void; t: (k
 }
 
 /** 設定画面の分類ごとの中身。定義（items/）のある項目は S('名前') の 1 行で置け、検索の対象にも自動で入る */
-export function settingsPages({ draft, set, t }: { draft: Settings; set: (patch: Partial<Settings>) => void; t: (key: MessageKey) => string }): Record<Category, ReactNode> {
+export function settingsPages({ draft, set, t, onClose }: { draft: Settings; set: (patch: Partial<Settings>) => void; t: (key: MessageKey) => string; onClose: () => void }): Record<Category, ReactNode> {
   const S = (name: keyof Settings) => <SettingRow name={name} draft={draft} set={set} t={t} />
   // 操作の名前はメニューと同じ（menu.<操作の名前>）
   const keyActions = ACTIONS.map((a) => ({ ...a, label: t(`menu.${a.id}` as MessageKey) }))
@@ -80,6 +81,11 @@ export function settingsPages({ draft, set, t }: { draft: Settings; set: (patch:
           <Choice<Algorithm> value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} options={Object.entries(ALGORITHM_NAMES) as [Algorithm, string][]} />
         </Row>
         {S('preserveFormant')}
+      </Group>
+    ),
+    data: (
+      <Group title={t('settings.groupData')}>
+        <DataSection onClose={onClose} />
       </Group>
     ),
     debug: (

@@ -7,9 +7,9 @@ import { GROUPS } from './items'
 import { searchKeys, type AnyItem } from './items/define'
 
 /** 設定画面の分類 */
-export type Category = 'general' | 'edit' | 'keys' | 'file' | 'display' | 'pitch' | 'debug'
+export type Category = 'general' | 'edit' | 'keys' | 'file' | 'display' | 'pitch' | 'data' | 'debug'
 /** 並び順と親子（親のない分類と、その下のサブアイテム） */
-const TREE: [Category, Category?][] = [['general'], ['edit', 'general'], ['keys', 'general'], ['file', 'general'], ['display'], ['pitch'], ['debug']]
+const TREE: [Category, Category?][] = [['general'], ['edit', 'general'], ['keys', 'general'], ['file', 'general'], ['display'], ['pitch'], ['data'], ['debug']]
 
 /** 検索の対象のうち、定義（items/）にないもの: グループ名と、自前の画面の項目の訳文キー */
 const INDEX: Record<Category, MessageKey[]> = {
@@ -19,6 +19,7 @@ const INDEX: Record<Category, MessageKey[]> = {
   file: ['settings.groupFile'],
   display: ['settings.groupAppearance', 'settings.language'],
   pitch: ['settings.algorithm'],
+  data: ['settings.groupData', 'data.work', 'data.workHelp', 'data.cache', 'data.cacheHelp', 'data.settings', 'data.settingsHelp', 'data.all', 'data.persist', 'data.persistHelp'],
   debug: ['settings.groupDebug', 'settings.dialogWindow'],
 }
 

@@ -21,7 +21,7 @@ export default function SettingsDialog(p: { open: boolean; onClose: () => void; 
       onChange={p.onChange}
       categories={settingsCategories(t)}
       initial="general"
-      pages={(draft, set) => settingsPages({ draft, set, t })}
+      pages={(draft, set) => settingsPages({ draft, set, t, onClose: p.onClose })}
     />
   )
 }
