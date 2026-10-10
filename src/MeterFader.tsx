@@ -1,7 +1,7 @@
 // 音量のつまみとレベルメーターを一つにした部品と、パンの棒（トラックとマスターの欄。DAW によくある形）
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Box, Slider, Typography } from '@mui/material'
-import { pevenFont } from 'pevenmui'
+import { pevenFont, useDoubleClickReset } from 'pevenmui'
 import LevelMeter from './LevelMeter'
 
 const VOL_MIN = -60
@@ -33,9 +33,11 @@ export function MeterFader(p: {
   label: string
 }) {
   const [ref, w] = useWidth()
+  // ダブルクリックで 0 dB に戻す（設定で切れる）
+  const reset = useDoubleClickReset(() => p.onChange(0))
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-      <Box ref={ref} sx={{ position: 'relative', flex: 1, height: H, borderRadius: 0.5, bgcolor: 'action.hover', overflow: 'hidden' }} onDoubleClick={() => p.onChange(0)}>
+      <Box ref={ref} sx={{ position: 'relative', flex: 1, height: H, borderRadius: 0.5, bgcolor: 'action.hover', overflow: 'hidden' }} {...reset}>
         {p.meter && w > 0 && (
           <Box sx={{ position: 'absolute', inset: 0, opacity: 0.85 }}>
             <LevelMeter source={p.meter} rows={p.rows ?? 1} width={w} height={H} label={p.label} />
@@ -74,6 +76,8 @@ const panText = (v: number) => (Math.abs(v) < 0.005 ? 'C' : `${v < 0 ? 'L' : 'R'
 /** パン。真ん中から左右に色が伸びる細い棒。ドラッグで変え、ダブルクリックで真ん中に戻す */
 export function PanBar(p: { value: number; onChange: (pan: number) => void; onCommit: () => void; label: string }) {
   const [ref, w] = useWidth()
+  // ダブルクリックで真ん中に戻す（設定で切れる）
+  const reset = useDoubleClickReset(() => p.onChange(0))
   const at = (e: React.PointerEvent) => {
     const r = ref.current!.getBoundingClientRect()
     return Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1))
@@ -96,7 +100,7 @@ export function PanBar(p: { value: number; onChange: (pan: number) => void; onCo
         }}
         onPointerMove={(e) => e.buttons && p.onChange(Math.round(at(e) * 100) / 100)}
         onPointerUp={p.onCommit}
-        onDoubleClick={() => p.onChange(0)}
+        {...reset}
         sx={{ position: 'relative', flex: 1, height: 8, borderRadius: 0.5, bgcolor: 'action.hover', cursor: 'ew-resize', touchAction: 'none' }}
       >
         {/* 真ん中から伸びる色（左は左へ、右は右へ） */}

@@ -8,7 +8,7 @@ import type { ExportChoice } from './ExportDialog'
 import type { useT } from './i18n'
 import type { Project } from './project'
 import { PROJECT_EXT, readProject, writeProject } from './projectFile'
-import type { Settings } from './settings'
+import type { Settings } from './settings/settings'
 import { idbGet, idbPut } from './storage/idb'
 
 // 最近使用したファイルの記録先と、フォルダーを覚える用途の名前の頭

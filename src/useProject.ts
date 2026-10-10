@@ -7,8 +7,6 @@ import { DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTra
 
 /** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
 const PITCH_MAX = 256
-/** 元に戻せる回数 */
-const HISTORY_MAX = 200
 
 /** 置く場所（トラックと時刻）。省略したときは空いているトラックか、新しいトラック */
 export interface DropAt {
@@ -29,7 +27,10 @@ interface History {
   future: Step[]
 }
 
-export function useProject(defaults: PitchDefaults) {
+export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
+  // 元に戻せる回数（設定）
+  const limit = useRef(defaults.historyLimit)
+  limit.current = defaults.historyLimit
   const [history, setHistory] = useState<History>(() => ({ past: [], present: { project: newProject(), selected: [], label: 'history.new' }, future: [] }))
   // 読み込みの途中で設定が変わっても、最新の既定値を使う
   const defaultsRef = useRef(defaults)
@@ -48,7 +49,7 @@ export function useProject(defaults: PitchDefaults) {
       // 消えた波形ブロックは選択から外す
       const selected = h.present.selected.filter((id) => next.blocks.some((b) => b.id === id))
       const present = { project: next, selected, label: merged ? h.present.label : describeChange(h.present.project, next) }
-      return { past: merged ? h.past : [...h.past, h.present].slice(-HISTORY_MAX), present, future: [] }
+      return { past: merged ? h.past : [...h.past, h.present].slice(-limit.current), present, future: [] }
     })
   }, [])
 
@@ -60,7 +61,7 @@ export function useProject(defaults: PitchDefaults) {
       const cur = h.present.selected
       if (ids.length === cur.length && ids.every((id, i) => id === cur[i])) return h
       const present = { ...h.present, selected: ids, label: 'history.select' as MessageKey }
-      return { past: merged ? h.past : [...h.past, h.present].slice(-HISTORY_MAX), present, future: [] }
+      return { past: merged ? h.past : [...h.past, h.present].slice(-limit.current), present, future: [] }
     })
   }, [])
 

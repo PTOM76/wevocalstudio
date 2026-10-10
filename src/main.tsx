@@ -8,7 +8,7 @@ import { PevenProvider, preventPageZoom, setUiScale } from 'pevenmui'
 import App from './App'
 import { app } from './appConfig'
 import { i18n } from './i18n'
-import { useSettings, type Settings } from './settings'
+import { useSettings, type Settings } from './settings/settings'
 
 preventPageZoom()
 
@@ -21,7 +21,7 @@ function ThemeSync({ theme }: { theme: Settings['theme'] }) {
 
 /** 設定を読み、言語、テーマ、画面の大きさを PevenProvider に渡す */
 function Root() {
-  const [settings, update] = useSettings()
+  const { settings, update } = useSettings()
   useEffect(() => setUiScale(settings.uiScale), [settings.uiScale])
   return (
     <PevenProvider desktopLook app={app} i18n={i18n} lang={i18n.resolve(settings.language)}>

@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Link, Snackbar } from '@mui/material'
-import { AboutDialog, ContextMenu, TempoField, type TempoCandidate, FULL_HEIGHT, LicensesDialog, WindowModeContext, autoWindowMode, startJob, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
+import { AboutDialog, ContextMenu, SliderResetContext, TempoField, type TempoCandidate, FULL_HEIGHT, LicensesDialog, WindowModeContext, autoWindowMode, startJob, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader, { AppIcon } from './AppHeader'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
@@ -21,8 +21,8 @@ import { buildOverview } from './overview'
 import ExportDialog from './ExportDialog'
 import { useT } from './i18n'
 import { setKeyOverrides } from './keymap'
-import type { Settings } from './settings'
-import SettingsDialog from './SettingsDialog'
+import type { Settings } from './settings/settings'
+import SettingsDialog from './settings/SettingsDialog'
 import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
@@ -45,7 +45,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
   setKeyOverrides(p.settings.keys)
   const mobile = useMobileLayout()
-  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant })
+  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit })
   const { project, selected } = doc
   const setSelected = doc.select
   const player = useRef(new Player())
@@ -120,7 +120,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         selectedTrack ??
         project.tracks.find((tr) => !project.blocks.some((b) => b.track === tr.id))?.id ??
         doc.addTrackNow()
-      const rec = await startRecording(await openInput({ deviceId: p.settings.inputDevice, echoCancellation: false, noiseSuppression: false, autoGainControl: false }))
+      const rec = await startRecording(await openInput({ deviceId: p.settings.inputDevice, echoCancellation: p.settings.recordEchoCancellation, noiseSuppression: p.settings.recordNoiseSuppression, autoGainControl: p.settings.recordAutoGain }))
       setRecording({ rec, start: cursor, track })
       play()
     } catch (e) {
@@ -424,7 +424,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
   return (
     // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）
-    <WindowModeContext.Provider value={autoWindowMode()}>
+    <WindowModeContext.Provider value={p.settings.dialogWindow === 'auto' ? autoWindowMode() : p.settings.dialogWindow}>
+    <SliderResetContext.Provider value={p.settings.sliderDoubleClickReset}>
     <Box
       sx={{ height: FULL_HEIGHT, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: 'background.default' }}
       onDragOver={(e) => e.preventDefault()}
@@ -672,6 +673,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         ]}
       />
     </Box>
+    </SliderResetContext.Provider>
     </WindowModeContext.Provider>
   )
 }
