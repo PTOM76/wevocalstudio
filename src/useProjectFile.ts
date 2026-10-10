@@ -1,8 +1,8 @@
 // プロジェクトの開く、保存（上書きと名前を付けて）、書き出し、最近使用したファイル、OS から開く、閉じる前の確認（WeVocalSynth と同じ PevenMUI の fileAccess）
 import { useEffect, useRef, useState } from 'react'
 import { startJob, useFilesPicker, useLeaveGuard, useRecentFiles } from 'pevenmui'
-import { configureFileAccess, fileRefOf, initFileAccess, overwriteTarget, pickSaveTarget, rememberLaunched, type SavedFile } from 'pevenmui/web'
-import { AUDIO_ACCEPT, EXPORT_EXT, EXPORT_MIME, exportAudio, finishClip, toFrames, type Range } from 'wevocal-lib'
+import { canSaveToFolder, configureFileAccess, fileRefOf, saveToFolder, initFileAccess, overwriteTarget, pickSaveTarget, rememberLaunched, type SavedFile } from 'pevenmui/web'
+import { AUDIO_ACCEPT, EXPORT_EXT, EXPORT_MIME, encodeWav, exportAudio, finishClip, toFrames, type Range } from 'wevocal-lib'
 import { renderMix } from './engine'
 import type { ExportSettings } from 'wevocal-lib/react'
 import type { useT } from './i18n'
@@ -109,6 +109,33 @@ export function useProjectFile(o: {
     }
   }
 
+  /** 範囲（全トラックを混ぜたもの）を切り出して WAV にする。仕上げは書き出しと同じ */
+  const renderRange = async (p: Project, r: Range) => {
+    const mix = await renderMix(p, r.end)
+    const [s, e] = toFrames(mix, r)
+    return encodeWav(finishClip({ sampleRate: mix.sampleRate, channels: mix.channels.map((ch) => ch.slice(s, e)) }, { normalize: settings.exportNormalize, fadeMs: settings.exportFadeMs }))
+  }
+  const folderFailed = (e: unknown) => (o.fail(t('folder.failed', { error: String(e) })), null)
+  /** 範囲をフォルダーへ保存する（初回はフォルダーを選ぶ。名前は「プロジェクト名_連番.wav」。WeVocalSynth と同じ） */
+  const saveRangeToFolder = async () => {
+    if (!o.range) return
+    const r = await saveToFolder('export', o.fileName, '.wav', await renderRange(o.project, o.range)).catch(folderFailed)
+    if (r) o.notify(t('folder.saved', { name: r.name, folder: r.folder }))
+  }
+  /** 選んだ波形ブロックを、1 つずつ別のファイルにして保存する（その波形ブロックだけを鳴らした音） */
+  const saveBlocksToFolder = async (ids: string[]) => {
+    let last: { folder: string; name: string } | null = null
+    let count = 0
+    for (const b of o.project.blocks.filter((x) => ids.includes(x.id)).sort((a, c) => a.start - c.start)) {
+      const only = { ...o.project, blocks: [{ ...b, mute: false }], tracks: o.project.tracks.map((tr) => (tr.id === b.track ? { ...tr, mute: false, solo: false } : tr)) }
+      const saved = await saveToFolder('export', o.fileName, '.wav', await renderRange(only, { start: b.start, end: b.start + b.length })).catch(folderFailed)
+      if (!saved) break
+      last = saved
+      count++
+    }
+    if (last) o.notify(t('folder.savedMany', { n: count, folder: last.folder }))
+  }
+
   // 自動保存がオフなら、閉じる前に確かめる（オンなら次に開いたときに戻せる）
   useLeaveGuard(settings.confirmClose && !settings.autoRestore, () => dirty)
 
@@ -140,5 +167,9 @@ export function useProjectFile(o: {
     save: () => void save(),
     saveAs: () => void save(true),
     runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
+    /** フォルダーへ保存できるブラウザか（Chrome、Edge） */
+    canSaveToFolder: canSaveToFolder(),
+    saveRangeToFolder: () => void saveRangeToFolder(),
+    saveBlocksToFolder: (ids: string[]) => void saveBlocksToFolder(ids),
   }
 }

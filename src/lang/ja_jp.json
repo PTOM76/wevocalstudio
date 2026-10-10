@@ -113,6 +113,8 @@
   "menu.clearMarkers": "マーカーをすべて削除",
   "menu.marker": "マーカー",
   "menu.newWindow": "新しいウィンドウ",
+  "menu.saveRangeToFolder": "範囲をフォルダーへ保存",
+  "menu.saveBlocksToFolder": "波形ブロックを別々にフォルダーへ保存",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -418,5 +420,9 @@
   "window.limit": "ウィンドウの数が上限（{n}）に達しています",
   "window.limitHint": "ほかのウィンドウを閉じるか、設定で上限を変更してください",
   "window.retry": "再試行",
-  "window.noAutosave": "このウィンドウは自動保存されません"
+  "window.noAutosave": "このウィンドウは自動保存されません",
+
+  "folder.saved": "「{folder}」に{name}を保存しました",
+  "folder.savedMany": "「{folder}」に{n}個のファイルを保存しました",
+  "folder.failed": "フォルダーへ保存できませんでした: {error}"
 }

@@ -236,6 +236,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     },
     save: files.save,
     saveAs: files.saveAs,
+    folder: files.canSaveToFolder ? { saveRange: files.saveRangeToFolder, saveBlocks: files.saveBlocksToFolder } : null,
     recent: files.recent,
     openExport: () => dialogs.open('export'),
     openSettings: () => dialogs.open('settings'),

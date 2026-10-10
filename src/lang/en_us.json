@@ -113,6 +113,8 @@
   "menu.clearMarkers": "Remove all markers",
   "menu.marker": "Markers",
   "menu.newWindow": "New window",
+  "menu.saveRangeToFolder": "Save range to folder",
+  "menu.saveBlocksToFolder": "Save blocks separately to folder",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -418,5 +420,9 @@
   "window.limit": "The number of windows has reached the limit ({n})",
   "window.limitHint": "Close another window, or change the limit in Settings",
   "window.retry": "Retry",
-  "window.noAutosave": "This window is not autosaved"
+  "window.noAutosave": "This window is not autosaved",
+
+  "folder.saved": "Saved {name} to \"{folder}\"",
+  "folder.savedMany": "Saved {n} files to \"{folder}\"",
+  "folder.failed": "Could not save to folder: {error}"
 }

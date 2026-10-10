@@ -55,6 +55,8 @@ export interface ActionContext {
   save: () => void
   /** 名前を付けて保存 */
   saveAs: () => void
+  /** フォルダーへの保存（使えないブラウザでは null） */
+  folder: { saveRange: () => void; saveBlocks: (ids: string[]) => void } | null
   /** 最近使用したファイル（PevenMUI の useRecentFiles） */
   recent: { supported: boolean; names: string[]; open: (i: number) => void; clear: () => void }
   openExport: () => void
@@ -216,6 +218,8 @@ export function useActions(c: ActionContext) {
     newWindow: { run: c.newWindow },
     save: { run: c.save },
     saveAs: { run: c.saveAs },
+    saveRangeToFolder: { enabled: !!c.folder && !!c.range, run: () => c.folder?.saveRange() },
+    saveBlocksToFolder: { enabled: !!c.folder && any, run: () => c.folder?.saveBlocks(ids) },
     import: { run: c.importFiles },
     export: { enabled: doc.project.blocks.length > 0, run: c.openExport },
     pitchUp: { enabled: any, run: () => doc.nudgePitch(ids, 1) },
@@ -263,7 +267,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.file'),
       accessKey: 'F',
-      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), divider, { label: t('menu.settings'), onClick: c.openSettings }],
+      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), ...(c.folder ? [item('saveRangeToFolder'), item('saveBlocksToFolder')] : []), divider, { label: t('menu.settings'), onClick: c.openSettings }],
     },
     {
       label: t('menu.edit'),
@@ -347,6 +351,7 @@ export function useActions(c: ActionContext) {
     item('duplicate'),
     item('split'),
     item('delete'),
+    ...(c.folder ? [divider, item('saveBlocksToFolder')] : []),
   ]
 
   /** 何もない所の右クリックのメニュー。time と track は押した所 */

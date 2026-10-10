@@ -53,6 +53,8 @@ export type Action =
   | 'open'
   | 'save'
   | 'saveAs'
+  | 'saveRangeToFolder'
+  | 'saveBlocksToFolder'
   | 'import'
   | 'export'
   | 'pitchUp'
@@ -130,6 +132,9 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   open: ['Ctrl+KeyO'],
   save: ['Ctrl+KeyS'],
   saveAs: ['Ctrl+Shift+KeyS'],
+  // 範囲、波形ブロックをフォルダーへ保存（Chrome、Edge）
+  saveRangeToFolder: [],
+  saveBlocksToFolder: [],
   import: ['Insert'],
   // 書き出し
   export: ['Ctrl+Alt+KeyR'],
