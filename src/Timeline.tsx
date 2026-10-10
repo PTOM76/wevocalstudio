@@ -650,7 +650,7 @@ export default function Timeline(p: {
                   onDuplicate={() => p.onDuplicateTrack(track.id)}
                   onRemove={() => p.onRemoveTrack(track.id)}
                 />
-              )})
+              )})}
             </Box>
           </Box>
         </Box>
