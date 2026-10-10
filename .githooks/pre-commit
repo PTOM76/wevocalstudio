@@ -1,0 +1,4 @@
+#!/bin/sh
+# コミットの前に、submodule を隣の WeVocalSynth の中の今のコミットにそろえ、コミットに含める（scripts/sync-modules.mjs）
+node scripts/sync-modules.mjs || exit 1
+git add pevenmui wevocal-lib analyzer extractor

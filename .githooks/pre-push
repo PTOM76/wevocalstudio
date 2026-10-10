@@ -1,0 +1,3 @@
+#!/bin/sh
+# push の前に、submodule が指しているコミットが GitHub にあるかを確かめる（なければ GitHub Actions のビルドが失敗する）
+node scripts/sync-modules.mjs --check

@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "i18n": "node scripts/i18n.mjs",
     "map": "node scripts/map.mjs",
-    "build:icons": "node scripts/build-icons.mjs"
+    "build:icons": "node scripts/build-icons.mjs",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
