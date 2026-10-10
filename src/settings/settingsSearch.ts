@@ -13,7 +13,7 @@ const TREE: [Category, Category?][] = [['general'], ['edit', 'general'], ['keys'
 
 /** 検索の対象のうち、定義（items/）にないもの: グループ名と、自前の画面の項目の訳文キー */
 const INDEX: Record<Category, MessageKey[]> = {
-  general: ['settings.groupStartup', 'settings.groupRecord', 'settings.inputDevice', 'settings.groupUpdate', 'menu.checkUpdate'],
+  general: ['settings.groupStartup', 'settings.groupOutput', 'settings.outputDevice', 'settings.outputDeviceHelp', 'settings.groupRecord', 'settings.inputDevice', 'settings.groupUpdate', 'menu.checkUpdate'],
   edit: ['settings.groupHistory', 'settings.groupInput'],
   keys: ['settings.groupShortcuts', ...ACTIONS.map((a) => `menu.${a.id}` as MessageKey)],
   file: ['settings.groupFile'],

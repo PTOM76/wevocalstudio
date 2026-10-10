@@ -10,6 +10,10 @@ export const general = defineItems('general', {
   autoRestore: check(true, { label: 'settings.autoRestore', help: 'settings.autoRestoreHelp' }),
   // 保存していない変更があれば、閉じる前に確かめる（自動保存がオフのとき）
   confirmClose: check(true, { label: 'settings.confirmClose', help: 'settings.confirmCloseHelp' }),
+  // 音声の出力先（'' は既定。設定画面は wevocal-lib の行）と、鳴らす音の上限（耳とスピーカーを守る）
+  outputDevice: value(''),
+  outputLimit: check(true, { label: 'settings.outputLimit', help: 'settings.outputLimitHelp' }),
+  outputLimitDb: number(-1, { label: 'settings.outputLimitDb', min: -24, max: 0, step: 1, unit: 'dB' }),
   // 録音の入力元（'' は既定の入力。設定画面は自前の行）と、ブラウザの音声処理（原音のまま録るので既定はオフ）
   inputDevice: value(''),
   recordEchoCancellation: check(false, { label: 'settings.recordEcho' }),

@@ -1,11 +1,11 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
-import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Snackbar } from '@mui/material'
 import { ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
-import { configurePlayback } from 'wevocal-lib'
+import { configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
@@ -48,6 +48,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
   setKeyOverrides(p.settings.keys)
   const mobile = useMobileLayout()
+  // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
+  useEffect(() => setOutputDevice(p.settings.outputDevice), [p.settings.outputDevice])
+  useEffect(() => setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null), [p.settings.outputLimit, p.settings.outputLimitDb])
   const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit })
   const { project, selected } = doc
   const setSelected = doc.select

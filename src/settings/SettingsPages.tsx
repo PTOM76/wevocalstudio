@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ALGORITHM_NAMES, listInputDevices, type Algorithm, type InputDevice } from 'wevocal-lib'
 import { Choice, Group, KeymapEditor, Row, type WindowMode } from 'pevenmui'
 import { UpdateSection } from 'pevenmui/pwa'
+import { OutputDeviceRow } from 'wevocal-lib/react'
 import { i18n, type LangSetting, type MessageKey } from '../i18n'
 import { ACTIONS } from '../keymap'
 import SettingRow from './items/SettingRow'
@@ -32,6 +33,11 @@ export function settingsPages({ draft, set, t, onClose }: { draft: Settings; set
         <Group title={t('settings.groupStartup')}>
           {S('autoRestore')}
           {S('confirmClose')}
+        </Group>
+        <Group title={t('settings.groupOutput')}>
+          <OutputDeviceRow value={draft.outputDevice} onChange={(outputDevice) => set({ outputDevice })} t={t} />
+          {S('outputLimit')}
+          {draft.outputLimit && S('outputLimitDb')}
         </Group>
         <Group title={t('settings.groupRecord')}>
           <InputDeviceRow value={draft.inputDevice} onChange={(inputDevice) => set({ inputDevice })} t={t} />

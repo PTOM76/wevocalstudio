@@ -1,6 +1,6 @@
 // 再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）。
 // 再生中に変えたときは、変わった波形ブロックだけを差し替え、トラックとマスターの音量などは値だけを変える（全部を鳴らし直すと一瞬止まるため）
-import { createLiveEq, flatEq, startContext, updateLiveEq, type Clip, type LiveEq } from 'wevocal-lib'
+import { createLiveEq, flatEq, limitedOutput, startContext, updateLiveEq, type Clip, type LiveEq } from 'wevocal-lib'
 import { piecesFor, preparePitch, type Piece } from './dsp/pitch'
 import { audible, dbToGain, envAt, projectEnd, type Block, type Project, type Track } from './project'
 
@@ -64,7 +64,8 @@ class Graph {
     this.master = ctx.createGain()
     this.masterPan = ctx.createStereoPanner()
     this.out = ctx.createGain()
-    this.master.connect(this.masterPan).connect(this.out).connect(ctx.destination)
+    // 再生は耳とスピーカーを守るリミッターを通す（wevocal-lib。WeVocalSynth と同じ）。書き出しは通さない
+    this.master.connect(this.masterPan).connect(this.out).connect(ctx instanceof AudioContext ? limitedOutput(ctx) : ctx.destination)
     // 左右に分けて別々に測る（AnalyserNode はチャンネルを混ぜて読むため。WeVocalSynth と同じ）
     const split = ctx.createChannelSplitter(2)
     this.out.connect(split)
