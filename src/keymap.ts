@@ -120,6 +120,8 @@ export function setKeyOverrides(o: KeymapOverrides<Action>) {
   keymap = resolveKeymap(ACTIONS, o)
 }
 export const currentKeys = (a: Action) => keymap[a]
+/** 今の割り当て全部（ショートカットの一覧） */
+export const currentKeymap = () => keymap
 
 /** 押されたキーに割り当てた操作。なければ null */
 export function actionOf(e: KeyboardEvent): Action | null {

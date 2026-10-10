@@ -1,6 +1,7 @@
 {
   "about.version": "バージョン",
   "about.author": "作者",
+
   "block.gain": "音量 (dB)",
   "block.pitch": "ピッチ (半音)",
   "block.fadeIn": "フェードイン (秒)",
@@ -19,10 +20,13 @@
   "block.mixed": "（混在）",
   "block.source": "元の音",
   "block.sourceFile": "ファイルから読み込む…",
+
   "error.failed": "処理に失敗しました: {error}",
   "error.noRecord": "このブラウザでは録音できません",
   "error.noTempo": "テンポを見つけられませんでした",
+
   "licenses.app": "このアプリ",
+
   "menu.file": "ファイル",
   "menu.view": "表示",
   "menu.help": "ヘルプ",
@@ -94,6 +98,8 @@
   "menu.recentClear": "一覧を消去",
   "menu.recentEmpty": "（なし）",
   "menu.checkUpdate": "更新を確認",
+  "menu.shortcuts": "ショートカット一覧",
+
   "settings.title": "設定",
   "settings.general": "全般",
   "settings.appearance": "表示",
@@ -176,6 +182,7 @@
   "settings.cat.debug": "開発者向け",
   "settings.cat.pitch": "ピッチ",
   "settings.groupOutput": "音声の出力",
+
   "status.ready": "準備完了",
   "status.playing": "再生中",
   "status.exporting": "書き出し中…",
@@ -190,6 +197,7 @@
   "status.renameHint": "押すとプロジェクトの名前を変えられます（保存と書き出しのファイル名になります）",
   "status.tracks": "{n} トラック",
   "status.projectName": "プロジェクトの名前",
+
   "track.mute": "ミュート",
   "track.solo": "ソロ",
   "track.volume": "音量",
@@ -207,26 +215,29 @@
   "track.outdent": "外に出す",
   "track.collapse": "子のトラックをたたむ",
   "track.expand": "子のトラックを開く",
+
   "export.title": "書き出す",
   "export.format": "形式",
   "export.bits": "サンプル形式",
   "export.bitrate": "ビットレート",
   "export.run": "書き出す",
   "export.rangeOnly": "選択範囲だけを書き出す",
+
   "common.cancel": "キャンセル",
   "common.ok": "OK",
   "common.close": "閉じる",
+
   "transport.toStart": "先頭へ",
   "transport.stop": "停止",
   "transport.play": "再生",
   "transport.pause": "一時停止",
   "transport.repeat": "リピート",
   "transport.toEnd": "末尾へ",
-  "transport.range": "範囲",
   "transport.beatsPerBar": "拍子",
   "transport.record": "録音",
   "transport.grid": "グリッド",
   "transport.timeInput": "再生位置を入力",
+
   "toast.restored": "前回の作業を復元しました",
   "toast.tempo": "テンポを {bpm} BPM にしました",
   "toast.recentMissing": "「{file}」を開けませんでした（移動または削除された可能性があります）",
@@ -234,16 +245,19 @@
   "toast.updateLatest": "最新の版です",
   "toast.updateUnsupported": "この環境では更新を確認できません",
   "toast.updateFailed": "更新を確認できませんでした",
+
   "marker.title": "マーカー",
   "marker.name": "名前",
   "marker.remove": "削除",
   "marker.tempo": "ここからテンポを変える",
+
   "eq.title": "EQ（{name}）",
   "eq.on": "オン",
   "eq.bandsN": "{n} 帯",
   "eq.flat": "平らに戻す",
   "eq.graph": "EQ のグラフ",
   "eq.help": "なぞって描きます。Shift で 1 つの帯だけを細かく、Alt で両隣となじませ、ダブルクリックで 0 dB に戻します。",
+
   "analysis.title": "解析",
   "analysis.select": "波形ブロックを選ぶと、スペクトログラムと F0 を表示します",
   "analysis.busy": "解析中…",
@@ -252,6 +266,7 @@
   "analysis.clearCurve": "カーブを消す",
   "analysis.grab": "つかむ",
   "analysis.grabHelp": "線をつかんで上下に動かします。範囲選択の中なら範囲を、外なら声が途切れる所までの一続きを動かします。Shift で半音きざみ",
+
   "history.new": "新しいプロジェクト",
   "history.open": "開く",
   "history.import": "音声の読み込み",
@@ -274,19 +289,42 @@
   "history.restore": "前回の作業の復元",
   "history.select": "選択",
   "history.envelope": "エンベロープ",
+
   "confirm.newProject": "今の作業を閉じて、新しいプロジェクトにしますか？（保存していない変更は失われます）",
   "confirm.discard": "保存していない変更があります。破棄して開きますか？",
   "confirm.discardOk": "破棄して開く",
-  "meter.track": "{name} の音量",
+
   "meter.master": "全体の音量",
+
   "job.pitch": "ピッチなどを処理中",
   "job.export": "書き出し中",
+
   "file.projectType": "WeVocal Studio プロジェクト",
   "file.audioType": "音声ファイル",
   "file.openType": "音声とプロジェクトのファイル",
+
   "tempo.tap": "タップで計測",
   "tempo.tapHint": "拍に合わせてタップした間隔から BPM を算出します",
   "tempo.candidates": "自動解析の候補",
   "tempo.analyze": "再解析",
-  "tempo.analyzing": "解析中…"
+  "tempo.analyzing": "解析中…",
+
+  "shortcuts.rightClick": "右クリック",
+  "shortcuts.contextMenu": "編集メニュー",
+  "shortcuts.drag": "ドラッグ",
+  "shortcuts.moveBlock": "波形ブロックを動かす（端で長さ、上の角でフェード）",
+  "shortcuts.altDrag": "Alt+ドラッグ",
+  "shortcuts.slip": "波形ブロックの中の音をずらす（端では速度ごと伸び縮み）",
+  "shortcuts.ctrlDrag": "Ctrl+ドラッグ",
+  "shortcuts.copyBlock": "波形ブロックを複製して動かす",
+  "shortcuts.laneDrag": "空いている所をドラッグ",
+  "shortcuts.range": "範囲を選ぶ",
+  "shortcuts.rightDrag": "右ドラッグ",
+  "shortcuts.marquee": "枠で波形ブロックを選ぶ",
+  "shortcuts.shiftClick": "Shift+クリック",
+  "shortcuts.addSelect": "選択に足す",
+  "shortcuts.wheel": "ホイール",
+  "shortcuts.scroll": "縦にスクロール（Shift で横、Ctrl で拡大縮小）",
+  "shortcuts.shiftDrag": "Shift+ドラッグ",
+  "shortcuts.noSnap": "吸い付けずに動かす"
 }

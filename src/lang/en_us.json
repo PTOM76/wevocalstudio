@@ -1,6 +1,7 @@
 {
   "about.version": "Version",
   "about.author": "Author",
+
   "block.gain": "Volume (dB)",
   "block.pitch": "Pitch (st)",
   "block.fadeIn": "Fade In (s)",
@@ -19,10 +20,13 @@
   "block.mixed": "(mixed)",
   "block.source": "Source",
   "block.sourceFile": "Load from file…",
+
   "error.failed": "Failed: {error}",
   "error.noRecord": "Recording is not supported in this browser",
   "error.noTempo": "Could not detect the tempo",
+
   "licenses.app": "This app",
+
   "menu.file": "File",
   "menu.view": "View",
   "menu.help": "Help",
@@ -94,6 +98,8 @@
   "menu.recentClear": "Clear list",
   "menu.recentEmpty": "(none)",
   "menu.checkUpdate": "Check for updates",
+  "menu.shortcuts": "Keyboard shortcuts",
+
   "settings.title": "Settings",
   "settings.general": "General",
   "settings.appearance": "Appearance",
@@ -176,6 +182,7 @@
   "settings.cat.debug": "Developer",
   "settings.cat.pitch": "Pitch",
   "settings.groupOutput": "Audio output",
+
   "status.ready": "Ready",
   "status.playing": "Playing",
   "status.exporting": "Exporting…",
@@ -190,6 +197,7 @@
   "status.renameHint": "Click to rename the project (used for saved and exported files)",
   "status.tracks": "{n} tracks",
   "status.projectName": "Project name",
+
   "track.mute": "Mute",
   "track.solo": "Solo",
   "track.volume": "Volume",
@@ -207,26 +215,29 @@
   "track.outdent": "Move Out of Parent",
   "track.collapse": "Collapse Subtracks",
   "track.expand": "Expand Subtracks",
+
   "export.title": "Export",
   "export.format": "Format",
   "export.bits": "Bit depth",
   "export.bitrate": "Bitrate",
   "export.run": "Export",
   "export.rangeOnly": "Export the time selection only",
+
   "common.cancel": "Cancel",
   "common.ok": "OK",
   "common.close": "Close",
+
   "transport.toStart": "Go to start",
   "transport.stop": "Stop",
   "transport.play": "Play",
   "transport.pause": "Pause",
   "transport.repeat": "Repeat",
   "transport.toEnd": "Go to end",
-  "transport.range": "Selection",
   "transport.beatsPerBar": "Time sig.",
   "transport.record": "Record",
   "transport.grid": "Grid",
   "transport.timeInput": "Enter position",
+
   "toast.restored": "Restored your previous work",
   "toast.tempo": "Set the tempo to {bpm} BPM",
   "toast.recentMissing": "Could not open \"{file}\" (it may have been moved or deleted)",
@@ -234,16 +245,19 @@
   "toast.updateLatest": "You are on the latest version",
   "toast.updateUnsupported": "Updates cannot be checked here",
   "toast.updateFailed": "Could not check for updates",
+
   "marker.title": "Marker",
   "marker.name": "Name",
   "marker.remove": "Remove",
   "marker.tempo": "Change tempo from here",
+
   "eq.title": "EQ ({name})",
   "eq.on": "On",
   "eq.bandsN": "{n} bands",
   "eq.flat": "Reset to flat",
   "eq.graph": "EQ graph",
   "eq.help": "Drag to draw. Shift adjusts one band finely, Alt smooths with neighbors, double-click resets a band to 0 dB.",
+
   "analysis.title": "Analysis",
   "analysis.select": "Select a block to show its spectrogram and F0",
   "analysis.busy": "Analyzing…",
@@ -252,6 +266,7 @@
   "analysis.clearCurve": "Clear curve",
   "analysis.grab": "Grab",
   "analysis.grabHelp": "Drag the pitch line up or down. Inside the time selection moves the selection, otherwise the voiced phrase. Shift snaps to semitones",
+
   "history.new": "New project",
   "history.open": "Open",
   "history.import": "Import audio",
@@ -274,19 +289,42 @@
   "history.restore": "Restore previous work",
   "history.select": "Select",
   "history.envelope": "Envelope",
+
   "confirm.newProject": "Close the current work and start a new project? Unsaved changes will be lost.",
   "confirm.discard": "There are unsaved changes. Discard them and open?",
   "confirm.discardOk": "Discard and open",
-  "meter.track": "{name} level",
+
   "meter.master": "Master level",
+
   "job.pitch": "Processing pitch",
   "job.export": "Exporting",
+
   "file.projectType": "WeVocal Studio project",
   "file.audioType": "Audio file",
   "file.openType": "Audio and project files",
+
   "tempo.tap": "Tap tempo",
   "tempo.tapHint": "Tap on the beat a few times to set the BPM from the interval",
   "tempo.candidates": "Detected candidates",
   "tempo.analyze": "Re-analyze",
-  "tempo.analyzing": "Analyzing…"
+  "tempo.analyzing": "Analyzing…",
+
+  "shortcuts.rightClick": "Right-click",
+  "shortcuts.contextMenu": "Edit menu",
+  "shortcuts.drag": "Drag",
+  "shortcuts.moveBlock": "Move a block (edges: length, top corners: fade)",
+  "shortcuts.altDrag": "Alt+drag",
+  "shortcuts.slip": "Slip the audio inside a block (edges: stretch)",
+  "shortcuts.ctrlDrag": "Ctrl+drag",
+  "shortcuts.copyBlock": "Duplicate and move a block",
+  "shortcuts.laneDrag": "Drag on empty space",
+  "shortcuts.range": "Select a range",
+  "shortcuts.rightDrag": "Right-drag",
+  "shortcuts.marquee": "Select blocks with a box",
+  "shortcuts.shiftClick": "Shift+click",
+  "shortcuts.addSelect": "Add to selection",
+  "shortcuts.wheel": "Wheel",
+  "shortcuts.scroll": "Scroll vertically (Shift: horizontal, Ctrl: zoom)",
+  "shortcuts.shiftDrag": "Shift+drag",
+  "shortcuts.noSnap": "Move without snapping"
 }

@@ -12,6 +12,7 @@ import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 import BlockDialog from './BlockDialog'
 import MarkerDialog from './MarkerDialog'
 import HistoryDialog from './HistoryDialog'
+import ShortcutsDialog from './ShortcutsDialog'
 import EqDialog from './EqDialog'
 import { flatEq } from 'wevocal-lib'
 import type { TimelineView } from './drawTimeline'
@@ -85,7 +86,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [notice, setNotice] = useState<string | null>(null)
   // 起動時の復元が終わるまでは自動保存しない（空のプロジェクトで前回の作業を上書きしないように）
   const [restored, setRestored] = useState(false)
-  const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | 'history' | null>(null)
+  const [dialog, setDialog] = useState<'settings' | 'about' | 'licenses' | 'export' | 'history' | 'shortcuts' | null>(null)
   const audioInput = useRef<HTMLInputElement>(null)
   // 時間軸に出すのは見えているトラックだけ（たたんだ親の子孫は隠す）
   const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project])
@@ -300,6 +301,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
     help: {
       guide: () => openExternal(app.repository),
+      shortcuts: () => setDialog('shortcuts'),
       // 新しい版があれば右下の通知から更新できる。ここでは結果だけを知らせる（WeVocalSynth と同じ）
       checkUpdate: () =>
         void checkForUpdate().then((r) => {
@@ -587,6 +589,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           }}
         />
       )}
+      <ShortcutsDialog open={dialog === 'shortcuts'} onClose={() => setDialog(null)} />
       <HistoryDialog open={dialog === 'history'} steps={doc.steps} index={doc.stepIndex} onGoto={doc.goto} onClose={() => setDialog(null)} />
       <MarkerDialog
         marker={project.markers.find((m) => m.id === editingMarker) ?? null}
