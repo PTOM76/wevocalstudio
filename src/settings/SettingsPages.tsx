@@ -34,6 +34,10 @@ export function settingsPages({ draft, set, t, onClose }: { draft: Settings; set
           {S('autoRestore')}
           {S('confirmClose')}
         </Group>
+        <Group title={t('settings.groupWindows')}>
+          {S('maxWindows')}
+          {S('extraWindows')}
+        </Group>
         <Group title={t('settings.groupOutput')}>
           <OutputDeviceRow value={draft.outputDevice} onChange={(outputDevice) => set({ outputDevice })} t={t} />
           {S('outputLimit')}

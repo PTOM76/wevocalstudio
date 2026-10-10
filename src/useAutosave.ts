@@ -1,5 +1,6 @@
 // 起動時に前回の作業を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
 import { useEffect } from 'react'
+import { slot } from 'pevenmui/web'
 import type { MessageKey } from './i18n'
 import { useT } from './i18n'
 import type { Project } from './project'
@@ -26,6 +27,8 @@ export function useAutosave(o: {
   const setRestored = (_: boolean) => o.onRestored()
   // 起動時に前回の作業を復元する（WeVocalSynth と同じ）
   useEffect(() => {
+    // 上限を超えて開いたウィンドウ（枠なし）は自動保存しないことを知らせる
+    if (slot === null) setNotice(t('window.noAutosave'))
     if (!p.settings.autoRestore) return setRestored(true)
     loadAutosave()
       .then((r) => {

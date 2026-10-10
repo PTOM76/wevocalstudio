@@ -4,11 +4,12 @@ import { createRoot } from 'react-dom/client'
 import { useColorScheme } from '@mui/material'
 import '@fontsource/roboto/400.css'
 import '@fontsource/roboto/500.css'
-import { PevenProvider, preventPageZoom, setUiScale } from 'pevenmui'
+import { PevenProvider, WindowLimitScreen, preventPageZoom, setUiScale } from 'pevenmui'
+import { acquireSlot, configureWindowSlots } from 'pevenmui/web'
 import App from './App'
 import { app } from './appConfig'
-import { i18n } from './i18n'
-import { useSettings, type Settings } from './settings/settings'
+import { i18n, t } from './i18n'
+import { loadSettings, useSettings, type Settings } from './settings/settings'
 
 preventPageZoom()
 
@@ -31,8 +32,26 @@ function Root() {
   )
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Root />
-  </StrictMode>,
+/** 上限で開けなかったときの画面（WeVocalSynth と同じ） */
+function Limit({ max }: { max: number }) {
+  const settings = loadSettings()
+  i18n.setLang(i18n.resolve(settings.language))
+  return <WindowLimitScreen message={t('window.limit', { n: max })} hint={t('window.limitHint')} retry={t('window.retry')} close={t('common.close')} />
+}
+
+// 最初に、このウィンドウの枠を取る（自動保存のキーが決まる。PevenMUI の windowSlot）。上限で、超えて開く設定でなければ作業を開かない
+configureWindowSlots(app.key(''))
+const boot = loadSettings()
+void acquireSlot(boot.maxWindows).then((slot) =>
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      {slot === null && !boot.extraWindows ? (
+        <PevenProvider desktopLook app={app}>
+          <Limit max={boot.maxWindows} />
+        </PevenProvider>
+      ) : (
+        <Root />
+      )}
+    </StrictMode>,
+  ),
 )

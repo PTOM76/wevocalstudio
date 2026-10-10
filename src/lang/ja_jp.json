@@ -112,6 +112,7 @@
   "menu.soloTrack": "ソロ",
   "menu.clearMarkers": "マーカーをすべて削除",
   "menu.marker": "マーカー",
+  "menu.newWindow": "新しいウィンドウ",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -207,6 +208,10 @@
   "settings.outputLimit": "音量の上限を設ける",
   "settings.outputLimitHelp": "大きすぎる音を抑え、耳とスピーカーを守ります。書き出す音には反映されません",
   "settings.outputLimitDb": "上限",
+  "settings.maxWindows": "同時に開くウィンドウの数",
+  "settings.extraWindows": "上限を超えても開く",
+  "settings.extraWindowsHelp": "上限を超えたウィンドウは自動保存されません",
+  "settings.groupWindows": "ウィンドウ",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
@@ -408,5 +413,10 @@
   "empty.showLess": "閉じる",
   "empty.record": "録音",
 
-  "record.title": "録音"
+  "record.title": "録音",
+
+  "window.limit": "ウィンドウの数が上限（{n}）に達しています",
+  "window.limitHint": "ほかのウィンドウを閉じるか、設定で上限を変更してください",
+  "window.retry": "再試行",
+  "window.noAutosave": "このウィンドウは自動保存されません"
 }

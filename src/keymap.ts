@@ -14,6 +14,7 @@ export type Action =
   | 'nudgeLeft'
   | 'nudgeRight'
   | 'newProject'
+  | 'newWindow'
   | 'toEnd'
   | 'snap'
   | 'follow'
@@ -80,6 +81,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   nudgeLeft: ['Numpad4'],
   nudgeRight: ['Numpad6'],
   newProject: ['Ctrl+KeyN'],
+  // 新しいウィンドウ（ウィンドウごとに自動保存を分ける）
+  newWindow: ['Ctrl+Shift+KeyN'],
   toEnd: ['End'],
   // スナップの切り替え
   snap: ['Alt+KeyS'],

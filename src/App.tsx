@@ -5,6 +5,7 @@ import { EmptyState, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, W
 import StatusBar from './StatusBar'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
+import { openNewWindow, openWindowCount, slot } from 'pevenmui/web'
 import { canRecord, configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
@@ -219,6 +220,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       setPlaying(true)
     },
     end,
+    newWindow: () =>
+      void openWindowCount().then((n) => (n >= p.settings.maxWindows && !p.settings.extraWindows ? setNotice(t('window.limit', { n: p.settings.maxWindows })) : openNewWindow())),
     zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
     // 選んでいるものの中を開いたら、選んでいるもの全部を一括で
     openProperties: (id: string) => dialogs.open('block', selected.includes(id) ? selected : [id]),
@@ -267,7 +270,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   })
 
   // 起動時の復元と自動保存（WeVocalSynth と同じ）
-  useAutosave({ project, fileName, autoRestore: p.settings.autoRestore, replace: doc.replace, setFileName, fail, notify: setNotice, onRestored: () => setRestored(true), restored })
+  useAutosave({ project, fileName, autoRestore: p.settings.autoRestore && slot !== null, replace: doc.replace, setFileName, fail, notify: setNotice, onRestored: () => setRestored(true), restored })
   // 再生中の同期（範囲の終わりで止める、変更の反映、ピッチを変えた音の準備と進み具合）
   usePlayerSync({ player: player.current, project, cursor, playing, range, repeat, end, setPlayPos, setPlaying, fail, onMade: () => setMadeVersion((v) => v + 1) })
 

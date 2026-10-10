@@ -10,6 +10,9 @@ export const general = defineItems('general', {
   autoRestore: check(true, { label: 'settings.autoRestore', help: 'settings.autoRestoreHelp' }),
   // 保存していない変更があれば、閉じる前に確かめる（自動保存がオフのとき）
   confirmClose: check(true, { label: 'settings.confirmClose', help: 'settings.confirmCloseHelp' }),
+  // 同時に開くウィンドウの数（ウィンドウごとに自動保存を分ける。PevenMUI の windowSlot）と、上限を超えても開くか（そのウィンドウは自動保存しない）
+  maxWindows: number(4, { label: 'settings.maxWindows', min: 1, max: 8, step: 1 }),
+  extraWindows: check(false, { label: 'settings.extraWindows', help: 'settings.extraWindowsHelp' }),
   // 音声の出力先（'' は既定。設定画面は wevocal-lib の行）と、鳴らす音の上限（耳とスピーカーを守る）
   outputDevice: value(''),
   outputLimit: check(true, { label: 'settings.outputLimit', help: 'settings.outputLimitHelp' }),

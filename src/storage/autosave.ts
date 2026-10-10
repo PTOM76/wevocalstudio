@@ -1,10 +1,12 @@
 // 作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く。書き込みは Worker
 import type { Clip } from 'wevocal-lib'
 import { DEFAULT_TEMPO, fillBlock, newProject, type Project, type Source } from '../project'
+import { slotKey } from 'pevenmui/web'
 import type { AutosaveMessage, AutosaveReply } from './autosaveWorker'
 
-const META = 'autosave:meta'
-const sourceKey = (id: string) => `autosave:source:${id}`
+// キーはウィンドウごとに分ける（PevenMUI の windowSlot。枠 0 は前と同じキー）
+const metaKey = () => slotKey('autosave:meta')
+const sourceKey = (id: string) => slotKey(`autosave:source:${id}`)
 /** 一度に Worker に渡す大きさ（サンプル数。4 MB） */
 const CHUNK = 1 << 20
 
@@ -81,7 +83,7 @@ export async function saveAutosave(p: Project, fileName: string) {
     tracks: p.tracks,
     blocks: p.blocks,
   }
-  send({ type: 'put', key: META, value: meta })
+  send({ type: 'put', key: metaKey(), value: meta })
   const used = new Set(p.sources.map((s) => s.id))
   const unused = [...written].filter((id) => !used.has(id))
   if (unused.length) {
@@ -92,7 +94,7 @@ export async function saveAutosave(p: Project, fileName: string) {
 
 /** 前回の作業。なければ null */
 export async function loadAutosave(): Promise<{ project: Project; fileName: string } | null> {
-  const meta = await get<Meta>(META)
+  const meta = await get<Meta>(metaKey())
   if (!meta || !meta.blocks?.length) return null
   const sources: Source[] = []
   for (const s of meta.sources) {
@@ -111,8 +113,9 @@ export async function loadAutosave(): Promise<{ project: Project; fileName: stri
   }
 }
 
-/** 自動保存を消す（自動保存をやめたとき） */
+/** このウィンドウの自動保存を消す（自動保存をやめたとき。ほかのウィンドウのものは残す） */
 export async function clearAutosave() {
-  send({ type: 'clear' })
+  const m = await get<Meta>(metaKey())
+  send({ type: 'delete', keys: [metaKey(), ...(m?.sources ?? []).map((x) => sourceKey(x.id))] })
   written.clear()
 }

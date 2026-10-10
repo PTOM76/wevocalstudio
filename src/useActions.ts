@@ -46,6 +46,7 @@ export interface ActionContext {
   /** 線の 1 目盛り（秒。拍か秒） */
   gridStep: () => number
   newProject: () => void
+  newWindow: () => void
   openProperties: (id: string) => void
   openFile: () => void
   importFiles: () => void
@@ -211,6 +212,8 @@ export function useActions(c: ActionContext) {
     paste: { enabled: clipboard.current.length > 0 || !!trackClipboard.current, run: () => paste() },
     duplicate: { enabled: any, run: duplicate },
     open: { run: c.openFile },
+    // 上限に達していれば知らせる（設定の「同時に開くウィンドウの数」。WeVocalSynth と同じ）
+    newWindow: { run: c.newWindow },
     save: { run: c.save },
     saveAs: { run: c.saveAs },
     import: { run: c.importFiles },
@@ -260,7 +263,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.file'),
       accessKey: 'F',
-      entries: [item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), divider, { label: t('menu.settings'), onClick: c.openSettings }],
+      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), divider, { label: t('menu.settings'), onClick: c.openSettings }],
     },
     {
       label: t('menu.edit'),

@@ -112,6 +112,7 @@
   "menu.soloTrack": "Solo",
   "menu.clearMarkers": "Remove all markers",
   "menu.marker": "Markers",
+  "menu.newWindow": "New window",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -207,6 +208,10 @@
   "settings.outputLimit": "Limit output volume",
   "settings.outputLimitHelp": "Keeps loud sounds down to protect your ears and speakers. Does not affect exported audio",
   "settings.outputLimitDb": "Limit",
+  "settings.maxWindows": "Maximum open windows",
+  "settings.extraWindows": "Open beyond the limit",
+  "settings.extraWindowsHelp": "Windows beyond the limit are not autosaved",
+  "settings.groupWindows": "Windows",
 
   "status.ready": "Ready",
   "status.playing": "Playing",
@@ -408,5 +413,10 @@
   "empty.showLess": "Show less",
   "empty.record": "Record",
 
-  "record.title": "Record"
+  "record.title": "Record",
+
+  "window.limit": "The number of windows has reached the limit ({n})",
+  "window.limitHint": "Close another window, or change the limit in Settings",
+  "window.retry": "Retry",
+  "window.noAutosave": "This window is not autosaved"
 }
