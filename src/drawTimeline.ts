@@ -123,8 +123,8 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       const x = tx(b.start)
       const bw = b.length * view.pps
       if (x > w || x + bw < 0) continue
-      // 鳴らないトラック（ミュート、ほかのソロ）と、ミュートした波形ブロックは薄く出す（WeVocalSynth と同じ）
-      g.globalAlpha = b.mute || !audible(p, track) ? 0.35 : 1
+      // 鳴らないトラック（ミュート、ほかのソロ）と、ミュートした波形ブロックは薄く出す（WeVocalSynth と同じ）。フリーズ中のトラックも少し薄くする（編集できない）
+      g.globalAlpha = b.mute || !audible(p, track) ? 0.35 : track.frozen ? 0.6 : 1
       g.fillStyle = selected.includes(b.id) ? c.blockSelected : c.block
       g.fillRect(x, y + 2, bw, H - 5)
       g.fillStyle = c.wave

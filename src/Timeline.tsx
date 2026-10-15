@@ -62,6 +62,7 @@ export default function Timeline(p: {
   meter?: (trackId: string) => readonly AnalyserNode[] | null
   masterMeter?: () => readonly AnalyserNode[] | null
   onDuplicateTrack: (id: string) => void
+  onFreezeTrack: (id: string) => void
   /** サブトラックの操作 */
   onTrackOp: (op: 'addSubtrack' | 'indent' | 'outdent', id: string) => void
   /** トラックをスロット to（0〜N）へ並び替える */
@@ -152,6 +153,16 @@ export default function Timeline(p: {
   vsRef.current = vs
   const slotAtRef = useRef(slotAt)
   slotAtRef.current = slotAt
+
+  // 並び替え中は、どこにいても「つかんでいる手」にする（始める前は普通のカーソルのまま）
+  useEffect(() => {
+    if (!draggingTrackId) return
+    const prev = document.body.style.cursor
+    document.body.style.cursor = 'grabbing'
+    return () => {
+      document.body.style.cursor = prev
+    }
+  }, [draggingTrackId])
 
   // 並び替えのドラッグ中、欄の上下の端に近づいたら縦にスクロールする（落とす位置の線も追従）
   const dragYRef = useRef(0)
@@ -728,6 +739,7 @@ export default function Timeline(p: {
                   onMoveUp={() => i > 0 && p.onMoveTrack(track.id, i - 1)}
                   onMoveDown={() => i < p.project.tracks.length - 1 && p.onMoveTrack(track.id, i + 2)}
                   onDuplicate={() => p.onDuplicateTrack(track.id)}
+                  onFreeze={() => p.onFreezeTrack(track.id)}
                   onRemove={() => p.onRemoveTrack(track.id)}
                 />
               )})}

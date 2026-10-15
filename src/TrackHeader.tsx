@@ -1,6 +1,8 @@
 // トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
 import { useRef, useState, type ReactNode } from 'react'
 import { Box, ButtonBase, InputBase, Tooltip, Typography } from '@mui/material'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faSnowflake } from '@fortawesome/free-solid-svg-icons'
 import { pevenFont, useDoubleTap, useLongPress } from 'pevenmui'
 import { ContextMenu } from 'pevenmui'
 import { MeterFader, PanBar } from './MeterFader'
@@ -70,6 +72,8 @@ export default function TrackHeader(p: {
   onEndMerge: () => void
   onEq: () => void
   onDuplicate: () => void
+  /** フリーズとその解除 */
+  onFreeze: () => void
   onRemove: () => void
   /** レベルメーター（出さなければ省く） */
   meter?: () => readonly AnalyserNode[] | null
@@ -136,8 +140,6 @@ export default function TrackHeader(p: {
         opacity: p.dragging ? 0.4 : 1,
         userSelect: 'none',
         touchAction: 'none',
-        // 欄のどこでもつかめるのが分かるように（ボタンやつまみは自分のカーソルになる）
-        cursor: p.dragging ? 'grabbing' : 'grab',
         boxSizing: 'border-box',
         pr: 1,
         // サブトラックは深さだけ字下げする
@@ -185,6 +187,12 @@ export default function TrackHeader(p: {
         ) : (
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => setEditing(true)} onPointerUp={(e) => e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY) && setEditing(true)}>
+            {/* フリーズ中の印 */}
+            {track.frozen && (
+              <Tooltip title={t('track.frozen')}>
+                <FontAwesomeIcon icon={faSnowflake} style={{ marginRight: 4, opacity: 0.7 }} />
+              </Tooltip>
+            )}
             {track.name}
           </Typography>
           </Box>
@@ -214,6 +222,7 @@ export default function TrackHeader(p: {
         entries={[
           { label: t('track.rename'), onClick: () => setEditing(true) },
           { label: t('track.duplicate'), onClick: p.onDuplicate },
+          { label: t(track.frozen ? 'track.unfreeze' : 'track.freeze'), onClick: p.onFreeze },
           { divider: true },
           { label: t('track.addSubtrack'), onClick: p.onAddSubtrack },
           { label: t('track.indent'), onClick: p.onIndent },

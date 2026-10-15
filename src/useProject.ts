@@ -1,5 +1,6 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
+import { keepFrozen } from './freeze'
 import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip } from 'wevocal-lib'
 import { describeChange } from './history'
 import type { MessageKey } from './i18n'
@@ -43,7 +44,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     const merged = merge !== undefined && merge === lastMerge.current
     lastMerge.current = merge ?? null
     setHistory((h) => {
-      const next = fn(h.present.project)
+      // フリーズ中のトラックの波形ブロックは変えない
+      const next = keepFrozen(h.present.project, fn(h.present.project))
       if (next === h.present.project) return h
       // まとめるときは名前も前のまま
       // 消えた波形ブロックは選択から外す
@@ -239,7 +241,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
         // 子は一つ上の階層に上げる
         const gone = p.tracks.find((t) => t.id === id)
         const tracks = p.tracks.filter((t) => t.id !== id).map((t) => (t.parent === id ? { ...t, parent: gone?.parent } : t))
-        return { ...p, tracks, blocks, sources: p.sources.filter((s) => blocks.some((b) => b.source === s.id)) }
+        return { ...p, tracks, blocks, sources: p.sources.filter((s) => blocks.some((b) => b.source === s.id) || tracks.some((t) => t.frozen?.source === s.id)) }
       }),
     [change],
   )

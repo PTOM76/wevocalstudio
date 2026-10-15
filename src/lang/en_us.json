@@ -320,6 +320,9 @@
   "track.guitarName": "{name} (guitar)",
   "track.pianoName": "{name} (piano)",
   "track.otherName": "{name} (other)",
+  "track.freeze": "Freeze",
+  "track.unfreeze": "Unfreeze",
+  "track.frozen": "Frozen (blocks can't be edited)",
 
   "export.title": "Export",
   "export.format": "Format",
@@ -721,5 +724,7 @@
   "algorithm.pv": "Phasera",
   "algorithm.pvHint": "For chords and percussion. Smooth stretching",
   "algorithm.sms": "Specraw",
-  "algorithm.smsHint": "Experimental. Degrades less on round trips and repeated edits. Works on chords and backing too"
+  "algorithm.smsHint": "Experimental. Degrades less on round trips and repeated edits. Works on chords and backing too",
+
+  "freeze.job": "Freezing"
 }

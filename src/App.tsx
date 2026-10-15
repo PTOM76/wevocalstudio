@@ -34,6 +34,7 @@ import { useExtract } from './useExtract'
 import BlockEditBar from './BlockEditBar'
 import { CONVERTER_ADDON } from 'wevocalconverter/host'
 import { applyBaked, bakeBlocks } from './bake'
+import { freezeTrack, unfreezeTrack } from './freeze'
 import { faFolderOpen, faMicrophone } from '@fortawesome/free-solid-svg-icons'
 import { useRecorder } from './useRecorder'
 import { useAutosave } from './useAutosave'
@@ -131,6 +132,22 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       const baked = await bakeBlocks(doc.project, ids, (v) => job.update(v))
       doc.apply((pr) => applyBaked(pr, baked))
       setNotice(t('toast.baked'))
+    } catch (e) {
+      fail(e)
+    } finally {
+      job.end()
+    }
+  }
+  /** トラックのフリーズと解除（src/freeze.ts） */
+  const freeze = async (id: string) => {
+    if (project.tracks.find((tr) => tr.id === id)?.frozen) return doc.apply((pr) => unfreezeTrack(pr, id))
+    const job = startJob('freeze', t('freeze.job'))
+    try {
+      const frozen = await freezeTrack(doc.project, id)
+      const f = frozen.tracks.find((tr) => tr.id === id)?.frozen
+      const src = f && frozen.sources.find((s) => s.id === f.source)
+      // 描画している間の変更は残し、書き出した音とトラックの印だけを足す
+      if (f && src) doc.apply((pr) => (pr.tracks.some((tr) => tr.id === id) ? { ...pr, sources: [...pr.sources, src], tracks: pr.tracks.map((tr) => (tr.id === id ? { ...tr, frozen: f } : tr)) } : pr))
     } catch (e) {
       fail(e)
     } finally {
@@ -413,6 +430,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         meter={p.settings.showMeters ? player.current.meter : undefined}
         masterMeter={p.settings.showMeters ? player.current.masterMeters : undefined}
         onDuplicateTrack={doc.duplicateTrack}
+        onFreezeTrack={freeze}
         onRemoveTrack={(id) => {
           doc.removeTrack(id)
           setSelected([])

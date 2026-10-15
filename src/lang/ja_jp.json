@@ -320,6 +320,9 @@
   "track.guitarName": "{name}（ギター）",
   "track.pianoName": "{name}（ピアノ）",
   "track.otherName": "{name}（その他）",
+  "track.freeze": "フリーズ",
+  "track.unfreeze": "フリーズを解除",
+  "track.frozen": "フリーズ中（波形ブロックは編集できません）",
 
   "export.title": "書き出す",
   "export.format": "形式",
@@ -721,5 +724,7 @@
   "algorithm.pv": "Phasera",
   "algorithm.pvHint": "和音、打楽器向け。滑らかに伸ばす",
   "algorithm.sms": "Specraw",
-  "algorithm.smsHint": "試験的。往復や重ねた加工で劣化しにくい方式。和音や伴奏にも"
+  "algorithm.smsHint": "試験的。往復や重ねた加工で劣化しにくい方式。和音や伴奏にも",
+
+  "freeze.job": "フリーズ中"
 }

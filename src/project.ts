@@ -32,6 +32,8 @@ export interface Track {
   eq?: TrackEq
   /** 時間軸での縦の大きさ（px）。なければ既定値 */
   height?: number
+  /** フリーズ。波形ブロックの音を書き出した元の音（source）と、その頭の時間軸の位置（秒）。あれば波形ブロックの代わりにこれを鳴らす（src/freeze.ts） */
+  frozen?: { source: string; start: number }
 }
 
 /** 波形ブロック。元の音のどこを、いつ、どう鳴らすか */

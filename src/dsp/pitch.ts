@@ -304,6 +304,8 @@ export async function preparePitch(p: Project, around = 0) {
     if (!needsProcess(b) || !source) continue
     const params = paramsOf(b)
     const track = p.tracks.find((t) => t.id === b.track)
+    // フリーズしたトラックは作らない（書き出した音を鳴らす）
+    if (track?.frozen) continue
     const silent = b.mute || !track || !audible(p, track) ? SILENT : 0
     for (const k of chunksOf(b)) {
       const key = `${params}#${k}`

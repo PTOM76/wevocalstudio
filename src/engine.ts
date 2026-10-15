@@ -120,10 +120,22 @@ class Graph {
     // 波形ブロックの片を、トラックごとの声にする（作ったかたまりの片。変えていなければ元の音。できていない所は鳴らさない）
     const voices = new Map<string, Voice[]>(p.tracks.map((t) => [t.id, []]))
     const used = new Map<number, Clip>()
+    const frozen = new Set<string>()
+    for (const t of p.tracks) {
+      const src = t.frozen && p.sources.find((s) => s.id === t.frozen!.source)
+      if (!t.frozen || !src) continue
+      // フリーズしたトラックは、書き出した音を 1 つの声として鳴らす（波形ブロックは鳴らさない）
+      frozen.add(t.id)
+      const id = clipId(src.clip)
+      used.set(id, src.clip)
+      const t0 = this.zero + t.frozen.start
+      const t1 = t0 + src.duration
+      voices.get(t.id)!.push({ key: `freeze:${t.id}:${id}`, sig: `${t0}`, t0, t1, clip: id, f0: 0, bt0: t0, bt1: t1, fadeIn: 0, fadeOut: 0, joinIn: 0, joinOut: 0, level: 1, env: [] })
+    }
     for (const b of p.blocks) {
       const source = p.sources.find((s) => s.id === b.source)
       const list = voices.get(b.track)
-      if (b.mute || !source || !list) continue
+      if (b.mute || !source || !list || frozen.has(b.track)) continue
       const pieces = piecesFor(b, source)
       if (!pieces.length) continue
       for (const pc of pieces) used.set(clipId(pc.clip), pc.clip)
