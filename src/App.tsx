@@ -318,6 +318,16 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 再生中の同期（範囲の終わりで止める、変更の反映、ピッチを変えた音の準備と進み具合）
   usePlayerSync({ player: player.current, project, cursor, playing, range, repeat, end, setPlayPos, setPlaying, fail, onMade: () => setMadeVersion((v) => v + 1) })
 
+  // 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ）。パソコンはツールバーの下、スマホは波形マップの下
+  const touchLike = mobile || isMobile()
+  const editBarOn = p.settings.editBar === 'on' || (p.settings.editBar === 'auto' && touchLike)
+  // 出入りで時間軸の高さが変わって画面が揺れないよう、出す設定のときは選んでいなくても場所を空けておく（高さは EditBar のボタン 44px + 余白 + 線）
+  const editBarSlot = editBarOn ? (
+    <Box sx={{ height: 49, flexShrink: 0, overflow: 'hidden', borderTop: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+      {(selected.length > 0 || range) && <BlockEditBar commands={commands} mode={selected.length > 0 ? 'block' : 'range'} />}
+    </Box>
+  ) : null
+
   return (
     // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）
     <WindowModeContext.Provider value={p.settings.dialogWindow === 'auto' ? autoWindowMode() : p.settings.dialogWindow}>
@@ -347,6 +357,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onCopy={commands.copy.run}
         onPaste={commands.paste.run}
       />
+      {!touchLike && editBarSlot}
       <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load(Array.from(e.target.files ?? []), importTarget.current).finally(() => (e.target.value = ''))} />
       {files.picker.input}
 
@@ -436,8 +447,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           </Box>
         )}
       </Box>
-      {/* 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ） */}
-      {(selected.length > 0 || range) && (p.settings.editBar === 'on' || (p.settings.editBar === 'auto' && (mobile || isMobile()))) && <BlockEditBar commands={commands} mode={selected.length > 0 ? 'block' : 'range'} />}
       {p.settings.showAnalysis && (
         <AnalysisPanel
           bpm={project.tempo.bpm}
@@ -472,6 +481,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         />
         </Box>
       )}
+      {touchLike && editBarSlot}
       <Transport
         playing={playing}
         position={playPos ?? cursor}
