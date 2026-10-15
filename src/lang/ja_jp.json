@@ -489,8 +489,5 @@
   "extract.noAdapter": "WebGPUを使用できません（ブラウザがこのサイトのWebGPUを止めている可能性があります。ブラウザを完全に終了して開き直すと直ることがあります）",
   "extract.split": "ボーカルと伴奏に分離",
   "extract.splitLead": "主旋律、ハモリ、伴奏に分離",
-  "extract.splitInstruments": "楽器ごとに分離",
-  "extract.splitMenu": "ボーカルと伴奏を別トラックに分離",
-  "extract.splitLeadMenu": "主旋律、ハモリ、伴奏の3トラックに分離",
-  "extract.splitInstrumentsMenu": "楽器ごとのトラックに分離"
+  "extract.splitInstruments": "楽器ごとに分離"
 }

@@ -489,8 +489,5 @@
   "extract.noAdapter": "WebGPU is not available (the browser may have blocked WebGPU for this site; fully restarting the browser may fix it)",
   "extract.split": "Split into vocals and accompaniment",
   "extract.splitLead": "Split into lead, harmony, and accompaniment",
-  "extract.splitInstruments": "Split by instrument",
-  "extract.splitMenu": "Split into vocal and accompaniment tracks",
-  "extract.splitLeadMenu": "Split into 3 tracks: lead, harmony, accompaniment",
-  "extract.splitInstrumentsMenu": "Split into tracks by instrument"
+  "extract.splitInstruments": "Split by instrument"
 }
