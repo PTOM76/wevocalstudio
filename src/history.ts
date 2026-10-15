@@ -9,6 +9,7 @@ export function describeChange(before: Project, after: Project): MessageKey {
   if (after.tracks.length > before.tracks.length) return 'history.addTrack'
   if (after.tracks.length < before.tracks.length) return 'history.removeTrack'
   if (after.markers !== before.markers) return 'history.marker'
+  if (after.end !== before.end) return 'history.end'
   if (after.tempo !== before.tempo) return 'history.tempo'
   if (after.master !== before.master) return 'history.master'
   if (after.tracks !== before.tracks) return 'history.track'

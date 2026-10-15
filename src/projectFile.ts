@@ -25,6 +25,7 @@ interface Header {
   master: Project['master']
   tracks: Project['tracks']
   blocks: Project['blocks']
+  end?: number
 }
 
 /** プロジェクトを 1 つのファイルにする。PCM は 32bit float のまま（元の音を劣化させない） */
@@ -37,6 +38,7 @@ export function writeProject(p: Project): Blob {
     master: p.master,
     tracks: p.tracks,
     blocks: p.blocks,
+    end: p.end,
   }
   const json = new TextEncoder().encode(JSON.stringify(header))
   // PCM を 4 バイト境界から始める（Float32Array で直接読めるように）
@@ -68,5 +70,5 @@ export async function readProject(file: Blob, onNewer?: () => void): Promise<Pro
     return { id: s.id, name: s.name, clip, duration: s.frames / s.sampleRate }
   })
   // 足した項目が古いファイルに無くても動くよう、既定値で埋める
-  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, markers: header.markers ?? [], master: { ...newProject().master, ...header.master }, tracks: header.tracks.map(fillTrack), blocks: header.blocks.map(fillBlock) }
+  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, markers: header.markers ?? [], master: { ...newProject().master, ...header.master }, tracks: header.tracks.map(fillTrack), blocks: header.blocks.map(fillBlock), ...(header.end !== undefined ? { end: header.end } : {}) }
 }

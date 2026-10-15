@@ -410,6 +410,8 @@ export function useActions(c: ActionContext) {
               ]
             : []),
           { label: t('menu.addMarkerHere'), onClick: () => doc.addMarker(time) },
+          { label: t('menu.setEndHere'), onClick: () => doc.setEnd(time) },
+          { label: t('menu.autoEnd'), disabled: doc.project.end === undefined, onClick: () => doc.setEnd(null) },
           item('detectTempo'),
           divider,
           item('clearRange'),
@@ -421,6 +423,9 @@ export function useActions(c: ActionContext) {
           item('selectAll'),
           item('splitRange'),
           item('clearRange'),
+          divider,
+          { label: t('menu.setEndHere'), onClick: () => doc.setEnd(time) },
+          { label: t('menu.autoEnd'), disabled: doc.project.end === undefined, onClick: () => doc.setEnd(null) },
           divider,
           { label: t('menu.addTrack'), onClick: doc.addTrack },
         ]

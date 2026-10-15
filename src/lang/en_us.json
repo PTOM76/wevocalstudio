@@ -134,6 +134,8 @@
   "menu.kanaCut": "Cut into morae…",
   "menu.splitVoicesByPitch": "Split harmony into higher and lower (experimental)",
   "menu.splitVoicesByVolume": "Split harmony into louder and quieter (experimental)",
+  "menu.setEndHere": "Set song end here",
+  "menu.autoEnd": "Reset song end to automatic",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -443,6 +445,7 @@
   "history.envelope": "Envelope",
   "history.opened": "Opened",
   "history.current": "Current",
+  "history.end": "Song end",
 
   "confirm.newProject": "Close the current work and start a new project? Unsaved changes will be lost.",
   "confirm.discard": "There are unsaved changes. Discard them and open?",

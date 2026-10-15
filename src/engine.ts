@@ -4,7 +4,7 @@ import { createFxChain, limitedOutput, startContext, type Clip, type FxChain } f
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
-import { ancestors, audible, dbToGain, projectEnd, type Project, type Track } from './project'
+import { ancestors, audible, dbToGain, songEnd, type Project, type Track } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
@@ -258,7 +258,7 @@ export class Player {
 /** until を渡すと、そこまでの長さにする（範囲選択が曲の終わりより後ろまであるとき） */
 export async function renderMix(p: Project, until = 0, sampleRate = 48000): Promise<Clip> {
   await preparePitch(p)
-  const length = Math.max(1, Math.ceil(Math.max(projectEnd(p), until) * sampleRate))
+  const length = Math.max(1, Math.ceil(Math.max(songEnd(p), until) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
   // 再生と同じミキサーで作る（再生と書き出しの音が一致する）。送ったものを受け取ってから始める
   await loadMixer(ctx)

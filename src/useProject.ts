@@ -332,6 +332,9 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
   const updateMarker = useCallback((id: string, patch: Partial<Marker>) => change((p) => ({ ...p, markers: p.markers.map((m) => (m.id === id ? { ...m, ...patch } : m)) })), [change])
   const removeMarker = useCallback((id: string) => change((p) => ({ ...p, markers: p.markers.filter((m) => m.id !== id) })), [change])
 
+  /** 曲の終わりを決める。null で自動に戻す */
+  const setEnd = useCallback((time: number | null) => change(({ end: _, ...p }) => (time === null ? p : { ...p, end: time })), [change])
+
   const updateTempo = useCallback((patch: Partial<Tempo>, merge?: string) => change((p) => ({ ...p, tempo: { ...p.tempo, ...patch } }), merge), [change])
 
   const updateMaster = useCallback((patch: Partial<Master>, merge?: string) => change((p) => ({ ...p, master: { ...p.master, ...patch } }), merge), [change])
@@ -442,6 +445,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     insertTrack,
     updateTempo,
     addMarker,
+    setEnd,
     updateMarker,
     removeMarker,
     updateMaster,

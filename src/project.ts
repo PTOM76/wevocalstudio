@@ -1,5 +1,5 @@
 // プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
-import { eqToSlot, isFlatEq, type Algorithm, type Clip, type FxSlot, type TrackEq } from 'wevocal-lib'
+import { chainTail, eqToSlot, isFlatEq, type Algorithm, type Clip, type FxSlot, type TrackEq } from 'wevocal-lib'
 
 /** 読み込んだ音声ファイル（元の音）。波形ブロックはこれを参照するだけで、中身を書き換えない */
 export interface Source {
@@ -162,6 +162,8 @@ export interface Project {
   master: Master
   tracks: Track[]
   blocks: Block[]
+  /** 曲の終わり（秒）。無ければ自動（最後の波形ブロックの終わり＋FX の余韻） */
+  end?: number
 }
 
 /** 新しいプロジェクト。すぐ置けるよう、空のトラックを 1 つ用意しておく */
@@ -237,8 +239,16 @@ export function fitBlock(b: Block, duration: number): Block {
   return { ...b, rate, offset, length, fadeIn, fadeOut: Math.min(b.fadeOut, length - fadeIn) }
 }
 
-/** 全体の長さ（秒） */
+/** 最後の波形ブロックの終わり（秒） */
 export const projectEnd = (p: Project) => p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
+
+/** 曲の終わり（秒）。決めていなければ、最後の波形ブロックの終わりに、全トラックとマスターの FX の余韻の最大を足す。書き出しの長さと「曲の終わりで止める」に使う */
+export function songEnd(p: Project): number {
+  if (p.end !== undefined) return p.end
+  const last = projectEnd(p)
+  if (!last) return 0
+  return last + Math.max(chainTail(p.master.fx, p.tempo.bpm), ...p.tracks.map((t) => chainTail(t.fx, p.tempo.bpm)))
+}
 
 /** 鳴らすトラックか（ソロがあればソロだけ、なければミュート以外） */
 export function audible(p: Project, track: Track) {

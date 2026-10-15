@@ -22,7 +22,7 @@ import type { Settings } from './settings/settings'
 import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
-import { addWvspTracks, newProject, visibleTracks, type Track } from './project'
+import { addWvspTracks, newProject, songEnd, visibleTracks, type Track } from './project'
 import Timeline, { useHeaderWidth } from './Timeline'
 import Toolbar from './Toolbar'
 import Transport from './Transport'
@@ -108,7 +108,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 作り直しは操作のあとに回す（ドラッグの途中で固まらないように）
   const deferredProject = useDeferredValue(project)
   const overview = useMemo(() => buildOverview(deferredProject), [deferredProject])
-  const end = project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
+  const end = songEnd(project)
 
   const fail = (e: unknown) => setError(String(e))
 

@@ -134,6 +134,8 @@
   "menu.kanaCut": "一音ずつ切り出す…",
   "menu.splitVoicesByPitch": "和音を高い方と低い方に分離（試験的）",
   "menu.splitVoicesByVolume": "和音を大きい方と小さい方に分離（試験的）",
+  "menu.setEndHere": "ここを曲の終わりにする",
+  "menu.autoEnd": "曲の終わりを自動に戻す",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -443,6 +445,7 @@
   "history.envelope": "エンベロープ",
   "history.opened": "ファイルを開いた時点",
   "history.current": "現在",
+  "history.end": "曲の終わり",
 
   "confirm.newProject": "今の作業を閉じて、新しいプロジェクトにしますか？（保存していない変更は失われます）",
   "confirm.discard": "保存していない変更があります。破棄して開きますか？",
