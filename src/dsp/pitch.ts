@@ -275,6 +275,9 @@ function prune(used: Set<string>) {
   }
 }
 
+/** 再生位置より前のかたまりの遠さに掛ける重み（これから鳴る所を先に作る） */
+const BEHIND = 4
+
 /** プロジェクトの波形ブロックの音を用意する（around は再生位置か編集カーソル。近い所から）。新しく作ったものがあれば true */
 export async function preparePitch(p: Project, around = 0) {
   const used = new Set<string>()
@@ -290,7 +293,8 @@ export async function preparePitch(p: Project, around = 0) {
       // かたまりの時間軸の上の範囲と、再生位置との近さ
       const t0 = b.start + (Math.max(b.offset, k * CHUNK) - b.offset) / b.rate
       const t1 = b.start + (Math.min(b.offset + b.length * b.rate, (k + 1) * CHUNK) - b.offset) / b.rate
-      const distance = around < t0 ? t0 - around : around > t1 ? around - t1 : 0
+      // これから鳴る所（再生位置より後ろ）を先にし、過ぎた所は離れているほど後に回す
+      const distance = around < t0 ? t0 - around : around > t1 ? (around - t1) * BEHIND : 0
       const old = next.get(key)
       if (!old || distance < old.distance) next.set(key, { key, b, source, k, distance })
     }

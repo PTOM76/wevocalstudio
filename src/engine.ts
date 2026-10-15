@@ -42,7 +42,10 @@ interface BlockNodes {
   /** かたまりの片ごとの音源 */
   nodes: AudioBufferSourceNode[]
   gain: GainNode
+  /** 波形ブロックの値（位置、音量、フェードなど。片は含めない）。変わったら組み直す */
   sig: string
+  /** 鳴らしている片の見分け（片が増えただけなら、その分だけ足す） */
+  pieces: Set<string>
 }
 
 /** 組んだノード（トラックごとの入口と、波形ブロックごとの音源） */
@@ -105,9 +108,11 @@ class Graph {
   }
 
   /** 波形ブロックを比べる文字（変わったら差し替える） */
-  private static sig(b: Block, pieces: Piece[]) {
-    return `${b.track}|${b.start}|${b.offset}|${b.length}|${b.rate}|${b.gain}|${b.fadeIn}|${b.fadeOut}|${JSON.stringify(b.envelope ?? [])}|${pieces.map((pc) => `${clipId(pc.clip)}:${pc.a}`).join(',')}`
+  private static sig(b: Block) {
+    return `${b.track}|${b.start}|${b.offset}|${b.length}|${b.rate}|${b.gain}|${b.fadeIn}|${b.fadeOut}|${JSON.stringify(b.envelope ?? [])}`
   }
+  /** 片の見分け（できた音と、元の音の上の始まり） */
+  private static pieceKey = (pc: Piece) => `${clipId(pc.clip)}:${pc.a}`
 
   /** from 秒より後ろの波形ブロックを鳴らす。変わっていないものはそのまま。差し替えるものは FADE でつなぐ */
   sync(p: Project, from: number, now: number, smooth: boolean) {
@@ -153,12 +158,20 @@ class Graph {
       // 作ったかたまりの片（変えていなければ元の音）。できていない所は鳴らさない
       const pieces = piecesFor(b, source)
       if (!pieces.length) continue
-      const sig = Graph.sig(b, pieces)
+      const sig = Graph.sig(b)
+      const keys = pieces.map(Graph.pieceKey)
       live.add(b.id)
       const old = this.blocks.get(b.id)
-      if (old?.sig === sig) continue
+      // 値が同じで、片が増えただけ（かたまりができた）なら、鳴っている音はそのままにして、新しい片の分だけ足す（組み直すと音が途切れる）
+      if (old?.sig === sig && [...old.pieces].every((k) => keys.includes(k))) {
+        const added = pieces.flatMap((_, i) => (old.pieces.has(keys[i]) ? [] : [i]))
+        if (!added.length) continue
+        old.nodes.push(...this.startPieces(b, pieces, added, old.gain, now))
+        old.pieces = new Set(keys)
+        continue
+      }
       if (old) this.stopBlock(old)
-      this.blocks.set(b.id, { ...this.startBlock(b, pieces, track.input, from, now, smooth && !!old), sig })
+      this.blocks.set(b.id, { ...this.startBlock(b, pieces, track.input, from, now, smooth && !!old), sig, pieces: new Set(keys) })
     }
     for (const [id, n] of this.blocks) {
       if (live.has(id)) continue
@@ -167,7 +180,7 @@ class Graph {
     }
   }
 
-  private startBlock(b: Block, pieces: Piece[], dest: AudioNode, from: number, now: number, fadeIn: boolean): Omit<BlockNodes, 'sig'> {
+  private startBlock(b: Block, pieces: Piece[], dest: AudioNode, from: number, now: number, fadeIn: boolean): Omit<BlockNodes, 'sig' | 'pieces'> {
     const ctx = this.ctx
     const g = ctx.createGain()
     const level = dbToGain(b.gain)
@@ -196,8 +209,17 @@ class Graph {
       }
       g.connect(env).connect(dest)
     } else g.connect(dest)
-    const [, spanEnd] = [b.offset, b.offset + b.length * b.rate]
-    const nodes = pieces.map((pc, i) => {
+    void from
+    return { nodes: this.startPieces(b, pieces, pieces.map((_, i) => i), g, now), gain: g }
+  }
+
+  /** 片のうち `which` 番目の音源を鳴らす（つなぎ目は隣の片と XFADE ずつ重ねる） */
+  private startPieces(b: Block, pieces: Piece[], which: number[], g: GainNode, now: number): AudioBufferSourceNode[] {
+    const ctx = this.ctx
+    const t0 = this.zero + b.start
+    const spanEnd = b.offset + b.length * b.rate
+    const nodes = which.map((i) => {
+      const pc = pieces[i]
       // つなぎ目は前後に XFADE ずつ重ねる（隣の片と重なる所だけ。かたまりには余白があるので音はある）
       const joinA = i > 0 && pieces[i - 1].z >= pc.a - 1e-6
       const joinZ = i < pieces.length - 1 && pieces[i + 1].a <= pc.z + 1e-6
@@ -223,8 +245,7 @@ class Graph {
       node.start(start, (a - pc.from) / b.rate + skip, Math.max(0, p1 - start))
       return node
     })
-    void from
-    return { nodes: nodes.filter((n): n is AudioBufferSourceNode => !!n), gain: g }
+    return nodes.filter((n): n is AudioBufferSourceNode => !!n)
   }
 
   private stopBlock(n: BlockNodes) {
@@ -238,7 +259,7 @@ class Graph {
     }
   }
 
-  /** 全部を消して止める */
+  /** 全部を消して止める。消え終わったら、トラック（EQ、パン、メーター）とマスターのノードも外す（残すと、再生位置を変えるたびに溜まり、無音でも処理され続けて重くなる） */
   stopAll() {
     const t = this.ctx.currentTime
     this.out.gain.setTargetAtTime(0, t, FADE / 3)
@@ -250,6 +271,21 @@ class Graph {
       }
     }
     this.blocks.clear()
+    setTimeout(() => this.dispose(), FADE * 4 * 1000)
+  }
+
+  /** ノードを全部外す */
+  private dispose() {
+    for (const n of this.tracks.values()) {
+      n.input.disconnect()
+      n.eq.output.disconnect()
+      n.pan.disconnect()
+      n.split.disconnect()
+    }
+    this.tracks.clear()
+    this.master.disconnect()
+    this.masterPan.disconnect()
+    this.out.disconnect()
   }
 
 }
@@ -288,6 +324,8 @@ export class Player {
     }
     this.graph.sync(p, from, this.startedAt, false)
     this.playing = true
+    // ピッチを変えた波形ブロックは、ここから近い所（これから鳴る所）から作り直す。できたかたまりから鳴る（update）
+    preparePitch(p, from).catch(() => {})
   }
 
   /** 再生中に変えたものだけを差し替える（位置はそのまま） */
