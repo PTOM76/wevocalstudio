@@ -523,7 +523,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       {addonInstall.dialog}
       {p.settings.showDebug && <DebugOverlay build={BUILD} />}
       <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
-      <NoticeMessage message={notice ? { severity: 'info', message: notice } : null} onClose={() => setNotice(null)} top={touchLike} />
+      <NoticeMessage message={notice ? { severity: 'info', message: notice } : null} onClose={() => setNotice(null)} vertical={touchLike ? 'top' : 'bottom'} horizontal={touchLike ? 'center' : 'left'} />
     </Box>
     </SliderResetContext.Provider>
     </WindowModeContext.Provider>
