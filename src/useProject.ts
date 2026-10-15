@@ -136,7 +136,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     [change],
   )
 
-  /** 選んだ波形ブロックに、プロパティで変えた値をまとめて掛ける。速度だけ変えたら長さも合わせる。元の音の長さに収める */
+  /** 選んだ波形ブロックに、プロパティで変えた値をまとめて掛ける。速度を変えてもブロックの長さは変えない（使う元の音の範囲が変わる）。元の音の長さに収める */
   const editBlocks = useCallback(
     (ids: string[], edit: Partial<Block>) =>
       change((p) => ({
@@ -144,7 +144,6 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
         blocks: p.blocks.map((b) => {
           if (!ids.includes(b.id)) return b
           const next = { ...b, ...edit }
-          if (edit.rate !== undefined && edit.length === undefined) next.length = (b.length * b.rate) / edit.rate
           // 元の音を変えたら、ピッチカーブは合わなくなるので外す
           if (edit.source && edit.source !== b.source) next.curve = undefined
           const source = p.sources.find((s) => s.id === next.source)
