@@ -17,6 +17,7 @@ src/
   bake.ts  波形ブロックの確定（今の速度、ピッチ、音量、フェード、エンベロープを音にして、新しい元の音に置き換える）
   BlockDialog.tsx  波形ブロックのプロパティ。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
   blockDrag.ts  波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
+  BlockEditBar.tsx  画面の下に出す編集のボタンの列（PevenMUI の EditBar）。波形ブロックを選んでいれば波形ブロックの編集、範囲を選んでいれば範囲の編集
   drawTimeline.ts  時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
   engine.ts  再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）。
   envelopes.ts  エンベロープの種類（音量とピッチ）。点の読み書きと、波形ブロックの中の縦の位置と値の換算をまとめる（時間軸の編集と描画で共通）
@@ -24,7 +25,7 @@ src/
   history.ts  操作履歴の名前。変える前と後のプロジェクトを比べて、何をしたかを決める（呼び出す所ごとに名前を渡さずに済むように）
   i18n.ts  多言語化（訳文は lang/ の JSON）
   keymap.ts  キーの割り当て。既定の表（操作の名前 → キー）と、設定の「キーとマウス」で変えた分（PevenMUI の keymap と同じ形）
-  LevelMeter.tsx  音量メーター（wevocal-lib の部品にテーマの色を渡す。WeVocalSynth と同じ）
+  LevelMeter.tsx  音量メーター（wevocal-lib の ThemedLevelMeter。WeVocalSynth と共通）
   main.tsx  起動。設定を読み、言語、テーマ、画面の大きさを PevenProvider に渡す
   MeterFader.tsx  音量のつまみとレベルメーターを一つにした部品と、パンの棒（トラックとマスターの欄。DAW によくある形）
   overlap.ts  重なった波形ブロックの段の割り当て（重なっている所だけトラックの高さを段に分ける）。画面を知らない

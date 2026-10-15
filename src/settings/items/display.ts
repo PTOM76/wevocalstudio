@@ -22,7 +22,6 @@ export const display = defineItems('display', {
   // 波形ブロックか範囲を選んだときの編集のボタンの列（auto はスマホとタブレットだけ）
   editBar: choice<EditBarSetting>('auto', {
     label: 'settings.editBar',
-    help: 'settings.editBarHelp',
     options: [
       ['auto', 'settings.editBarAuto'],
       ['on', 'settings.editBarOn'],

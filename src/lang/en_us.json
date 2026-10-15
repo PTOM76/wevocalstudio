@@ -187,7 +187,6 @@
   "settings.groupAppearance": "Appearance",
   "settings.uiScaleHelp": "Scales text, inputs, buttons, and everything else together",
   "settings.editBar": "Edit bar",
-  "settings.editBarHelp": "Shows buttons at the bottom for the selected blocks or range: semitone up/down, cut, copy, split and more. Auto shows it on phones and tablets only",
   "settings.editBarAuto": "Auto",
   "settings.editBarOn": "Always show",
   "settings.editBarOff": "Do not show",
