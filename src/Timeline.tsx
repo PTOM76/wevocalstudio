@@ -1,5 +1,6 @@
 // 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Box } from '@mui/material'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
@@ -157,15 +158,18 @@ export default function Timeline(p: {
   // 幅に合わせる
   useLayoutEffect(() => {
     const box = canvasRef.current!.parentElement!
-    const ro = new ResizeObserver(() => {
-      setWidth(box.clientWidth)
-      setVh(box.clientHeight)
-    })
+    // 大きさが変わった同じフレームのうちに描き直す（canvas は大きさを変えると消えるので、描画が遅れると一瞬ちらつく）
+    const ro = new ResizeObserver(() =>
+      flushSync(() => {
+        setWidth(box.clientWidth)
+        setVh(box.clientHeight)
+      }),
+    )
     ro.observe(box)
     return () => ro.disconnect()
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current!
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
@@ -200,7 +204,7 @@ export default function Timeline(p: {
   liveRef.current = p.live
   const followRef = useRef({ follow: p.follow, visible: 0, scroll: 0 })
   followRef.current = { follow: p.follow, visible: width / view.pps, scroll: view.scroll }
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = overlayRef.current!
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
