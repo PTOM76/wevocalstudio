@@ -236,14 +236,45 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
 
 }
 
+/** 録音中の波形ブロックの描き方（y と h はトラックの行、bars は録り始めからの秒と、その時の振幅） */
+export interface LiveBlock {
+  start: number
+  seconds: number
+  y: number
+  h: number
+  bars: readonly (readonly [number, number])[]
+  fill: string
+  wave: string
+}
+
 /** 上に重ねた canvas に、編集カーソル（上に小さな三角）と再生カーソルだけを描く（再生中は毎フレームこれだけを描き直す。WeVocalSynth と同じ） */
-export function drawCursors(canvas: HTMLCanvasElement, view: TimelineView, cursor: number, playPos: number | null, c: { editCursor: string; playhead: string }) {
+export function drawCursors(canvas: HTMLCanvasElement, view: TimelineView, cursor: number, playPos: number | null, c: { editCursor: string; playhead: string }, live?: LiveBlock | null) {
   const g = canvas.getContext('2d')!
   const w = canvas.width / devicePixelRatio
   const h = canvas.height / devicePixelRatio
   g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
   g.clearRect(0, 0, w, h)
   const tx = (t: number) => (t - view.scroll) * view.pps
+  if (live) {
+    // 録音中の波形ブロック（録った分だけ右へ伸びる）。マスターと目盛りの上にははみ出さない
+    g.save()
+    g.beginPath()
+    g.rect(0, TOP, w, h - TOP)
+    g.clip()
+    const x = tx(live.start)
+    g.fillStyle = live.fill
+    g.fillRect(x, live.y + 2, Math.max(1, live.seconds * view.pps), live.h - 5)
+    g.fillStyle = live.wave
+    const mid = live.y + live.h / 2
+    const amp = (live.h - 9) / 2
+    for (const [t, peak] of live.bars) {
+      const bx = tx(live.start + t)
+      if (bx < -1 || bx > w) continue
+      const a = Math.max(1, Math.min(1, peak) * amp)
+      g.fillRect(bx, mid - a, 1, a * 2)
+    }
+    g.restore()
+  }
   const ex = Math.round(tx(cursor))
   g.fillStyle = c.editCursor
   g.fillRect(ex, 0, 1, h)

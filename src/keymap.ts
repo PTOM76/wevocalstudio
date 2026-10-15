@@ -35,6 +35,8 @@ export type Action =
   | 'insertSilence'
   | 'repeatRange'
   | 'normalize'
+  | 'synth'
+  | 'sampler'
   | 'splitVocals'
   | 'splitLead'
   | 'splitInstruments'
@@ -117,6 +119,9 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   // 選んだ波形ブロックのピークを -1 dB にそろえる（WeVocalSynth と同じ）
   normalize: [],
   // 選んだ波形ブロックを、ボーカルと伴奏、主旋律とハモリと伴奏、楽器ごとに分けて、新しいトラックに並べる（追加機能）
+  // 音を 0 から作る、選んだ波形ブロックを MIDI の音符に並べる
+  synth: [],
+  sampler: [],
   splitVocals: [],
   splitLead: [],
   splitInstruments: [],

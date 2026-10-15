@@ -124,7 +124,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice })
 
   // 録音（再生位置から、ほかのトラックを鳴らしながら録る）
-  const { recording, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), fail })
+  const { recording, live, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), fail })
 
   /** 一時停止。再生カーソルはその場に残す */
   const pause = () => {
@@ -228,6 +228,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       void player.current.play(project, at).then(() => setPlaying(true)).catch(fail)
     },
     end,
+    openDialog: (id, arg) => dialogs.open(id, arg),
     extract: { vocals: (id) => void extract.splitVocals(id), lead: (id) => void extract.splitLead(id), instruments: (id) => void extract.splitInstruments(id) },
     newWindow: () =>
       void openWindowCount().then((n) => (n >= p.settings.maxWindows && !p.settings.extraWindows ? setNotice(t('window.limit', { n: p.settings.maxWindows })) : openNewWindow())),
@@ -331,6 +332,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onMoveTrack={moveVisibleTrack}
         cursor={cursor}
         livePos={livePos}
+        recording={!!recording}
+        live={live}
         follow={p.settings.follow}
         onCursor={moveCursor}
         selected={selected}
@@ -458,7 +461,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
       <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track) : []} onClose={() => setEmptyAt(null)} />
-      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} fail={fail} />
+      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} fail={fail} cursor={cursor} />
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar

@@ -120,6 +120,9 @@
   "menu.splitLead": "主旋律、ハモリ、伴奏に分ける",
   "menu.splitInstruments": "楽器ごとに分ける",
   "menu.extract": "ボーカル抽出",
+  "menu.tools": "ツール",
+  "menu.sampler": "MIDI の音符に並べる…",
+  "menu.synth": "音声を作成…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -308,6 +311,7 @@
   "common.close": "閉じる",
   "common.whole": "全体",
   "common.selection": "選択範囲",
+  "common.stop": "停止",
 
   "transport.toStart": "先頭へ",
   "transport.stop": "停止",
@@ -489,5 +493,54 @@
   "extract.noAdapter": "WebGPUを使用できません（ブラウザがこのサイトのWebGPUを止めている可能性があります。ブラウザを完全に終了して開き直すと直ることがあります）",
   "extract.split": "ボーカルと伴奏に分離",
   "extract.splitLead": "主旋律、ハモリ、伴奏に分離",
-  "extract.splitInstruments": "楽器ごとに分離"
+  "extract.splitInstruments": "楽器ごとに分離",
+
+  "midi.choose": "MIDIファイルを選択",
+  "midi.loadFailed": "MIDIファイルを読み込めませんでした: {error}",
+  "midi.noNotes": "音符がありません",
+  "midi.none": "未選択",
+  "midi.offset": "開始位置",
+  "midi.tempoMidi": "MIDIのテンポのまま（{bpm} BPM）",
+  "midi.tempoProject": "プロジェクトのBPMに合わせる（{bpm} BPM）",
+  "midi.track": "トラック",
+  "midi.trackItem": "{name}（{count}音）",
+  "midi.transpose": "移調",
+
+  "play.preview": "試聴",
+
+  "process.semitoneUnit": "半音",
+
+  "sampler.base": "選択範囲の音程",
+  "sampler.fit": "長さ",
+  "sampler.fitCut": "そのまま",
+  "sampler.fitLoop": "繰り返し",
+  "sampler.fitStretch": "伸縮",
+  "sampler.hint": "選択範囲（なければ全体）を、MIDIの音符ごとに高さを変えて並べた新しいトラックを作成します",
+  "sampler.title": "MIDIに並べる",
+
+  "synth.create": "作成",
+  "synth.formant": "フォルマント",
+  "synth.hint": "作成した音声は新しいトラックとして追加されます。ピッチ、長さ、フォルマントの加工に使用できます",
+  "synth.length": "長さ",
+  "synth.midi": "MIDIのメロディ",
+  "synth.note": "音高",
+  "synth.sawtooth": "楽器（のこぎり波）",
+  "synth.sine": "楽器（正弦波）",
+  "synth.single": "単音",
+  "synth.square": "楽器（矩形波）",
+  "synth.timbre": "音色",
+  "synth.title": "音声を作成",
+  "synth.trackName": "{timbre} {what}",
+  "synth.triangle": "楽器（三角波）",
+  "synth.voiceA": "声（あ）",
+  "synth.voiceE": "声（え）",
+  "synth.voiceI": "声（い）",
+  "synth.voiceO": "声（お）",
+  "synth.voiceU": "声（う）",
+  "synth.volume": "音量",
+
+  "vibrato.depth": "深さ",
+  "vibrato.rate": "速さ",
+  "vibrato.secondUnit": "秒",
+  "vibrato.title": "ビブラート"
 }

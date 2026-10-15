@@ -8,7 +8,9 @@ import MarkerDialog from './MarkerDialog'
 import type { Dialogs } from './useDialogs'
 import { AboutDialog, LicensesDialog } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
-import { ExportDialog, type ExportSettings } from 'wevocal-lib/react'
+import { ExportDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
+import { placeOnNotes } from './sampler'
+import { addClipTrack } from './project'
 import { AppIcon } from './AppHeader'
 import { app } from './appConfig'
 import HistoryDialog from './HistoryDialog'
@@ -30,6 +32,8 @@ export default function AppDialogs(p: {
   range: Range | null
   onExport: (s: ExportSettings, win?: Window | null) => void
   fail: (e: unknown) => void
+  /** 編集カーソル（作った音、並べた音符を置く位置） */
+  cursor: number
 }) {
   const t = useT()
   const { dialogs, doc } = p
@@ -100,6 +104,30 @@ export default function AppDialogs(p: {
           }}
         />
       )}
+      {/* 音を 0 から作り、編集カーソルの位置に新しいトラックとして置く（wevocal-lib。WeVocalSynth と同じ） */}
+      <SynthDialog
+        t={t}
+        open={dialogs.isOpen('synth')}
+        bpm={project.tempo.bpm}
+        onClose={dialogs.closer('synth')}
+        onCreate={(clip, name) => {
+          doc.apply((q) => addClipTrack(q, clip, name, p.cursor))
+          dialogs.close('synth')
+        }}
+      />
+      {/* 選んだ波形ブロックを MIDI の音符に並べる（wevocal-lib のダイアログ。並べ方は sampler.ts） */}
+      <SamplerDialog
+        t={t}
+        open={dialogs.isOpen('sampler')}
+        bpm={project.tempo.bpm}
+        baseNote={null}
+        onClose={dialogs.closer('sampler')}
+        onRun={(o) => {
+          const id = dialogs.arg<string>('sampler')
+          if (id) doc.apply((q) => placeOnNotes(q, id, o.notes, o.baseNote, o.fit, p.cursor, o.midiName))
+          dialogs.close('sampler')
+        }}
+      />
       <MarkerDialog
         marker={marker}
         onClose={dialogs.closer('marker')}

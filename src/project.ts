@@ -256,3 +256,10 @@ export function splitBlock(b: Block, t: number): [Block, Block] | null {
     { ...b, id: newId(), start: t, offset: b.offset + at * b.rate, length: b.length - at, fadeIn: Math.min(DEFAULT_FADE, (b.length - at) / 2), fadeOut: Math.min(b.fadeOut, b.length - at) },
   ]
 }
+
+/** 音（作った音など）を、新しいトラックの波形ブロックとして位置 `start` に置く（トラックは一番下） */
+export function addClipTrack(p: Project, clip: Clip, name: string, start: number): Project {
+  const source: Source = { id: newId(), name, clip, duration: clip.channels[0].length / clip.sampleRate }
+  const track = { ...newTrack(0), name }
+  return { ...p, sources: [...p.sources, source], tracks: [...p.tracks, track], blocks: [...p.blocks, fillBlock({ id: newId(), track: track.id, source: source.id, start, offset: 0, length: source.duration })] }
+}

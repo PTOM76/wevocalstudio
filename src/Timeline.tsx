@@ -9,7 +9,7 @@ import { depthOf, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEI
 import { ENVELOPES, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
-import { MASTER, RULER, TOP, drawCursors, drawTimeline, totalTrackHeight, trackTop, type TimelineView } from './drawTimeline'
+import { MASTER, RULER, TOP, drawCursors, drawTimeline, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
 import type { Block, Master, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
@@ -75,6 +75,10 @@ export default function Timeline(p: {
   snap: boolean
   /** 再生中（カーソルの線を毎フレーム描き直す） */
   playing: boolean
+  /** 録音中（録っている波形ブロックを毎フレーム描き直す） */
+  recording: boolean
+  /** 録っている最中の波形ブロックの様子（録っていなければ null） */
+  live: () => { track: string; start: number; seconds: number; bars: readonly (readonly [number, number])[] } | null
   /** 線の取り方（拍と小節か、秒） */
   grid: GridMode
   /** グリッドの細かさ */
@@ -192,6 +196,8 @@ export default function Timeline(p: {
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)
+  const liveRef = useRef(p.live)
+  liveRef.current = p.live
   const followRef = useRef({ follow: p.follow, visible: 0, scroll: 0 })
   followRef.current = { follow: p.follow, visible: width / view.pps, scroll: view.scroll }
   useEffect(() => {
@@ -199,9 +205,16 @@ export default function Timeline(p: {
     canvas.width = width * devicePixelRatio
     canvas.height = height * devicePixelRatio
     const colors = { editCursor: '#e53935', playhead: pal.text.primary }
-    const draw = () => drawCursors(canvas, view, p.cursor, p.livePos(), colors)
+    // 録音中の波形ブロック（録っているトラックの行に、録った分だけ描く）
+    const liveBlock = (): LiveBlock | null => {
+      const l = liveRef.current()
+      const i = l ? p.project.tracks.findIndex((tr) => tr.id === l.track) : -1
+      if (!l || i < 0) return null
+      return { ...l, y: trackTop(p.project, i) - vs, h: trackHeight(p.project.tracks[i]), fill: alpha(pal.primary.main, dark ? 0.36 : 0.26), wave: pal.primary.main }
+    }
+    const draw = () => drawCursors(canvas, view, p.cursor, p.livePos(), colors, liveBlock())
     draw()
-    if (!p.playing) return
+    if (!p.playing && !p.recording) return
     let id = 0
     const tick = () => {
       draw()
@@ -213,7 +226,7 @@ export default function Timeline(p: {
     }
     id = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(id)
-  }, [p.playing, p.cursor, p.livePos, view, width, height, pal, setView])
+  }, [p.playing, p.recording, p.project, vs, dark, p.cursor, p.livePos, view, width, height, pal, setView])
 
   // ホイール: Shift で横に動かす。Ctrl で拡大と縮小（マウスの位置を中心に）
   useEffect(() => {

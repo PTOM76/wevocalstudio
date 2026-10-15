@@ -48,6 +48,8 @@ export interface ActionContext {
   newProject: () => void
   newWindow: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
+  /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
+  openDialog: (id: 'synth' | 'sampler', arg?: string) => void
   extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void }
   openProperties: (id: string) => void
   openFile: () => void
@@ -181,6 +183,8 @@ export function useActions(c: ActionContext) {
     repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId)) },
     normalize: { enabled: any, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
     // 分けるのは 1 つずつ（選んでいる最後のもの）
+    synth: { run: () => c.openDialog('synth') },
+    sampler: { enabled: any, run: () => any && c.openDialog('sampler', ids[ids.length - 1]) },
     splitVocals: { enabled: any, run: () => any && c.extract.vocals(ids[ids.length - 1]) },
     splitLead: { enabled: any, run: () => any && c.extract.lead(ids[ids.length - 1]) },
     splitInstruments: { enabled: any, run: () => any && c.extract.instruments(ids[ids.length - 1]) },
@@ -309,6 +313,11 @@ export function useActions(c: ActionContext) {
         { ...item('muteTrack'), checked: !!track?.mute },
         { ...item('soloTrack'), checked: !!track?.solo },
       ],
+    },
+    {
+      label: t('menu.tools'),
+      accessKey: 'L',
+      entries: [item('synth'), item('sampler'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments')],
     },
     {
       label: t('menu.transport'),

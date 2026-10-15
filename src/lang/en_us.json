@@ -120,6 +120,9 @@
   "menu.splitLead": "Split into lead, harmony and accompaniment",
   "menu.splitInstruments": "Split by instrument",
   "menu.extract": "Vocal extraction",
+  "menu.tools": "Tools",
+  "menu.sampler": "Place on MIDI notes…",
+  "menu.synth": "Create sound…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -308,6 +311,7 @@
   "common.close": "Close",
   "common.whole": "Whole",
   "common.selection": "Selection",
+  "common.stop": "Stop",
 
   "transport.toStart": "Go to start",
   "transport.stop": "Stop",
@@ -489,5 +493,54 @@
   "extract.noAdapter": "WebGPU is not available (the browser may have blocked WebGPU for this site; fully restarting the browser may fix it)",
   "extract.split": "Split into vocals and accompaniment",
   "extract.splitLead": "Split into lead, harmony, and accompaniment",
-  "extract.splitInstruments": "Split by instrument"
+  "extract.splitInstruments": "Split by instrument",
+
+  "midi.choose": "Choose MIDI file",
+  "midi.loadFailed": "Failed to read the MIDI file: {error}",
+  "midi.noNotes": "No notes found",
+  "midi.none": "None",
+  "midi.offset": "Start position",
+  "midi.tempoMidi": "Keep MIDI tempo ({bpm} BPM)",
+  "midi.tempoProject": "Match project tempo ({bpm} BPM)",
+  "midi.track": "Track",
+  "midi.trackItem": "{name} ({count} notes)",
+  "midi.transpose": "Transpose",
+
+  "play.preview": "Preview",
+
+  "process.semitoneUnit": "st",
+
+  "sampler.base": "Selection pitch",
+  "sampler.fit": "Length",
+  "sampler.fitCut": "As is",
+  "sampler.fitLoop": "Loop",
+  "sampler.fitStretch": "Stretch",
+  "sampler.hint": "Creates a new track with the selection (or the whole track) placed on each MIDI note at that note's pitch",
+  "sampler.title": "Place on MIDI",
+
+  "synth.create": "Create",
+  "synth.formant": "Formant",
+  "synth.hint": "The created audio is added as a new track. You can edit its pitch, length and formant",
+  "synth.length": "Length",
+  "synth.midi": "MIDI melody",
+  "synth.note": "Pitch",
+  "synth.sawtooth": "Instrument (sawtooth)",
+  "synth.sine": "Instrument (sine)",
+  "synth.single": "Single note",
+  "synth.square": "Instrument (square)",
+  "synth.timbre": "Timbre",
+  "synth.title": "Create audio",
+  "synth.trackName": "{timbre} {what}",
+  "synth.triangle": "Instrument (triangle)",
+  "synth.voiceA": "Voice (a)",
+  "synth.voiceE": "Voice (e)",
+  "synth.voiceI": "Voice (i)",
+  "synth.voiceO": "Voice (o)",
+  "synth.voiceU": "Voice (u)",
+  "synth.volume": "Volume",
+
+  "vibrato.depth": "Depth",
+  "vibrato.rate": "Rate",
+  "vibrato.secondUnit": "s",
+  "vibrato.title": "Vibrato"
 }
