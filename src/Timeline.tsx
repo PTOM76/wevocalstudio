@@ -3,9 +3,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
-import { useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
+import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
 import { layoutRows } from './overlap'
-import { depthOf, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN } from './project'
+import { depthOf, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN } from './project'
 import { ENVELOPES, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
@@ -124,6 +124,8 @@ export default function Timeline(p: {
   const vs = Math.min(vscroll, maxV)
   const height = Math.max(TOP + TRACK_HEIGHT_DEFAULT, vh)
   /** 画面の y を、トラックの行の位置（スクロールを足したもの）にする。目盛りとマスターの所はそのまま */
+  // 見えている時間の長さ（横のスクロールバー）
+  const visibleSec = width / view.pps
   const cy = (y: number) => (y < TOP ? y : y + vs)
   const trackAt = (y: number) => p.project.tracks.find((_, i) => y >= trackTop(p.project, i) && y < trackTop(p.project, i) + trackHeight(p.project.tracks[i]))
   const trackIndexAt = (y: number) => p.project.tracks.findIndex((_, i) => y >= trackTop(p.project, i) && y < trackTop(p.project, i) + trackHeight(p.project.tracks[i]))
@@ -779,6 +781,16 @@ export default function Timeline(p: {
             onDrop={onDrop}
           />
         </Box>
+        {/* 縦のスクロールバー（トラックの行。目盛りとマスターは固定なので、見えている高さと全体の高さで示す） */}
+        <ScrollBar orientation="vertical" total={content} start={vs} size={vh} onChange={(v) => setVscroll(Math.max(0, Math.min(maxV, v)))} />
+      </Box>
+      {/* 横のスクロールバー（時間。曲の終わりの少し先まで動かせる） */}
+      <Box sx={{ display: 'flex', flexShrink: 0, borderTop: 1, borderColor: 'divider' }}>
+        <Box sx={{ width: header, flexShrink: 0, borderRight: 1, borderColor: 'divider' }} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <ScrollBar orientation="horizontal" total={Math.max(songEnd(p.project) + visibleSec * 0.25, view.scroll + visibleSec)} start={view.scroll} size={visibleSec} onChange={(t) => setView((v) => ({ ...v, scroll: Math.max(0, t) }))} />
+        </Box>
+        <Box sx={{ width: 10, flexShrink: 0 }} />
       </Box>
     </Box>
   )
