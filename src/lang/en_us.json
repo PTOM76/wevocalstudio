@@ -752,5 +752,6 @@
   "fx.presetEmpty": "No presets",
   "fx.presetSave": "Save current values",
   "fx.presetRemove": "Delete",
-  "fx.presetName": "Preset {n}"
+  "fx.presetName": "Preset {n}",
+  "fx.applyHelp": "Writes the FX chain into the track audio and clears the chain"
 }

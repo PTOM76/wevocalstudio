@@ -752,5 +752,6 @@
   "fx.presetEmpty": "プリセットがありません",
   "fx.presetSave": "今の値を保存",
   "fx.presetRemove": "削除",
-  "fx.presetName": "プリセット {n}"
+  "fx.presetName": "プリセット {n}",
+  "fx.applyHelp": "FX の列をトラックの音声に書き込み、列を空に戻します"
 }
