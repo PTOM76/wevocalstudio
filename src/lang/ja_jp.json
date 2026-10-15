@@ -16,7 +16,7 @@
   "block.rate": "速度 (倍)",
   "block.formant": "フォルマント (半音)",
   "block.propertiesMany": "{n} 個の波形ブロックのプロパティ",
-  "block.manyHelp": "変えた欄だけを、選んだ波形ブロックすべてに反映します",
+  "block.manyHelp": "変えた欄だけを、選んだ波形ブロックすべてに反映します。（混在）の欄は +1、-1 のように符号を付けると、それぞれの値に足し引きします",
   "block.sectionSource": "元の音",
   "block.sectionPlace": "位置と長さ",
   "block.sectionPitchSpeed": "ピッチと速度",

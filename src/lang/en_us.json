@@ -16,7 +16,7 @@
   "block.rate": "Rate (x)",
   "block.formant": "Formant (st)",
   "block.propertiesMany": "Properties of {n} blocks",
-  "block.manyHelp": "Only the fields you change are applied to all selected blocks",
+  "block.manyHelp": "Only the fields you change are applied to all selected blocks. In a (mixed) field, enter a signed value such as +1 or -1 to add to or subtract from each block",
   "block.sectionSource": "Source",
   "block.sectionPlace": "Position and Length",
   "block.sectionPitchSpeed": "Pitch and Speed",

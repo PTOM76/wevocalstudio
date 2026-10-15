@@ -218,7 +218,7 @@ export default function AppDialogs(p: {
         blocks={project.blocks.filter((b) => editing.includes(b.id))}
         sources={project.sources}
         onClose={dialogs.closer('block')}
-        onApply={(edit) => doc.editBlocks(editing, edit)}
+        onApply={(edit, add) => doc.editBlocks(editing, edit, add)}
         onPickFile={() => sourceInput.current?.click()}
         presets={p.settings.presets}
         onPresetsChange={(presets) => p.onSettingsChange({ presets })}

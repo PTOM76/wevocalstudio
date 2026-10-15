@@ -201,6 +201,19 @@ export const DEFAULT_FADE = 0.01
 export const RATE_MIN = 0.25
 export const RATE_MAX = 4
 
+/** プロパティで数値にできる項目の範囲（下限、上限）。プロパティの欄と、混在の欄への足し引きで共通 */
+export const BLOCK_LIMITS = {
+  start: [0, Infinity],
+  length: [0.01, Infinity],
+  offset: [0, Infinity],
+  rate: [RATE_MIN, RATE_MAX],
+  gain: [-60, 24],
+  pitch: [-256, 256],
+  formant: [-12, 12],
+  fadeIn: [0, Infinity],
+  fadeOut: [0, Infinity],
+} as const satisfies Record<string, readonly [number, number]>
+
 /** 古いファイルの波形ブロックに無い項目を既定値で埋める（保存したデータは壊さない） */
 export const fillBlock = (b: Partial<Block> & Pick<Block, 'id'>): Block => ({ rate: 1, gain: 0, pitch: 0, formant: 0, algorithm: 'sola3', preserveFormant: true, fadeIn: 0, fadeOut: 0, mute: false, ...b }) as Block
 

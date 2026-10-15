@@ -4,7 +4,7 @@ import { keepFrozen } from './freeze'
 import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip } from 'wevocal-lib'
 import { describeChange } from './history'
 import type { MessageKey } from './i18n'
-import { DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
+import { BLOCK_LIMITS, DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
 const PITCH_MAX = 256
@@ -147,14 +147,18 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     [change],
   )
 
-  /** 選んだ波形ブロックに、プロパティで変えた値をまとめて掛ける。速度を変えてもブロックの長さは変えない（使う元の音の範囲が変わる）。元の音の長さに収める */
+  /** 選んだ波形ブロックに、プロパティで変えた値をまとめて掛ける。`add` はブロックごとの今の値に足す分（混在の欄の +1 など）。速度を変えてもブロックの長さは変えない（使う元の音の範囲が変わる）。元の音の長さに収める */
   const editBlocks = useCallback(
-    (ids: string[], edit: Partial<Block>) =>
+    (ids: string[], edit: Partial<Block>, add: Partial<Record<keyof typeof BLOCK_LIMITS, number>> = {}) =>
       change((p) => ({
         ...p,
         blocks: p.blocks.map((b) => {
           if (!ids.includes(b.id)) return b
           const next = { ...b, ...edit }
+          for (const [k, d] of Object.entries(add) as [keyof typeof BLOCK_LIMITS, number][]) {
+            const [min, max] = BLOCK_LIMITS[k]
+            next[k] = Math.max(min, Math.min(max, b[k] + d))
+          }
           // 元の音を変えたら、ピッチカーブは合わなくなるので外す
           if (edit.source && edit.source !== b.source) next.curve = undefined
           const source = p.sources.find((s) => s.id === next.source)
