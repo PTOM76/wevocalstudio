@@ -371,6 +371,8 @@ export default function Timeline(p: {
       return touch.rulerDown(e)
     }
     if (e.pointerType === 'touch') {
+      // 長押しでメニューが開いても、指を離したことがここに届くようにつかんでおく（届かないと、次のタップを 2 本目の指とみなしてしまう）
+      e.currentTarget.setPointerCapture(e.pointerId)
       const { offsetY: oy } = e.nativeEvent
       const { clientX, clientY } = e
       longPress.start(clientX, clientY, () => {
