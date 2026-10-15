@@ -1,12 +1,12 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Box } from '@mui/material'
-import { EmptyState, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
+import { NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
 import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web'
-import { canRecord, configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
+import { configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { AUDIO_ACCEPT, readWvsp, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
@@ -35,7 +35,6 @@ import BlockEditBar from './BlockEditBar'
 import { CONVERTER_ADDON } from 'wevocalconverter/host'
 import { applyBaked, bakeBlocks } from './bake'
 import { freezeTrack, unfreezeTrack } from './freeze'
-import { faFolderOpen, faMicrophone } from '@fortawesome/free-solid-svg-icons'
 import { useRecorder } from './useRecorder'
 import { useAutosave } from './useAutosave'
 import { usePlayerSync } from './usePlayerSync'
@@ -446,19 +445,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         madeVersion={madeVersion}
         pendingLabel={t('status.pitchBlock')}
       />
-        {/* 波形ブロックが 1 つもないときは、開く、録音、最近使用したファイルを重ねて出す（PevenMUI の EmptyState。WeVocalSynth と同じ） */}
-        {project.blocks.length === 0 && !recording && (
-          <Box sx={{ position: 'absolute', left: header, right: 0, top: '40%', bottom: 0, pointerEvents: 'none' }}>
-            <Box sx={{ height: '100%', '& button': { pointerEvents: 'auto' } }}>
-              <EmptyState
-                message={t('empty.formats')}
-                primary={{ label: t('empty.choose'), icon: faFolderOpen, onClick: files.picker.open }}
-                actions={canRecord() ? [{ label: t('empty.record'), icon: faMicrophone, onClick: toggleRecord }] : []}
-                recent={files.recent.supported ? { title: t('menu.recent'), names: files.recent.names, open: files.recent.open, more: (n) => t('empty.showMore', { n }), less: t('empty.showLess') } : undefined}
-              />
-            </Box>
-          </Box>
-        )}
       </Box>
       {p.settings.showAnalysis && (
         <AnalysisPanel

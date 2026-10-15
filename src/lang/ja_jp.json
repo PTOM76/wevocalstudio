@@ -507,12 +507,6 @@
   "data.addonsConfirm": "ダウンロードした追加機能をすべて削除します。よろしいですか？",
   "data.addonsDone": "追加機能を削除しました",
 
-  "empty.formats": "WAV / AIFF / MP3 / MP4など（ドラッグ＆ドロップ可）",
-  "empty.choose": "ファイルを選択",
-  "empty.showMore": "もっと見る（あと{n}件）",
-  "empty.showLess": "閉じる",
-  "empty.record": "録音",
-
   "record.title": "録音",
 
   "window.limit": "ウィンドウの数が上限（{n}）に達しています",
