@@ -28,6 +28,15 @@ interface History {
   future: Step[]
 }
 
+/** ファイルをデコードする。失敗したら、どのファイルかがわかるよう名前を付けて投げる（ブラウザの EncodingError だけでは見分けられない） */
+async function decodeNamed(file: File): Promise<Clip> {
+  try {
+    return await decodeFile(file)
+  } catch (e) {
+    throw new Error(`${file.name}: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`)
+  }
+}
+
 export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
   // 元に戻せる回数（設定）
   const limit = useRef(defaults.historyLimit)
@@ -158,7 +167,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
   /** ファイルを読み込んで、選んだ波形ブロックの元の音にする */
   const replaceSource = useCallback(
     async (ids: string[], file: File) => {
-      const clip = await decodeFile(file)
+      const clip = await decodeNamed(file)
       const source: Source = { id: newId(), name: file.name, clip, duration: clip.channels[0].length / clip.sampleRate }
       change((p) => ({
         ...p,
@@ -181,7 +190,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     async (files: File[], at?: DropAt) => {
       let start = at?.start ?? 0
       for (const file of files) {
-        const clip = await decodeFile(file)
+        const clip = await decodeNamed(file)
         const source: Source = { id: newId(), name: file.name, clip, duration: clip.channels[0].length / clip.sampleRate }
         const name = file.name.replace(/\.[^.]+$/, '')
         const begin = start
