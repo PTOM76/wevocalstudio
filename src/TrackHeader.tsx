@@ -1,5 +1,5 @@
 // トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Box, ButtonBase, InputBase, Tooltip, Typography } from '@mui/material'
 import { pevenFont, useDoubleTap, useLongPress } from 'pevenmui'
 import { ContextMenu } from 'pevenmui'
@@ -96,18 +96,34 @@ export default function TrackHeader(p: {
   // タッチの長押しでメニュー、名前のダブルタップで名前の変更（PevenMUI。iPhone、iPad は contextmenu と dblclick が来ない）
   const longPress = useLongPress()
   const doubleTap = useDoubleTap()
+  // 欄のどこをつかんでも並び替えられる（ボタン、つまみ、名前の入力以外を押して、少し動かしたら始める。タッチは長押しのメニューがあるので持ち手だけ）
+  const grab = useRef<{ x: number; y: number } | null>(null)
   return (
     <Box
       onPointerDown={(e) => {
         p.onSelect(e)
+        grab.current = e.pointerType !== 'touch' && e.button === 0 && !(e.target as HTMLElement).closest('button, input, [role="slider"], .MuiSlider-root') ? { x: e.clientX, y: e.clientY } : null
         if (e.pointerType === 'touch') {
           const { clientX: x, clientY: y } = e
           longPress.start(x, y, () => setMenu({ x, y }))
         }
       }}
-      onPointerMove={(e) => longPress.move(e.clientX, e.clientY)}
-      onPointerUp={longPress.cancel}
-      onPointerCancel={longPress.cancel}
+      onPointerMove={(e) => {
+        longPress.move(e.clientX, e.clientY)
+        const g = grab.current
+        if (g && Math.hypot(e.clientX - g.x, e.clientY - g.y) > 5) {
+          grab.current = null
+          p.onReorderStart(e)
+        }
+      }}
+      onPointerUp={() => {
+        grab.current = null
+        longPress.cancel()
+      }}
+      onPointerCancel={() => {
+        grab.current = null
+        longPress.cancel()
+      }}
       onContextMenu={(e) => {
         e.preventDefault()
         p.onSelect(e as unknown as React.PointerEvent)
@@ -117,6 +133,7 @@ export default function TrackHeader(p: {
         position: 'relative',
         height: p.height,
         opacity: p.dragging ? 0.4 : 1,
+        userSelect: 'none',
         boxSizing: 'border-box',
         pr: 1,
         // サブトラックは深さだけ字下げする
