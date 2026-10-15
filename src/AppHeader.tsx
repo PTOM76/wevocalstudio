@@ -1,6 +1,5 @@
 // 上部のバー（WeVocalSynth の AppHeader と同じ）。PC は低いメニューバー、スマホは上部バー。右端に元に戻す、やり直し
-import { faRotateLeft, faRotateRight } from '@fortawesome/free-solid-svg-icons'
-import { AppHeader as PevenAppHeader, HeaderIcon, type MenuGroup } from 'pevenmui'
+import { AppHeader as PevenAppHeader, UndoRedoButtons, type MenuGroup } from 'pevenmui'
 import { useT } from './i18n'
 import { keyLabel } from './keymap'
 
@@ -16,10 +15,8 @@ export default function AppHeader(p: { menus: MenuGroup[]; canUndo: boolean; can
       icon={<AppIcon size={16} />}
       menus={p.menus}
       actions={(mobile) => (
-        <>
-          <HeaderIcon small={!mobile} title={tip(t('menu.undo'), mobile ? '' : keyLabel('undo'))} icon={faRotateLeft} disabled={!p.canUndo} onClick={p.onUndo} />
-          <HeaderIcon small={!mobile} title={tip(t('menu.redo'), mobile ? '' : keyLabel('redo'))} icon={faRotateRight} disabled={!p.canRedo} onClick={p.onRedo} />
-        </>
+        // 元に戻す、やり直し（PevenMUI。WeVocalSynth と同じ）
+        <UndoRedoButtons mobile={mobile} canUndo={p.canUndo} canRedo={p.canRedo} onUndo={p.onUndo} onRedo={p.onRedo} undoTitle={tip(t('menu.undo'), mobile ? '' : keyLabel('undo'))} redoTitle={tip(t('menu.redo'), mobile ? '' : keyLabel('redo'))} />
       )}
     />
   )
