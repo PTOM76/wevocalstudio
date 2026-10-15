@@ -126,6 +126,7 @@
   "menu.synth": "Create sound…",
   "menu.renameTrack": "Rename track…",
   "menu.exportVideo": "Export as Video…",
+  "menu.exportWvsp": "Export as WeVocalSynth Project…",
   "menu.kanaCut": "Cut into morae…",
 
   "settings.title": "Settings",
@@ -434,6 +435,7 @@
   "job.extract": "Vocal extraction",
 
   "file.projectType": "WeVocal Studio project",
+  "file.wvspType": "WeVocalSynth project",
   "file.audioType": "Audio file",
   "file.openType": "Audio and project files",
 

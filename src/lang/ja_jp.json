@@ -126,6 +126,7 @@
   "menu.synth": "音声を作成…",
   "menu.renameTrack": "トラックの名前を変更…",
   "menu.exportVideo": "動画ファイルに書き出す…",
+  "menu.exportWvsp": "WeVocalSynth のプロジェクトに書き出す…",
   "menu.kanaCut": "一音ずつ切り出す…",
 
   "settings.title": "設定",
@@ -434,6 +435,7 @@
   "job.extract": "ボーカル抽出",
 
   "file.projectType": "WeVocal Studio プロジェクト",
+  "file.wvspType": "WeVocalSynth プロジェクト",
   "file.audioType": "音声ファイル",
   "file.openType": "音声とプロジェクトのファイル",
 

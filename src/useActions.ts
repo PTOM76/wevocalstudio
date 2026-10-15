@@ -49,6 +49,8 @@ export interface ActionContext {
   newWindow: () => void
   /** 動画の書き出し（追加機能「変換」） */
   exportVideo: () => void
+  /** WeVocalSynth のプロジェクト（.wvsp）への書き出し（選んだトラック。なければ全トラック） */
+  exportWvsp: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
   openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo', arg?: string) => void
@@ -244,6 +246,7 @@ export function useActions(c: ActionContext) {
     import: { run: c.importFiles },
     export: { enabled: doc.project.blocks.length > 0, run: c.openExport },
     exportVideo: { enabled: doc.project.blocks.length > 0, run: c.exportVideo },
+    exportWvsp: { enabled: doc.project.blocks.length > 0, run: c.exportWvsp },
     pitchUp: { enabled: any, run: () => doc.nudgePitch(ids, 1) },
     pitchDown: { enabled: any, run: () => doc.nudgePitch(ids, -1) },
     pitchUpFine: { enabled: any, run: () => doc.nudgePitch(ids, 0.1) },
@@ -289,7 +292,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.file'),
       accessKey: 'F',
-      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), item('exportVideo'), ...(c.folder ? [item('saveRangeToFolder'), item('saveBlocksToFolder')] : []), divider, { label: t('menu.settings'), onClick: c.openSettings }],
+      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), item('exportVideo'), item('exportWvsp'), ...(c.folder ? [item('saveRangeToFolder'), item('saveBlocksToFolder')] : []), divider, { label: t('menu.settings'), onClick: c.openSettings }],
     },
     {
       label: t('menu.edit'),

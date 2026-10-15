@@ -63,6 +63,7 @@ export type Action =
   | 'save'
   | 'saveAs'
   | 'exportVideo'
+  | 'exportWvsp'
   | 'saveRangeToFolder'
   | 'saveBlocksToFolder'
   | 'import'
@@ -158,6 +159,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   saveAs: ['Ctrl+Shift+KeyS'],
   // 動画の書き出し（追加機能「変換」）
   exportVideo: [],
+  // WeVocalSynth のプロジェクト（.wvsp）への書き出し
+  exportWvsp: [],
   // 範囲、波形ブロックをフォルダーへ保存（Chrome、Edge）
   saveRangeToFolder: [],
   saveBlocksToFolder: [],

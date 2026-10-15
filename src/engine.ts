@@ -2,7 +2,7 @@
 // 再生中に変えたときは、変わった波形ブロックだけを差し替え、トラックとマスターの音量などは値だけを変える（全部を鳴らし直すと一瞬止まるため）
 import { createLiveEq, flatEq, limitedOutput, startContext, updateLiveEq, type Clip, type LiveEq } from 'wevocal-lib'
 import { piecesFor, preparePitch, type Piece } from './dsp/pitch'
-import { audible, dbToGain, envAt, projectEnd, type Block, type Project, type Track } from './project'
+import { ancestors, audible, dbToGain, envAt, projectEnd, type Block, type Project, type Track } from './project'
 
 const buffers = new WeakMap<Clip, AudioBuffer>()
 
@@ -373,4 +373,18 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000): Prom
   new Graph(ctx, 0).sync(p, 0, 0, false, Infinity)
   const out = await ctx.startRendering()
   return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
+}
+
+/**
+ * 1 本のトラックだけを混ぜた音（ステレオ。長さは `length` 秒）。.wvsp への書き出し用。
+ * 波形ブロックの加工、トラックの EQ、先祖のトラックのフェーダーと EQ は音に含める。
+ * 自分の音量、パン、位相の反転、ミュート、ソロは含めない（書き出し先のトラックの状態として渡す）
+ */
+export async function renderTrack(p: Project, trackId: string, length: number, sampleRate = 48000): Promise<Clip> {
+  const track = p.tracks.find((t) => t.id === trackId)
+  if (!track) throw new Error('track not found')
+  const chain = [...ancestors(p, track).reverse(), track]
+  const tracks = chain.map((t) => (t === track ? { ...t, volume: 0, pan: 0, invert: false, mute: false, solo: false } : { ...t, mute: false, solo: false }))
+  const q: Project = { ...p, master: { volume: 0, pan: 0, mute: false }, tracks, blocks: p.blocks.filter((b) => b.track === trackId) }
+  return renderMix(q, length, sampleRate)
 }

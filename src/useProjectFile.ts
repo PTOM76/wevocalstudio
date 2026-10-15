@@ -10,6 +10,7 @@ import type { VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { videoHost } from './addons'
 import type { useT } from './i18n'
 import type { Project } from './project'
+import { exportWvsp } from './wvspExport'
 import { PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings/settings'
 import { idbGet, idbPut } from './storage/idb'
@@ -119,6 +120,21 @@ export function useProjectFile(o: {
     }
   }
 
+  /** WeVocalSynth のプロジェクト（.wvsp）に書き出す（トラックごとに描画。選んだトラックがなければ全トラック） */
+  const runWvspExport = async (selected: string[]) => {
+    const target = await pickSaveTarget(`${o.fileName}${WVSP_EXT}`, 'wvsp', { description: t('file.wvspType'), mime: 'application/octet-stream', ext: WVSP_EXT })
+    if (!target) return
+    const job = startJob('export', t('job.export'))
+    job.update(-1)
+    try {
+      await target.write(await exportWvsp(o.project, o.fileName, selected, (v) => job.update(v)))
+    } catch (e) {
+      o.fail(e)
+    } finally {
+      job.end()
+    }
+  }
+
   /** 範囲（全トラックを混ぜたもの）を切り出して WAV にする。仕上げは書き出しと同じ */
   const renderRange = async (p: Project, r: Range) => encodeWav(await renderFinished(p, r))
 
@@ -191,6 +207,7 @@ export function useProjectFile(o: {
     recent,
     save: () => void save(),
     saveAs: () => void save(true),
+    exportWvsp: (selected: string[]) => void runWvspExport(selected),
     runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
     runVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void runVideoExport(v, look, win),
     /** 動画のプレビューに使う音（全体） */
