@@ -7,6 +7,10 @@ import EqDialog from './EqDialog'
 import MarkerDialog from './MarkerDialog'
 import type { Dialogs } from './useDialogs'
 import { AboutDialog, LicensesDialog, RenameDialog } from 'pevenmui'
+import type { Clip } from 'wevocal-lib'
+import { videoLook, type VideoLook } from 'wevocalconverter/host'
+import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
+import { videoHost } from './addons'
 import type { Range } from 'wevocal-lib'
 import { ExportDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
@@ -31,6 +35,7 @@ export default function AppDialogs(p: {
   fileName: string
   range: Range | null
   onExport: (s: ExportSettings, win?: Window | null) => void
+  onVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void
   fail: (e: unknown) => void
   /** 編集カーソル（作った音、並べた音符を置く位置） */
   cursor: number
@@ -128,6 +133,24 @@ export default function AppDialogs(p: {
           dialogs.close('sampler')
         }}
       />
+      {/* 動画の書き出し（ダイアログと手順は converter。WeVocalSynth と同じ） */}
+      {dialogs.isOpen('video') && (
+        <VideoExportDialog
+          t={t}
+          host={videoHost}
+          open
+          onClose={dialogs.closer('video')}
+          baseName={p.fileName}
+          hasSelection={!!p.range}
+          trackCount={1}
+          busy={false}
+          progress={0}
+          previewClip={dialogs.arg<Clip>('video')!}
+          prefs={p.settings.exportVideo}
+          onPrefsChange={(exportVideo) => p.onSettingsChange({ exportVideo })}
+          onExport={(v, win) => p.onVideoExport(v, videoLook(p.settings.exportVideo, v.image, v.fileName.trim()), win)}
+        />
+      )}
       {/* トラックの名前の変更（PevenMUI の RenameDialog） */}
       <RenameDialog
         name={project.tracks.find((tr) => tr.id === dialogs.arg<string>('renameTrack'))?.name ?? null}

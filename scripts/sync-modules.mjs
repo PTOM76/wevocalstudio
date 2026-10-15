@@ -1,10 +1,10 @@
-// submodule（pevenmui、wevocal-lib、analyzer、extractor）を、隣の WeVocalSynth の中の今のコミットにそろえる（GitHub Actions は submodule でビルドするため）。
+// submodule（pevenmui、wevocal-lib、analyzer、extractor、converter）を、隣の WeVocalSynth の中の今のコミットにそろえる（GitHub Actions は submodule でビルドするため）。
 // コミットの前（.githooks/pre-commit）に自動で動く。--check は push の前（.githooks/pre-push）に、指しているコミットが GitHub にあるかを確かめる
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const MODULES = ['pevenmui', 'wevocal-lib', 'analyzer', 'extractor']
+const MODULES = ['pevenmui', 'wevocal-lib', 'analyzer', 'extractor', 'converter']
 // フックの中では git が GIT_INDEX_FILE などを入れるので、submodule の git に渡さない
 const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')))
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()

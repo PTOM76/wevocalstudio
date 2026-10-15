@@ -5,6 +5,9 @@ import { canSaveToFolder, configureFileAccess, fileRefOf, saveToFolder, initFile
 import { AUDIO_ACCEPT, EXPORT_EXT, EXPORT_MIME, encodeWav, exportAudio, finishClip, toFrames, type Range } from 'wevocal-lib'
 import { renderMix } from './engine'
 import type { ExportSettings } from 'wevocal-lib/react'
+import { VIDEO_EXT, VIDEO_MIME, type VideoLook } from 'wevocalconverter/host'
+import type { VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
+import { videoHost } from './addons'
 import type { useT } from './i18n'
 import type { Project } from './project'
 import { PROJECT_EXT, readProject, writeProject } from './projectFile'
@@ -83,6 +86,16 @@ export function useProjectFile(o: {
     }
   }
 
+  /** 書き出す音（全トラックを混ぜ、範囲があれば切り出してから仕上げを掛ける。音声、動画、フォルダーへの保存で共通。WeVocalSynth と同じ） */
+  const renderFinished = async (p: Project, range: Range | null) => {
+    let mix = await renderMix(p, range ? range.end : 0)
+    if (range) {
+      const [s, e] = toFrames(mix, range)
+      mix = { sampleRate: mix.sampleRate, channels: mix.channels.map((ch) => ch.slice(s, e)) }
+    }
+    return finishClip(mix, { normalize: settings.exportNormalize, fadeMs: settings.exportFadeMs })
+  }
+
   const runExport = async (c: ExportSettings, win?: Window | null) => {
     // 保存先は作る前に選ぶ（時間がかかると、選ぶ画面を出せなくなる）
     const ext = EXPORT_EXT[c.format]
@@ -92,14 +105,7 @@ export function useProjectFile(o: {
     const job = startJob('export', t('job.export'))
     job.update(-1)
     try {
-      const range = c.selectionOnly ? o.range : null
-      let mix = await renderMix(o.project, range ? range.end : 0)
-      // 範囲を切り出してから仕上げ（ノーマライズ、両端のフェード）を掛ける（WeVocalSynth と同じ）
-      if (range) {
-        const [s, e] = toFrames(mix, range)
-        mix = { sampleRate: mix.sampleRate, channels: mix.channels.map((ch) => ch.slice(s, e)) }
-      }
-      mix = finishClip(mix, { normalize: settings.exportNormalize, fadeMs: settings.exportFadeMs })
+      const mix = await renderFinished(o.project, c.selectionOnly ? o.range : null)
       await target.write(await exportAudio(mix, { ...c, sampleRate: c.sampleRate || mix.sampleRate, range: null }))
       o.onExported()
     } catch (e) {
@@ -110,10 +116,25 @@ export function useProjectFile(o: {
   }
 
   /** 範囲（全トラックを混ぜたもの）を切り出して WAV にする。仕上げは書き出しと同じ */
-  const renderRange = async (p: Project, r: Range) => {
-    const mix = await renderMix(p, r.end)
-    const [s, e] = toFrames(mix, r)
-    return encodeWav(finishClip({ sampleRate: mix.sampleRate, channels: mix.channels.map((ch) => ch.slice(s, e)) }, { normalize: settings.exportNormalize, fadeMs: settings.exportFadeMs }))
+  const renderRange = async (p: Project, r: Range) => encodeWav(await renderFinished(p, r))
+
+  /** 動画の書き出し（追加機能「変換」。音は音声の書き出しと同じもの。WeVocalSynth と同じ） */
+  const runVideoExport = async (v: VideoExportSettings, look: VideoLook, win?: Window | null) => {
+    const ext = VIDEO_EXT[v.container]
+    const target = await pickSaveTarget(`${v.fileName.trim()}${ext}`, 'video', { description: t('video.fileType'), mime: VIDEO_MIME[v.container], ext }, win ?? window)
+    if (!target) return
+    const job = startJob('export', t('job.export'))
+    job.update(-1)
+    try {
+      const clip = await renderFinished(o.project, v.selectionOnly ? o.range : null)
+      await target.write(await videoHost.renderVideo(clip, { ...look, container: v.container, fps: 30, kbps: 192, onProgress: (p) => job.update(p) }))
+      o.onExported()
+      o.notify(t('toast.exported'))
+    } catch (e) {
+      o.fail(e)
+    } finally {
+      job.end()
+    }
   }
   const folderFailed = (e: unknown) => (o.fail(t('folder.failed', { error: String(e) })), null)
   /** 範囲をフォルダーへ保存する（初回はフォルダーを選ぶ。名前は「プロジェクト名_連番.wav」。WeVocalSynth と同じ） */
@@ -167,6 +188,9 @@ export function useProjectFile(o: {
     save: () => void save(),
     saveAs: () => void save(true),
     runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
+    runVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void runVideoExport(v, look, win),
+    /** 動画のプレビューに使う音（全体） */
+    renderPreview: () => renderFinished(o.project, null),
     /** フォルダーへ保存できるブラウザか（Chrome、Edge） */
     canSaveToFolder: canSaveToFolder(),
     saveRangeToFolder: () => void saveRangeToFolder(),

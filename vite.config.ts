@@ -21,6 +21,8 @@ const wevocalLib = submodule('wevocal-lib', 'web/src/index.ts', process.env.WEVO
 const analyzer = submodule('analyzer', 'src/index.ts', process.env.ANALYZER_PATH)
 // WeVocalExtractor（ボーカル抽出）。本体は追加機能として配り、アプリは手順（src/host.ts）だけを使う
 const extractor = submodule('extractor', 'src/host.ts', process.env.EXTRACTOR_PATH)
+// WeVocalConverter（動画の書き出し）。本体は追加機能として配り、アプリは手順（src/host.ts）とダイアログだけを使う
+const converter = submodule('converter', 'src/host.ts', process.env.CONVERTER_PATH)
 // 場所が決まるのは実行時なので、動的に読み込む（Node が .ts の型を取り除いて読む）
 const { pevenAddonsRoute, pevenApp, pevenManifest }: typeof import('./pevenmui/src/vite.ts') = await import(pathToFileURL(resolve(pevenmui, 'src/vite.ts')).href)
 
@@ -34,6 +36,8 @@ export default defineConfig({
       { find: /^pevenmui\/debug$/, replacement: resolve(pevenmui, 'src/debug/index.ts') },
       { find: /^wevocalextractor\/host$/, replacement: resolve(extractor, 'src/host.ts') },
       { find: /^wevocalextractor\/compat$/, replacement: resolve(extractor, 'src/compat.ts') },
+      { find: /^wevocalconverter\/host$/, replacement: resolve(converter, 'src/host.ts') },
+      { find: /^wevocalconverter\/VideoExportDialog$/, replacement: resolve(converter, 'src/VideoExportDialog.tsx') },
       { find: /^wevocalanalyzer$/, replacement: resolve(analyzer, 'src/index.ts') },
       { find: /^wevocal-lib\/react$/, replacement: resolve(wevocalLib, 'web/src/react/index.ts') },
       { find: /^wevocal-lib$/, replacement: resolve(wevocalLib, 'web/src/index.ts') },
@@ -41,7 +45,7 @@ export default defineConfig({
     // 外にある pevenmui から読み込む React、MUI も、このアプリと同じものにする（2 つになると動かない）
     dedupe: ['react', 'react-dom', '@mui/material', '@emotion/react', '@emotion/styled', '@fortawesome/react-fontawesome'],
   },
-  server: { fs: { allow: [root, pevenmui, wevocalLib, analyzer, extractor, resolve(pevenmui, '..')] } },
+  server: { fs: { allow: [root, pevenmui, wevocalLib, analyzer, extractor, converter, resolve(pevenmui, '..')] } },
   // 版（__APP_VERSION__、__APP_COMMIT__、version.json）と、index.html の名前、言語、配信先の URL
   plugins: [
     react(),

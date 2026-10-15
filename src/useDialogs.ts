@@ -10,6 +10,8 @@ export type DialogId =
   | 'synth' | 'sampler'
   // トラックの名前の変更（トラックの id）
   | 'renameTrack'
+  // 動画の書き出し（プレビューに使う音）
+  | 'video'
 
 export const useDialogs = () => usePevenDialogs<DialogId>()
 export type Dialogs = PevenDialogs<DialogId>
