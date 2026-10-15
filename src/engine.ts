@@ -132,7 +132,7 @@ class Graph {
       list.push(...voicesOf(b, pieces, this.zero, dbToGain(b.gain), env))
     }
     for (const t of p.tracks) this.mixers.node(t.id, this.tracks.get(t.id)!.input)
-    this.mixers.syncClips(used)
+    this.mixers.syncClips(used, new Set(p.sources.map((s) => clipId(s.clip))))
     for (const [id, list] of voices) this.mixers.voices(id, list, smooth)
   }
 

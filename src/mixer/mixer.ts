@@ -52,8 +52,8 @@ export class Mixers {
     return this.nodes.values().next().value
   }
 
-  /** まだ送っていない音のデータを送り、使わなくなったものを消す */
-  syncClips(used: Map<number, Clip>) {
+  /** まだ送っていない音のデータを送り、使わなくなったものを消す（keep は使っていなくても消さない。元の音を送り直さないため） */
+  syncClips(used: Map<number, Clip>, keep: Set<number>) {
     const port = this.any()?.port
     if (!port) return
     let sent = sentClips.get(this.ctx)
@@ -64,7 +64,7 @@ export class Mixers {
         port.postMessage({ type: 'clip', id, sampleRate: c.sampleRate, channels: c.channels } satisfies MixerMessage)
         sent.add(id)
       }
-    const gone = [...sent].filter((id) => !used.has(id))
+    const gone = [...sent].filter((id) => !used.has(id) && !keep.has(id))
     if (gone.length) {
       port.postMessage({ type: 'unclip', ids: gone } satisfies MixerMessage)
       for (const id of gone) sent.delete(id)
