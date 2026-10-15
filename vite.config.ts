@@ -47,6 +47,19 @@ export default defineConfig({
     // 外にある pevenmui から読み込む React、MUI も、このアプリと同じものにする（2 つになると動かない）
     dedupe: ['react', 'react-dom', '@mui/material', '@emotion/react', '@emotion/styled', '@fortawesome/react-fontawesome'],
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // 版ごとにほとんど変わらないライブラリを別のファイルにし、更新のときにアプリの部分だけ取り直せばよいようにする（WeVocalSynth と同じ）
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 2 },
+            { name: 'mui', test: /node_modules[\\/](@mui|@emotion|@popperjs|stylis)/, priority: 1 },
+          ],
+        },
+      },
+    },
+  },
   server: { fs: { allow: [root, pevenmui, wevocalLib, analyzer, extractor, converter, resolve(pevenmui, '..')] } },
   // 版（__APP_VERSION__、__APP_COMMIT__、version.json）と、index.html の名前、言語、配信先の URL
   plugins: [
@@ -70,8 +83,17 @@ export default defineConfig({
           { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
-        // インストールした PWA を .wvst を開くアプリとして登録する（音声ファイルは登録しない。WeVocalSynth と同じ）。受け取りは src/useProjectFile.ts の launchQueue
-        file_handlers: [{ action: './', accept: { 'application/x-wevocalstudio-project': ['.wvst'] } }],
+        // インストールした PWA を、プロジェクトファイル（.wvst。短くする前の .wvstudio も）を開くアプリとして OS に登録する（File Handling API。Chrome、Edge のデスクトップ版）。
+        // 音声ファイル（.mp3 など）は登録しない。ブラウザの確認画面の「次のファイル形式の設定を保存」が登録した形式すべてに効き、
+        // 普段の音声ファイルまでこのアプリで開くようになってしまうため（WeVocalSynth と同じ）。.wvsp は WeVocalSynth が登録するので、ここでは登録しない。
+        // ダブルクリックで起動したファイルは launchQueue で受け取る（src/useProjectFile.ts）
+        file_handlers: [
+          {
+            action: './',
+            accept: { 'application/x-wevocalstudio-project': ['.wvst', '.wvstudio'] },
+          },
+        ],
+        // 複数のファイルを開いたときも、窓は1つで受け取る
         launch_handler: { client_mode: 'focus-existing' },
       },
       workbox: {
@@ -80,7 +102,8 @@ export default defineConfig({
         importScripts: [ISOLATION_SCRIPT],
         // 更新で切り替わったときに、名前の違う古い版のキャッシュを消す
         cleanupOutdatedCaches: true,
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,wasm}'],
+        // wasm もオフラインで使えるようにキャッシュ対象に含める。フォントは woff2 だけ（woff は woff2 に対応しないブラウザ用で、読まれない）
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm}'],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         // 追加機能はアプリ本体のプリキャッシュに入れず、導入した人だけ別のキャッシュに保存する（WeVocalSynth と同じ）
         globIgnores: ['addons/**'],
