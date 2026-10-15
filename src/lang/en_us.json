@@ -440,6 +440,7 @@
   "job.pitch": "Processing pitch",
   "job.export": "Exporting",
   "job.extract": "Vocal extraction",
+  "job.update": "Updating",
 
   "file.projectType": "WeVocal Studio project",
   "file.wvspType": "WeVocalSynth project",
