@@ -1,6 +1,6 @@
 // 操作の表（キーとメニューから行うもの）と、メニューバーの並び
 import { useEffect, useRef, useState } from 'react'
-import type { MenuEntry, MenuGroup } from 'pevenmui'
+import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { actionOf, keyLabel, type Action } from './keymap'
@@ -270,6 +270,8 @@ export function useActions(c: ActionContext) {
       if (el instanceof HTMLElement && el.isContentEditable) return
       const action = actionOf(e)
       if (!action) return
+      // 通知などの文字を選んでいるときのコピー、切り取りは、ブラウザの文字のコピーに任せる（波形ブロックのコピーと重ならないように）
+      if ((action === 'copy' || action === 'cut') && textSelected()) return
       e.preventDefault()
       const cmd = latest.current[action]
       if (cmd.enabled !== false) cmd.run()
