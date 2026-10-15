@@ -245,6 +245,8 @@
   "settings.vocalBeforeAnalysis": "和音の分離と一音ずつ切り出しの前にボーカルを抽出する",
   "settings.vocalBeforeAnalysisHelp": "伴奏を除いてから処理するため、伴奏がある曲で精度が上がります。和音の分離では、伴奏は別のトラックになります。一音ずつ切り出しでは、範囲を求めるのに使用するだけで、トラックの音は変わりません",
   "settings.beatsPerBar": "1小節の拍数",
+  "settings.showLegacyAlgorithms": "従来の処理方式を使用する",
+  "settings.showLegacyAlgorithmsHelp": "従来アルゴリズムであるLegacy Solis、Legacy Pisol、Legacy Weviaを選択肢に表示する",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
@@ -356,6 +358,12 @@
   "eq.flat": "平らに戻す",
   "eq.graph": "EQ のグラフ",
   "eq.help": "なぞって描きます。Shift で 1 つの帯だけを細かく、Alt で両隣となじませ、ダブルクリックで 0 dB に戻します。",
+  "eq.pause": "一時停止",
+  "eq.play": "再生",
+  "eq.bands": "バンドの数",
+  "eq.range": "上限",
+  "eq.applyHelp": "EQをトラックの音声に書き込み、EQを平らに戻します",
+  "eq.apply": "適用",
 
   "analysis.title": "解析",
   "analysis.select": "波形ブロックを選ぶと、スペクトログラムと F0 を表示します",
@@ -660,5 +668,28 @@
   "clip.end": "終了",
 
   "markerTempo.title": "「{name}」からのテンポ",
-  "markerTempo.remove": "テンポを外す"
+  "markerTempo.remove": "テンポを外す",
+
+  "algorithm.sola2": "Solis",
+  "algorithm.sola2Hint": "声向け。大きく伸ばしても荒れにくい",
+  "algorithm.sola3": "Vesola",
+  "algorithm.sola3Hint": "Solisの改良版。息や揺らぎを抑えた滑らかな声に",
+  "algorithm.sola": "Legacy Solis",
+  "algorithm.solaHint": "短く重ねてつなぐ。にじみが少ない",
+  "algorithm.psola2": "Pisol",
+  "algorithm.psola2Hint": "声の周期ごとに切り貼り。かすれにくい",
+  "algorithm.psola": "Legacy Pisol",
+  "algorithm.psolaHint": "声の周期ごとに切り貼り。声向け",
+  "algorithm.wsola2": "Wevia",
+  "algorithm.wsola2Hint": "子音に強く高速。にじみにくい",
+  "algorithm.wsola": "Legacy Wevia",
+  "algorithm.wsolaHint": "似た波形で重ねる。子音に強く高速",
+  "algorithm.hpss": "HPSS",
+  "algorithm.hpssHint": "打楽器と和音を分けて伸ばす。ドラム入りの曲向け",
+  "algorithm.pv2": "Phasera v2",
+  "algorithm.pv2Hint": "和音、打楽器向け。アタックがにじみにくい",
+  "algorithm.pv": "Phasera",
+  "algorithm.pvHint": "和音、打楽器向け。滑らかに伸ばす",
+  "algorithm.sms": "Specraw",
+  "algorithm.smsHint": "試験的。往復や重ねた加工で劣化しにくい方式。和音や伴奏にも"
 }

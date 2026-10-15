@@ -1,8 +1,8 @@
 // 波形ブロックのプロパティ。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
 import { useEffect, useState } from 'react'
-import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, Checkbox, ListItemText, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { PresetMenu, enterToSubmit, type Preset } from 'pevenmui'
-import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
+import { visibleAlgorithms, type Algorithm } from 'wevocal-lib'
 import { useT, type MessageKey } from './i18n'
 import { RATE_MAX, RATE_MIN, type Block, type Source } from './project'
 
@@ -43,6 +43,8 @@ export default function BlockDialog(p: {
   /** プリセット（設定に覚える。PevenMUI の PresetMenu。WeVocalSynth の加工のプリセットと同じ） */
   presets: Preset<BlockPreset>[]
   onPresetsChange: (presets: Preset<BlockPreset>[]) => void
+  /** 従来の処理方式も表示する（設定） */
+  showLegacy: boolean
 }) {
   const t = useT()
   const [edit, setEdit] = useState<BlockEdit>({})
@@ -116,9 +118,10 @@ export default function BlockDialog(p: {
             })}
           </Stack>
           <TextField select size="small" label={t('block.algorithm')} value={value('algorithm') ?? ''} onChange={(e) => setEdit({ ...edit, algorithm: e.target.value as Algorithm })}>
-            {(Object.entries(ALGORITHM_NAMES) as [Algorithm, string][]).map(([id, name]) => (
-              <MenuItem key={id} value={id}>
-                {name}
+            {/* 処理方式の一覧（wevocal-lib。WeVocalSynth と同じ名前と説明）。従来の方式は設定で表示したときか、今使っているときだけ */}
+            {visibleAlgorithms(p.showLegacy, p.blocks.map((b) => b.algorithm)).map((a) => (
+              <MenuItem key={a.value} value={a.value}>
+                <ListItemText primary={t(a.label)} secondary={t(a.hint)} />
               </MenuItem>
             ))}
           </TextField>

@@ -8,6 +8,8 @@ import { check, choice, defineItems, value } from './define'
 export const pitch = defineItems('pitch', {
   // 新しい波形ブロックのピッチの処理方式（WeVocalSynth と同じ。既定は Synth の声と同じ Vesola）。設定画面は自前の行
   algorithm: value<Algorithm>('sola3', { label: 'settings.algorithm' }),
+  // 従来の処理方式（改良版があるもの）も一覧に表示する（WeVocalSynth と同じ）
+  showLegacyAlgorithms: check(false, { label: 'settings.showLegacyAlgorithms', help: 'settings.showLegacyAlgorithmsHelp' }),
   // 新しい波形ブロックでフォルマント（声の響き）を保つか
   preserveFormant: check(true, { label: 'settings.preserveFormant' }),
 })

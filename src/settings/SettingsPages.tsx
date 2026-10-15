@@ -1,6 +1,6 @@
 // 設定画面の分類ごとの中身（定義のある項目は S(名前) の 1 行。WeVocalSynth と同じ形）
 import { useEffect, useState, type ReactNode } from 'react'
-import { ALGORITHM_NAMES, listInputDevices, type Algorithm, type InputDevice } from 'wevocal-lib'
+import { listInputDevices, visibleAlgorithms, type Algorithm, type InputDevice } from 'wevocal-lib'
 import { AddonSection, Check, Choice, Group, KeymapEditor, Row, type WindowMode } from 'pevenmui'
 import { EXTRACT_MODELS, isMdxModel, resolveModel, type VocalModel } from 'wevocalextractor/host'
 import { backendAllowed } from 'wevocalextractor/compat'
@@ -94,8 +94,9 @@ export function settingsPages({ draft, set, t, onClose }: { draft: Settings; set
     pitch: (
       <Group title={t('settings.cat.pitch')}>
         <Row label={t('settings.algorithm')}>
-          <Choice<Algorithm> value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} options={Object.entries(ALGORITHM_NAMES) as [Algorithm, string][]} />
+          <Choice<Algorithm> value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} options={visibleAlgorithms(draft.showLegacyAlgorithms, [draft.algorithm]).map((a): [Algorithm, string] => [a.value, t(a.label)])} />
         </Row>
+        {S('showLegacyAlgorithms')}
         {S('preserveFormant')}
       </Group>
     ),

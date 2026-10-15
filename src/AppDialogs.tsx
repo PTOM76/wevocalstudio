@@ -6,7 +6,6 @@ import { segmentOf } from './useExtract'
 import { Link } from '@mui/material'
 import { AUDIO_ACCEPT, flatEq, segmentAt, tempoSegments } from 'wevocal-lib'
 import BlockDialog from './BlockDialog'
-import EqDialog from './EqDialog'
 import type { Dialogs } from './useDialogs'
 import { AboutDialog, HistoryDialog, LicensesDialog, RenameDialog } from 'pevenmui'
 import type { Clip } from 'wevocal-lib'
@@ -14,7 +13,7 @@ import { videoLook, type VideoLook } from 'wevocalconverter/host'
 import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { kanaHost, videoHost } from './addons'
 import type { Range } from 'wevocal-lib'
-import { ExportDialog, MarkerTempoDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
+import { EqDialog, ExportDialog, MarkerTempoDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
 import { addClipTrack } from './project'
 import { AppIcon } from './AppHeader'
@@ -38,6 +37,9 @@ export default function AppDialogs(p: {
   onExport: (s: ExportSettings, win?: Window | null) => void
   onVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void
   fail: (e: unknown) => void
+  /** 再生中か、再生と一時停止の切り替え（EQ を開いたまま聞く） */
+  playing: boolean
+  onTogglePlay: () => void
   /** 編集カーソル（作った音、並べた音符を置く位置） */
   cursor: number
   /** ボーカルと伴奏に分ける関数を用意する（一音ずつ切り出しで使う） */
@@ -115,8 +117,13 @@ export default function AppDialogs(p: {
         ]}
       />
       {eqOf && (
+        // グラフィック EQ（wevocal-lib の EqDialog。WeVocalSynth と同じ。元の音は書き換えないので「適用」はない）
         <EqDialog
+          t={t}
           open
+          playing={p.playing}
+          onTogglePlay={p.onTogglePlay}
+          busy={false}
           trackName={eqOf.name}
           eq={eqOf.eq ?? flatEq()}
           onChange={(eq) => doc.updateTrack(eqOf.id, { eq }, `eq:${eqOf.id}`)}
@@ -215,6 +222,7 @@ export default function AppDialogs(p: {
         onPickFile={() => sourceInput.current?.click()}
         presets={p.settings.presets}
         onPresetsChange={(presets) => p.onSettingsChange({ presets })}
+        showLegacy={p.settings.showLegacyAlgorithms}
       />
       {/* プロパティの「ファイルから」で選ぶ元の音 */}
       <input

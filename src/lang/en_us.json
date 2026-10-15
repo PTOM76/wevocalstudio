@@ -245,6 +245,8 @@
   "settings.vocalBeforeAnalysis": "Extract vocals before chord separation and one-note cutting",
   "settings.vocalBeforeAnalysisHelp": "Removes the accompaniment first, which improves accuracy for songs with accompaniment. Chord separation puts the accompaniment on its own track. One-note cutting uses the vocals only to find the ranges and leaves the track audio unchanged",
   "settings.beatsPerBar": "Beats per bar",
+  "settings.showLegacyAlgorithms": "Show legacy methods",
+  "settings.showLegacyAlgorithmsHelp": "List Legacy Solis, Legacy Pisol and Legacy Wevia in the menu and defaults",
 
   "status.ready": "Ready",
   "status.playing": "Playing",
@@ -356,6 +358,12 @@
   "eq.flat": "Reset to flat",
   "eq.graph": "EQ graph",
   "eq.help": "Drag to draw. Shift adjusts one band finely, Alt smooths with neighbors, double-click resets a band to 0 dB.",
+  "eq.pause": "Pause",
+  "eq.play": "Play",
+  "eq.bands": "Number of bands",
+  "eq.range": "Range",
+  "eq.applyHelp": "Write the EQ into the track audio and reset the EQ to flat",
+  "eq.apply": "Apply",
 
   "analysis.title": "Analysis",
   "analysis.select": "Select a block to show its spectrogram and F0",
@@ -660,5 +668,28 @@
   "clip.end": "End",
 
   "markerTempo.title": "Tempo from {name}",
-  "markerTempo.remove": "Remove tempo"
+  "markerTempo.remove": "Remove tempo",
+
+  "algorithm.sola2": "Solis",
+  "algorithm.sola2Hint": "For voice. Stays clean on long stretches",
+  "algorithm.sola3": "Vesola",
+  "algorithm.sola3Hint": "Improved Solis. Smooth voice with less breath and roughness",
+  "algorithm.sola": "Legacy Solis",
+  "algorithm.solaHint": "Short crossfades. Less smearing",
+  "algorithm.psola2": "Pisol",
+  "algorithm.psola2Hint": "Splices at pitch periods. Less roughness",
+  "algorithm.psola": "Legacy Pisol",
+  "algorithm.psolaHint": "Splices at pitch periods. For voice",
+  "algorithm.wsola2": "Wevia",
+  "algorithm.wsola2Hint": "Fast, good for consonants. Less smearing",
+  "algorithm.wsola": "Legacy Wevia",
+  "algorithm.wsolaHint": "Overlaps similar waveforms. Fast, good for consonants",
+  "algorithm.hpss": "HPSS",
+  "algorithm.hpssHint": "Stretches drums and tones separately. For songs with drums",
+  "algorithm.pv2": "Phasera v2",
+  "algorithm.pv2Hint": "For chords and percussion. Sharper attacks",
+  "algorithm.pv": "Phasera",
+  "algorithm.pvHint": "For chords and percussion. Smooth stretching",
+  "algorithm.sms": "Specraw",
+  "algorithm.smsHint": "Experimental. Degrades less on round trips and repeated edits. Works on chords and backing too"
 }
