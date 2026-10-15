@@ -1,7 +1,8 @@
-// 設定の「データ」（使用量と削除。部品と処理は PevenMUI。WeVocalSynth と同じ）
+// 設定の「データ」（使用量と、作業データ、キャッシュ、追加機能、設定の削除。部品と処理は PevenMUI。WeVocalSynth と同じ）
 import { useEffect, useState } from 'react'
 import { Button } from '@mui/material'
-import { DangerButton, DataRow, DataText, useConfirm } from 'pevenmui'
+import { DangerButton, DataRow, DataText, useConfirm, useDownloadingIds } from 'pevenmui'
+import { ADDON_CACHE, addonsSizeIn, clearAddonsIn } from '../addons'
 import { clearLocalItems, clearOfflineCache, formatMb, isPersisted, requestPersist, storageUsage } from 'pevenmui/web'
 import { app } from '../appConfig'
 import { useT, type MessageKey } from '../i18n'
@@ -13,10 +14,14 @@ export default function DataSection({ onClose }: { onClose: () => void }) {
   const [usage, setUsage] = useState<Awaited<ReturnType<typeof storageUsage>>>(null)
   const [persisted, setPersisted] = useState<boolean | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [addonBytes, setAddonBytes] = useState(0)
+  // 追加機能のダウンロード中は、追加機能を消す操作を押せなくする（書きかけを消して壊さないため）
+  const downloading = useDownloadingIds().size > 0
   const { confirm, dialog } = useConfirm()
   const refresh = () => {
     void storageUsage().then(setUsage)
     void isPersisted().then(setPersisted)
+    void addonsSizeIn('cache').then(setAddonBytes)
   }
   useEffect(refresh, [])
 
@@ -41,6 +46,9 @@ export default function DataSection({ onClose }: { onClose: () => void }) {
       </DataRow>
       <DataRow label={t('data.cache')} help={t('data.cacheHelp')}>
         <DangerButton label={t('data.delete')} onClick={() => void act('data.delete', 'data.cacheConfirm', () => clearOfflineCache(), 'data.cacheDone')} />
+      </DataRow>
+      <DataRow label={t('data.addons')} help={t('data.addonsHelp', { size: formatMb(addonBytes) })}>
+        <DangerButton label={t('data.delete')} disabled={downloading} onClick={() => void act('data.delete', 'data.addonsConfirm', () => clearAddonsIn('cache'), 'data.addonsDone')} />
       </DataRow>
       <DataRow label={t('data.settings')} help={t('data.settingsHelp')}>
         <DangerButton
@@ -68,13 +76,14 @@ export default function DataSection({ onClose }: { onClose: () => void }) {
               'data.deleteAll',
               'data.allConfirm',
               async () => {
-                await Promise.all([idbClear(), clearOfflineCache()])
+                await Promise.all([idbClear(), clearOfflineCache([ADDON_CACHE])])
                 clearSettings()
                 location.reload()
               },
               'data.allDone',
             )
           }
+          disabled={downloading}
         />
       </DataRow>
       <DataRow label={t('data.persist')} help={t(persisted ? 'data.persistOn' : 'data.persistHelp')}>

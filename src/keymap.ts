@@ -35,6 +35,9 @@ export type Action =
   | 'insertSilence'
   | 'repeatRange'
   | 'normalize'
+  | 'splitVocals'
+  | 'splitLead'
+  | 'splitInstruments'
   | 'showAll'
   | 'zoomRange'
   | 'playRange'
@@ -113,6 +116,10 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   repeatRange: [],
   // 選んだ波形ブロックのピークを -1 dB にそろえる（WeVocalSynth と同じ）
   normalize: [],
+  // 選んだ波形ブロックを、ボーカルと伴奏、主旋律とハモリと伴奏、楽器ごとに分けて、新しいトラックに並べる（追加機能）
+  splitVocals: [],
+  splitLead: [],
+  splitInstruments: [],
   // 全体を表示、範囲に合わせて拡大
   showAll: ['Ctrl+Digit9'],
   zoomRange: ['Ctrl+Digit8'],

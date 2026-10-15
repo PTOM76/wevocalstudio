@@ -30,6 +30,7 @@ import { useActions } from './useActions'
 import { useProject, type DropAt } from './useProject'
 import { useProjectFile } from './useProjectFile'
 import { useTempoDetect } from './useTempoDetect'
+import { useExtract } from './useExtract'
 import { faFolderOpen, faMicrophone } from '@fortawesome/free-solid-svg-icons'
 import { useRecorder } from './useRecorder'
 import { useAutosave } from './useAutosave'
@@ -117,6 +118,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     setPlayPos(from)
     void player.current.play(project, from).then(() => setPlaying(true)).catch(fail)
   }
+  // ボーカル抽出と楽器ごとの分離（extractor の host.ts。WeVocalSynth と共通）
+  const extract = useExtract({ doc, settings: p.settings, fail, notify: setNotice })
   // テンポの解析（候補、BPM の設定）
   const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice })
 
@@ -225,6 +228,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       void player.current.play(project, at).then(() => setPlaying(true)).catch(fail)
     },
     end,
+    extract: { vocals: (id) => void extract.splitVocals(id), lead: (id) => void extract.splitLead(id), instruments: (id) => void extract.splitInstruments(id) },
     newWindow: () =>
       void openWindowCount().then((n) => (n >= p.settings.maxWindows && !p.settings.extraWindows ? setNotice(t('window.limit', { n: p.settings.maxWindows })) : openNewWindow())),
     zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
@@ -476,6 +480,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         </Alert>
       </Snackbar>
       {confirmDialog}
+      {extract.dialog}
       {p.settings.showDebug && <DebugOverlay build={BUILD} />}
       <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
       <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(null)}>

@@ -1,5 +1,6 @@
 // 「ピッチ」と時間軸の線の項目
 import type { Algorithm } from 'wevocal-lib'
+import type { StemModel, VocalModel } from 'wevocalextractor/host'
 import type { GridDivision, GridMode } from '../../grid'
 import { check, choice, defineItems, value } from './define'
 
@@ -22,4 +23,25 @@ export const grid = defineItems('edit', {
   }),
   // グリッドの細かさ（音符。1/1〜1/256。再生の欄で入れる）
   gridDivision: value<GridDivision>(4),
+})
+
+/** 「ボーカル抽出」（名前と既定値は WeVocalSynth と同じ） */
+export const vocal = defineItems('vocal', {
+  // 抽出のモデル。この端末で使えないモデルは、抽出のときに代わりのモデルを使う（設定画面は自前の行）
+  vocalModel: value<VocalModel>('int8', { label: 'settings.vocalModel' }),
+  // GPU（WebGPU）を使う。使えないモデルでは押せない（設定画面は自前の行）
+  vocalGpu: value(true, { label: 'settings.vocalGpu', help: 'settings.vocalGpuHelp' }),
+  // 約 11kHz より上を残す（既定は消す）
+  vocalKeepHighBand: check(false, { label: 'settings.vocalKeepHighBand', help: 'settings.vocalKeepHighBandHelp' }),
+  // 楽器ごとに分けるモデル（Demucs。4 つか、ギターとピアノも分ける 6 つ）
+  stemModel: choice<StemModel>('htdemucs', {
+    label: 'settings.stemModel',
+    help: 'settings.stemModelHelp',
+    options: [
+      ['htdemucs', 'addon.modelStems4'],
+      ['htdemucs6s', 'addon.modelStems6'],
+    ],
+  }),
+  // 楽器ごとに分けるとき、ボーカルをさらに主旋律とハモリに分ける
+  stemChorus: check(false, { label: 'settings.stemChorus', help: 'settings.stemChorusHelp' }),
 })

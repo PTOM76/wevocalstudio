@@ -17,6 +17,7 @@
       "pevenmui/debug": ["../wevocalsynth/pevenmui/src/debug/index.ts", "./pevenmui/src/debug/index.ts"],
       "pevenmui/pwa": ["../wevocalsynth/pevenmui/src/pwa/index.ts", "./pevenmui/src/pwa/index.ts"],
       "pevenmui/web": ["../wevocalsynth/pevenmui/src/web/index.ts", "./pevenmui/src/web/index.ts"],
+      "wevocalextractor/compat": ["../wevocalsynth/extractor/src/compat.ts", "./extractor/src/compat.ts"],
       "wevocalextractor/host": ["../wevocalsynth/extractor/src/host.ts", "./extractor/src/host.ts"],
       "wevocalanalyzer": ["../wevocalsynth/analyzer/src/index.ts", "./analyzer/src/index.ts"],
       "wevocal-lib/react": ["../wevocalsynth/wevocal-lib/web/src/react/index.ts", "./wevocal-lib/web/src/react/index.ts"],

@@ -47,6 +47,8 @@ export interface ActionContext {
   gridStep: () => number
   newProject: () => void
   newWindow: () => void
+  /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
+  extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void }
   openProperties: (id: string) => void
   openFile: () => void
   importFiles: () => void
@@ -178,6 +180,10 @@ export function useActions(c: ActionContext) {
     insertSilence: { enabled: !!c.range, run: () => c.range && doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start)) },
     repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId)) },
     normalize: { enabled: any, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
+    // 分けるのは 1 つずつ（選んでいる最後のもの）
+    splitVocals: { enabled: any, run: () => any && c.extract.vocals(ids[ids.length - 1]) },
+    splitLead: { enabled: any, run: () => any && c.extract.lead(ids[ids.length - 1]) },
+    splitInstruments: { enabled: any, run: () => any && c.extract.instruments(ids[ids.length - 1]) },
     showAll: { enabled: c.end > 0, run: () => c.fit(0, c.end) },
     zoomRange: { enabled: !!c.range || any, run: () => (c.range ? c.fit(c.range.start, c.range.end) : c.fit(Math.min(...chosen.map((b) => b.start)), Math.max(...chosen.map((b) => b.start + b.length)))) },
     playRange: { enabled: !!c.range, run: () => c.range && c.playAt(c.range.start) },
@@ -281,7 +287,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize')],
+      entries: [item('properties'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments')],
     },
     {
       label: t('menu.track'),
@@ -355,6 +361,8 @@ export function useActions(c: ActionContext) {
     item('duplicate'),
     item('split'),
     item('delete'),
+    divider,
+    { label: t('menu.extract'), onClick: () => {}, submenu: [item('splitVocals'), item('splitLead'), item('splitInstruments')] },
     ...(c.folder ? [divider, item('saveBlocksToFolder')] : []),
   ]
 

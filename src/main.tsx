@@ -4,9 +4,10 @@ import { createRoot } from 'react-dom/client'
 import { useColorScheme } from '@mui/material'
 import '@fontsource/roboto/400.css'
 import '@fontsource/roboto/500.css'
-import { PevenProvider, WindowLimitScreen, preventPageZoom, setUiScale } from 'pevenmui'
+import { AddonsContext, PevenProvider, WindowLimitScreen, preventPageZoom, setUiScale } from 'pevenmui'
 import { acquireSlot, configureWindowSlots } from 'pevenmui/web'
 import App from './App'
+import { addonsContext } from './addons'
 import { app } from './appConfig'
 import { i18n, t } from './i18n'
 import { loadSettings, useSettings, type Settings } from './settings/settings'
@@ -27,7 +28,10 @@ function Root() {
   return (
     <PevenProvider desktopLook app={app} i18n={i18n} lang={i18n.resolve(settings.language)}>
       <ThemeSync theme={settings.theme} />
-      <App settings={settings} onSettingsChange={update} />
+      {/* 追加機能（ボーカル抽出）。導入と読み込みは PevenMUI（WeVocalSynth と同じ） */}
+      <AddonsContext.Provider value={addonsContext}>
+        <App settings={settings} onSettingsChange={update} />
+      </AddonsContext.Provider>
     </PevenProvider>
   )
 }
