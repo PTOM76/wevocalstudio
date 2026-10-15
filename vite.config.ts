@@ -68,8 +68,8 @@ export default defineConfig({
           { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
-        // インストールした PWA を .wvstudio を開くアプリとして登録する（音声ファイルは登録しない。WeVocalSynth と同じ）。受け取りは src/useProjectFile.ts の launchQueue
-        file_handlers: [{ action: './', accept: { 'application/x-wevocalstudio-project': ['.wvstudio'] } }],
+        // インストールした PWA を .wvst を開くアプリとして登録する（音声ファイルは登録しない。WeVocalSynth と同じ）。受け取りは src/useProjectFile.ts の launchQueue
+        file_handlers: [{ action: './', accept: { 'application/x-wevocalstudio-project': ['.wvst'] } }],
         launch_handler: { client_mode: 'focus-existing' },
       },
       workbox: {

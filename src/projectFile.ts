@@ -1,8 +1,8 @@
-// プロジェクトファイル（.wvstudio）の読み書き。先頭に JSON（トラック、波形ブロック、元の音の形）、そのあとに元の音の PCM を並べる
+// プロジェクトファイル（.wvst）の読み書き。先頭に JSON（トラック、波形ブロック、元の音の形）、そのあとに元の音の PCM を並べる
 import type { Clip } from 'wevocal-lib'
 import { DEFAULT_TEMPO, fillBlock, newProject, type Project, type Source } from './project'
 
-export const PROJECT_EXT = '.wvstudio'
+export const PROJECT_EXT = '.wvst'
 const MAGIC = 'WVST'
 /** 形を変えたら上げる。古い版は読み替える（docs/ARCHITECTURE.md の「保存したデータは壊さない」） */
 const VERSION = 1

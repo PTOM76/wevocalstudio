@@ -1,180 +1,279 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Box, Snackbar } from '@mui/material'
-import { EmptyState, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
-import StatusBar from './StatusBar'
-import AppHeader from './AppHeader'
-import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
-import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web'
-import { canRecord, configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
-import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
-import { Minimap } from 'wevocal-lib/react'
-import { AUDIO_ACCEPT, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
-import { app } from './appConfig'
-import AppDialogs from './AppDialogs'
-import { useDialogs } from './useDialogs'
-import type { TimelineView } from './drawTimeline'
-import { Player } from './engine'
-import { buildOverview } from './overview'
-import { useT } from './i18n'
-import { setKeyOverrides } from './keymap'
-import type { Settings } from './settings/settings'
-import AnalysisPanel from './AnalysisPanel'
-import LevelMeter from './LevelMeter'
-import { snapGrid } from './grid'
-import { newProject, visibleTracks, type Track } from './project'
-import Timeline, { useHeaderWidth } from './Timeline'
-import Toolbar from './Toolbar'
-import Transport from './Transport'
-import { useActions } from './useActions'
-import { useProject, type DropAt } from './useProject'
-import { useProjectFile } from './useProjectFile'
-import { useTempoDetect } from './useTempoDetect'
-import { useExtract } from './useExtract'
-import BlockEditBar from './BlockEditBar'
-import { CONVERTER_ADDON } from 'wevocalconverter/host'
-import { applyBaked, bakeBlocks } from './bake'
-import { faFolderOpen, faMicrophone } from '@fortawesome/free-solid-svg-icons'
-import { useRecorder } from './useRecorder'
-import { useAutosave } from './useAutosave'
-import { usePlayerSync } from './usePlayerSync'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Alert, Box, Snackbar } from "@mui/material";
+import {
+  EmptyState,
+  useAddonInstall,
+  ContextMenu,
+  SliderResetContext,
+  TempoField,
+  FULL_HEIGHT,
+  WindowModeContext,
+  autoWindowMode,
+  useConfirm,
+  useMobileLayout,
+  usePalette,
+  startJob,
+} from "pevenmui";
+import StatusBar from "./StatusBar";
+import AppHeader from "./AppHeader";
+import { DebugOverlay, reportAudioContext, countRender } from "pevenmui/debug";
+import { isMobile, openNewWindow, openWindowCount, slot } from "pevenmui/web";
+import {
+  canRecord,
+  configurePlayback,
+  setOutputDevice,
+  setOutputLimit,
+} from "wevocal-lib";
+import { UpdatePrompt, checkForUpdate, promptUpdate } from "pevenmui/pwa";
+import { Minimap } from "wevocal-lib/react";
+import {
+  AUDIO_ACCEPT,
+  readWvsp,
+  SELECTION_DARK,
+  SELECTION_LIGHT,
+  type Range,
+} from "wevocal-lib";
+import { app } from "./appConfig";
+import AppDialogs from "./AppDialogs";
+import { useDialogs } from "./useDialogs";
+import type { TimelineView } from "./drawTimeline";
+import { Player } from "./engine";
+import { buildOverview } from "./overview";
+import { useT } from "./i18n";
+import { setKeyOverrides } from "./keymap";
+import type { Settings } from "./settings/settings";
+import AnalysisPanel from "./AnalysisPanel";
+import LevelMeter from "./LevelMeter";
+import { snapGrid } from "./grid";
+import {
+  addWvspTracks,
+  newProject,
+  visibleTracks,
+  type Track,
+} from "./project";
+import Timeline, { useHeaderWidth } from "./Timeline";
+import Toolbar from "./Toolbar";
+import Transport from "./Transport";
+import { useActions } from "./useActions";
+import { useProject, type DropAt } from "./useProject";
+import { useProjectFile } from "./useProjectFile";
+import { useTempoDetect } from "./useTempoDetect";
+import { useExtract } from "./useExtract";
+import BlockEditBar from "./BlockEditBar";
+import { CONVERTER_ADDON } from "wevocalconverter/host";
+import { applyBaked, bakeBlocks } from "./bake";
+import { faFolderOpen, faMicrophone } from "@fortawesome/free-solid-svg-icons";
+import { useRecorder } from "./useRecorder";
+import { useAutosave } from "./useAutosave";
+import { usePlayerSync } from "./usePlayerSync";
 
 /** 今動いている版 */
-const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`
+const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`;
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
+const openExternal = (url: string) =>
+  window.open(url, "_blank", "noopener,noreferrer");
 
 // デバッグ表示に AudioContext の状態を出す（iPhone で音が出ないときの調査。WeVocalSynth と同じ）
-configurePlayback({ report: reportAudioContext })
+configurePlayback({ report: reportAudioContext });
 
-export default function App(p: { settings: Settings; onSettingsChange: (patch: Partial<Settings>) => void }) {
-  countRender('App')
-  const t = useT()
-  const { confirm, dialog: confirmDialog } = useConfirm()
+export default function App(p: {
+  settings: Settings;
+  onSettingsChange: (patch: Partial<Settings>) => void;
+}) {
+  countRender("App");
+  const t = useT();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
-  setKeyOverrides(p.settings.keys)
-  const mobile = useMobileLayout()
-  const header = useHeaderWidth()
+  setKeyOverrides(p.settings.keys);
+  const mobile = useMobileLayout();
+  const header = useHeaderWidth();
   // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
-  useEffect(() => setOutputDevice(p.settings.outputDevice), [p.settings.outputDevice])
-  useEffect(() => setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null), [p.settings.outputLimit, p.settings.outputLimitDb])
-  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit })
-  const { project, selected } = doc
-  const setSelected = doc.select
-  const player = useRef(new Player())
-  const [playing, setPlaying] = useState(false)
+  useEffect(
+    () => setOutputDevice(p.settings.outputDevice),
+    [p.settings.outputDevice],
+  );
+  useEffect(
+    () =>
+      setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null),
+    [p.settings.outputLimit, p.settings.outputLimitDb],
+  );
+  const doc = useProject({
+    algorithm: p.settings.algorithm,
+    preserveFormant: p.settings.preserveFormant,
+    historyLimit: p.settings.historyLimit,
+  });
+  const { project, selected } = doc;
+  const setSelected = doc.select;
+  const player = useRef(new Player());
+  const [playing, setPlaying] = useState(false);
   // 編集カーソル（押した所、貼り付ける所。再生では動かない）と、再生カーソル（再生中と一時停止中だけ。 2 本）
-  const [cursor, setCursor] = useState(0)
-  const [playPos, setPlayPos] = useState<number | null>(null)
+  const [cursor, setCursor] = useState(0);
+  const [playPos, setPlayPos] = useState<number | null>(null);
   // 一時停止した位置（編集カーソルを動かしたら消す）
-  const [paused, setPaused] = useState<number | null>(null)
+  const [paused, setPaused] = useState<number | null>(null);
   // 再生中の位置は状態に入れず、描く所が毎フレーム読む（画面全体を毎フレーム描き直さないように。WeVocalSynth と同じ）
-  const livePos = useCallback(() => (player.current.playing ? player.current.position() : playPos), [playPos])
+  const livePos = useCallback(
+    () => (player.current.playing ? player.current.position() : playPos),
+    [playPos],
+  );
   // 選んでいるトラック（複数。最後に選んだものが「選んでいるトラック」で、貼り付けや録音の先）
-  const [selectedTracks, setSelectedTracks] = useState<string[]>([])
-  const selectedTrack = selectedTracks[selectedTracks.length - 1] ?? null
-  const setSelectedTrack = (id: string | null) => setSelectedTracks(id ? [id] : [])
-  const [range, setRange] = useState<Range | null>(null)
-  const [repeat, setRepeat] = useState(false)
-  const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
-  const [timelineWidth, setTimelineWidth] = useState(0)
-  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
+  const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
+  const selectedTrack = selectedTracks[selectedTracks.length - 1] ?? null;
+  const setSelectedTrack = (id: string | null) =>
+    setSelectedTracks(id ? [id] : []);
+  const [range, setRange] = useState<Range | null>(null);
+  const [repeat, setRepeat] = useState(false);
+  const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 });
+  const [timelineWidth, setTimelineWidth] = useState(0);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
   // 何もない所の右クリックのメニュー（押した所の時刻とトラック）
-  const [emptyAt, setEmptyAt] = useState<{ kind: 'lane' | 'ruler'; time: number; track: string | null; x: number; y: number; marker?: string } | null>(null)
+  const [emptyAt, setEmptyAt] = useState<{
+    kind: "lane" | "ruler";
+    time: number;
+    track: string | null;
+    x: number;
+    y: number;
+    marker?: string;
+  } | null>(null);
   // 「ここに読み込む」の行き先（ファイルを選んだら使う）
-  const importTarget = useRef<DropAt | undefined>(undefined)
+  const importTarget = useRef<DropAt | undefined>(undefined);
   // プロパティを開いている波形ブロック（複数なら一括で変える）
-  const [fileName, setFileName] = useState('untitled')
+  const [fileName, setFileName] = useState("untitled");
   // ピッチや速度を変えた音ができるたびに増やす（解析の欄が作り直した音で解析し直す）
-  const [madeVersion, setMadeVersion] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [madeVersion, setMadeVersion] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   // 起動時の復元が終わるまでは自動保存しない（空のプロジェクトで前回の作業を上書きしないように）
-  const [restored, setRestored] = useState(false)
+  const [restored, setRestored] = useState(false);
   // ダイアログの開閉（PevenMUI の useDialogs。WeVocalSynth と同じ）。描画は AppDialogs.tsx
-  const dialogs = useDialogs()
-  const audioInput = useRef<HTMLInputElement>(null)
+  const dialogs = useDialogs();
+  const audioInput = useRef<HTMLInputElement>(null);
   // 時間軸に出すのは見えているトラックだけ（たたんだ親の子孫は隠す）
-  const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project])
+  const shown = useMemo(
+    () => ({ ...project, tracks: visibleTracks(project) }),
+    [project],
+  );
   const moveVisibleTrack = (id: string, visibleTo: number) => {
-    const visible = shown.tracks
-    const before = visible[visibleTo]
-    const fullTo = before ? project.tracks.findIndex((tr) => tr.id === before.id) : project.tracks.length
-    doc.reorderTrack(id, fullTo)
-  }
-  const sourceOf = (id: string | undefined) => project.sources.find((s) => s.id === id)
-  const { pal, dark } = usePalette()
+    const visible = shown.tracks;
+    const before = visible[visibleTo];
+    const fullTo = before
+      ? project.tracks.findIndex((tr) => tr.id === before.id)
+      : project.tracks.length;
+    doc.reorderTrack(id, fullTo);
+  };
+  const sourceOf = (id: string | undefined) =>
+    project.sources.find((s) => s.id === id);
+  const { pal, dark } = usePalette();
   // ミニマップ（全体を縮めた波形。WeVocalSynth と同じ部品）
   // 作り直しは操作のあとに回す（ドラッグの途中で固まらないように）
-  const deferredProject = useDeferredValue(project)
-  const overview = useMemo(() => buildOverview(deferredProject), [deferredProject])
-  const end = project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
+  const deferredProject = useDeferredValue(project);
+  const overview = useMemo(
+    () => buildOverview(deferredProject),
+    [deferredProject],
+  );
+  const end = project.blocks.reduce(
+    (m, b) => Math.max(m, b.start + b.length),
+    0,
+  );
 
-  const fail = (e: unknown) => setError(String(e))
+  const fail = (e: unknown) => setError(String(e));
 
   const play = () => {
     // 範囲選択があれば、その中だけを鳴らす（外にいたら範囲の頭から）
     // 一時停止していたらそこから。範囲選択があれば、その中だけを鳴らす（外にいたら範囲の頭から）
-    const at = paused ?? cursor
-    const from = range && (at < range.start || at >= range.end) ? range.start : at
-    setPaused(null)
-    setPlayPos(from)
-    void player.current.play(project, from).then(() => player.current.playing && setPlaying(true)).catch(fail)
-  }
+    const at = paused ?? cursor;
+    const from =
+      range && (at < range.start || at >= range.end) ? range.start : at;
+    setPaused(null);
+    setPlayPos(from);
+    void player.current
+      .play(project, from)
+      .then(() => player.current.playing && setPlaying(true))
+      .catch(fail);
+  };
   // 追加機能の導入の確かめ（動画の書き出し。PevenMUI）
-  const addonInstall = useAddonInstall()
+  const addonInstall = useAddonInstall();
   // ボーカル抽出と楽器ごとの分離（extractor の host.ts。WeVocalSynth と共通）
   /** 選んだ波形ブロックを確定する（今の音にして、元の音を置き換える） */
   const bake = async (ids: string[]) => {
-    const job = startJob('bake', t('bake.job'))
+    const job = startJob("bake", t("bake.job"));
     try {
-      const baked = await bakeBlocks(doc.project, ids, (v) => job.update(v))
-      doc.apply((pr) => applyBaked(pr, baked))
-      setNotice(t('toast.baked'))
+      const baked = await bakeBlocks(doc.project, ids, (v) => job.update(v));
+      doc.apply((pr) => applyBaked(pr, baked));
+      setNotice(t("toast.baked"));
     } catch (e) {
-      fail(e)
+      fail(e);
     } finally {
-      job.end()
+      job.end();
     }
-  }
-  const extract = useExtract({ doc, settings: p.settings, fail, notify: setNotice })
+  };
+  const extract = useExtract({
+    doc,
+    settings: p.settings,
+    fail,
+    notify: setNotice,
+  });
   // テンポの解析（候補、BPM の設定）
-  const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice })
+  const tempo = useTempoDetect({
+    project,
+    selected,
+    updateTempo: doc.updateTempo,
+    fail,
+    notify: setNotice,
+  });
 
   // 録音（再生位置から、ほかのトラックを鳴らしながら録る）
-  const { recording, live, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), fail })
+  const { recording, live, toggleRecord, stopRecord } = useRecorder({
+    project,
+    doc,
+    selectedTrack,
+    cursor,
+    settings: p.settings,
+    play,
+    stopPlayer: () => (player.current.stop(), setPlaying(false)),
+    fail,
+  });
 
   /** 一時停止。再生カーソルはその場に残す */
   const pause = () => {
-    const pos = player.current.position()
-    player.current.stop()
-    setPaused(pos)
-    setPlayPos(pos)
-    setPlaying(false)
-  }
+    const pos = player.current.position();
+    player.current.stop();
+    setPaused(pos);
+    setPlayPos(pos);
+    setPlaying(false);
+  };
   /** 停止。再生カーソルを消す（編集カーソルはそのまま。次の再生はそこから） */
   const stop = () => {
-    if (recording) return void stopRecord()
-    player.current.stop()
-    setPlaying(false)
-    setPaused(null)
-    setPlayPos(null)
-  }
+    if (recording) return void stopRecord();
+    player.current.stop();
+    setPlaying(false);
+    setPaused(null);
+    setPlayPos(null);
+  };
   /** 編集カーソルだけを動かす（波形ブロックを押したとき、コピー、貼り付け） */
   const moveCursor = (time: number) => {
-    setCursor(time)
-    setPaused(null)
-  }
+    setCursor(time);
+    setPaused(null);
+  };
   /** 編集カーソルを動かし、再生中なら再生もそこへ（目盛りと空いている所） */
   const seek = (time: number) => {
-    moveCursor(time)
+    moveCursor(time);
     if (playing) {
-      void player.current.play(project, time).catch(fail)
-      setPlayPos(time)
-    } else setPlayPos(null)
-  }
+      void player.current.play(project, time).catch(fail);
+      setPlayPos(time);
+    } else setPlayPos(null);
+  };
 
-  const load = (files: File[], at?: DropAt) => doc.addFiles(files, at).catch(fail)
+  const load = (files: File[], at?: DropAt) =>
+    doc.addFiles(files, at).catch(fail);
 
   const files = useProjectFile({
     t,
@@ -183,21 +282,38 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     fileName,
     range,
     onOpened: (proj, name) => {
-      stop()
-      doc.replace(proj)
-      setRange(null)
-      setFileName(name)
-      setSelected([])
-      setSelectedTrack(null)
-      setCursor(0)
+      stop();
+      doc.replace(proj);
+      setRange(null);
+      setFileName(name);
+      setSelected([]);
+      setSelectedTrack(null);
+      setCursor(0);
     },
     onAudio: (list) => void load(list),
-    confirmDiscard: () => confirm({ message: t('confirm.discard'), okLabel: t('confirm.discardOk'), danger: true }),
+    onWvsp: (file) =>
+      void readWvsp(file)
+        .then((r) =>
+          doc.apply((q) =>
+            addWvspTracks(
+              q,
+              file.name.replace(/\.[^.]+$/, ""),
+              r.tracks.map((t) => ({ name: t.info.name, clip: t.edited })),
+              cursor,
+            ),
+          ),
+        )
+        .catch(fail),
+    confirmDiscard: () =>
+      confirm({
+        message: t("confirm.discard"),
+        okLabel: t("confirm.discardOk"),
+        danger: true,
+      }),
     fail,
     notify: setNotice,
-    onExported: () => dialogs.close('export'),
-  })
-
+    onExported: () => dialogs.close("export"),
+  });
 
   const { menus, blockMenu, emptyMenu, commands } = useActions({
     doc,
@@ -219,311 +335,590 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleRepeat: () => setRepeat((r) => !r),
     seek,
     moveCursor,
-    gridStep: () => snapGrid(p.settings.grid, project.tempo, view.pps, p.settings.gridDivision, project.markers, cursor).step,
+    gridStep: () =>
+      snapGrid(
+        p.settings.grid,
+        project.tempo,
+        view.pps,
+        p.settings.gridDivision,
+        project.markers,
+        cursor,
+      ).step,
     newProject: () =>
       // 保存していない変更があるときだけ確かめる
-      void (files.dirty ? confirm({ message: t('confirm.newProject'), okLabel: t('menu.newProject'), danger: true }) : Promise.resolve(true)).then((ok) => {
-        if (!ok) return
-        stop()
-        const fresh = newProject()
-        doc.replace(fresh, 'history.new')
-        files.markSaved(fresh)
-        setFileName('untitled')
-        setSelected([])
-        setRange(null)
-        setCursor(0)
+      void (
+        files.dirty
+          ? confirm({
+              message: t("confirm.newProject"),
+              okLabel: t("menu.newProject"),
+              danger: true,
+            })
+          : Promise.resolve(true)
+      ).then((ok) => {
+        if (!ok) return;
+        stop();
+        const fresh = newProject();
+        doc.replace(fresh, "history.new");
+        files.markSaved(fresh);
+        setFileName("untitled");
+        setSelected([]);
+        setRange(null);
+        setCursor(0);
       }),
     fit: (from, to) => {
       // 両端に少し余白を残す
-      const len = Math.max(0.1, to - from)
-      const pps = Math.min(2000, Math.max(2, (timelineWidth * 0.9) / len))
-      setView({ pps, scroll: Math.max(0, from - (len * 0.05)) })
+      const len = Math.max(0.1, to - from);
+      const pps = Math.min(2000, Math.max(2, (timelineWidth * 0.9) / len));
+      setView({ pps, scroll: Math.max(0, from - len * 0.05) });
     },
     playAt: (at) => {
-      setCursor(at)
-      setPaused(null)
-      setPlayPos(at)
-      void player.current.play(project, at).then(() => player.current.playing && setPlaying(true)).catch(fail)
+      setCursor(at);
+      setPaused(null);
+      setPlayPos(at);
+      void player.current
+        .play(project, at)
+        .then(() => player.current.playing && setPlaying(true))
+        .catch(fail);
     },
     end,
     openDialog: (id, arg) => dialogs.open(id, arg),
     // 動画の書き出し: 追加機能「変換」を確かめ、プレビューに使う音を作ってから開く
     exportVideo: () =>
       void (async () => {
-        if (!(await addonInstall.ensure(CONVERTER_ADDON))) return
-        dialogs.open('video', await files.renderPreview())
+        if (!(await addonInstall.ensure(CONVERTER_ADDON))) return;
+        dialogs.open("video", await files.renderPreview());
       })().catch(fail),
     bake: (ids) => void bake(ids),
-    extract: { vocals: (id) => void extract.splitVocals(id), lead: (id) => void extract.splitLead(id), instruments: (id) => void extract.splitInstruments(id) },
+    extract: {
+      vocals: (id) => void extract.splitVocals(id),
+      lead: (id) => void extract.splitLead(id),
+      instruments: (id) => void extract.splitInstruments(id),
+    },
     newWindow: () =>
-      void openWindowCount().then((n) => (n >= p.settings.maxWindows && !p.settings.extraWindows ? setNotice(t('window.limit', { n: p.settings.maxWindows })) : openNewWindow())),
-    zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
+      void openWindowCount().then((n) =>
+        n >= p.settings.maxWindows && !p.settings.extraWindows
+          ? setNotice(t("window.limit", { n: p.settings.maxWindows }))
+          : openNewWindow(),
+      ),
+    zoom: (f) =>
+      setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),
     // 選んでいるものの中を開いたら、選んでいるもの全部を一括で
-    openProperties: (id: string) => dialogs.open('block', selected.includes(id) ? selected : [id]),
+    openProperties: (id: string) =>
+      dialogs.open("block", selected.includes(id) ? selected : [id]),
     openFile: files.picker.open,
     importFiles: () => {
-      importTarget.current = undefined
-      audioInput.current?.click()
+      importTarget.current = undefined;
+      audioInput.current?.click();
     },
     importAt: (time, track) => {
-      importTarget.current = track ? { track, start: time } : undefined
-      audioInput.current?.click()
+      importTarget.current = track ? { track, start: time } : undefined;
+      audioInput.current?.click();
     },
     save: files.save,
     saveAs: files.saveAs,
-    folder: files.canSaveToFolder ? { saveRange: files.saveRangeToFolder, saveBlocks: files.saveBlocksToFolder } : null,
+    folder: files.canSaveToFolder
+      ? {
+          saveRange: files.saveRangeToFolder,
+          saveBlocks: files.saveBlocksToFolder,
+        }
+      : null,
     recent: files.recent,
-    openExport: () => dialogs.open('export'),
-    openSettings: () => dialogs.open('settings'),
-    openHistory: () => dialogs.open('history'),
+    openExport: () => dialogs.open("export"),
+    openSettings: () => dialogs.open("settings"),
+    openHistory: () => dialogs.open("history"),
     snap: p.settings.snap,
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
     follow: p.settings.follow,
     envelope: p.settings.envelope,
     // 音量とピッチのエンベロープは、どちらか一方だけを出す
-    toggleEnvelope: () => p.onSettingsChange({ envelope: !p.settings.envelope, pitchEnvelope: false }),
+    toggleEnvelope: () =>
+      p.onSettingsChange({
+        envelope: !p.settings.envelope,
+        pitchEnvelope: false,
+      }),
     pitchEnvelope: p.settings.pitchEnvelope,
-    togglePitchEnvelope: () => p.onSettingsChange({ pitchEnvelope: !p.settings.pitchEnvelope, envelope: false }),
+    togglePitchEnvelope: () =>
+      p.onSettingsChange({
+        pitchEnvelope: !p.settings.pitchEnvelope,
+        envelope: false,
+      }),
     toggleFollow: () => p.onSettingsChange({ follow: !p.settings.follow }),
-    beatGrid: p.settings.grid === 'beats',
-    toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
+    beatGrid: p.settings.grid === "beats",
+    toggleGrid: () =>
+      p.onSettingsChange({
+        grid: p.settings.grid === "beats" ? "time" : "beats",
+      }),
     showAnalysis: p.settings.showAnalysis,
-    toggleAnalysis: () => p.onSettingsChange({ showAnalysis: !p.settings.showAnalysis }),
+    toggleAnalysis: () =>
+      p.onSettingsChange({ showAnalysis: !p.settings.showAnalysis }),
     showMeters: p.settings.showMeters,
-    toggleMeters: () => p.onSettingsChange({ showMeters: !p.settings.showMeters }),
+    toggleMeters: () =>
+      p.onSettingsChange({ showMeters: !p.settings.showMeters }),
     showMinimap: p.settings.showMinimap,
-    toggleMinimap: () => p.onSettingsChange({ showMinimap: !p.settings.showMinimap }),
+    toggleMinimap: () =>
+      p.onSettingsChange({ showMinimap: !p.settings.showMinimap }),
     showStatusBar: p.settings.showStatusBar,
-    toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
+    toggleStatusBar: () =>
+      p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
     help: {
       guide: () => openExternal(app.repository),
-      shortcuts: () => dialogs.open('shortcuts'),
+      shortcuts: () => dialogs.open("shortcuts"),
       // 新しい版があれば右下の通知から更新できる。ここでは結果だけを知らせる（WeVocalSynth と同じ）
       checkUpdate: () =>
         void checkForUpdate().then((r) => {
-          if (r.kind === 'found') return promptUpdate(r.build)
-          if (r.kind === 'failed') return fail(t('toast.updateFailed'))
-          setNotice(t(r.kind === 'latest' ? 'toast.updateLatest' : 'toast.updateUnsupported'))
+          if (r.kind === "found") return promptUpdate(r.build);
+          if (r.kind === "failed") return fail(t("toast.updateFailed"));
+          setNotice(
+            t(
+              r.kind === "latest"
+                ? "toast.updateLatest"
+                : "toast.updateUnsupported",
+            ),
+          );
         }),
-      licenses: () => dialogs.open('licenses'), about: () => dialogs.open('about') },
-  })
+      licenses: () => dialogs.open("licenses"),
+      about: () => dialogs.open("about"),
+    },
+  });
 
   // 起動時の復元と自動保存（WeVocalSynth と同じ）
-  useAutosave({ project, fileName, autoRestore: p.settings.autoRestore && slot !== null, replace: doc.replace, setFileName, fail, notify: setNotice, onRestored: () => setRestored(true), restored })
+  useAutosave({
+    project,
+    fileName,
+    autoRestore: p.settings.autoRestore && slot !== null,
+    replace: doc.replace,
+    setFileName,
+    fail,
+    notify: setNotice,
+    onRestored: () => setRestored(true),
+    restored,
+  });
   // 再生中の同期（範囲の終わりで止める、変更の反映、ピッチを変えた音の準備と進み具合）
-  usePlayerSync({ player: player.current, project, cursor, playing, range, repeat, end, setPlayPos, setPlaying, fail, onMade: () => setMadeVersion((v) => v + 1) })
+  usePlayerSync({
+    player: player.current,
+    project,
+    cursor,
+    playing,
+    range,
+    repeat,
+    end,
+    setPlayPos,
+    setPlaying,
+    fail,
+    onMade: () => setMadeVersion((v) => v + 1),
+  });
 
   return (
     // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）
-    <WindowModeContext.Provider value={p.settings.dialogWindow === 'auto' ? autoWindowMode() : p.settings.dialogWindow}>
-    <SliderResetContext.Provider value={p.settings.sliderDoubleClickReset}>
-    <Box
-      sx={{ height: FULL_HEIGHT, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: 'background.default' }}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault()
-        files.openFiles(Array.from(e.dataTransfer.files))
-      }}
+    <WindowModeContext.Provider
+      value={
+        p.settings.dialogWindow === "auto"
+          ? autoWindowMode()
+          : p.settings.dialogWindow
+      }
     >
-      <AppHeader menus={menus} canUndo={doc.canUndo} canRedo={doc.canRedo} onUndo={doc.undo} onRedo={doc.redo} projectName={fileName} dirty={files.dirty} />
-      <Toolbar
-        follow={p.settings.follow}
-        snap={p.settings.snap}
-        envelope={p.settings.envelope}
-        onEnvelope={commands.envelope.run}
-        pitchEnvelope={p.settings.pitchEnvelope}
-        onPitchEnvelope={commands.pitchEnvelope.run}
-        canCut={commands.cut.enabled !== false}
-        canPaste={commands.paste.enabled !== false}
-        onFollow={commands.follow.run}
-        onSnap={commands.snap.run}
-        onZoom={(f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) }))}
-        onCut={commands.cut.run}
-        onCopy={commands.copy.run}
-        onPaste={commands.paste.run}
-      />
-      <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load(Array.from(e.target.files ?? []), importTarget.current).finally(() => (e.target.value = ''))} />
-      {files.picker.input}
+      <SliderResetContext.Provider value={p.settings.sliderDoubleClickReset}>
+        <Box
+          sx={{
+            height: FULL_HEIGHT,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            bgcolor: "background.default",
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            files.openFiles(Array.from(e.dataTransfer.files));
+          }}
+        >
+          <AppHeader
+            menus={menus}
+            canUndo={doc.canUndo}
+            canRedo={doc.canRedo}
+            onUndo={doc.undo}
+            onRedo={doc.redo}
+            projectName={fileName}
+            dirty={files.dirty}
+          />
+          <Toolbar
+            follow={p.settings.follow}
+            snap={p.settings.snap}
+            envelope={p.settings.envelope}
+            onEnvelope={commands.envelope.run}
+            pitchEnvelope={p.settings.pitchEnvelope}
+            onPitchEnvelope={commands.pitchEnvelope.run}
+            canCut={commands.cut.enabled !== false}
+            canPaste={commands.paste.enabled !== false}
+            onFollow={commands.follow.run}
+            onSnap={commands.snap.run}
+            onZoom={(f) =>
+              setView((v) => ({
+                ...v,
+                pps: Math.min(2000, Math.max(2, v.pps * f)),
+              }))
+            }
+            onCut={commands.cut.run}
+            onCopy={commands.copy.run}
+            onPaste={commands.paste.run}
+          />
+          <input
+            ref={audioInput}
+            type="file"
+            accept={AUDIO_ACCEPT}
+            multiple
+            hidden
+            onChange={(e) =>
+              void load(
+                Array.from(e.target.files ?? []),
+                importTarget.current,
+              ).finally(() => (e.target.value = ""))
+            }
+          />
+          {files.picker.input}
 
-      <Box sx={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <Timeline
-        project={shown}
-        tree={project}
-        onTrackOp={(op, id) => {
-          if (op === 'addSubtrack') setSelectedTrack(doc.addSubtrack(id))
-          else if (op === 'indent') doc.indentTrack(id)
-          else doc.outdentTrack(id)
-        }}
-        onMoveTrack={moveVisibleTrack}
-        cursor={cursor}
-        livePos={livePos}
-        recording={!!recording}
-        live={live}
-        follow={p.settings.follow}
-        onCursor={moveCursor}
-        selected={selected}
-        onSelect={setSelected}
-        selectedTrack={selectedTrack}
-        onSelectTrack={setSelectedTrack}
-        selectedTracks={selectedTracks}
-        onSelectTracks={setSelectedTracks}
-        onSeek={seek}
-        range={range}
-        onRange={setRange}
-        onMasterChange={doc.updateMaster}
-        onTrackChange={(id, patch, merge) => {
-          // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量とパンは差分で）
-          if (selectedTracks.length < 2 || !selectedTracks.includes(id) || 'name' in patch || 'eq' in patch) return doc.updateTrack(id, patch, merge)
-          const base = project.tracks.find((tr) => tr.id === id)!
-          doc.updateTracks(
-            Object.fromEntries(
-              project.tracks
-                .filter((tr) => selectedTracks.includes(tr.id))
-                .map((tr) => {
-                  const q: Partial<Track> = { ...patch }
-                  if (patch.volume !== undefined) q.volume = Math.max(-60, Math.min(12, tr.volume + patch.volume - base.volume))
-                  if (patch.pan !== undefined) q.pan = Math.max(-1, Math.min(1, tr.pan + patch.pan - base.pan))
-                  return [tr.id, q]
-                }),
-            ),
-            merge,
-          )
-        }}
-        onEndMerge={doc.endMerge}
-        onDropFiles={(files, at) => void load(files, at)}
-        onBlockChange={doc.updateBlock}
-        onBlocksChange={doc.updateBlocks}
-        onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
-        onEmptyMenu={(kind, time, track, x, y, marker) => setEmptyAt({ kind, time, track, x, y, marker })}
-        onCopyBlocks={(blocks) => void doc.insertBlocks(blocks)}
-        onMarkerEdit={(id) => dialogs.open('marker', id)}
-        onProperties={(id) => dialogs.open('block', selected.includes(id) ? selected : [id])}
-        onEq={(id) => dialogs.open('eq', id)}
-        meter={p.settings.showMeters ? player.current.meter : undefined}
-        masterMeter={p.settings.showMeters ? player.current.masterMeters : undefined}
-        onDuplicateTrack={doc.duplicateTrack}
-        onRemoveTrack={(id) => {
-          doc.removeTrack(id)
-          setSelected([])
-        }}
-        view={view}
-        snap={p.settings.snap}
-        playing={playing}
-        grid={p.settings.grid}
-        division={p.settings.gridDivision}
-        envKind={p.settings.envelope ? 'volume' : p.settings.pitchEnvelope ? 'pitch' : null}
-        onView={setView}
-        onWidth={setTimelineWidth}
-        madeVersion={madeVersion}
-        pendingLabel={t('status.pitchBlock')}
-      />
-        {/* 波形ブロックが 1 つもないときは、開く、録音、最近使用したファイルを重ねて出す（PevenMUI の EmptyState。WeVocalSynth と同じ） */}
-        {project.blocks.length === 0 && !recording && (
-          <Box sx={{ position: 'absolute', left: header, right: 0, top: '40%', bottom: 0, pointerEvents: 'none' }}>
-            <Box sx={{ height: '100%', '& button': { pointerEvents: 'auto' } }}>
-              <EmptyState
-                message={t('empty.formats')}
-                primary={{ label: t('empty.choose'), icon: faFolderOpen, onClick: files.picker.open }}
-                actions={canRecord() ? [{ label: t('empty.record'), icon: faMicrophone, onClick: toggleRecord }] : []}
-                recent={files.recent.supported ? { title: t('menu.recent'), names: files.recent.names, open: files.recent.open, more: (n) => t('empty.showMore', { n }), less: t('empty.showLess') } : undefined}
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <Timeline
+              project={shown}
+              tree={project}
+              onTrackOp={(op, id) => {
+                if (op === "addSubtrack") setSelectedTrack(doc.addSubtrack(id));
+                else if (op === "indent") doc.indentTrack(id);
+                else doc.outdentTrack(id);
+              }}
+              onMoveTrack={moveVisibleTrack}
+              cursor={cursor}
+              livePos={livePos}
+              recording={!!recording}
+              live={live}
+              follow={p.settings.follow}
+              onCursor={moveCursor}
+              selected={selected}
+              onSelect={setSelected}
+              selectedTrack={selectedTrack}
+              onSelectTrack={setSelectedTrack}
+              selectedTracks={selectedTracks}
+              onSelectTracks={setSelectedTracks}
+              onSeek={seek}
+              range={range}
+              onRange={setRange}
+              onMasterChange={doc.updateMaster}
+              onTrackChange={(id, patch, merge) => {
+                // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量とパンは差分で）
+                if (
+                  selectedTracks.length < 2 ||
+                  !selectedTracks.includes(id) ||
+                  "name" in patch ||
+                  "eq" in patch
+                )
+                  return doc.updateTrack(id, patch, merge);
+                const base = project.tracks.find((tr) => tr.id === id)!;
+                doc.updateTracks(
+                  Object.fromEntries(
+                    project.tracks
+                      .filter((tr) => selectedTracks.includes(tr.id))
+                      .map((tr) => {
+                        const q: Partial<Track> = { ...patch };
+                        if (patch.volume !== undefined)
+                          q.volume = Math.max(
+                            -60,
+                            Math.min(
+                              12,
+                              tr.volume + patch.volume - base.volume,
+                            ),
+                          );
+                        if (patch.pan !== undefined)
+                          q.pan = Math.max(
+                            -1,
+                            Math.min(1, tr.pan + patch.pan - base.pan),
+                          );
+                        return [tr.id, q];
+                      }),
+                  ),
+                  merge,
+                );
+              }}
+              onEndMerge={doc.endMerge}
+              onDropFiles={(files, at) => void load(files, at)}
+              onBlockChange={doc.updateBlock}
+              onBlocksChange={doc.updateBlocks}
+              onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
+              onEmptyMenu={(kind, time, track, x, y, marker) =>
+                setEmptyAt({ kind, time, track, x, y, marker })
+              }
+              onCopyBlocks={(blocks) => void doc.insertBlocks(blocks)}
+              onMarkerEdit={(id) => dialogs.open("marker", id)}
+              onProperties={(id) =>
+                dialogs.open("block", selected.includes(id) ? selected : [id])
+              }
+              onEq={(id) => dialogs.open("eq", id)}
+              meter={p.settings.showMeters ? player.current.meter : undefined}
+              masterMeter={
+                p.settings.showMeters ? player.current.masterMeters : undefined
+              }
+              onDuplicateTrack={doc.duplicateTrack}
+              onRemoveTrack={(id) => {
+                doc.removeTrack(id);
+                setSelected([]);
+              }}
+              view={view}
+              snap={p.settings.snap}
+              playing={playing}
+              grid={p.settings.grid}
+              division={p.settings.gridDivision}
+              envKind={
+                p.settings.envelope
+                  ? "volume"
+                  : p.settings.pitchEnvelope
+                    ? "pitch"
+                    : null
+              }
+              onView={setView}
+              onWidth={setTimelineWidth}
+              madeVersion={madeVersion}
+              pendingLabel={t("status.pitchBlock")}
+            />
+            {/* 波形ブロックが 1 つもないときは、開く、録音、最近使用したファイルを重ねて出す（PevenMUI の EmptyState。WeVocalSynth と同じ） */}
+            {project.blocks.length === 0 && !recording && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: header,
+                  right: 0,
+                  top: "40%",
+                  bottom: 0,
+                  pointerEvents: "none",
+                }}
+              >
+                <Box
+                  sx={{ height: "100%", "& button": { pointerEvents: "auto" } }}
+                >
+                  <EmptyState
+                    message={t("empty.formats")}
+                    primary={{
+                      label: t("empty.choose"),
+                      icon: faFolderOpen,
+                      onClick: files.picker.open,
+                    }}
+                    actions={
+                      canRecord()
+                        ? [
+                            {
+                              label: t("empty.record"),
+                              icon: faMicrophone,
+                              onClick: toggleRecord,
+                            },
+                          ]
+                        : []
+                    }
+                    recent={
+                      files.recent.supported
+                        ? {
+                            title: t("menu.recent"),
+                            names: files.recent.names,
+                            open: files.recent.open,
+                            more: (n) => t("empty.showMore", { n }),
+                            less: t("empty.showLess"),
+                          }
+                        : undefined
+                    }
+                  />
+                </Box>
+              </Box>
+            )}
+          </Box>
+          {/* 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ） */}
+          {(selected.length > 0 || range) &&
+            (p.settings.editBar === "on" ||
+              (p.settings.editBar === "auto" && (mobile || isMobile()))) && (
+              <BlockEditBar
+                commands={commands}
+                mode={selected.length > 0 ? "block" : "range"}
+              />
+            )}
+          {p.settings.showAnalysis && (
+            <AnalysisPanel
+              bpm={project.tempo.bpm}
+              block={project.blocks.find((b) => b.id === selected[0]) ?? null}
+              source={sourceOf(
+                project.blocks.find((b) => b.id === selected[0])?.source,
+              )}
+              view={view}
+              headerWidth={header}
+              version={madeVersion}
+              range={range}
+              onCurve={(curve, merge) => {
+                const id = selected[0];
+                if (id) doc.updateBlock(id, { curve }, merge);
+              }}
+              onEndMerge={doc.endMerge}
+            />
+          )}
+          {p.settings.showMinimap && project.blocks.length > 0 && (
+            // 高さは Minimap の分だけ（伸ばさない）
+            <Box
+              sx={{
+                flexShrink: 0,
+                flexGrow: 0,
+                borderTop: 1,
+                borderColor: "divider",
+              }}
+            >
+              <Minimap
+                clip={overview.clip}
+                duration={overview.duration}
+                colors={{
+                  text: pal.text.primary,
+                  textSecondary: pal.text.secondary,
+                  divider: pal.divider,
+                  wave: pal.primary.main,
+                  selection: dark ? SELECTION_DARK : SELECTION_LIGHT,
+                }}
+                view={{ start: view.scroll, dur: timelineWidth / view.pps }}
+                selections={range ? [range] : []}
+                scrollTo={(start) =>
+                  setView((v) => ({ ...v, scroll: Math.max(0, start) }))
+                }
+                label={t("menu.minimap")}
+                position={playPos ?? cursor}
+                livePosition={() => livePos() ?? cursor}
+                playing={playing}
+                showPlayhead
               />
             </Box>
-          </Box>
-        )}
-      </Box>
-      {/* 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ） */}
-      {(selected.length > 0 || range) && (p.settings.editBar === 'on' || (p.settings.editBar === 'auto' && (mobile || isMobile()))) && <BlockEditBar commands={commands} mode={selected.length > 0 ? 'block' : 'range'} />}
-      {p.settings.showAnalysis && (
-        <AnalysisPanel
-          bpm={project.tempo.bpm}
-          block={project.blocks.find((b) => b.id === selected[0]) ?? null}
-          source={sourceOf(project.blocks.find((b) => b.id === selected[0])?.source)}
-          view={view}
-          headerWidth={header}
-          version={madeVersion}
-          range={range}
-          onCurve={(curve, merge) => {
-            const id = selected[0]
-            if (id) doc.updateBlock(id, { curve }, merge)
-          }}
-          onEndMerge={doc.endMerge}
-        />
-      )}
-      {p.settings.showMinimap && project.blocks.length > 0 && (
-        // 高さは Minimap の分だけ（伸ばさない）
-        <Box sx={{ flexShrink: 0, flexGrow: 0, borderTop: 1, borderColor: 'divider' }}>
-        <Minimap
-          clip={overview.clip}
-          duration={overview.duration}
-          colors={{ text: pal.text.primary, textSecondary: pal.text.secondary, divider: pal.divider, wave: pal.primary.main, selection: dark ? SELECTION_DARK : SELECTION_LIGHT }}
-          view={{ start: view.scroll, dur: timelineWidth / view.pps }}
-          selections={range ? [range] : []}
-          scrollTo={(start) => setView((v) => ({ ...v, scroll: Math.max(0, start) }))}
-          label={t('menu.minimap')}
-          position={playPos ?? cursor}
-          livePosition={() => livePos() ?? cursor}
-          playing={playing}
-          showPlayhead
-        />
+          )}
+          <Transport
+            playing={playing}
+            position={playPos ?? cursor}
+            livePosition={() => livePos() ?? cursor}
+            onSeek={seek}
+            meter={
+              p.settings.showMeters ? (
+                <LevelMeter
+                  source={player.current.masterMeters}
+                  rows={2}
+                  width={96}
+                  height={7}
+                  label={t("meter.master")}
+                />
+              ) : null
+            }
+            end={end}
+            repeat={repeat}
+            recording={!!recording}
+            onRecord={toggleRecord}
+            tempo={project.tempo}
+            onTempo={(patch) => doc.updateTempo(patch)}
+            division={p.settings.gridDivision}
+            onDivision={(gridDivision) => p.onSettingsChange({ gridDivision })}
+            onToStart={() => seek(0)}
+            onStop={stop}
+            onPause={() => (playing ? pause() : play())}
+            onRepeat={() => setRepeat((r) => !r)}
+            onToEnd={() => seek(end)}
+          />
+          <ContextMenu
+            position={menuAt}
+            entries={blockMenu}
+            onClose={() => setMenuAt(null)}
+          />
+          <ContextMenu
+            position={emptyAt}
+            entries={
+              emptyAt
+                ? emptyMenu(
+                    emptyAt.kind,
+                    emptyAt.time,
+                    emptyAt.track,
+                    emptyAt.marker,
+                  )
+                : []
+            }
+            onClose={() => setEmptyAt(null)}
+          />
+          <AppDialogs
+            dialogs={dialogs}
+            settings={p.settings}
+            onSettingsChange={p.onSettingsChange}
+            doc={doc}
+            fileName={fileName}
+            range={range}
+            onExport={files.runExport}
+            onVideoExport={files.runVideoExport}
+            fail={fail}
+            cursor={cursor}
+            prepareSeparate={extract.prepareSeparate}
+            ensure={addonInstall.ensure}
+            playing={playing}
+            onTogglePlay={() => (playing ? pause() : play())}
+          />
+
+          {!mobile && p.settings.showStatusBar && (
+            <StatusBar
+              fileName={fileName}
+              dirty={files.dirty}
+              onRename={setFileName}
+              duration={Math.max(end, range?.end ?? 0)}
+              onQuickSave={
+                files.canSaveToFolder ? files.saveRangeToFolder : undefined
+              }
+              sampleRate={48000}
+              tracks={project.tracks.length}
+              range={range}
+              onRange={setRange}
+              tempo={
+                <TempoField
+                  bpm={project.tempo.bpm}
+                  candidates={tempo.candidates}
+                  analyzing={tempo.analyzing}
+                  onChange={tempo.setBpm}
+                  onAnalyze={() => void tempo.detect()}
+                  labels={{
+                    tap: t("tempo.tap"),
+                    tapHint: t("tempo.tapHint"),
+                    candidates: t("tempo.candidates"),
+                    analyze: t("tempo.analyze"),
+                    analyzing: t("tempo.analyzing"),
+                  }}
+                />
+              }
+              bpm={project.tempo.bpm}
+            />
+          )}
+
+          <Snackbar
+            open={!!error}
+            autoHideDuration={8000}
+            onClose={() => setError(null)}
+          >
+            <Alert severity="error" onClose={() => setError(null)}>
+              {t("error.failed", { error: error ?? "" })}
+            </Alert>
+          </Snackbar>
+          {confirmDialog}
+          {extract.dialog}
+          {addonInstall.dialog}
+          {p.settings.showDebug && <DebugOverlay build={BUILD} />}
+          <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
+          <Snackbar
+            open={!!notice}
+            autoHideDuration={4000}
+            onClose={() => setNotice(null)}
+          >
+            <Alert severity="info" onClose={() => setNotice(null)}>
+              {notice}
+            </Alert>
+          </Snackbar>
         </Box>
-      )}
-      <Transport
-        playing={playing}
-        position={playPos ?? cursor}
-        livePosition={() => livePos() ?? cursor}
-        onSeek={seek}
-        meter={p.settings.showMeters ? <LevelMeter source={player.current.masterMeters} rows={2} width={96} height={7} label={t('meter.master')} /> : null}
-        end={end}
-        repeat={repeat}
-        recording={!!recording}
-        onRecord={toggleRecord}
-        tempo={project.tempo}
-        onTempo={(patch) => doc.updateTempo(patch)}
-        division={p.settings.gridDivision}
-        onDivision={(gridDivision) => p.onSettingsChange({ gridDivision })}
-        onToStart={() => seek(0)}
-        onStop={stop}
-        onPause={() => (playing ? pause() : play())}
-        onRepeat={() => setRepeat((r) => !r)}
-        onToEnd={() => seek(end)}
-      />
-      <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
-      <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track, emptyAt.marker) : []} onClose={() => setEmptyAt(null)} />
-      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} onTogglePlay={() => (playing ? pause() : play())} />
-
-      {!mobile && p.settings.showStatusBar && (
-        <StatusBar
-          fileName={fileName}
-          dirty={files.dirty}
-          onRename={setFileName}
-          duration={Math.max(end, range?.end ?? 0)}
-          onQuickSave={files.canSaveToFolder ? files.saveRangeToFolder : undefined}
-          sampleRate={48000}
-          tracks={project.tracks.length}
-          range={range}
-          onRange={setRange}
-          tempo={<TempoField bpm={project.tempo.bpm} candidates={tempo.candidates} analyzing={tempo.analyzing} onChange={tempo.setBpm} onAnalyze={() => void tempo.detect()} labels={{ tap: t('tempo.tap'), tapHint: t('tempo.tapHint'), candidates: t('tempo.candidates'), analyze: t('tempo.analyze'), analyzing: t('tempo.analyzing') }} />}
-          bpm={project.tempo.bpm}
-        />
-      )}
-
-      <Snackbar open={!!error} autoHideDuration={8000} onClose={() => setError(null)}>
-        <Alert severity="error" onClose={() => setError(null)}>
-          {t('error.failed', { error: error ?? '' })}
-        </Alert>
-      </Snackbar>
-      {confirmDialog}
-      {extract.dialog}
-      {addonInstall.dialog}
-      {p.settings.showDebug && <DebugOverlay build={BUILD} />}
-      <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
-      <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(null)}>
-        <Alert severity="info" onClose={() => setNotice(null)}>
-          {notice}
-        </Alert>
-      </Snackbar>
-    </Box>
-    </SliderResetContext.Provider>
+      </SliderResetContext.Provider>
     </WindowModeContext.Provider>
-  )
+  );
 }
