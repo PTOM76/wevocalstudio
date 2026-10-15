@@ -7,9 +7,9 @@ import { GROUPS } from './items'
 import { searchKeys, type AnyItem } from './items/define'
 
 /** 設定画面の分類 */
-export type Category = 'general' | 'edit' | 'keys' | 'file' | 'display' | 'process' | 'vocal' | 'addons' | 'data' | 'debug'
+export type Category = 'general' | 'edit' | 'keys' | 'file' | 'display' | 'process' | 'vocal' | 'addons' | 'plugins' | 'data' | 'debug'
 /** 並び順と親子（親のない分類と、その下のサブアイテム） */
-const TREE: [Category, Category?][] = [['general'], ['edit', 'general'], ['keys', 'general'], ['file', 'general'], ['display'], ['process'], ['vocal', 'process'], ['addons'], ['data'], ['debug']]
+const TREE: [Category, Category?][] = [['general'], ['edit', 'general'], ['keys', 'general'], ['file', 'general'], ['display'], ['process'], ['vocal', 'process'], ['addons'], ['plugins'], ['data'], ['debug']]
 
 /** 検索の対象のうち、定義（items/）にないもの: グループ名と、自前の画面の項目の訳文キー */
 const INDEX: Record<Category, MessageKey[]> = {
@@ -21,6 +21,7 @@ const INDEX: Record<Category, MessageKey[]> = {
   process: ['settings.groupDefaultAlgorithm', 'settings.algorithm'],
   vocal: ['settings.groupVocal', 'settings.vocalModel', 'settings.vocalGpu', 'settings.groupStems', 'settings.groupAddons', 'settings.addonsMoved', 'settings.openAddons'],
   addons: ['settings.groupAddonVocal', 'settings.groupAddonVocalRuntime', 'settings.groupAddonAnalyzer', 'settings.groupAddonLyrics', 'settings.groupAddonConverter', 'addon.vocalExtractor', 'addon.modelStandard', 'addon.modelLight', 'addon.modelPrecise', 'addon.modelVocalHq', 'addon.modelInstHq', 'addon.modelLead', 'addon.analyzer', 'addon.lyrics', 'addon.converter'],
+  plugins: ['plugins.intro', 'plugins.url', 'plugins.add', 'plugins.notice'],
   data: ['settings.groupData', 'data.work', 'data.workHelp', 'data.cache', 'data.cacheHelp', 'data.settings', 'data.settingsHelp', 'data.all', 'data.persist', 'data.persistHelp'],
   debug: ['settings.groupDebug', 'settings.dialogWindow'],
 }

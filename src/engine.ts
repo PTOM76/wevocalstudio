@@ -1,6 +1,6 @@
 // 再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
-import { createFxChain, limitedOutput, startContext, type Clip, type FxChain } from 'wevocal-lib'
+import { createFxChain, limitedOutput, preloadFx, startContext, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
@@ -190,8 +190,14 @@ class Graph {
 
 }
 
+/** プロジェクトの FX の列（マスターとトラック）。導入したプラグインの準備に使う */
+const fxLists = (p: Project) => [p.master.fx, ...p.tracks.map((t) => t.fx)]
+
 /** 再生。位置は AudioContext の時計から求める */
 export class Player {
+  /** 音を作る処理の負荷（0〜1）が変わったときに呼ぶ。対応していないブラウザでは呼ばない */
+  onLoad: ((load: number) => void) | null = null
+  private meterStarted = false
   private ctx: AudioContext | null = null
   private graph: Graph | null = null
   private startedAt = 0
@@ -212,7 +218,8 @@ export class Player {
     this.ctx ??= new AudioContext()
     // iPhone、iPad はマナーモードでも鳴るように、再生の音声セッションにしてから起こす（wevocal-lib。WeVocalSynth と同じ）
     // ミキサー（AudioWorklet）の読み込みも待つ（AudioContext ごとに 1 回だけ）
-    await Promise.all([startContext(this.ctx, 'player'), loadMixer(this.ctx)])
+    await Promise.all([startContext(this.ctx, 'player'), loadMixer(this.ctx), preloadFx(this.ctx, ...fxLists(p))])
+    this.startLoadMeter()
     if (id !== this.seq) return
     this.starting = false
     this.from = from
@@ -248,6 +255,15 @@ export class Player {
   /** マスターの左右のレベルメーター */
   masterMeters = () => (this.playing ? (this.graph?.masterMeters ?? null) : null)
 
+  /** 音を作る処理の負荷を測り始める（AudioRenderCapacity。1 秒ごと） */
+  private startLoadMeter() {
+    const rc = (this.ctx as (AudioContext & { renderCapacity?: { start(o: { updateInterval: number }): void; addEventListener(t: 'update', f: (e: { averageLoad: number }) => void): void } }) | null)?.renderCapacity
+    if (!rc || this.meterStarted) return
+    this.meterStarted = true
+    rc.addEventListener('update', (e) => this.onLoad?.(e.averageLoad))
+    rc.start({ updateInterval: 1 })
+  }
+
   /** 今の位置（秒） */
   position() {
     return this.ctx && this.playing ? this.from + Math.max(0, this.ctx.currentTime - this.startedAt) : this.from
@@ -261,7 +277,7 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000): Prom
   const length = Math.max(1, Math.ceil(Math.max(songEnd(p), until) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
   // 再生と同じミキサーで作る（再生と書き出しの音が一致する）。送ったものを受け取ってから始める
-  await loadMixer(ctx)
+  await Promise.all([loadMixer(ctx), preloadFx(ctx, ...fxLists(p))])
   const graph = new Graph(ctx, 0)
   graph.sync(p, false)
   await graph.flush()

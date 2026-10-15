@@ -12,6 +12,7 @@ import { i18n, type LangSetting, type MessageKey } from '../i18n'
 import { ACTIONS } from '../keymap'
 import SettingRow from './items/SettingRow'
 import DataSection from './DataSection'
+import PluginsSection from './PluginsSection'
 import type { Category } from './settingsSearch'
 import type { Settings } from './settings'
 
@@ -167,6 +168,7 @@ export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings;
         </Group>
       </>
     ),
+    plugins: <PluginsSection />,
     data: (
       <Group title={t('settings.groupData')}>
         <DataSection onClose={onClose} />

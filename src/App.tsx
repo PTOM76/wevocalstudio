@@ -62,6 +62,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const { project, selected } = doc
   const setSelected = doc.select
   const player = useRef(new Player())
+  // 音を作る処理の負荷（FX のダイアログに出す）
+  const [renderLoad, setRenderLoad] = useState<number | null>(null)
+  useEffect(() => {
+    player.current.onLoad = setRenderLoad
+  }, [])
   const [playing, setPlaying] = useState(false)
   // 編集カーソル（押した所、貼り付ける所。再生では動かない）と、再生カーソル（再生中と一時停止中だけ。 2 本）
   const [cursor, setCursor] = useState(0)
@@ -507,7 +512,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
       <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track, emptyAt.marker) : []} onClose={() => setEmptyAt(null)} />
-      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} onTogglePlay={() => (playing ? pause() : play())} />
+      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} onTogglePlay={() => (playing ? pause() : play())} load={renderLoad} />
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar
