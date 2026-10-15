@@ -21,6 +21,22 @@ const clipIds = new WeakMap<Clip, number>()
 let nextClipId = 1
 export const clipId = (c: Clip) => clipIds.get(c) ?? (clipIds.set(c, nextClipId), nextClipId++)
 
+/** 共有のメモリに置いた音のデータ（cross-origin isolation のときだけ。Clip ごとに 1 回だけ作り、どの AudioContext のミキサーにも写さずに渡す） */
+const shared = new WeakMap<Clip, Float32Array[]>()
+const channelsFor = (c: Clip) => {
+  if (!globalThis.crossOriginIsolated) return c.channels
+  let ch = shared.get(c)
+  if (!ch) {
+    ch = c.channels.map((x) => {
+      const y = new Float32Array(new SharedArrayBuffer(x.byteLength))
+      y.set(x)
+      return y
+    })
+    shared.set(c, ch)
+  }
+  return ch
+}
+
 /** AudioContext ごとに、送った音のデータの id（ミキサーの置き場は AudioContext ごとに 1 つ） */
 const sentClips = new WeakMap<BaseAudioContext, Set<number>>()
 
@@ -60,8 +76,8 @@ export class Mixers {
     if (!sent) sentClips.set(this.ctx, (sent = new Set()))
     for (const [id, c] of used)
       if (!sent.has(id)) {
-        // 写して送る（元の音は画面でも使うので渡せない。置き場は AudioContext ごとに 1 回だけ）
-        port.postMessage({ type: 'clip', id, sampleRate: c.sampleRate, channels: c.channels } satisfies MixerMessage)
+        // cross-origin isolation なら共有のメモリを渡す（写さない）。でなければ写して送る（元の音は画面でも使うので渡せない。AudioContext ごとに 1 回だけ）
+        port.postMessage({ type: 'clip', id, sampleRate: c.sampleRate, channels: channelsFor(c) } satisfies MixerMessage)
         sent.add(id)
       }
     const gone = [...sent].filter((id) => !used.has(id) && !keep.has(id))

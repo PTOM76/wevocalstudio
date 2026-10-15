@@ -24,7 +24,7 @@ const extractor = submodule('extractor', 'src/host.ts', process.env.EXTRACTOR_PA
 // WeVocalConverter（動画の書き出し）。本体は追加機能として配り、アプリは手順（src/host.ts）とダイアログだけを使う
 const converter = submodule('converter', 'src/host.ts', process.env.CONVERTER_PATH)
 // 場所が決まるのは実行時なので、動的に読み込む（Node が .ts の型を取り除いて読む）
-const { pevenAddonsRoute, pevenApp, pevenManifest }: typeof import('./pevenmui/src/vite.ts') = await import(pathToFileURL(resolve(pevenmui, 'src/vite.ts')).href)
+const { ISOLATION_SCRIPT, pevenAddonsRoute, pevenApp, pevenIsolation, pevenManifest }: typeof import('./pevenmui/src/vite.ts') = await import(pathToFileURL(resolve(pevenmui, 'src/vite.ts')).href)
 
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
@@ -52,6 +52,8 @@ export default defineConfig({
   plugins: [
     react(),
     pevenApp(APP_INFO, { version: pkg.version, root }),
+    // 音のデータを再生のミキサー（AudioWorklet）と写さずに共有する（SharedArrayBuffer）ため、cross-origin isolation にする（WeVocalSynth と同じ）
+    pevenIsolation(),
     // PWA（WeVocalAnalyzer と同じ）。新しい版は利用者が「更新」を押したときに切り替える
     VitePWA({
       registerType: 'prompt',
@@ -74,6 +76,8 @@ export default defineConfig({
       },
       workbox: {
         inlineWorkboxRuntime: true,
+        // ページの応答に COOP/COEP を足す（pevenIsolation）
+        importScripts: [ISOLATION_SCRIPT],
         // 更新で切り替わったときに、名前の違う古い版のキャッシュを消す
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,wasm}'],
