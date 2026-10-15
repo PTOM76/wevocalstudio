@@ -8,6 +8,8 @@ export type DialogId =
   | 'block' | 'marker' | 'eq'
   // 音を 0 から作る、選んだ波形ブロックを MIDI の音符に並べる（波形ブロックの id）
   | 'synth' | 'sampler'
+  // トラックの名前の変更（トラックの id）
+  | 'renameTrack'
 
 export const useDialogs = () => usePevenDialogs<DialogId>()
 export type Dialogs = PevenDialogs<DialogId>

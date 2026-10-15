@@ -49,7 +49,7 @@ export interface ActionContext {
   newWindow: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
-  openDialog: (id: 'synth' | 'sampler', arg?: string) => void
+  openDialog: (id: 'synth' | 'sampler' | 'renameTrack', arg?: string) => void
   extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void }
   openProperties: (id: string) => void
   openFile: () => void
@@ -191,6 +191,7 @@ export function useActions(c: ActionContext) {
     showAll: { enabled: c.end > 0, run: () => c.fit(0, c.end) },
     zoomRange: { enabled: !!c.range || any, run: () => (c.range ? c.fit(c.range.start, c.range.end) : c.fit(Math.min(...chosen.map((b) => b.start)), Math.max(...chosen.map((b) => b.start + b.length)))) },
     playRange: { enabled: !!c.range, run: () => c.range && c.playAt(c.range.start) },
+    renameTrack: { enabled: !!c.selectedTrack, run: () => c.selectedTrack && c.openDialog('renameTrack', c.selectedTrack) },
     duplicateTrack: { enabled: !!c.selectedTrack, run: () => c.selectedTrack && doc.duplicateTrack(c.selectedTrack) },
     muteTrack: { enabled: !!track, run: () => track && doc.updateTrack(track.id, { mute: !track.mute }) },
     soloTrack: { enabled: !!track, run: () => track && doc.updateTrack(track.id, { solo: !track.solo }) },
@@ -299,6 +300,7 @@ export function useActions(c: ActionContext) {
       entries: [
         { label: t('menu.addTrack'), onClick: doc.addTrack },
         item('duplicateTrack'),
+        item('renameTrack'),
         { label: t('track.addSubtrack'), disabled: !c.selectedTrack, onClick: () => c.selectedTrack && c.selectTrack(doc.addSubtrack(c.selectedTrack)) },
         {
           label: t('menu.removeTrack'),

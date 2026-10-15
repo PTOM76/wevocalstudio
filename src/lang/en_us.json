@@ -123,6 +123,7 @@
   "menu.tools": "Tools",
   "menu.sampler": "Place on MIDI notes…",
   "menu.synth": "Create sound…",
+  "menu.renameTrack": "Rename track…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -542,5 +543,11 @@
   "vibrato.depth": "Depth",
   "vibrato.rate": "Rate",
   "vibrato.secondUnit": "s",
-  "vibrato.title": "Vibrato"
+  "vibrato.title": "Vibrato",
+
+  "preset.button": "Presets",
+  "preset.empty": "No saved presets",
+  "preset.save": "Save current settings…",
+  "preset.remove": "Delete",
+  "preset.defaultName": "Preset {n}"
 }

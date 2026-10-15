@@ -44,6 +44,7 @@ export type Action =
   | 'zoomRange'
   | 'playRange'
   | 'duplicateTrack'
+  | 'renameTrack'
   | 'muteTrack'
   | 'soloTrack'
   | 'clearMarkers'
@@ -131,6 +132,7 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   playRange: [],
   // 選んでいるトラック
   duplicateTrack: [],
+  renameTrack: [],
   muteTrack: [],
   soloTrack: [],
   clearMarkers: [],

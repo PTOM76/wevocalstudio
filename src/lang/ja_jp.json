@@ -123,6 +123,7 @@
   "menu.tools": "ツール",
   "menu.sampler": "MIDI の音符に並べる…",
   "menu.synth": "音声を作成…",
+  "menu.renameTrack": "トラックの名前を変更…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -542,5 +543,11 @@
   "vibrato.depth": "深さ",
   "vibrato.rate": "速さ",
   "vibrato.secondUnit": "秒",
-  "vibrato.title": "ビブラート"
+  "vibrato.title": "ビブラート",
+
+  "preset.button": "プリセット",
+  "preset.empty": "保存したプリセットはありません",
+  "preset.save": "今の設定を保存…",
+  "preset.remove": "削除",
+  "preset.defaultName": "プリセット{n}"
 }

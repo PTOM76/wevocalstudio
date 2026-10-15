@@ -1,7 +1,7 @@
 // PC の下のステータスバー（WeVocalSynth と同じ並び）。プロジェクト名、書き出しの形式、範囲選択、BPM、処理中のゲージ
 import { useState, type ReactNode } from 'react'
-import { Box, Button, ButtonBase, Dialog, DialogActions, DialogContent, Popover, Stack, TextField } from '@mui/material'
-import { JobGauge, StatusBar as Bar, StatusButton, StatusItem, StatusSpacer, enterToSubmit, pevenFont } from 'pevenmui'
+import { Button, ButtonBase, Popover, Stack, TextField } from '@mui/material'
+import { JobGauge, RenameDialog, StatusBar as Bar, StatusButton, StatusItem, StatusSpacer, enterToSubmit, pevenFont } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { formatTime } from './Transport'
@@ -54,10 +54,6 @@ export default function StatusBar(p: {
 }) {
   const t = useT()
   const [renaming, setRenaming] = useState<string | null>(null)
-  const rename = () => {
-    if (renaming?.trim()) p.onRename(renaming.trim())
-    setRenaming(null)
-  }
   return (
     <Bar>
       {/* プロジェクト名。押すと名前を変えられる（保存と書き出しのファイル名になる） */}
@@ -73,16 +69,8 @@ export default function StatusBar(p: {
       <StatusSpacer />
       {/* 処理中の進み具合（ピッチなどを作る、書き出し。PevenMUI の JobGauge。WeVocalSynth と同じ） */}
       <JobGauge<string> kindLabel={(k) => t(`job.${k}` as Parameters<typeof t>[0])} />
-      <Dialog open={renaming !== null} onClose={() => setRenaming(null)} maxWidth="xs" fullWidth onKeyDown={enterToSubmit(rename)}>
-        <DialogContent>
-          <TextField autoFocus fullWidth size="small" label={t('status.projectName')} value={renaming ?? ''} onChange={(e) => setRenaming(e.target.value)} sx={{ mt: 1 }} />
-        </DialogContent>
-        <DialogActions>
-          <Box sx={{ flex: 1 }} />
-          <Button onClick={() => setRenaming(null)}>{t('common.cancel')}</Button>
-          <Button onClick={rename}>{t('common.ok')}</Button>
-        </DialogActions>
-      </Dialog>
+      {/* 名前の変更（PevenMUI の RenameDialog。WeVocalSynth と同じ） */}
+      <RenameDialog name={renaming} title={t('status.projectName')} onClose={() => setRenaming(null)} onRename={(name) => p.onRename(name.trim())} />
     </Bar>
   )
 }

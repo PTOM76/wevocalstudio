@@ -1,5 +1,7 @@
 // 「表示」の項目と、表示メニューとツールバーで切り替えるもの（名前と既定値は WeVocalSynth と同じ）
 import type { LangSetting } from '../../i18n'
+import type { Preset } from 'pevenmui'
+import type { BlockPreset } from '../../BlockDialog'
 import { check, choice, defineItems, value } from './define'
 
 export type ThemeSetting = 'system' | 'light' | 'dark'
@@ -40,4 +42,6 @@ export const stored = defineItems(null, {
   // 書き出しの仕上げ（ノーマライズ、両端のフェード）
   exportNormalize: value(false),
   exportFadeMs: value(0),
+  // 波形ブロックのプロパティのプリセット（音の作り方）
+  presets: value<Preset<BlockPreset>[]>([]),
 })

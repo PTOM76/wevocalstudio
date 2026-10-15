@@ -1,7 +1,7 @@
 // 波形ブロックのプロパティ。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
 import { useEffect, useState } from 'react'
-import { Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material'
-import { enterToSubmit } from 'pevenmui'
+import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { PresetMenu, enterToSubmit, type Preset } from 'pevenmui'
 import { ALGORITHM_NAMES, type Algorithm } from 'wevocal-lib'
 import { useT, type MessageKey } from './i18n'
 import { RATE_MAX, RATE_MIN, type Block, type Source } from './project'
@@ -24,6 +24,10 @@ const NUMBERS: [NumberKey, MessageKey, number, number, number][] = [
 /** 変えた値（触った欄だけ） */
 export type BlockEdit = Partial<Pick<Block, NumberKey | 'algorithm' | 'preserveFormant' | 'mute' | 'source'>>
 
+/** プリセットに覚える値（音の作り方。位置や長さは覚えない） */
+export type BlockPreset = Partial<Pick<Block, 'rate' | 'gain' | 'pitch' | 'formant' | 'algorithm' | 'preserveFormant'>>
+const PRESET_KEYS = ['rate', 'gain', 'pitch', 'formant', 'algorithm', 'preserveFormant'] as const
+
 /** みんな同じ値ならそれ、違えば null（空の欄にする） */
 function common<K extends keyof Block>(blocks: Block[], key: K): Block[K] | null {
   return blocks.every((b) => b[key] === blocks[0][key]) ? blocks[0][key] : null
@@ -36,6 +40,9 @@ export default function BlockDialog(p: {
   onApply: (edit: BlockEdit) => void
   /** ファイルから元の音を読み込んで選ぶ */
   onPickFile: () => void
+  /** プリセット（設定に覚える。PevenMUI の PresetMenu。WeVocalSynth の加工のプリセットと同じ） */
+  presets: Preset<BlockPreset>[]
+  onPresetsChange: (presets: Preset<BlockPreset>[]) => void
 }) {
   const t = useT()
   const [edit, setEdit] = useState<BlockEdit>({})
@@ -54,6 +61,12 @@ export default function BlockDialog(p: {
     p.onClose()
   }
   const source = value('source')
+  // 今の値（みんな違う項目は覚えない）と、プリセットを呼び出したときに欄へ入れる
+  const current = Object.fromEntries(PRESET_KEYS.flatMap((k) => (value(k) === null ? [] : [[k, value(k)]]))) as BlockPreset
+  const applyPreset = (pr: BlockPreset) => {
+    setEdit((e) => ({ ...e, ...pr }))
+    setText((s) => ({ ...s, ...Object.fromEntries(Object.entries(pr).filter(([, v]) => typeof v === 'number').map(([k, v]) => [k, String(v)])) }))
+  }
 
   return (
     <Dialog open onClose={p.onClose} maxWidth="xs" fullWidth onKeyDown={enterToSubmit(apply)}>
@@ -121,6 +134,14 @@ export default function BlockDialog(p: {
         </Stack>
       </DialogContent>
       <DialogActions>
+        <PresetMenu
+          params={current}
+          presets={p.presets}
+          onApply={applyPreset}
+          onChange={p.onPresetsChange}
+          labels={{ button: t('preset.button'), empty: t('preset.empty'), save: t('preset.save'), remove: t('preset.remove'), defaultName: (n) => t('preset.defaultName', { n }) }}
+        />
+        <Box sx={{ flex: 1 }} />
         <Button onClick={p.onClose}>{t('common.cancel')}</Button>
         <Button onClick={apply}>{t('common.ok')}</Button>
       </DialogActions>

@@ -6,7 +6,7 @@ import BlockDialog from './BlockDialog'
 import EqDialog from './EqDialog'
 import MarkerDialog from './MarkerDialog'
 import type { Dialogs } from './useDialogs'
-import { AboutDialog, LicensesDialog } from 'pevenmui'
+import { AboutDialog, LicensesDialog, RenameDialog } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { ExportDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
@@ -128,6 +128,16 @@ export default function AppDialogs(p: {
           dialogs.close('sampler')
         }}
       />
+      {/* トラックの名前の変更（PevenMUI の RenameDialog） */}
+      <RenameDialog
+        name={project.tracks.find((tr) => tr.id === dialogs.arg<string>('renameTrack'))?.name ?? null}
+        title={t('track.rename')}
+        onClose={dialogs.closer('renameTrack')}
+        onRename={(name) => {
+          const id = dialogs.arg<string>('renameTrack')
+          if (id) doc.updateTrack(id, { name: name.trim() })
+        }}
+      />
       <MarkerDialog
         marker={marker}
         onClose={dialogs.closer('marker')}
@@ -142,6 +152,8 @@ export default function AppDialogs(p: {
         onClose={dialogs.closer('block')}
         onApply={(edit) => doc.editBlocks(editing, edit)}
         onPickFile={() => sourceInput.current?.click()}
+        presets={p.settings.presets}
+        onPresetsChange={(presets) => p.onSettingsChange({ presets })}
       />
       {/* プロパティの「ファイルから」で選ぶ元の音 */}
       <input
