@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Box, Snackbar } from '@mui/material'
-import { EmptyState, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
+import { Box } from '@mui/material'
+import { EmptyState, Toast, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
@@ -517,21 +517,13 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         />
       )}
 
-      <Snackbar open={!!error} autoHideDuration={8000} onClose={() => setError(null)}>
-        <Alert severity="error" onClose={() => setError(null)}>
-          {t('error.failed', { error: error ?? '' })}
-        </Alert>
-      </Snackbar>
+      <Toast toast={error === null ? null : { severity: 'error', message: t('error.failed', { error }) }} onClose={() => setError(null)} autoHideMs={8000} />
       {confirmDialog}
       {extract.dialog}
       {addonInstall.dialog}
       {p.settings.showDebug && <DebugOverlay build={BUILD} />}
       <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
-      <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(null)}>
-        <Alert severity="info" onClose={() => setNotice(null)}>
-          {notice}
-        </Alert>
-      </Snackbar>
+      <Toast toast={notice ? { severity: 'info', message: notice } : null} onClose={() => setNotice(null)} top={touchLike} />
     </Box>
     </SliderResetContext.Provider>
     </WindowModeContext.Provider>
