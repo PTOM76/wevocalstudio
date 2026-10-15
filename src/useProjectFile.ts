@@ -11,14 +11,16 @@ import { videoHost } from './addons'
 import type { useT } from './i18n'
 import type { Project } from './project'
 import { exportWvsp } from './wvspExport'
-import { PROJECT_EXT, readProject, writeProject } from './projectFile'
+import { LEGACY_PROJECT_EXT, PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings/settings'
 import { idbGet, idbPut } from './storage/idb'
 
 // 最近使用したファイルの記録先と、フォルダーを覚える用途の名前の頭
 initFileAccess({ store: { get: idbGet, put: async (k, v) => void (await idbPut(k, v)) }, idPrefix: 'wevocalstudio' })
 
-const isProjectFile = (f: File) => f.name.toLowerCase().endsWith(PROJECT_EXT)
+const isProjectFile = (f: File) => [PROJECT_EXT, LEGACY_PROJECT_EXT].some((e) => f.name.toLowerCase().endsWith(e))
+/** 音声ではなく、プロジェクトとして開くファイル（.wvst、.wvsp）。音声として読み込むと失敗する */
+export const isProjectLike = (f: File) => isProjectFile(f) || isWvspFile(f)
 
 export function useProjectFile(o: {
   t: ReturnType<typeof useT>
@@ -68,7 +70,7 @@ export function useProjectFile(o: {
     const audio = files.filter((f) => !isWvspFile(f))
     if (audio.length) o.onAudio(audio)
   }
-  const picker = useFilesPicker(`${PROJECT_EXT},${WVSP_EXT},${AUDIO_ACCEPT}`, openFiles, t('file.openType'))
+  const picker = useFilesPicker(`${PROJECT_EXT},${LEGACY_PROJECT_EXT},${WVSP_EXT},${AUDIO_ACCEPT}`, openFiles, t('file.openType'))
   const recent = useRecentFiles(
     (f) => openFiles([f]),
     (name) => o.fail(t('toast.recentMissing', { file: name })),

@@ -28,7 +28,7 @@ import Toolbar from './Toolbar'
 import Transport from './Transport'
 import { useActions } from './useActions'
 import { useProject, type DropAt } from './useProject'
-import { useProjectFile } from './useProjectFile'
+import { isProjectLike, useProjectFile } from './useProjectFile'
 import { useTempoDetect } from './useTempoDetect'
 import { useExtract } from './useExtract'
 import BlockEditBar from './BlockEditBar'
@@ -418,7 +418,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           )
         }}
         onEndMerge={doc.endMerge}
-        onDropFiles={(files, at) => void load(files, at)}
+        onDropFiles={(list, at) => (list.some(isProjectLike) ? files.openFiles(list) : void load(list, at))}
         onBlockChange={doc.updateBlock}
         onBlocksChange={doc.updateBlocks}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}

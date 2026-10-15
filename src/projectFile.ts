@@ -3,6 +3,8 @@ import type { Clip } from 'wevocal-lib'
 import { DEFAULT_TEMPO, fillBlock, newProject, type Project, type Source } from './project'
 
 export const PROJECT_EXT = '.wvst'
+/** 拡張子を短くする前の名前（中身は同じなので、そのまま開く） */
+export const LEGACY_PROJECT_EXT = '.wvstudio'
 const MAGIC = 'WVST'
 /** 形を変えたら上げる。古い版は読み替える（docs/ARCHITECTURE.md の「保存したデータは壊さない」） */
 const VERSION = 1
