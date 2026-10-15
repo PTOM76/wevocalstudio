@@ -83,9 +83,6 @@ export function slipPatch(p: Project, b: Block, dt: number): Partial<Block> {
 /** ドラッグで変える値。dt は動かした時間（秒）、di は動かしたトラックの数。stretch なら端で速度ごと伸び縮みする */
 export function dragPatch(p: Project, d: Drag, dt: number, di: number, stretch = false): Partial<Block> {
   const b = d.block
-  const source = p.sources.find((s) => s.id === b.source)
-  // 元の音の長さ（秒）
-  const total = source?.duration ?? b.offset + (b.start + b.length) * b.rate
   if (stretch && (d.kind === 'left' || d.kind === 'right')) {
     // 使う元の音の範囲はそのままで、長さと速度を変える
     const span = b.length * b.rate
@@ -105,7 +102,8 @@ export function dragPatch(p: Project, d: Drag, dt: number, di: number, stretch =
       return { start: b.start + move, offset: b.offset + move * b.rate, length, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length) }
     }
     case 'right': {
-      const length = Math.max(MIN_LENGTH, Math.min((total - b.offset) / b.rate, b.length + dt))
+      // 元の音の終わりより先にも伸ばせる（足りない所は無音。素材が少し短くてもグリッドにぴったり合わせられる）
+      const length = Math.max(MIN_LENGTH, b.length + dt)
       return { length, fadeIn: Math.min(b.fadeIn, length), fadeOut: Math.min(b.fadeOut, length) }
     }
     case 'fadeIn':
@@ -148,7 +146,14 @@ export function snapTime(t: number, edges: number[], s: SnapGrid): number | null
 /** ドラッグで動かした時間 dt を吸い付ける。移動は頭か終わりの近い方、端はその端を寄せる */
 export function snapDelta(d: Drag, dt: number, edges: number[], grid: SnapGrid): number {
   const b = d.block
-  const points = d.kind === 'move' ? [b.start, b.start + b.length] : d.kind === 'left' ? [b.start] : d.kind === 'right' ? [b.start + b.length] : []
+  // 移動は頭を先に寄せる（長さがグリッドの倍数でないとき、終わりに寄せると頭がグリッドから外れる）。頭に寄せ先がなければ終わり
+  if (d.kind === 'move') {
+    const head = snapTime(b.start + dt, edges, grid)
+    if (head !== null) return head - b.start
+    const tail = snapTime(b.start + b.length + dt, edges, grid)
+    return tail !== null ? tail - b.start - b.length : dt
+  }
+  const points = d.kind === 'left' ? [b.start] : d.kind === 'right' ? [b.start + b.length] : []
   let best: number | null = null
   for (const at of points) {
     const s = snapTime(at + dt, edges, grid)
