@@ -56,21 +56,26 @@ export function usePlayerSync(o: {
     return () => cancelAnimationFrame(id)
   }, [playing, range, repeat, project, end])
 
-  // 再生中に変えた値を音に反映する（今の位置から組み直す）
-  // 変わった波形ブロックだけを差し替える（全部を鳴らし直さない）
-  const replay = () => player.current.update(project)
-  // 続けて変えている間（ドラッグなど）は少し待ってから差し替える
+
+  const projectRef = useRef(project)
+  projectRef.current = project
+
+  // 再生中に変えた値を音に反映する（変わったトラックの声だけをミキサーに送る）
+  const replay = () => player.current.update(projectRef.current)
+  // 続けて変えている間（ドラッグなど）は 50ms に 1 回まで送る（最後の変更は必ず送る）
+  const lastReplay = useRef(0)
   useEffect(() => {
     if (!player.current.playing) return
-    const id = setTimeout(replay, 30)
+    const wait = Math.max(0, lastReplay.current + 50 - performance.now())
+    const id = setTimeout(() => {
+      lastReplay.current = performance.now()
+      replay()
+    }, wait)
     return () => clearTimeout(id)
     // project が変わったときだけ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project])
-
   // かたまりが 1 つできるたびに、ゲージを動かし、再生中ならその波形ブロックを差し替え、時間軸の「処理中」を描き直す（表示はまとめて 0.1 秒に 1 回）
-  const projectRef = useRef(project)
-  projectRef.current = project
   useEffect(() => {
     let timer = 0
     let lastDone = 0
