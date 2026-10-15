@@ -4,23 +4,21 @@ import KanaCutDialog from 'wevocalanalyzer/KanaCutDialog'
 import { placeMorae } from './sampler'
 import { segmentOf } from './useExtract'
 import { Link } from '@mui/material'
-import { AUDIO_ACCEPT, flatEq } from 'wevocal-lib'
+import { AUDIO_ACCEPT, flatEq, segmentAt, tempoSegments } from 'wevocal-lib'
 import BlockDialog from './BlockDialog'
 import EqDialog from './EqDialog'
-import MarkerDialog from './MarkerDialog'
 import type { Dialogs } from './useDialogs'
-import { AboutDialog, LicensesDialog, RenameDialog } from 'pevenmui'
+import { AboutDialog, HistoryDialog, LicensesDialog, RenameDialog } from 'pevenmui'
 import type { Clip } from 'wevocal-lib'
 import { videoLook, type VideoLook } from 'wevocalconverter/host'
 import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { kanaHost, videoHost } from './addons'
 import type { Range } from 'wevocal-lib'
-import { ExportDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
+import { ExportDialog, MarkerTempoDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
 import { addClipTrack } from './project'
 import { AppIcon } from './AppHeader'
 import { app } from './appConfig'
-import HistoryDialog from './HistoryDialog'
 import { useT } from './i18n'
 import SettingsDialog from './settings/SettingsDialog'
 import type { Settings } from './settings/settings'
@@ -53,6 +51,7 @@ export default function AppDialogs(p: {
   // プロパティを開いている波形ブロック（複数なら一括で変える）、編集しているマーカー、EQ を開いているトラック
   const editing = dialogs.arg<string[]>('block') ?? []
   const marker = project.markers.find((m) => m.id === dialogs.arg<string>('marker')) ?? null
+  const tempoMarker = project.markers.find((m) => m.id === dialogs.arg<string>('markerTempo')) ?? null
   const eqOf = project.tracks.find((tr) => tr.id === dialogs.arg<string>('eq'))
   const sourceInput = useRef<HTMLInputElement>(null)
   // 一音ずつ切り出す波形ブロックと、その音（元の音の、波形ブロックが使っている範囲）
@@ -61,7 +60,15 @@ export default function AppDialogs(p: {
   return (
     <>
       <ShortcutsDialog open={dialogs.isOpen('shortcuts')} onClose={dialogs.closer('shortcuts')} />
-      <HistoryDialog open={dialogs.isOpen('history')} steps={p.doc.steps} index={p.doc.stepIndex} onGoto={p.doc.goto} onClose={dialogs.closer('history')} />
+      {/* 編集の履歴（PevenMUI の HistoryDialog。WeVocalSynth と同じ）。一番上は開いたとき */}
+      <HistoryDialog
+        open={dialogs.isOpen('history')}
+        labels={p.doc.steps.slice(1).map((k) => t(k))}
+        done={p.doc.stepIndex}
+        onJump={p.doc.goto}
+        onClose={dialogs.closer('history')}
+        text={{ title: t('history.title'), opened: t('history.opened'), current: t('history.current') }}
+      />
       <ExportDialog
         t={t}
         open={dialogs.isOpen('export')}
@@ -191,13 +198,14 @@ export default function AppDialogs(p: {
           if (id) doc.updateTrack(id, { name: name.trim() })
         }}
       />
-      <MarkerDialog
-        marker={marker}
-        onClose={dialogs.closer('marker')}
-        bpm={project.tempo.bpm}
-        beatsPerBar={project.tempo.beatsPerBar}
-        onChange={(patch) => marker && doc.updateMarker(marker.id, patch)}
-        onRemove={() => marker && doc.removeMarker(marker.id)}
+      {/* マーカーの名前の変更（PevenMUI の RenameDialog）と、ここからのテンポ（wevocal-lib の MarkerTempoDialog。WeVocalSynth と同じ） */}
+      <RenameDialog name={marker?.name ?? null} title={t('marker.rename')} onClose={dialogs.closer('marker')} onRename={(name) => marker && doc.updateMarker(marker.id, { name: name.trim() })} />
+      <MarkerTempoDialog
+        t={t}
+        marker={tempoMarker}
+        current={tempoMarker ? segmentAt(tempoSegments(project.tempo, project.markers.filter((m) => m.id !== tempoMarker.id)), tempoMarker.time) ?? project.tempo : project.tempo}
+        onClose={dialogs.closer('markerTempo')}
+        onChange={(tempo) => tempoMarker && doc.updateMarker(tempoMarker.id, { tempo })}
       />
       <BlockDialog
         blocks={project.blocks.filter((b) => editing.includes(b.id))}

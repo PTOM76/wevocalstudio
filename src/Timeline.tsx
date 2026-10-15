@@ -49,7 +49,7 @@ export default function Timeline(p: {
   /** 波形ブロックの右クリック（画面の座標） */
   onBlockMenu: (id: string, x: number, y: number) => void
   /** 何もない所の右クリック（目盛りか、トラックの空いている所）。time はグリッドに合わせた時刻 */
-  onEmptyMenu: (kind: 'lane' | 'ruler', time: number, track: string | null, x: number, y: number) => void
+  onEmptyMenu: (kind: 'lane' | 'ruler', time: number, track: string | null, x: number, y: number, marker?: string) => void
   /** Ctrl+ドラッグで、写しをその場に残す */
   onCopyBlocks: (blocks: Block[]) => void
   /** 目盛りの上のマーカーをダブルクリック */
@@ -289,6 +289,13 @@ export default function Timeline(p: {
     return Math.max(0, origin + Math.round((t - origin) / step) * step)
   }
 
+  /** 目盛りの上で、x にあるマーカー（旗の幅の中か、線の近く） */
+  const markerAtX = (x: number) =>
+    p.project.markers.find((m) => {
+      const mx = (m.time - view.scroll) * view.pps
+      return x >= mx - 4 && x <= mx + 60
+    })
+
   /** ダブルクリック（タッチはダブルタップ）。波形ブロックはプロパティ、エンベロープの点は消す、マーカーは編集 */
   const doubleAt = (x: number, oy: number) => {
     const y = cy(oy)
@@ -307,10 +314,7 @@ export default function Timeline(p: {
     }
     if (y >= RULER) return
     // 旗の幅の中か、線の近く
-    const m = p.project.markers.find((m) => {
-      const mx = (m.time - view.scroll) * view.pps
-      return x >= mx - 4 && x <= mx + 60
-    })
+    const m = markerAtX(x)
     if (m) p.onMarkerEdit(m.id)
   }
 
@@ -326,7 +330,9 @@ export default function Timeline(p: {
     if (!hit) {
       const track = y > TOP ? (trackAt(y)?.id ?? null) : null
       if (track) p.onSelectTrack(track)
-      return p.onEmptyMenu(y < RULER ? 'ruler' : 'lane', gridAt(x, shift), track, cx, cyClient)
+      // 目盛りの上のマーカー（旗の幅の中か、線の近く）を押したら、そのマーカーの操作もメニューに出す
+      const mk = y < RULER ? markerAtX(x) : undefined
+      return p.onEmptyMenu(y < RULER ? 'ruler' : 'lane', gridAt(x, shift), track, cx, cyClient, mk?.id)
     }
     if (!p.selected.includes(hit.block.id)) p.onSelect([hit.block.id])
     p.onSelectTrack(hit.block.track)

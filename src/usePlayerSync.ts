@@ -99,7 +99,8 @@ export function usePlayerSync(o: {
     })
   }, [])
 
-  // ピッチを変えた音を用意する（再生位置か編集カーソルに近い所から。できたかたまりから鳴らす）
+  // ピッチを変えた音を用意する（再生位置か編集カーソルに近い所から。できたかたまりから鳴らす）。
+  // 再生位置を変えたら（cursor が変わる）、新しい位置に近い所から頼み直す。でないと、前の位置の近くを作り終えるまで、新しい位置は鳴らない
   useEffect(() => {
     let alive = true
     preparePitch(project, player.current.playing ? player.current.position() : cursor)
@@ -112,6 +113,7 @@ export function usePlayerSync(o: {
     return () => {
       alive = false
     }
-  }, [project])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, cursor])
 
 }

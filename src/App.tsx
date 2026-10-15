@@ -79,7 +79,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [timelineWidth, setTimelineWidth] = useState(0)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
   // 何もない所の右クリックのメニュー（押した所の時刻とトラック）
-  const [emptyAt, setEmptyAt] = useState<{ kind: 'lane' | 'ruler'; time: number; track: string | null; x: number; y: number } | null>(null)
+  const [emptyAt, setEmptyAt] = useState<{ kind: 'lane' | 'ruler'; time: number; track: string | null; x: number; y: number; marker?: string } | null>(null)
   // 「ここに読み込む」の行き先（ファイルを選んだら使う）
   const importTarget = useRef<DropAt | undefined>(undefined)
   // プロパティを開いている波形ブロック（複数なら一括で変える）
@@ -393,7 +393,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlockChange={doc.updateBlock}
         onBlocksChange={doc.updateBlocks}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
-        onEmptyMenu={(kind, time, track, x, y) => setEmptyAt({ kind, time, track, x, y })}
+        onEmptyMenu={(kind, time, track, x, y, marker) => setEmptyAt({ kind, time, track, x, y, marker })}
         onCopyBlocks={(blocks) => void doc.insertBlocks(blocks)}
         onMarkerEdit={(id) => dialogs.open('marker', id)}
         onProperties={(id) => dialogs.open('block', selected.includes(id) ? selected : [id])}
@@ -485,7 +485,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onToEnd={() => seek(end)}
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
-      <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track) : []} onClose={() => setEmptyAt(null)} />
+      <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track, emptyAt.marker) : []} onClose={() => setEmptyAt(null)} />
       <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} />
 
       {!mobile && p.settings.showStatusBar && (
@@ -493,6 +493,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           fileName={fileName}
           dirty={files.dirty}
           onRename={setFileName}
+          duration={Math.max(end, range?.end ?? 0)}
+          onQuickSave={files.canSaveToFolder ? files.saveRangeToFolder : undefined}
           sampleRate={48000}
           tracks={project.tracks.length}
           range={range}

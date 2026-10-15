@@ -51,7 +51,7 @@ export interface ActionContext {
   exportVideo: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
-  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut', arg?: string) => void
+  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo', arg?: string) => void
   /** 選んだ波形ブロックを確定する（音にして元の音を置き換える） */
   bake: (ids: string[]) => void
   extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void }
@@ -386,9 +386,18 @@ export function useActions(c: ActionContext) {
   ]
 
   /** 何もない所の右クリックのメニュー。time と track は押した所 */
-  const emptyMenu = (kind: 'lane' | 'ruler', time: number, track: string | null): MenuEntry[] =>
+  const emptyMenu = (kind: 'lane' | 'ruler', time: number, track: string | null, marker?: string): MenuEntry[] =>
     kind === 'ruler'
       ? [
+          // 押したマーカーの操作（名前の変更、ここからのテンポ、削除。WeVocalSynth と同じ）
+          ...(marker
+            ? [
+                { label: t('marker.rename'), onClick: () => c.openDialog('marker', marker) },
+                { label: t('marker.tempo'), onClick: () => c.openDialog('markerTempo', marker) },
+                { label: t('marker.remove'), onClick: () => doc.removeMarker(marker) },
+                divider,
+              ]
+            : []),
           { label: t('menu.addMarkerHere'), onClick: () => doc.addMarker(time) },
           item('detectTempo'),
           divider,

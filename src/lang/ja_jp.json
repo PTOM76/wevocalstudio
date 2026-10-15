@@ -244,6 +244,7 @@
   "settings.cat.vocal": "ボーカル抽出",
   "settings.vocalBeforeAnalysis": "和音の分離と一音ずつ切り出しの前にボーカルを抽出する",
   "settings.vocalBeforeAnalysisHelp": "伴奏を除いてから処理するため、伴奏がある曲で精度が上がります。和音の分離では、伴奏は別のトラックになります。一音ずつ切り出しでは、範囲を求めるのに使用するだけで、トラックの音は変わりません",
+  "settings.beatsPerBar": "1小節の拍数",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
@@ -345,8 +346,9 @@
 
   "marker.title": "マーカー",
   "marker.name": "名前",
-  "marker.remove": "削除",
-  "marker.tempo": "ここからテンポを変える",
+  "marker.remove": "マーカーを削除",
+  "marker.tempo": "ここからテンポを変える…",
+  "marker.rename": "マーカーの名前を変更…",
 
   "eq.title": "EQ（{name}）",
   "eq.on": "オン",
@@ -386,6 +388,8 @@
   "history.restore": "前回の作業の復元",
   "history.select": "選択",
   "history.envelope": "エンベロープ",
+  "history.opened": "ファイルを開いた時点",
+  "history.current": "現在",
 
   "confirm.newProject": "今の作業を閉じて、新しいプロジェクトにしますか？（保存していない変更は失われます）",
   "confirm.discard": "保存していない変更があります。破棄して開きますか？",
@@ -477,6 +481,7 @@
   "folder.saved": "「{folder}」に{name}を保存しました",
   "folder.savedMany": "「{folder}」に{n}個のファイルを保存しました",
   "folder.failed": "フォルダーへ保存できませんでした: {error}",
+  "folder.save": "選択範囲をフォルダーへ保存",
 
   "addon.vocalExtractor": "ボーカル抽出の実行環境",
   "addon.runtimeGpu": "ボーカル抽出の実行環境（GPU）",
@@ -645,5 +650,15 @@
   "kanaCut.transcribe": "文字化する",
   "kanaCut.transcribing": "文字化しています…",
   "kanaCut.vocalsFirst": "先にボーカルを抽出する（伴奏がある場合）",
-  "kanaCut.trackName": "{name}（一音ずつ）"
+  "kanaCut.trackName": "{name}（一音ずつ）",
+
+  "selection.beats": "{n}拍",
+  "selection.saveOrDrag": "クリックでフォルダーへ保存、ドラッグでフォルダーへ書き出し（WAV）",
+  "selection.dragOut": "ドラッグしてフォルダーへ書き出す（WAV）",
+
+  "clip.start": "開始",
+  "clip.end": "終了",
+
+  "markerTempo.title": "「{name}」からのテンポ",
+  "markerTempo.remove": "テンポを外す"
 }

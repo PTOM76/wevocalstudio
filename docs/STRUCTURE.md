@@ -23,12 +23,10 @@ src/
   EqDialog.tsx  トラックのグラフィック EQ のダイアログ（WeVocalSynth と同じ EQ。グラフは wevocal-lib/react）
   grid.ts  時間軸の線（拍と小節、または時間）と、スナップの寄せ先。画面を知らない
   history.ts  操作履歴の名前。変える前と後のプロジェクトを比べて、何をしたかを決める（呼び出す所ごとに名前を渡さずに済むように）
-  HistoryDialog.tsx  操作履歴の一覧（WeVocalSynth と同じ）。押した所まで戻る、または進む
   i18n.ts  多言語化（訳文は lang/ の JSON）
   keymap.ts  キーの割り当て。既定の表（操作の名前 → キー）と、設定の「キーとマウス」で変えた分（PevenMUI の keymap と同じ形）
   LevelMeter.tsx  音量メーター（wevocal-lib の部品にテーマの色を渡す。WeVocalSynth と同じ）
   main.tsx  起動。設定を読み、言語、テーマ、画面の大きさを PevenProvider に渡す
-  MarkerDialog.tsx  マーカーの名前の変更と削除、ここからテンポを変える（目盛りの上のマーカーをダブルクリック。テンポは WeVocalSynth と同じ）
   MeterFader.tsx  音量のつまみとレベルメーターを一つにした部品と、パンの棒（トラックとマスターの欄。DAW によくある形）
   overlap.ts  重なった波形ブロックの段の割り当て（重なっている所だけトラックの高さを段に分ける）。画面を知らない
   overview.ts  ミニマップ用の、全トラックを重ねた小さな音（1 秒 1000 点の振幅）。元の音は書き換えず、波形ブロックの位置と音量から作る

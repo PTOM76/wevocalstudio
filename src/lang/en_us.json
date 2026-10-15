@@ -244,6 +244,7 @@
   "settings.cat.vocal": "Vocal extraction",
   "settings.vocalBeforeAnalysis": "Extract vocals before chord separation and one-note cutting",
   "settings.vocalBeforeAnalysisHelp": "Removes the accompaniment first, which improves accuracy for songs with accompaniment. Chord separation puts the accompaniment on its own track. One-note cutting uses the vocals only to find the ranges and leaves the track audio unchanged",
+  "settings.beatsPerBar": "Beats per bar",
 
   "status.ready": "Ready",
   "status.playing": "Playing",
@@ -345,8 +346,9 @@
 
   "marker.title": "Marker",
   "marker.name": "Name",
-  "marker.remove": "Remove",
-  "marker.tempo": "Change tempo from here",
+  "marker.remove": "Delete marker",
+  "marker.tempo": "Change tempo from here…",
+  "marker.rename": "Rename marker…",
 
   "eq.title": "EQ ({name})",
   "eq.on": "On",
@@ -386,6 +388,8 @@
   "history.restore": "Restore previous work",
   "history.select": "Select",
   "history.envelope": "Envelope",
+  "history.opened": "Opened",
+  "history.current": "Current",
 
   "confirm.newProject": "Close the current work and start a new project? Unsaved changes will be lost.",
   "confirm.discard": "There are unsaved changes. Discard them and open?",
@@ -477,6 +481,7 @@
   "folder.saved": "Saved {name} to \"{folder}\"",
   "folder.savedMany": "Saved {n} files to \"{folder}\"",
   "folder.failed": "Could not save to folder: {error}",
+  "folder.save": "Save selection to folder",
 
   "addon.vocalExtractor": "Vocal extraction runtime",
   "addon.runtimeGpu": "Vocal extraction runtime (GPU)",
@@ -645,5 +650,15 @@
   "kanaCut.transcribe": "Transcribe",
   "kanaCut.transcribing": "Transcribing…",
   "kanaCut.vocalsFirst": "Extract vocals first (for songs with accompaniment)",
-  "kanaCut.trackName": "{name} (morae)"
+  "kanaCut.trackName": "{name} (morae)",
+
+  "selection.beats": "{n} beats",
+  "selection.saveOrDrag": "Click to save to folder, drag to a folder to export (WAV)",
+  "selection.dragOut": "Drag to a folder to export (WAV)",
+
+  "clip.start": "Start",
+  "clip.end": "End",
+
+  "markerTempo.title": "Tempo from {name}",
+  "markerTempo.remove": "Remove tempo"
 }
