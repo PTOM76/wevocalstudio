@@ -432,6 +432,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       </Box>
       {p.settings.showAnalysis && (
         <AnalysisPanel
+          bpm={project.tempo.bpm}
           block={project.blocks.find((b) => b.id === selected[0]) ?? null}
           source={sourceOf(project.blocks.find((b) => b.id === selected[0])?.source)}
           view={view}

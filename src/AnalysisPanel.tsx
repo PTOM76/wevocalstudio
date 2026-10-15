@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import { faEraser, faHand, faPen } from '@fortawesome/free-solid-svg-icons'
 import { Divider, ToolButton } from './Toolbar'
+import PitchToolBar from './PitchToolBar'
 import { usePalette } from 'pevenmui'
 import type { Clip, Range } from 'wevocal-lib'
 import { analyzePitch, analyzeSpectrogram, renderSpectrogram, type Pitch, type Spectrogram } from 'wevocalanalyzer'
@@ -62,6 +63,8 @@ export default function AnalysisPanel(p: {
   version: number
   /** 範囲選択（つかむとき、範囲の中なら範囲をまとめて動かす） */
   range: Range | null
+  /** テンポ（ビブラートの速さ、MIDI のテンポ） */
+  bpm: number
   /** ペンで描いたカーブ（merge は続けて描く間の履歴のまとまり） */
   onCurve: (curve: PitchCurve | undefined, merge: string) => void
   onEndMerge: () => void
@@ -263,6 +266,9 @@ export default function AnalysisPanel(p: {
         <ToolButton icon={faHand} label="analysis.grab" help="analysis.grabHelp" pressed={tool === 'grab'} disabled={!p.block} onClick={() => setTool(tool === 'grab' ? null : 'grab')} />
         <Divider />
         <ToolButton icon={faEraser} label="analysis.clearCurve" disabled={!p.block?.curve} onClick={() => p.onCurve(undefined, `clear${strokes.current++}`)} />
+        <Divider />
+        {/* ピッチの道具（wevocal-lib の計算とダイアログ。WeVocalSynth と同じ） */}
+        <PitchToolBar block={p.block} f0={orig} range={p.range} bpm={p.bpm} onCurve={p.onCurve} />
       </Box>
       <Box sx={{ display: 'flex', height: HEIGHT }}>
         <Box sx={{ width: p.headerWidth, flexShrink: 0, borderRight: 1, borderColor: 'divider', p: 1, boxSizing: 'border-box', overflow: 'hidden' }}>

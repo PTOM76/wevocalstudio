@@ -513,6 +513,7 @@
   "midi.track": "トラック",
   "midi.trackItem": "{name}（{count}音）",
   "midi.transpose": "移調",
+  "midi.title": "MIDIの音程を当てはめる",
 
   "play.preview": "試聴",
 
@@ -551,6 +552,8 @@
   "vibrato.rate": "速さ",
   "vibrato.secondUnit": "秒",
   "vibrato.title": "ビブラート",
+  "vibrato.delay": "遅れ",
+  "vibrato.syncBpm": "BPM {bpm}に合わせる",
 
   "preset.button": "プリセット",
   "preset.empty": "保存したプリセットはありません",
@@ -597,5 +600,17 @@
   "video.unsupported": "このブラウザは動画の書き出しに対応していません",
   "video.wave": "波形",
 
-  "task.exporting": "書き出し中…"
+  "task.exporting": "書き出し中…",
+
+  "pitchTool.flatten": "ピッチの揺れを平らにする（選択範囲、なければ全体）",
+  "pitchTool.create": "作成",
+  "pitchTool.hint": "作成した曲線はピッチパネルに青い線で表示されます。ツールバーの「適用」で音声に反映します",
+  "pitchTool.target": "対象: {range}",
+
+  "snap.title": "音階に揃える",
+  "snap.keepShape": "揺れ（ビブラートなど）を残す",
+  "snap.nearest": "音ごとに近い半音へ揃える",
+  "snap.note": "指定した音に揃える",
+  "snap.speed": "揃えるまでの時間",
+  "snap.strength": "強さ"
 }

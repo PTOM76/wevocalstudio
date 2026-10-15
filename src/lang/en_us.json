@@ -513,6 +513,7 @@
   "midi.track": "Track",
   "midi.trackItem": "{name} ({count} notes)",
   "midi.transpose": "Transpose",
+  "midi.title": "Fit pitch to MIDI",
 
   "play.preview": "Preview",
 
@@ -551,6 +552,8 @@
   "vibrato.rate": "Rate",
   "vibrato.secondUnit": "s",
   "vibrato.title": "Vibrato",
+  "vibrato.delay": "Delay",
+  "vibrato.syncBpm": "Match BPM {bpm}",
 
   "preset.button": "Presets",
   "preset.empty": "No saved presets",
@@ -597,5 +600,17 @@
   "video.unsupported": "This browser does not support video export",
   "video.wave": "Wave",
 
-  "task.exporting": "Exporting…"
+  "task.exporting": "Exporting…",
+
+  "pitchTool.flatten": "Flatten pitch fluctuation (selection, or whole)",
+  "pitchTool.create": "Create",
+  "pitchTool.hint": "The curve appears as a blue line in the pitch lane. Press Apply in the toolbar to render it",
+  "pitchTool.target": "Target: {range}",
+
+  "snap.title": "Snap to scale",
+  "snap.keepShape": "Keep fluctuation (vibrato, etc.)",
+  "snap.nearest": "Snap each note to the nearest semitone",
+  "snap.note": "Snap everything to",
+  "snap.speed": "Glide time",
+  "snap.strength": "Strength"
 }
