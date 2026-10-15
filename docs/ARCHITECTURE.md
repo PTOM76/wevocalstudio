@@ -1,7 +1,7 @@
 # アーキテクチャ設計
 WeVocal Studio は、複数のトラックに波形ブロックを並べて編集する DAW。仕組みは WeVocalSynth にそろえる。Synth と Analyzer にある機能は Studio にもそろえる。React の画面と、Web Audio の再生、書き出しで構成する。状態管理は React のフックだけで行う。
 
-関連: [コーディング規約](CODING.md) / [バージョン履歴](VERSION.md)
+関連: [コーディング規約](CODING.md) / [バージョン履歴](VERSION.md) / [アルゴリズム](ALGORITHM.md)
 
 ## 設計の方針
 WeVocalSynth（docs/ARCHITECTURE.md）と同じ。
@@ -23,7 +23,7 @@ Synth は編集した音声を書き換えて持つ。Studio は元の音（`Sou
 - 再生位置（止まっていれば編集カーソル）に近いかたまりから作り、できたかたまりから鳴らす。つなぎ目は 5ms で重ねる。できていない所は鳴らさない
 - Worker は CPU のコアの数に合わせて 2〜4 つ使う。wasm は進み具合を返し（WeVocalSynth と同じ report_progress）、ステータスバーのゲージと波形ブロックの「処理中 n%」に出す
 - wasm は SIMD（simd128）を入れてビルドする（WeVocalSynth と同じ `dsp/.cargo/config.toml`）
-- 再生中に変えたら、変わった波形ブロックだけを差し替え（20ms でつなぐ）、トラックとマスターは値だけを変える（`engine.ts` の Graph）
+- 波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が今かかっている所だけを読んで足す。再生中に変えたら声の一覧を送り直し（変わった声は 20ms でつなぐ）、トラックとマスターは値だけを変える（`engine.ts` の Graph、`src/mixer/`、[アルゴリズム](ALGORITHM.md)）
 
 ## 画面を軽くする
 DAW と同じく、毎フレーム変わるもの（再生位置）と、変えたときだけ変わるもの（波形ブロック）を分けて描く（WeVocalSynth と同じ）。

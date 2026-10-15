@@ -19,7 +19,7 @@ src/
   blockDrag.ts  波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
   BlockEditBar.tsx  画面の下に出す編集のボタンの列（PevenMUI の EditBar）。波形ブロックを選んでいれば波形ブロックの編集、範囲を選んでいれば範囲の編集
   drawTimeline.ts  時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
-  engine.ts  再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）。
+  engine.ts  再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
   envelopes.ts  エンベロープの種類（音量とピッチ）。点の読み書きと、波形ブロックの中の縦の位置と値の換算をまとめる（時間軸の編集と描画で共通）
   grid.ts  時間軸の線（拍と小節、または時間）と、スナップの寄せ先。画面を知らない
   history.ts  操作履歴の名前。変える前と後のプロジェクトを比べて、何をしたかを決める（呼び出す所ごとに名前を渡さずに済むように）
@@ -59,7 +59,8 @@ src/dsp/
   worker.ts  wasm の処理（ピッチと速度の変更、テンポの解析）を画面のスレッドの外で行う Worker
 
 src/mixer/
-  mixer.worklet.ts  波形ブロックの音を足すミキサー（AudioWorklet。音を出すスレッドで 128 サンプルずつ、今かかっている声だけを読んで足す。memo/studio-engine.md）
+  mixer.ts  ミキサー（AudioWorklet）の読み込みと、トラックごとのミキサー、音のデータの送り先、波形ブロックから声を作る
+  mixer.worklet.ts  波形ブロックの音を足すミキサー（AudioWorklet。音を出すスレッドで 128 サンプルずつ、今かかっている声だけを読んで足す）
   types.ts  ミキサー（AudioWorklet）とやり取りする形。時刻はすべて AudioContext の秒（currentTime と同じ時計）
 
 src/settings/
