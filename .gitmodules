@@ -10,3 +10,6 @@
 [submodule "extractor"]
 	path = extractor
 	url = https://github.com/PTOM76/wevocalextractor.git
+[submodule "converter"]
+	path = converter
+	url = https://github.com/PTOM76/wevocalconverter.git

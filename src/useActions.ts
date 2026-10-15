@@ -47,9 +47,13 @@ export interface ActionContext {
   gridStep: () => number
   newProject: () => void
   newWindow: () => void
+  /** 動画の書き出し（追加機能「変換」） */
+  exportVideo: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
   openDialog: (id: 'synth' | 'sampler' | 'renameTrack', arg?: string) => void
+  /** 選んだ波形ブロックを確定する（音にして元の音を置き換える） */
+  bake: (ids: string[]) => void
   extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void }
   openProperties: (id: string) => void
   openFile: () => void
@@ -182,6 +186,7 @@ export function useActions(c: ActionContext) {
     insertSilence: { enabled: !!c.range, run: () => c.range && doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start)) },
     repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId)) },
     normalize: { enabled: any, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
+    bake: { enabled: any, run: () => c.bake(ids) },
     // 分けるのは 1 つずつ（選んでいる最後のもの）
     synth: { run: () => c.openDialog('synth') },
     sampler: { enabled: any, run: () => any && c.openDialog('sampler', ids[ids.length - 1]) },
@@ -237,6 +242,7 @@ export function useActions(c: ActionContext) {
     saveBlocksToFolder: { enabled: !!c.folder && any, run: () => c.folder?.saveBlocks(ids) },
     import: { run: c.importFiles },
     export: { enabled: doc.project.blocks.length > 0, run: c.openExport },
+    exportVideo: { enabled: doc.project.blocks.length > 0, run: c.exportVideo },
     pitchUp: { enabled: any, run: () => doc.nudgePitch(ids, 1) },
     pitchDown: { enabled: any, run: () => doc.nudgePitch(ids, -1) },
     pitchUpFine: { enabled: any, run: () => doc.nudgePitch(ids, 0.1) },
@@ -282,7 +288,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.file'),
       accessKey: 'F',
-      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), ...(c.folder ? [item('saveRangeToFolder'), item('saveBlocksToFolder')] : []), divider, { label: t('menu.settings'), onClick: c.openSettings }],
+      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), item('exportVideo'), ...(c.folder ? [item('saveRangeToFolder'), item('saveBlocksToFolder')] : []), divider, { label: t('menu.settings'), onClick: c.openSettings }],
     },
     {
       label: t('menu.edit'),
@@ -292,7 +298,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments')],
+      entries: [item('properties'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments')],
     },
     {
       label: t('menu.track'),
@@ -366,6 +372,7 @@ export function useActions(c: ActionContext) {
     item('pitchUp'),
     item('pitchDown'),
     item('pitchReset'),
+    item('bake'),
     divider,
     item('cut'),
     item('copy'),

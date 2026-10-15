@@ -35,6 +35,7 @@ export type Action =
   | 'insertSilence'
   | 'repeatRange'
   | 'normalize'
+  | 'bake'
   | 'synth'
   | 'sampler'
   | 'splitVocals'
@@ -60,6 +61,7 @@ export type Action =
   | 'open'
   | 'save'
   | 'saveAs'
+  | 'exportVideo'
   | 'saveRangeToFolder'
   | 'saveBlocksToFolder'
   | 'import'
@@ -119,6 +121,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   repeatRange: [],
   // 選んだ波形ブロックのピークを -1 dB にそろえる（WeVocalSynth と同じ）
   normalize: [],
+  // 選んだ波形ブロックの今の音（速度、ピッチ、音量、フェード、エンベロープ）を確定して、新しい元の音にする
+  bake: [],
   // 選んだ波形ブロックを、ボーカルと伴奏、主旋律とハモリと伴奏、楽器ごとに分けて、新しいトラックに並べる（追加機能）
   // 音を 0 から作る、選んだ波形ブロックを MIDI の音符に並べる
   synth: [],
@@ -149,6 +153,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   open: ['Ctrl+KeyO'],
   save: ['Ctrl+KeyS'],
   saveAs: ['Ctrl+Shift+KeyS'],
+  // 動画の書き出し（追加機能「変換」）
+  exportVideo: [],
   // 範囲、波形ブロックをフォルダーへ保存（Chrome、Edge）
   saveRangeToFolder: [],
   saveBlocksToFolder: [],

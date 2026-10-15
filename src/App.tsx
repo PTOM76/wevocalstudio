@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Snackbar } from '@mui/material'
-import { EmptyState, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
+import { EmptyState, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
@@ -31,6 +31,8 @@ import { useProject, type DropAt } from './useProject'
 import { useProjectFile } from './useProjectFile'
 import { useTempoDetect } from './useTempoDetect'
 import { useExtract } from './useExtract'
+import { CONVERTER_ADDON } from 'wevocalconverter/host'
+import { applyBaked, bakeBlocks } from './bake'
 import { faFolderOpen, faMicrophone } from '@fortawesome/free-solid-svg-icons'
 import { useRecorder } from './useRecorder'
 import { useAutosave } from './useAutosave'
@@ -118,7 +120,22 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     setPlayPos(from)
     void player.current.play(project, from).then(() => setPlaying(true)).catch(fail)
   }
+  // 追加機能の導入の確かめ（動画の書き出し。PevenMUI）
+  const addonInstall = useAddonInstall()
   // ボーカル抽出と楽器ごとの分離（extractor の host.ts。WeVocalSynth と共通）
+  /** 選んだ波形ブロックを確定する（今の音にして、元の音を置き換える） */
+  const bake = async (ids: string[]) => {
+    const job = startJob('bake', t('bake.job'))
+    try {
+      const baked = await bakeBlocks(doc.project, ids, (v) => job.update(v))
+      doc.apply((pr) => applyBaked(pr, baked))
+      setNotice(t('toast.baked'))
+    } catch (e) {
+      fail(e)
+    } finally {
+      job.end()
+    }
+  }
   const extract = useExtract({ doc, settings: p.settings, fail, notify: setNotice })
   // テンポの解析（候補、BPM の設定）
   const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice })
@@ -229,6 +246,13 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     },
     end,
     openDialog: (id, arg) => dialogs.open(id, arg),
+    // 動画の書き出し: 追加機能「変換」を確かめ、プレビューに使う音を作ってから開く
+    exportVideo: () =>
+      void (async () => {
+        if (!(await addonInstall.ensure(CONVERTER_ADDON))) return
+        dialogs.open('video', await files.renderPreview())
+      })().catch(fail),
+    bake: (ids) => void bake(ids),
     extract: { vocals: (id) => void extract.splitVocals(id), lead: (id) => void extract.splitLead(id), instruments: (id) => void extract.splitInstruments(id) },
     newWindow: () =>
       void openWindowCount().then((n) => (n >= p.settings.maxWindows && !p.settings.extraWindows ? setNotice(t('window.limit', { n: p.settings.maxWindows })) : openNewWindow())),
@@ -461,7 +485,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
       <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track) : []} onClose={() => setEmptyAt(null)} />
-      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} fail={fail} cursor={cursor} />
+      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} />
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar
@@ -484,6 +508,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       </Snackbar>
       {confirmDialog}
       {extract.dialog}
+      {addonInstall.dialog}
       {p.settings.showDebug && <DebugOverlay build={BUILD} />}
       <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
       <Snackbar open={!!notice} autoHideDuration={4000} onClose={() => setNotice(null)}>
