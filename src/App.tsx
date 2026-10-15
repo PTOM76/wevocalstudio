@@ -5,7 +5,7 @@ import { EmptyState, useAddonInstall, ContextMenu, SliderResetContext, TempoFiel
 import StatusBar from './StatusBar'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
-import { openNewWindow, openWindowCount, slot } from 'pevenmui/web'
+import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web'
 import { canRecord, configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
@@ -31,6 +31,7 @@ import { useProject, type DropAt } from './useProject'
 import { useProjectFile } from './useProjectFile'
 import { useTempoDetect } from './useTempoDetect'
 import { useExtract } from './useExtract'
+import BlockEditBar from './BlockEditBar'
 import { CONVERTER_ADDON } from 'wevocalconverter/host'
 import { applyBaked, bakeBlocks } from './bake'
 import { faFolderOpen, faMicrophone } from '@fortawesome/free-solid-svg-icons'
@@ -430,6 +431,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           </Box>
         )}
       </Box>
+      {/* 波形ブロックを選んでいるとき、編集のボタンの列（スマホとタブレットは自動で。設定で変えられる） */}
+      {selected.length > 0 && (p.settings.editBar === 'on' || (p.settings.editBar === 'auto' && (mobile || isMobile()))) && <BlockEditBar commands={commands} />}
       {p.settings.showAnalysis && (
         <AnalysisPanel
           bpm={project.tempo.bpm}

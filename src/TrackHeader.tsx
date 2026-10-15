@@ -96,13 +96,13 @@ export default function TrackHeader(p: {
   // タッチの長押しでメニュー、名前のダブルタップで名前の変更（PevenMUI。iPhone、iPad は contextmenu と dblclick が来ない）
   const longPress = useLongPress()
   const doubleTap = useDoubleTap()
-  // 欄のどこをつかんでも並び替えられる（ボタン、つまみ、名前の入力以外を押して、少し動かしたら始める。タッチは長押しのメニューがあるので持ち手だけ）
+  // 欄のどこをつかんでも並び替えられる（ボタン、つまみ、名前の入力以外を押して、少し動かしたら始める。タッチも同じで、動かしたら長押しのメニューはやめる）
   const grab = useRef<{ x: number; y: number } | null>(null)
   return (
     <Box
       onPointerDown={(e) => {
         p.onSelect(e)
-        grab.current = e.pointerType !== 'touch' && e.button === 0 && !(e.target as HTMLElement).closest('button, input, [role="slider"], .MuiSlider-root') ? { x: e.clientX, y: e.clientY } : null
+        grab.current = e.button === 0 && !(e.target as HTMLElement).closest('button, input, [role="slider"], .MuiSlider-root') ? { x: e.clientX, y: e.clientY } : null
         if (e.pointerType === 'touch') {
           const { clientX: x, clientY: y } = e
           longPress.start(x, y, () => setMenu({ x, y }))
@@ -113,6 +113,7 @@ export default function TrackHeader(p: {
         const g = grab.current
         if (g && Math.hypot(e.clientX - g.x, e.clientY - g.y) > 5) {
           grab.current = null
+          longPress.cancel()
           p.onReorderStart(e)
         }
       }}
@@ -134,6 +135,9 @@ export default function TrackHeader(p: {
         height: p.height,
         opacity: p.dragging ? 0.4 : 1,
         userSelect: 'none',
+        touchAction: 'none',
+        // 欄のどこでもつかめるのが分かるように（ボタンやつまみは自分のカーソルになる）
+        cursor: p.dragging ? 'grabbing' : 'grab',
         boxSizing: 'border-box',
         pr: 1,
         // サブトラックは深さだけ字下げする
@@ -150,16 +154,6 @@ export default function TrackHeader(p: {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        {/* ドラッグハンドル（並び替え） */}
-        <Box
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            p.onReorderStart(e)
-          }}
-          sx={{ cursor: 'grab', touchAction: 'none', color: 'text.disabled', fontSize: 11, lineHeight: 1, flexShrink: 0, userSelect: 'none', px: 0.25 }}
-        >
-          ⠿
-        </Box>
         {/* 子があるトラックは、たたむ、開くの印 */}
         {p.hasChildren && (
           <ButtonBase

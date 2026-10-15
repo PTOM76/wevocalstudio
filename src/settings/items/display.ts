@@ -6,6 +6,7 @@ import type { BlockPreset } from '../../BlockDialog'
 import { check, choice, defineItems, value } from './define'
 
 export type ThemeSetting = 'system' | 'light' | 'dark'
+export type EditBarSetting = 'auto' | 'on' | 'off'
 
 /** 「表示」 */
 export const display = defineItems('display', {
@@ -18,6 +19,16 @@ export const display = defineItems('display', {
     ],
   }),
   uiScale: choice<number>(1, { label: 'settings.uiScale', help: 'settings.uiScaleHelp', values: [0.9, 1, 1.1, 1.25], format: (s) => `${Math.round(s * 100)}%` }),
+  // 波形ブロックを選んだときの編集のボタンの列（自動はスマホとタブレットだけ）
+  editBar: choice<EditBarSetting>('auto', {
+    label: 'settings.editBar',
+    help: 'settings.editBarHelp',
+    options: [
+      ['auto', 'settings.editBarAuto'],
+      ['on', 'settings.editBarOn'],
+      ['off', 'settings.editBarOff'],
+    ],
+  }),
   showMeters: check(true, { label: 'settings.showMeters', help: 'settings.showMetersHelp' }),
   language: value<LangSetting>('auto', { label: 'settings.language' }),
 })

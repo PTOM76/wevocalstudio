@@ -633,7 +633,8 @@ export default function Timeline(p: {
               }
               if (!trackDragRef.current) return
               const rect = e.currentTarget.getBoundingClientRect()
-              const y = e.clientY - rect.top + vsRef.current
+              // slotAt は時間軸と同じ座標（目盛りとマスターの分 TOP を含む）なので足す
+              const y = e.clientY - rect.top + vsRef.current + TOP
               setDropSlot(slotAt(y))
             }}
             onPointerUp={() => {
