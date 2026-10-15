@@ -1,6 +1,7 @@
 // wasm の処理の窓口。波形ブロックのピッチと速度を音に反映し（作ったものはキャッシュ）、テンポを解析する。
 // 元の音を CHUNK 秒ごとの「かたまり」に分けて作る（前後に余白を付ける）。区切りは元の音の時刻で決まるので、範囲の違う波形ブロックどうしでも同じかたまりを使い回す。
 // 再生位置（止まっていれば編集カーソル）に近いかたまりから作り、できたものから鳴らす。
+// 近い所は先に軽い方式で下見の音を作って鳴らし、高品質のかたまりができたら差し替える（間に合わない所を無音にしない）。
 // Worker は CPU のコアに合わせて複数使う。作ったかたまりは、使われなくなってもしばらく残す（戻したときに作り直さない）
 import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
 import { audible, CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
@@ -58,6 +59,10 @@ async function request(r: Req, onProgress?: (p: number) => void) {
 /** かたまりの長さ（秒）と、前後に足す余白（秒。区切りでつなぎやすいように） */
 const CHUNK = 4
 const MARGIN = 0.5
+/** 下見の音を先に作る範囲（再生位置から先の秒） */
+const PREVIEW_AHEAD = 15
+/** 下見の音のキーに付ける印 */
+const PREVIEW = '#p'
 /** 使われなくなったかたまりを残す量（バイト） */
 const KEEP_BYTES = 300 * 1024 * 1024
 
@@ -99,6 +104,9 @@ function chunksOf(b: Block) {
   return out
 }
 
+/** 下見を作らなくても速い設定か（SOLA でフォルマントを変えない） */
+const cheap = (b: Block) => b.algorithm === 'sola' && !b.preserveFormant && b.formant === 0
+
 /** 元の音から作り直す要るか（ピッチ、速度、フォルマント、カーブを変えたとき） */
 export const needsProcess = (b: Block) => b.pitch !== 0 || b.rate !== 1 || b.formant !== 0 || !!b.curve?.st.some((v) => v !== 0) || !!b.pitchEnvelope?.some((p) => p.st !== 0)
 
@@ -112,16 +120,17 @@ export interface Piece {
 
 /**
  * 波形ブロックを鳴らす片の列（元の音の時刻の順）。変えていなければ元の音の 1 片。
- * かたまりができていない所は抜ける（その所は鳴らさない）
+ * かたまりができていない所は下見の音を使い、それもなければ抜ける（その所は鳴らさない）。preview が false なら高品質のものだけ
  */
-export function piecesFor(b: Block, source: Source): Piece[] {
+export function piecesFor(b: Block, source: Source, preview = true): Piece[] {
   const [a, z] = spanOf(b)
   if (!needsProcess(b)) return [{ a, z, clip: source.clip, from: 0 }]
   const params = paramsOf(b)
   const out: Piece[] = []
   const now = performance.now()
   for (const k of chunksOf(b)) {
-    const m = made.get(`${params}#${k}`)
+    const key = `${params}#${k}`
+    const m = made.get(key) ?? (preview ? made.get(key + PREVIEW) : undefined)
     if (!m) continue
     m.used = now
     out.push({ a: Math.max(a, m.core[0]), z: Math.min(z, m.core[1]), clip: m.clip, from: m.from })
@@ -140,7 +149,7 @@ export function blockReady(b: Block) {
 /** 鳴らす音を 1 つにまとめたものと、その頭が元の音の何秒か（解析の欄で使う）。まだ全部できていなければ null */
 export function clipFor(b: Block, source: Source): { clip: Clip; from: number } | null {
   if (!needsProcess(b)) return { clip: source.clip, from: 0 }
-  const pieces = piecesFor(b, source)
+  const pieces = piecesFor(b, source, false)
   if (!pieces.length || pieces.length !== chunksOf(b).length) return null
   if (pieces.length === 1) return { clip: pieces[0].clip, from: pieces[0].from }
   // かたまりをつないだ音を作る（つなぎ目はそのまま）
@@ -175,6 +184,8 @@ interface Want {
   k: number
   /** 再生位置からの近さ（秒。小さいほど先に作る） */
   distance: number
+  /** 下見の音（軽い方式） */
+  preview: boolean
 }
 let wanted: Want[] = []
 /** 作っている途中のもの（同じものをもう一度頼まないように）と、その進み具合 */
@@ -228,9 +239,10 @@ async function processChunk(w: Want): Promise<Made> {
       sampleRate: sr,
       semitones: b.pitch,
       stretch: 1 / b.rate,
-      algorithm: ALGORITHM_ID[b.algorithm],
-      preserveFormant: b.preserveFormant || b.formant !== 0,
-      formantSemitones: b.formant,
+      // 下見は SOLA でフォルマントを変えない（高品質の方式の数倍速い）
+      algorithm: ALGORITHM_ID[w.preview ? 'sola' : b.algorithm],
+      preserveFormant: !w.preview && (b.preserveFormant || b.formant !== 0),
+      formantSemitones: w.preview ? 0 : b.formant,
       ...(b.curve || b.pitchEnvelope?.length ? ratiosOf(b, z - a, sr, a / sr) : {}),
     },
     (p) => {
@@ -250,6 +262,8 @@ function run() {
         try {
           const m = await processChunk(w)
           made.set(m.key, m)
+          // 高品質のものができたら下見は要らない
+          if (!w.preview) made.delete(m.key + PREVIEW)
           madeCount++
           doneCount++
         } finally {
@@ -294,14 +308,24 @@ export async function preparePitch(p: Project, around = 0) {
     for (const k of chunksOf(b)) {
       const key = `${params}#${k}`
       used.add(key)
-      if (made.has(key) || inflight.has(key)) continue
+      // 高品質のものを作っている途中でも、下見は先に作る（そのほうが早くできる）
+      if (made.has(key)) continue
+      const pkey = key + PREVIEW
       // かたまりの時間軸の上の範囲と、再生位置との近さ
       const t0 = b.start + (Math.max(b.offset, k * CHUNK) - b.offset) / b.rate
       const t1 = b.start + (Math.min(b.offset + b.length * b.rate, (k + 1) * CHUNK) - b.offset) / b.rate
       // これから鳴る所（再生位置より後ろ）を先にし、過ぎた所は離れているほど後に回す
       const distance = silent + (around < t0 ? t0 - around : around > t1 ? (around - t1) * BEHIND : 0)
       const old = next.get(key)
-      if (!old || distance < old.distance) next.set(key, { key, b, source, k, distance })
+      if (!inflight.has(key) && (!old || distance < old.distance)) next.set(key, { key, b, source, k, distance, preview: false })
+      // 鳴る所の近く（再生位置から先）は、下見を高品質のものより先に作る
+      const ahead = t1 - around
+      if (silent || cheap(b) || ahead < 0 || t0 - around > PREVIEW_AHEAD) continue
+      used.add(pkey)
+      if (made.has(pkey) || inflight.has(pkey)) continue
+      const pd = distance - 1e5
+      const op = next.get(pkey)
+      if (!op || pd < op.distance) next.set(pkey, { key: pkey, b, source, k, distance: pd, preview: true })
     }
   }
   prune(used)
