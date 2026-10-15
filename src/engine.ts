@@ -1,34 +1,13 @@
-// 再生と書き出し。波形ブロックごとに元の音（ピッチを変えたものはキャッシュ）から Web Audio のノードを組む（再生は AudioContext、書き出しは OfflineAudioContext）。
-// 再生中に変えたときは、変わった波形ブロックだけを差し替え、トラックとマスターの音量などは値だけを変える（全部を鳴らし直すと一瞬止まるため）
+// 再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
+// トラックの EQ、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
 import { createLiveEq, flatEq, limitedOutput, startContext, updateLiveEq, type Clip, type LiveEq } from 'wevocal-lib'
-import { piecesFor, preparePitch, type Piece } from './dsp/pitch'
-import { ancestors, audible, dbToGain, envAt, projectEnd, type Block, type Project, type Track } from './project'
-
-const buffers = new WeakMap<Clip, AudioBuffer>()
-
-function bufferOf(ctx: BaseAudioContext, clip: Clip) {
-  let buf = buffers.get(clip)
-  if (!buf) {
-    const { channels, sampleRate } = clip
-    buf = ctx.createBuffer(channels.length, channels[0].length, sampleRate)
-    channels.forEach((c, i) => buf!.copyToChannel(c as Float32Array<ArrayBuffer>, i))
-    buffers.set(clip, buf)
-  }
-  return buf
-}
+import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
+import type { Voice } from './mixer/types'
+import { piecesFor, preparePitch } from './dsp/pitch'
+import { ancestors, audible, dbToGain, projectEnd, type Project, type Track } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
-/** 再生のときに先に予約しておく長さ（秒）。全部を一度に予約すると、波形ブロックが多い曲では位置を変えるたびにノードが何百も増え、音が止まる */
-const LOOKAHEAD = 8
-/** かたまりのつなぎ目で重ねる長さ（秒。片ごとに前後へこれだけ伸ばす） */
-const XFADE = 0.005
-
-/** Clip ごとの番号（波形ブロックの音が変わったかを比べるため） */
-const clipIds = new WeakMap<Clip, number>()
-let nextClipId = 1
-const clipId = (c: Clip) => clipIds.get(c) ?? (clipIds.set(c, nextClipId), nextClipId++)
-
 interface TrackNodes {
   input: GainNode
   pan: StereoPannerNode
@@ -40,17 +19,7 @@ interface TrackNodes {
   /** 鳴らしたまま値を変えられる EQ（WeVocalSynth の再生と同じ wevocal-lib のもの） */
   eq: LiveEq
 }
-interface BlockNodes {
-  /** かたまりの片ごとの音源 */
-  nodes: AudioBufferSourceNode[]
-  gain: GainNode
-  /** 波形ブロックの値（位置、音量、フェードなど。片は含めない）。変わったら組み直す */
-  sig: string
-  /** 鳴らしている片の見分け（片が増えただけなら、その分だけ足す） */
-  pieces: Set<string>
-}
-
-/** 組んだノード（トラックごとの入口と、波形ブロックごとの音源） */
+/** 組んだノード（トラックごとの入口とミキサー、マスター） */
 class Graph {
   readonly out: GainNode
   /** マスターの左右のレベルメーター */
@@ -58,7 +27,8 @@ class Graph {
   private readonly master: GainNode
   private readonly masterPan: StereoPannerNode
   private readonly tracks = new Map<string, TrackNodes>()
-  private readonly blocks = new Map<string, BlockNodes>()
+  /** トラックごとのミキサー（波形ブロックの音を足す） */
+  private readonly mixers: Mixers
   private readonly ctx: BaseAudioContext
   /** 時間軸の 0 秒が ctx の何秒か */
   private readonly zero: number
@@ -66,6 +36,7 @@ class Graph {
   constructor(ctx: BaseAudioContext, zero: number) {
     this.ctx = ctx
     this.zero = zero
+    this.mixers = new Mixers(ctx)
     this.master = ctx.createGain()
     this.masterPan = ctx.createStereoPanner()
     this.out = ctx.createGain()
@@ -109,15 +80,8 @@ class Graph {
     return { input, pan, eq, split, meter, dest: '' }
   }
 
-  /** 波形ブロックを比べる文字（変わったら差し替える） */
-  private static sig(b: Block) {
-    return `${b.track}|${b.start}|${b.offset}|${b.length}|${b.rate}|${b.gain}|${b.fadeIn}|${b.fadeOut}|${JSON.stringify(b.envelope ?? [])}`
-  }
-  /** 片の見分け（できた音と、元の音の上の始まり） */
-  private static pieceKey = (pc: Piece) => `${clipId(pc.clip)}:${pc.a}`
-
-  /** from 秒より後ろの波形ブロックを鳴らす。変わっていないものはそのまま。差し替えるものは FADE でつなぐ */
-  sync(p: Project, from: number, now: number, smooth: boolean, ahead = LOOKAHEAD) {
+  /** 波形ブロックの声の一覧をミキサーに送る。変わっていない声はそのまま鳴り続け、差し替えた声は FADE でつなぐ（smooth のとき） */
+  sync(p: Project, smooth: boolean) {
     // マスターとトラックの値（鳴らしたまま変える）
     const at = this.ctx.currentTime
     this.master.gain.setTargetAtTime(p.master.mute ? 0 : dbToGain(p.master.volume), at, 0.01)
@@ -147,139 +111,47 @@ class Graph {
     }
     for (const [id, n] of this.tracks) {
       if (p.tracks.some((t) => t.id === id)) continue
+      this.mixers.drop(id)
       n.input.disconnect()
       n.pan.disconnect()
       this.tracks.delete(id)
     }
 
-    const live = new Set<string>()
+    // 波形ブロックの片を、トラックごとの声にする（作ったかたまりの片。変えていなければ元の音。できていない所は鳴らさない）
+    const voices = new Map<string, Voice[]>(p.tracks.map((t) => [t.id, []]))
+    const used = new Map<number, Clip>()
     for (const b of p.blocks) {
       const source = p.sources.find((s) => s.id === b.source)
-      const track = this.tracks.get(b.track)
-      if (b.mute || !source || !track || b.start + b.length <= from) continue
-      // 先読みの外（まだ先の波形ブロック）は、近づいたら予約する（tick）。予約済みのものはそのまま
-      if (b.start > from + ahead && !this.blocks.has(b.id)) continue
-      // 作ったかたまりの片（変えていなければ元の音）。できていない所は鳴らさない
+      const list = voices.get(b.track)
+      if (b.mute || !source || !list) continue
       const pieces = piecesFor(b, source)
       if (!pieces.length) continue
-      const sig = Graph.sig(b)
-      const keys = pieces.map(Graph.pieceKey)
-      live.add(b.id)
-      const old = this.blocks.get(b.id)
-      // 値が同じで、片が増えただけ（かたまりができた）なら、鳴っている音はそのままにして、新しい片の分だけ足す（組み直すと音が途切れる）
-      if (old?.sig === sig && [...old.pieces].every((k) => keys.includes(k))) {
-        const added = pieces.flatMap((_, i) => (old.pieces.has(keys[i]) ? [] : [i]))
-        if (!added.length) continue
-        old.nodes.push(...this.startPieces(b, pieces, added, old.gain, now))
-        old.pieces = new Set(keys)
-        continue
-      }
-      if (old) this.stopBlock(old)
-      this.blocks.set(b.id, { ...this.startBlock(b, pieces, track.input, from, now, smooth && !!old), sig, pieces: new Set(keys) })
+      for (const pc of pieces) used.set(clipId(pc.clip), pc.clip)
+      const t0 = this.zero + b.start
+      const env = (b.envelope ?? []).flatMap((pt) => [t0 + pt.t, dbToGain(pt.db)])
+      list.push(...voicesOf(b, pieces, this.zero, dbToGain(b.gain), env))
     }
-    for (const [id, n] of this.blocks) {
-      if (live.has(id)) continue
-      this.stopBlock(n)
-      this.blocks.delete(id)
-    }
+    for (const t of p.tracks) this.mixers.node(t.id, this.tracks.get(t.id)!.input)
+    this.mixers.syncClips(used)
+    for (const [id, list] of voices) this.mixers.voices(id, list, smooth)
   }
 
-  private startBlock(b: Block, pieces: Piece[], dest: AudioNode, from: number, now: number, fadeIn: boolean): Omit<BlockNodes, 'sig' | 'pieces'> {
-    const ctx = this.ctx
-    const g = ctx.createGain()
-    const level = dbToGain(b.gain)
-    // 時間軸の時刻で書く。今より前に始まっていれば、今から途中を鳴らす
-    const t0 = this.zero + b.start
-    const t1 = t0 + b.length
-    const begin = Math.max(now, t0)
-    // 差し替えのときは小さく始めて FADE で上げる（ぶつっと鳴らないように）
-    if (fadeIn && t0 < now) {
-      g.gain.setValueAtTime(0, begin)
-      g.gain.linearRampToValueAtTime(level, begin + FADE)
-    } else g.gain.setValueAtTime(b.fadeIn > 0 && t0 >= now ? 0 : level, begin)
-    if (b.fadeIn > 0 && t0 >= now) g.gain.linearRampToValueAtTime(level, t0 + b.fadeIn)
-    if (b.fadeOut > 0) {
-      g.gain.setValueAtTime(level, Math.max(begin + FADE, t1 - b.fadeOut))
-      g.gain.linearRampToValueAtTime(0, t1)
-    }
-    // 音量のエンベロープは別のノードで掛ける（フェードと重ねる）
-    if (b.envelope?.length) {
-      const env = ctx.createGain()
-      const at = (t: number) => dbToGain(envAt(b.envelope, t))
-      env.gain.setValueAtTime(at(Math.max(0, begin - t0)), begin)
-      for (const pt of b.envelope) {
-        const tt = t0 + pt.t
-        if (tt > begin && pt.t <= b.length) env.gain.linearRampToValueAtTime(dbToGain(pt.db), tt)
-      }
-      g.connect(env).connect(dest)
-    } else g.connect(dest)
-    void from
-    return { nodes: this.startPieces(b, pieces, pieces.map((_, i) => i), g, now), gain: g }
-  }
-
-  /** 片のうち `which` 番目の音源を鳴らす（つなぎ目は隣の片と XFADE ずつ重ねる） */
-  private startPieces(b: Block, pieces: Piece[], which: number[], g: GainNode, now: number): AudioBufferSourceNode[] {
-    const ctx = this.ctx
-    const t0 = this.zero + b.start
-    const spanEnd = b.offset + b.length * b.rate
-    const nodes = which.map((i) => {
-      const pc = pieces[i]
-      // つなぎ目は前後に XFADE ずつ重ねる（隣の片と重なる所だけ。かたまりには余白があるので音はある）
-      const joinA = i > 0 && pieces[i - 1].z >= pc.a - 1e-6
-      const joinZ = i < pieces.length - 1 && pieces[i + 1].a <= pc.z + 1e-6
-      const a = joinA ? pc.a - XFADE * b.rate : pc.a
-      const z = joinZ ? Math.min(spanEnd, pc.z + XFADE * b.rate) : pc.z
-      // 片の時間軸の上の範囲
-      const p0 = t0 + (a - b.offset) / b.rate
-      const p1 = t0 + (z - b.offset) / b.rate
-      if (p1 <= now) return null
-      const start = Math.max(now, p0)
-      const node = ctx.createBufferSource()
-      node.buffer = bufferOf(ctx, pc.clip)
-      const pg = ctx.createGain()
-      pg.gain.setValueAtTime(joinA && start <= p0 ? 0 : 1, start)
-      if (joinA && start <= p0) pg.gain.linearRampToValueAtTime(1, p0 + XFADE * 2)
-      if (joinZ) {
-        pg.gain.setValueAtTime(1, Math.max(start, p1 - XFADE * 2))
-        pg.gain.linearRampToValueAtTime(0, p1)
-      }
-      node.connect(pg).connect(g)
-      // 片の音は元の音の pc.from 秒からで、速度の分だけ伸び縮みしている（元の音そのままなら from は 0、速度は 1）
-      const skip = start - p0
-      node.start(start, (a - pc.from) / b.rate + skip, Math.max(0, p1 - start))
-      return node
-    })
-    return nodes.filter((n): n is AudioBufferSourceNode => !!n)
-  }
-
-  private stopBlock(n: BlockNodes) {
-    const t = this.ctx.currentTime
-    n.gain.gain.cancelScheduledValues(t)
-    n.gain.gain.setTargetAtTime(0, t, FADE / 3)
-    try {
-      for (const x of n.nodes) x.stop(t + FADE * 2)
-    } catch {
-      // 始まる前のノード
-    }
+  /** ミキサーが送ったものを受け取るまで待つ（書き出しを始める前） */
+  flush() {
+    return this.mixers.flush()
   }
 
   /** 全部を消して止める。消え終わったら、トラック（EQ、パン、メーター）とマスターのノードも外す（残すと、再生位置を変えるたびに溜まり、無音でも処理され続けて重くなる） */
   stopAll() {
     const t = this.ctx.currentTime
     this.out.gain.setTargetAtTime(0, t, FADE / 3)
-    for (const n of this.blocks.values()) {
-      try {
-        for (const x of n.nodes) x.stop(t + FADE * 2)
-      } catch {
-        // 始まる前のノード
-      }
-    }
-    this.blocks.clear()
+    this.mixers.stop()
     setTimeout(() => this.dispose(), FADE * 4 * 1000)
   }
 
   /** ノードを全部外す */
   private dispose() {
+    this.mixers.disconnect()
     for (const n of this.tracks.values()) {
       n.input.disconnect()
       n.eq.output.disconnect()
@@ -315,7 +187,8 @@ export class Player {
     this.starting = true
     this.ctx ??= new AudioContext()
     // iPhone、iPad はマナーモードでも鳴るように、再生の音声セッションにしてから起こす（wevocal-lib。WeVocalSynth と同じ）
-    await startContext(this.ctx, 'player')
+    // ミキサー（AudioWorklet）の読み込みも待つ（AudioContext ごとに 1 回だけ）
+    await Promise.all([startContext(this.ctx, 'player'), loadMixer(this.ctx)])
     if (id !== this.seq) return
     this.starting = false
     this.from = from
@@ -326,23 +199,16 @@ export class Player {
       this.graph.out.gain.setValueAtTime(0, this.startedAt)
       this.graph.out.gain.linearRampToValueAtTime(1, this.startedAt + FADE)
     }
-    this.graph.sync(p, from, this.startedAt, false)
+    this.graph.sync(p, false)
     this.playing = true
     // ピッチを変えた波形ブロックは、ここから近い所（これから鳴る所）から作り直す。できたかたまりから鳴る（update）
     preparePitch(p, from).catch(() => {})
   }
 
-  /** 再生が進んだら、先読みの中に入った波形ブロックを予約する（再生中に少しずつ呼ぶ） */
-  tick(p: Project) {
-    if (!this.playing || !this.graph || !this.ctx) return
-    this.graph.sync(p, this.position(), this.ctx.currentTime + 0.01, false)
-  }
-
   /** 再生中に変えたものだけを差し替える（位置はそのまま） */
   update(p: Project) {
-    if (!this.playing || !this.graph || !this.ctx) return
-    const now = this.ctx.currentTime + 0.01
-    this.graph.sync(p, this.position(), now, true)
+    if (!this.playing || !this.graph) return
+    this.graph.sync(p, true)
   }
 
   stop() {
@@ -370,7 +236,11 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000): Prom
   await preparePitch(p)
   const length = Math.max(1, Math.ceil(Math.max(projectEnd(p), until) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
-  new Graph(ctx, 0).sync(p, 0, 0, false, Infinity)
+  // 再生と同じミキサーで作る（再生と書き出しの音が一致する）。送ったものを受け取ってから始める
+  await loadMixer(ctx)
+  const graph = new Graph(ctx, 0)
+  graph.sync(p, false)
+  await graph.flush()
   const out = await ctx.startRendering()
   return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
 }
