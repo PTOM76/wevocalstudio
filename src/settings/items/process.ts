@@ -1,11 +1,11 @@
-// 「ピッチ」と時間軸の線の項目
+// 「処理」（ピッチの処理方式）と時間軸の線の項目
 import type { Algorithm } from 'wevocal-lib'
 import type { StemModel, VocalModel } from 'wevocalextractor/host'
 import type { GridDivision, GridMode } from '../../grid'
 import { check, choice, defineItems, value } from './define'
 
-/** 「ピッチ」 */
-export const pitch = defineItems('pitch', {
+/** 「処理」 */
+export const pitch = defineItems('process', {
   // 新しい波形ブロックのピッチの処理方式（WeVocalSynth と同じ。既定は Synth の声と同じ Vesola）。設定画面は自前の行
   algorithm: value<Algorithm>('sola3', { label: 'settings.algorithm' }),
   // 従来の処理方式（改良版があるもの）も一覧に表示する（WeVocalSynth と同じ）

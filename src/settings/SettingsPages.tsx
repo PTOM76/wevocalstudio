@@ -1,7 +1,8 @@
 // 設定画面の分類ごとの中身（定義のある項目は S(名前) の 1 行。WeVocalSynth と同じ形）
 import { useEffect, useState, type ReactNode } from 'react'
+import { Box, Button, Typography } from '@mui/material'
 import { listInputDevices, visibleAlgorithms, type Algorithm, type InputDevice } from 'wevocal-lib'
-import { AddonSection, Check, Choice, Group, KeymapEditor, Row, type WindowMode } from 'pevenmui'
+import { AddonSection, Check, Choice, Group, KeymapEditor, Row, pevenFont, type WindowMode } from 'pevenmui'
 import { EXTRACT_MODELS, isMdxModel, resolveModel, type VocalModel } from 'wevocalextractor/host'
 import { backendAllowed } from 'wevocalextractor/compat'
 import { ADDONS } from '../addons'
@@ -17,6 +18,9 @@ import type { Settings } from './settings'
 /** 抽出のモデルの呼び名（WeVocalSynth と同じ） */
 const MODEL_LABELS: Record<VocalModel, MessageKey> = { fp16: 'addon.modelLight', int8: 'addon.modelStandard', fp32: 'addon.modelPrecise', 'voc-ft': 'addon.modelVocalHq', 'inst-hq4': 'addon.modelInstHq', kara2: 'addon.modelLead' }
 
+/** 設定の「ボーカル抽出」に並べる追加機能（モデル。実行環境はモデルと一緒に導入・削除するので別に出す） */
+const VOCAL_ADDONS = ADDONS.filter((a) => a.requires?.includes('vocal-extractor') && !a.companion).map((a) => a.id)
+
 /** 録音の入力元の行（開いたときに一覧を読む。名前はマイクを許可するまで出ないことがある） */
 function InputDeviceRow(p: { value: string; onChange: (v: string) => void; t: (key: MessageKey) => string }) {
   const [inputs, setInputs] = useState<InputDevice[]>([])
@@ -29,7 +33,7 @@ function InputDeviceRow(p: { value: string; onChange: (v: string) => void; t: (k
 }
 
 /** 設定画面の分類ごとの中身。定義（items/）のある項目は S('名前') の 1 行で置け、検索の対象にも自動で入る */
-export function settingsPages({ draft, set, t, onClose }: { draft: Settings; set: (patch: Partial<Settings>) => void; t: (key: MessageKey, vars?: Record<string, string | number>) => string; onClose: () => void }): Record<Category, ReactNode> {
+export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings; set: (patch: Partial<Settings>) => void; t: (key: MessageKey, vars?: Record<string, string | number>) => string; onClose: () => void; go: (category: Category) => void }): Record<Category, ReactNode> {
   const S = (name: keyof Settings) => <SettingRow name={name} draft={draft} set={set} t={t} />
   // 操作の名前はメニューと同じ（menu.<操作の名前>）
   const keyActions = ACTIONS.map((a) => ({ ...a, label: t(`menu.${a.id}` as MessageKey) }))
@@ -92,8 +96,8 @@ export function settingsPages({ draft, set, t, onClose }: { draft: Settings; set
         </Row>
       </Group>
     ),
-    pitch: (
-      <Group title={t('settings.cat.pitch')}>
+    process: (
+      <Group title={t('settings.groupDefaultAlgorithm')}>
         <Row label={t('settings.algorithm')}>
           <Choice<Algorithm> value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} options={visibleAlgorithms(draft.showLegacyAlgorithms, [draft.algorithm]).map((a): [Algorithm, string] => [a.value, t(a.label)])} />
         </Row>
@@ -133,7 +137,33 @@ export function settingsPages({ draft, set, t, onClose }: { draft: Settings; set
           {S('stemChorus')}
         </Group>
         <Group title={t('settings.groupAddons')}>
-          <AddonSection ids={ADDONS.filter((a) => !a.companion && a.id !== 'vocal-extractor').map((a) => a.id)} />
+          {/* 追加機能の一覧（AddonSection）と同じく、説明は左、ボタンは右（WeVocalSynth と同じ） */}
+          <Box sx={{ gridColumn: '1 / -1', width: '100cqi', maxWidth: '100cqi', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography sx={{ flex: 1, minWidth: 0, fontSize: pevenFont('base') }}>{t('settings.addonsMoved')}</Typography>
+            <Button size="small" variant="outlined" onClick={() => go('addons')} sx={{ flexShrink: 0 }}>
+              {t('settings.openAddons')}
+            </Button>
+          </Box>
+        </Group>
+      </>
+    ),
+    addons: (
+      <>
+        <Group title={t('settings.groupAddonVocal')}>
+          <AddonSection ids={VOCAL_ADDONS} />
+        </Group>
+        {/* モデルを入れると一緒に入る実行環境。大きさの確認や、使わなくなった方（GPU 用、CPU 用）の削除のために分けて出す */}
+        <Group title={t('settings.groupAddonVocalRuntime')}>
+          <AddonSection ids={['vocal-extractor', 'vocal-extractor-gpu', 'vocal-extractor-cpu']} />
+        </Group>
+        <Group title={t('settings.groupAddonAnalyzer')}>
+          <AddonSection ids={['analyzer']} />
+        </Group>
+        <Group title={t('settings.groupAddonLyrics')}>
+          <AddonSection ids={['analyzer-lyrics', 'whisper-tiny', 'whisper-base', 'whisper-small']} />
+        </Group>
+        <Group title={t('settings.groupAddonConverter')}>
+          <AddonSection ids={['converter']} />
         </Group>
       </>
     ),
