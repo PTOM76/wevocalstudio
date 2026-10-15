@@ -68,14 +68,26 @@ export function usePlayerSync(o: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project])
 
-  // かたまりが 1 つできるたびに、ゲージを動かし、再生中ならその波形ブロックを差し替え、時間軸の「処理中」を描き直す（まとめて 0.1 秒に 1 回）
+  // かたまりが 1 つできるたびに、ゲージを動かし、再生中ならその波形ブロックを差し替え、時間軸の「処理中」を描き直す（表示はまとめて 0.1 秒に 1 回）
   const projectRef = useRef(project)
   projectRef.current = project
   useEffect(() => {
     let timer = 0
     let lastDone = 0
+    let lastSent = 0
+    let queued = false
     let pitchJob: ReturnType<typeof startJob> | null = null
     return onPitchProgress(() => {
+      // 鳴らす音はタイマーを待たずに差し替える（ウィンドウが隠れているとタイマーが間引かれ、できた所が鳴らないため）
+      const whole = Math.floor(pitchProgress().done)
+      if (whole !== lastSent && !queued) {
+        queued = true
+        queueMicrotask(() => {
+          queued = false
+          lastSent = Math.floor(pitchProgress().done)
+          if (player.current.playing) player.current.update(projectRef.current)
+        })
+      }
       if (timer) return
       timer = window.setTimeout(() => {
         timer = 0
@@ -92,12 +104,21 @@ export function usePlayerSync(o: {
         const whole = Math.floor(pr.done)
         if (whole !== lastDone) {
           lastDone = whole
-          player.current.update(projectRef.current)
           setMadeVersion((v) => v + 1)
         }
       }, 100)
     })
   }, [])
+
+  // 再生中は 1 秒ごとに、今の再生位置に近い所から作り直すよう頼み直す（画面が止まっていても、通り過ぎた所を作り続けないように）
+  useEffect(() => {
+    if (!playing) return
+    const id = setInterval(() => {
+      preparePitch(projectRef.current, player.current.position()).catch(() => {})
+    }, 1000)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing])
 
   // ピッチを変えた音を用意する（再生位置か編集カーソルに近い所から。できたかたまりから鳴らす）。
   // 再生位置を変えたら（cursor が変わる）、新しい位置に近い所から頼み直す。でないと、前の位置の近くを作り終えるまで、新しい位置は鳴らない
