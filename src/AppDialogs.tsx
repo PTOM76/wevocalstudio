@@ -1,5 +1,8 @@
 // アプリ全体のダイアログ（ショートカット、履歴、書き出し、設定、ライセンス、バージョン情報。WeVocalSynth の AppDialogs と同じ役目）
-import { useRef } from 'react'
+import { useMemo, useRef, type ComponentProps } from 'react'
+import KanaCutDialog from 'wevocalanalyzer/KanaCutDialog'
+import { placeMorae } from './sampler'
+import { segmentOf } from './useExtract'
 import { Link } from '@mui/material'
 import { AUDIO_ACCEPT, flatEq } from 'wevocal-lib'
 import BlockDialog from './BlockDialog'
@@ -10,7 +13,7 @@ import { AboutDialog, LicensesDialog, RenameDialog } from 'pevenmui'
 import type { Clip } from 'wevocal-lib'
 import { videoLook, type VideoLook } from 'wevocalconverter/host'
 import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
-import { videoHost } from './addons'
+import { kanaHost, videoHost } from './addons'
 import type { Range } from 'wevocal-lib'
 import { ExportDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
@@ -39,6 +42,10 @@ export default function AppDialogs(p: {
   fail: (e: unknown) => void
   /** 編集カーソル（作った音、並べた音符を置く位置） */
   cursor: number
+  /** ボーカルと伴奏に分ける関数を用意する（一音ずつ切り出しで使う） */
+  prepareSeparate: ComponentProps<typeof KanaCutDialog>['prepareSeparate']
+  /** 追加機能の導入を確かめる */
+  ensure: (id: string) => Promise<boolean>
 }) {
   const t = useT()
   const { dialogs, doc } = p
@@ -48,6 +55,9 @@ export default function AppDialogs(p: {
   const marker = project.markers.find((m) => m.id === dialogs.arg<string>('marker')) ?? null
   const eqOf = project.tracks.find((tr) => tr.id === dialogs.arg<string>('eq'))
   const sourceInput = useRef<HTMLInputElement>(null)
+  // 一音ずつ切り出す波形ブロックと、その音（元の音の、波形ブロックが使っている範囲）
+  const kanaBlock = project.blocks.find((b) => b.id === dialogs.arg<string>('kanaCut'))
+  const kanaClip = useMemo(() => kanaBlock && segmentOf(project, kanaBlock), [kanaBlock?.id])
   return (
     <>
       <ShortcutsDialog open={dialogs.isOpen('shortcuts')} onClose={dialogs.closer('shortcuts')} />
@@ -149,6 +159,26 @@ export default function AppDialogs(p: {
           prefs={p.settings.exportVideo}
           onPrefsChange={(exportVideo) => p.onSettingsChange({ exportVideo })}
           onExport={(v, win) => p.onVideoExport(v, videoLook(p.settings.exportVideo, v.image, v.fileName.trim()), win)}
+        />
+      )}
+      {/* 一音ずつ切り出す（ダイアログと手順は analyzer。WeVocalSynth と同じ）。結果は一音ずつの波形ブロックにして新しいトラックに並べる */}
+      {kanaBlock && kanaClip && (
+        <KanaCutDialog
+          t={t}
+          host={kanaHost}
+          open
+          onClose={dialogs.closer('kanaCut')}
+          clip={kanaClip}
+          range={{ start: 0, end: kanaClip.channels[0].length / kanaClip.sampleRate }}
+          ensure={p.ensure}
+          prepareSeparate={p.prepareSeparate}
+          vocalBefore={p.settings.vocalBeforeAnalysis}
+          onVocalBeforeChange={(vocalBeforeAnalysis) => p.onSettingsChange({ vocalBeforeAnalysis })}
+          onDone={(morae) => {
+            const name = project.tracks.find((tr) => tr.id === kanaBlock.track)?.name ?? ''
+            doc.apply((q) => placeMorae(q, kanaBlock.id, morae, t('kanaCut.trackName', { name })))
+            dialogs.close('kanaCut')
+          }}
         />
       )}
       {/* トラックの名前の変更（PevenMUI の RenameDialog） */}

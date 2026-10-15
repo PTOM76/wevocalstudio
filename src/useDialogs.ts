@@ -12,6 +12,8 @@ export type DialogId =
   | 'renameTrack'
   // 動画の書き出し（プレビューに使う音）
   | 'video'
+  // 一音ずつ切り出す（波形ブロックの id）
+  | 'kanaCut'
 
 export const useDialogs = () => usePevenDialogs<DialogId>()
 export type Dialogs = PevenDialogs<DialogId>

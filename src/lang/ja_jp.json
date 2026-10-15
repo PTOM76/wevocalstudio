@@ -126,6 +126,7 @@
   "menu.synth": "音声を作成…",
   "menu.renameTrack": "トラックの名前を変更…",
   "menu.exportVideo": "動画ファイルに書き出す…",
+  "menu.kanaCut": "一音ずつ切り出す…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -241,6 +242,8 @@
   "settings.stemChorusHelp": "主旋律モデルも使用します",
   "settings.groupAddons": "モデルのダウンロード",
   "settings.cat.vocal": "ボーカル抽出",
+  "settings.vocalBeforeAnalysis": "和音の分離と一音ずつ切り出しの前にボーカルを抽出する",
+  "settings.vocalBeforeAnalysisHelp": "伴奏を除いてから処理するため、伴奏がある曲で精度が上がります。和音の分離では、伴奏は別のトラックになります。一音ずつ切り出しでは、範囲を求めるのに使用するだけで、トラックの音は変わりません",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
@@ -495,6 +498,14 @@
   "addon.modelStems4": "4つに分けるモデル（ボーカル、ドラム、ベース、その他、Demucs）",
   "addon.modelStems6": "6つに分けるモデル（ギターとピアノも分ける、Demucs 6s）",
   "addon.converter": "変換（動画の書き出し）",
+  "addon.analyzer": "解析（スペクトログラム）",
+  "addon.lyrics": "歌詞の文字化の実行環境",
+  "addon.whisperTiny": "歌詞の文字化のモデル（軽量、Whisper tiny）",
+  "addon.whisperTinyShort": "モデル（軽量、Whisper tiny）",
+  "addon.whisperBase": "歌詞の文字化のモデル（標準、Whisper base）",
+  "addon.whisperBaseShort": "モデル（標準、Whisper base）",
+  "addon.whisperSmall": "歌詞の文字化のモデル（高精度、Whisper small）",
+  "addon.whisperSmallShort": "モデル（高精度、Whisper small）",
 
   "extract.gpuFallback": "GPUで処理できませんでした（{reason}）。CPUで続けますか？ CPUでは時間がかかります（高品質モデルは曲の長さの約10倍）",
   "extract.gpuFallbackOk": "CPUで続ける",
@@ -601,6 +612,7 @@
   "video.wave": "波形",
 
   "task.exporting": "書き出し中…",
+  "task.extractVocals": "ボーカル抽出中…",
 
   "pitchTool.flatten": "ピッチの揺れを平らにする（選択範囲、なければ全体）",
   "pitchTool.create": "作成",
@@ -612,5 +624,26 @@
   "snap.nearest": "音ごとに近い半音へ揃える",
   "snap.note": "指定した音に揃える",
   "snap.speed": "揃えるまでの時間",
-  "snap.strength": "強さ"
+  "snap.strength": "強さ",
+
+  "kanaCut.downloading": "モデルを読み込み中… {percent}%",
+  "kanaCut.empty": "歌詞を認識できませんでした",
+  "kanaCut.failed": "処理できませんでした: {message}",
+  "kanaCut.find": "範囲を求める",
+  "kanaCut.finding": "範囲を求めています…",
+  "kanaCut.intro": "歌声を文字にして読みを付け、あ、い、う…の一音ずつの範囲を求めます",
+  "kanaCut.lyrics": "歌詞",
+  "kanaCut.model": "モデル",
+  "kanaCut.model.base": "標準（約{mb} MB）",
+  "kanaCut.model.small": "高精度（約{mb} MB）",
+  "kanaCut.model.tiny": "軽量（約{mb} MB）",
+  "kanaCut.noGpu": "この環境ではWebGPUを利用できないため、文字化できません",
+  "kanaCut.reading": "読み",
+  "kanaCut.readingsHelp": "読みはひらがなで入力します。一音ずつの範囲は、この読みをもとに求めます",
+  "kanaCut.target": "対象: {start}〜{end}秒",
+  "kanaCut.title": "一音ずつ切り出す",
+  "kanaCut.transcribe": "文字化する",
+  "kanaCut.transcribing": "文字化しています…",
+  "kanaCut.vocalsFirst": "先にボーカルを抽出する（伴奏がある場合）",
+  "kanaCut.trackName": "{name}（一音ずつ）"
 }

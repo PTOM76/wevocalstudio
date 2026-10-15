@@ -17,6 +17,8 @@
       "pevenmui/debug": ["../wevocalsynth/pevenmui/src/debug/index.ts", "./pevenmui/src/debug/index.ts"],
       "pevenmui/pwa": ["../wevocalsynth/pevenmui/src/pwa/index.ts", "./pevenmui/src/pwa/index.ts"],
       "pevenmui/web": ["../wevocalsynth/pevenmui/src/web/index.ts", "./pevenmui/src/web/index.ts"],
+      "wevocalanalyzer/kanaCut": ["../wevocalsynth/analyzer/src/kanaCut.ts", "./analyzer/src/kanaCut.ts"],
+      "wevocalanalyzer/KanaCutDialog": ["../wevocalsynth/analyzer/src/KanaCutDialog.tsx", "./analyzer/src/KanaCutDialog.tsx"],
       "wevocalconverter/host": ["../wevocalsynth/converter/src/host.ts", "./converter/src/host.ts"],
       "wevocalconverter/VideoExportDialog": ["../wevocalsynth/converter/src/VideoExportDialog.tsx", "./converter/src/VideoExportDialog.tsx"],
       "wevocalextractor/compat": ["../wevocalsynth/extractor/src/compat.ts", "./extractor/src/compat.ts"],

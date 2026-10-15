@@ -124,6 +124,7 @@ export function settingsPages({ draft, set, t, onClose }: { draft: Settings; set
             help={backendAllowed(draft.vocalModel, 'webgpu') ? t('settings.vocalGpuHelp') : t('settings.vocalGpuUnsupported')}
           />
           {S('vocalKeepHighBand')}
+          {S('vocalBeforeAnalysis')}
         </Group>
         <Group title={t('settings.groupStems')}>
           {S('stemModel')}

@@ -126,6 +126,7 @@
   "menu.synth": "Create sound…",
   "menu.renameTrack": "Rename track…",
   "menu.exportVideo": "Export as Video…",
+  "menu.kanaCut": "Cut into morae…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -241,6 +242,8 @@
   "settings.stemChorusHelp": "Also uses the lead vocal model",
   "settings.groupAddons": "Model downloads",
   "settings.cat.vocal": "Vocal extraction",
+  "settings.vocalBeforeAnalysis": "Extract vocals before chord separation and one-note cutting",
+  "settings.vocalBeforeAnalysisHelp": "Removes the accompaniment first, which improves accuracy for songs with accompaniment. Chord separation puts the accompaniment on its own track. One-note cutting uses the vocals only to find the ranges and leaves the track audio unchanged",
 
   "status.ready": "Ready",
   "status.playing": "Playing",
@@ -495,6 +498,14 @@
   "addon.modelStems4": "4-stem model (vocals, drums, bass, other, Demucs)",
   "addon.modelStems6": "6-stem model (also guitar and piano, Demucs 6s)",
   "addon.converter": "Converter (video export)",
+  "addon.analyzer": "Analysis (spectrogram)",
+  "addon.lyrics": "Lyrics transcription runtime",
+  "addon.whisperTiny": "Lyrics transcription model (Light, Whisper tiny)",
+  "addon.whisperTinyShort": "Model (Light, Whisper tiny)",
+  "addon.whisperBase": "Lyrics transcription model (Standard, Whisper base)",
+  "addon.whisperBaseShort": "Model (Standard, Whisper base)",
+  "addon.whisperSmall": "Lyrics transcription model (Precise, Whisper small)",
+  "addon.whisperSmallShort": "Model (Precise, Whisper small)",
 
   "extract.gpuFallback": "Could not process on the GPU ({reason}). Continue on the CPU? This takes longer (about 10 times the song length with high-quality models)",
   "extract.gpuFallbackOk": "Continue on CPU",
@@ -601,6 +612,7 @@
   "video.wave": "Wave",
 
   "task.exporting": "Exporting…",
+  "task.extractVocals": "Extracting vocals…",
 
   "pitchTool.flatten": "Flatten pitch fluctuation (selection, or whole)",
   "pitchTool.create": "Create",
@@ -612,5 +624,26 @@
   "snap.nearest": "Snap each note to the nearest semitone",
   "snap.note": "Snap everything to",
   "snap.speed": "Glide time",
-  "snap.strength": "Strength"
+  "snap.strength": "Strength",
+
+  "kanaCut.downloading": "Loading the model… {percent}%",
+  "kanaCut.empty": "No lyrics were recognized",
+  "kanaCut.failed": "Could not process: {message}",
+  "kanaCut.find": "Find ranges",
+  "kanaCut.finding": "Finding ranges…",
+  "kanaCut.intro": "Transcribes the singing, adds readings, and finds the range of each mora (a, i, u…)",
+  "kanaCut.lyrics": "Lyrics",
+  "kanaCut.model": "Model",
+  "kanaCut.model.base": "Standard (about {mb} MB)",
+  "kanaCut.model.small": "Precise (about {mb} MB)",
+  "kanaCut.model.tiny": "Light (about {mb} MB)",
+  "kanaCut.noGpu": "WebGPU is not available in this environment, so transcription cannot run",
+  "kanaCut.reading": "Reading",
+  "kanaCut.readingsHelp": "Enter readings in hiragana. The range of each sound is found from these readings",
+  "kanaCut.target": "Range: {start}–{end} s",
+  "kanaCut.title": "Cut into single sounds",
+  "kanaCut.transcribe": "Transcribe",
+  "kanaCut.transcribing": "Transcribing…",
+  "kanaCut.vocalsFirst": "Extract vocals first (for songs with accompaniment)",
+  "kanaCut.trackName": "{name} (morae)"
 }

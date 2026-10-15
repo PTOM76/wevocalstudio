@@ -31,10 +31,12 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@huggingface/transformers": "^4.3.1",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "kuromoji": "^0.1.2",
     "mediabunny": "^1.61.4",
     "onnxruntime-web": "^1.30.0",
     "typescript": "^6.0.3",

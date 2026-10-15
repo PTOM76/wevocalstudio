@@ -51,7 +51,7 @@ export interface ActionContext {
   exportVideo: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
-  openDialog: (id: 'synth' | 'sampler' | 'renameTrack', arg?: string) => void
+  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut', arg?: string) => void
   /** 選んだ波形ブロックを確定する（音にして元の音を置き換える） */
   bake: (ids: string[]) => void
   extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void }
@@ -190,6 +190,7 @@ export function useActions(c: ActionContext) {
     // 分けるのは 1 つずつ（選んでいる最後のもの）
     synth: { run: () => c.openDialog('synth') },
     sampler: { enabled: any, run: () => any && c.openDialog('sampler', ids[ids.length - 1]) },
+    kanaCut: { enabled: any, run: () => any && c.openDialog('kanaCut', ids[ids.length - 1]) },
     splitVocals: { enabled: any, run: () => any && c.extract.vocals(ids[ids.length - 1]) },
     splitLead: { enabled: any, run: () => any && c.extract.lead(ids[ids.length - 1]) },
     splitInstruments: { enabled: any, run: () => any && c.extract.instruments(ids[ids.length - 1]) },
@@ -325,7 +326,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.tools'),
       accessKey: 'L',
-      entries: [item('synth'), item('sampler'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments')],
+      entries: [item('synth'), item('sampler'), item('kanaCut'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments')],
     },
     {
       label: t('menu.transport'),

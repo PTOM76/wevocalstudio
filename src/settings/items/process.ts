@@ -43,5 +43,7 @@ export const vocal = defineItems('vocal', {
     ],
   }),
   // 楽器ごとに分けるとき、ボーカルをさらに主旋律とハモリに分ける
+  // 一音ずつ切り出す前に、ボーカルを取り出す（伴奏があると精度が下がるため。WeVocalSynth と同じ）
+  vocalBeforeAnalysis: check(false, { label: 'settings.vocalBeforeAnalysis', help: 'settings.vocalBeforeAnalysisHelp' }),
   stemChorus: check(false, { label: 'settings.stemChorus', help: 'settings.stemChorusHelp' }),
 })

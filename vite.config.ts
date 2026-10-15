@@ -37,6 +37,8 @@ export default defineConfig({
       { find: /^wevocalextractor\/host$/, replacement: resolve(extractor, 'src/host.ts') },
       { find: /^wevocalextractor\/compat$/, replacement: resolve(extractor, 'src/compat.ts') },
       { find: /^wevocalconverter\/host$/, replacement: resolve(converter, 'src/host.ts') },
+      { find: /^wevocalanalyzer\/kanaCut$/, replacement: resolve(analyzer, 'src/kanaCut.ts') },
+      { find: /^wevocalanalyzer\/KanaCutDialog$/, replacement: resolve(analyzer, 'src/KanaCutDialog.tsx') },
       { find: /^wevocalconverter\/VideoExportDialog$/, replacement: resolve(converter, 'src/VideoExportDialog.tsx') },
       { find: /^wevocalanalyzer$/, replacement: resolve(analyzer, 'src/index.ts') },
       { find: /^wevocal-lib\/react$/, replacement: resolve(wevocalLib, 'web/src/react/index.ts') },

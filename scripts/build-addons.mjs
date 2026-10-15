@@ -1,7 +1,8 @@
 // 追加機能を <出力先>/addons/ に作る（作る手順は extractor/scripts/addons.mjs。WeVocalSynth と同じもの）
 //   node scripts/build-addons.mjs          … dist（npm run build の後に実行する。CI はこちら）
 //   node scripts/build-addons.mjs public   … public（npm run dev でも使える）
-//   node scripts/build-addons.mjs public extractor … 名前を並べると、その分だけ作る（extractor、models、converter）
+//   node scripts/build-addons.mjs public extractor … 名前を並べると、その分だけ作る（extractor、models、analyzer、lyrics、converter）
+import { buildAnalyzerAddon, buildLyricsAddons } from '../analyzer/scripts/addons.mjs'
 import { buildConverterAddon } from '../converter/scripts/addons.mjs'
 import { buildModelAddons, buildRuntimeAddons } from '../extractor/scripts/addons.mjs'
 
@@ -12,5 +13,8 @@ const want = (group) => !ONLY.length || ONLY.includes(group)
 // ボーカル抽出の実行環境（ONNX Runtime の wasm は gpu と cpu に分ける）と、モデル
 if (want('extractor')) buildRuntimeAddons(OUT)
 if (want('models')) buildModelAddons(OUT, '.cache/addon-models')
+// 解析と歌詞の文字化（一音ずつ切り出し）
+if (want('analyzer')) buildAnalyzerAddon(OUT)
+if (want('lyrics')) await buildLyricsAddons(OUT)
 // 変換（今は動画の書き出し）
 if (want('converter')) buildConverterAddon(OUT)

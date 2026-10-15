@@ -37,6 +37,7 @@ export type Action =
   | 'normalize'
   | 'bake'
   | 'synth'
+  | 'kanaCut'
   | 'sampler'
   | 'splitVocals'
   | 'splitLead'
@@ -126,6 +127,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   // 選んだ波形ブロックを、ボーカルと伴奏、主旋律とハモリと伴奏、楽器ごとに分けて、新しいトラックに並べる（追加機能）
   // 音を 0 から作る、選んだ波形ブロックを MIDI の音符に並べる
   synth: [],
+  // 選んだ波形ブロックを一音（あ、い、う…）ずつに分ける（追加機能「歌詞の文字化」と「解析」）
+  kanaCut: [],
   sampler: [],
   splitVocals: [],
   splitLead: [],

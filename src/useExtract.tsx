@@ -12,7 +12,7 @@ import type { useProject } from './useProject'
 const host = createHost({ loadAddon: (id) => loadAddon(id), installedManifest, addonFileUrl, isMobile })
 
 /** 波形ブロックが使っている元の音の範囲（分けるのはこの範囲だけ） */
-function segmentOf(p: Project, b: Block): Clip | null {
+export function segmentOf(p: Project, b: Block): Clip | null {
   const src = p.sources.find((s) => s.id === b.source)
   if (!src) return null
   const sr = src.clip.sampleRate
@@ -56,6 +56,11 @@ export function useExtract(o: { doc: ReturnType<typeof useProject>; settings: Se
   }
 
   return {
+    /** ボーカルと伴奏に分ける関数を用意する（一音ずつ切り出しで、先にボーカルを取り出すとき。モデルを導入しなければ null） */
+    prepareSeparate: async () => {
+      const opts = await prepareExtract(base(), VOCAL_MODELS[base().model].addon, ui)
+      return opts && ((c: Clip, onProgress: (p: number) => void, signal?: AbortSignal) => host.splitBoth(c.channels, c.sampleRate, opts, onProgress, signal, confirmCpu))
+    },
     dialog: (
       <>
         {install.dialog}
