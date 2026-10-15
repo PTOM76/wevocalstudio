@@ -22,7 +22,7 @@ import type { Settings } from './settings/settings'
 import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
-import { addWvspTracks, newProject, songEnd, visibleTracks, type Track } from './project'
+import { addWvspTracks, newProject, songEnd, trackHeight, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, visibleTracks, type Track } from './project'
 import Timeline, { useHeaderWidth } from './Timeline'
 import Toolbar from './Toolbar'
 import Transport from './Transport'
@@ -400,7 +400,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onRange={setRange}
         onMasterChange={doc.updateMaster}
         onTrackChange={(id, patch, merge) => {
-          // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量とパンは差分で）
+          // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量、パン、高さは差分で）
           if (selectedTracks.length < 2 || !selectedTracks.includes(id) || 'name' in patch || 'fx' in patch) return doc.updateTrack(id, patch, merge)
           const base = project.tracks.find((tr) => tr.id === id)!
           doc.updateTracks(
@@ -411,6 +411,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
                   const q: Partial<Track> = { ...patch }
                   if (patch.volume !== undefined) q.volume = Math.max(-60, Math.min(12, tr.volume + patch.volume - base.volume))
                   if (patch.pan !== undefined) q.pan = Math.max(-1, Math.min(1, tr.pan + patch.pan - base.pan))
+                  // 高さも差分で（選んだトラックの高さの違いは保ったまま、同じだけ広げ縮めする）
+                  if (patch.height !== undefined) q.height = Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, trackHeight(tr) + patch.height - trackHeight(base)))
                   return [tr.id, q]
                 }),
             ),
