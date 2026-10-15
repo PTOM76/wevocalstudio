@@ -372,6 +372,8 @@ export default function Timeline(p: {
     seekAt: (clientX) => p.onSeek(gridAt(clientX - canvasRef.current!.getBoundingClientRect().left, false)),
   })
   // 空いている所を 1 本指でなぞったときのスクロール（始めた位置と、そのときの表示）
+  // 長押しでメニューを開いたあと（指を離しても、再生位置を移さない）
+  const longPressed = useRef(false)
   const pan = useRef<{ x0: number; y0: number; scroll0: number; v0: number } | null>(null)
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -396,8 +398,10 @@ export default function Timeline(p: {
       e.currentTarget.setPointerCapture(e.pointerId)
       const { offsetY: oy } = e.nativeEvent
       const { clientX, clientY } = e
+      longPressed.current = false
       longPress.start(clientX, clientY, () => {
-        // 長押しになったら、始めたドラッグはやめる
+        // 長押しになったら、始めたドラッグはやめる。離したときに再生位置も移さない
+        longPressed.current = true
         drag.current = null
         menuAt(x, oy, clientX, clientY, false)
       })
@@ -426,11 +430,10 @@ export default function Timeline(p: {
       return
     }
     if (!hit) {
-      // 空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択
+      // 空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択（範囲を選ぶときは再生位置を動かさないよう、再生位置は離したときに移す）
       if (!e.ctrlKey && !e.metaKey) p.onSelect([])
       const track = trackAt(y)
       if (track) p.onSelectTrack(track.id)
-      p.onSeek(gridAt(x, e.shiftKey))
       e.currentTarget.setPointerCapture(e.pointerId)
       rangeDrag.current = { t: gridAt(x, e.shiftKey), x }
       return
@@ -602,7 +605,7 @@ export default function Timeline(p: {
     // なぞらずに離したら、押した所へ再生位置を移す
     const pn = pan.current
     pan.current = null
-    if (pn && Math.hypot(e.clientX - pn.x0, e.clientY - pn.y0) < 8) {
+    if (pn && !longPressed.current && Math.hypot(e.clientX - pn.x0, e.clientY - pn.y0) < 8) {
       p.onSelect([])
       p.onSeek(gridAt(e.nativeEvent.offsetX, false))
     }
@@ -614,7 +617,10 @@ export default function Timeline(p: {
       setBox(null)
     }
     // 範囲を作らずに離したら、範囲を消す
-    if (rangeDrag.current && Math.abs(e.nativeEvent.offsetX - rangeDrag.current.x) < 3) p.onRange(null)
+    if (rangeDrag.current && Math.abs(e.nativeEvent.offsetX - rangeDrag.current.x) < 3) {
+      p.onRange(null)
+      p.onSeek(gridAt(rangeDrag.current.x, e.shiftKey))
+    }
     // Ctrl で押して動かさずに離したら、選択の足し引き（選んでいたものは外す）
     const d = drag.current
     if (d?.copy && !d.copy.done && d.copy.wasSelected) p.onSelect(p.selected.filter((s) => s !== d.block.id))
