@@ -431,8 +431,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           </Box>
         )}
       </Box>
-      {/* 波形ブロックを選んでいるとき、編集のボタンの列（スマホとタブレットは自動で。設定で変えられる） */}
-      {selected.length > 0 && (p.settings.editBar === 'on' || (p.settings.editBar === 'auto' && (mobile || isMobile()))) && <BlockEditBar commands={commands} />}
+      {/* 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ） */}
+      {(selected.length > 0 || range) && (p.settings.editBar === 'on' || (p.settings.editBar === 'auto' && (mobile || isMobile()))) && <BlockEditBar commands={commands} mode={selected.length > 0 ? 'block' : 'range'} />}
       {p.settings.showAnalysis && (
         <AnalysisPanel
           bpm={project.tempo.bpm}

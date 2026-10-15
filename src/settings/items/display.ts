@@ -19,7 +19,7 @@ export const display = defineItems('display', {
     ],
   }),
   uiScale: choice<number>(1, { label: 'settings.uiScale', help: 'settings.uiScaleHelp', values: [0.9, 1, 1.1, 1.25], format: (s) => `${Math.round(s * 100)}%` }),
-  // 波形ブロックを選んだときの編集のボタンの列（自動はスマホとタブレットだけ）
+  // 波形ブロックか範囲を選んだときの編集のボタンの列（auto はスマホとタブレットだけ）
   editBar: choice<EditBarSetting>('auto', {
     label: 'settings.editBar',
     help: 'settings.editBarHelp',
