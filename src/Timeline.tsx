@@ -1,10 +1,9 @@
 // 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 import { Box } from '@mui/material'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
-import { useDoubleTap, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
+import { useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
 import { layoutRows } from './overlap'
 import { depthOf, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN } from './project'
 import { ENVELOPES, hitEnvPoint, type EnvKind } from './envelopes'
@@ -100,7 +99,9 @@ export default function Timeline(p: {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { view } = p
   const setView = p.onView
-  const [width, setWidth] = useState(0)
+  // 描く場所の大きさ（変わった同じフレームで更新する。PevenMUI の useBoxSize）
+  const boxRef = useRef<HTMLDivElement>(null)
+  const { width, height: vh } = useBoxSize(boxRef)
   const drag = useRef<Drag | null>(null)
   // 範囲選択のドラッグを始めた時刻と位置
   const rangeDrag = useRef<{ t: number; x: number } | null>(null)
@@ -116,7 +117,6 @@ export default function Timeline(p: {
   const dragCount = useRef(0)
   const [cursor, setCursor] = useState('default')
   // 縦のスクロール。canvas は見える高さに固定し、トラックの行だけをずらす（目盛りとマスターは上に固定）
-  const [vh, setVh] = useState(0)
   const [vscroll, setVscroll] = useState(0)
   const content = TOP + Math.max(TRACK_HEIGHT_DEFAULT, totalTrackHeight(p.project))
   const maxV = Math.max(0, content - vh)
@@ -150,24 +150,40 @@ export default function Timeline(p: {
   const [dropSlot, setDropSlot] = useState<number | null>(null)
   const vsRef = useRef(0)
   vsRef.current = vs
+  const slotAtRef = useRef(slotAt)
+  slotAtRef.current = slotAt
+
+  // 並び替えのドラッグ中、欄の上下の端に近づいたら縦にスクロールする（落とす位置の線も追従）
+  const dragYRef = useRef(0)
+  const maxVRef = useRef(0)
+  useEffect(() => {
+    if (!draggingTrackId) return
+    const EDGE = 40
+    let id = 0
+    const tick = () => {
+      const el = headerContainerRef.current
+      if (el) {
+        const rect = el.getBoundingClientRect()
+        const y = dragYRef.current
+        const speed = y < rect.top + EDGE ? -Math.min(1, (rect.top + EDGE - y) / EDGE) : y > rect.bottom - EDGE ? Math.min(1, (y - (rect.bottom - EDGE)) / EDGE) : 0
+        if (speed) {
+          const next = Math.max(0, Math.min(maxVRef.current, vsRef.current + speed * 14))
+          if (next !== vsRef.current) {
+            vsRef.current = next
+            setVscroll(next)
+            setDropSlot(slotAtRef.current(y - rect.top + next + TOP))
+          }
+        }
+      }
+      id = requestAnimationFrame(tick)
+    }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [draggingTrackId])
 
   // 幅を App に知らせる
   const { onWidth } = p
   useEffect(() => onWidth(width), [width, onWidth])
-
-  // 幅に合わせる
-  useLayoutEffect(() => {
-    const box = canvasRef.current!.parentElement!
-    // 大きさが変わった同じフレームのうちに描き直す（canvas は大きさを変えると消えるので、描画が遅れると一瞬ちらつく）
-    const ro = new ResizeObserver(() =>
-      flushSync(() => {
-        setWidth(box.clientWidth)
-        setVh(box.clientHeight)
-      }),
-    )
-    ro.observe(box)
-    return () => ro.disconnect()
-  }, [])
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current!
@@ -253,6 +269,7 @@ export default function Timeline(p: {
   }, [setView])
   const maxRef = useRef(0)
   maxRef.current = maxV
+  maxVRef.current = maxV
 
   const toTime = (x: number) => view.scroll + x / view.pps
   /** 波形ブロックの画面の上の位置（重なって段に分けたときはその段。エンベロープの線を描く所と同じ） */
@@ -636,6 +653,7 @@ export default function Timeline(p: {
                 return
               }
               if (!trackDragRef.current) return
+              dragYRef.current = e.clientY
               const rect = e.currentTarget.getBoundingClientRect()
               // slotAt は時間軸と同じ座標（目盛りとマスターの分 TOP を含む）なので足す
               const y = e.clientY - rect.top + vsRef.current + TOP
@@ -670,6 +688,7 @@ export default function Timeline(p: {
                     if (!el) return
                     el.setPointerCapture(e.nativeEvent.pointerId)
                     trackDragRef.current = { id: track.id }
+                    dragYRef.current = e.clientY
                     setDraggingTrackId(track.id)
                     setDropSlot(i)
                   }}
@@ -709,7 +728,7 @@ export default function Timeline(p: {
             </Box>
           </Box>
         </Box>
-        <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
+        <Box ref={boxRef} sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
           {box && (
             <Box
               sx={{

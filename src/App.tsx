@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Box, Snackbar } from '@mui/material'
-import { EmptyState, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
+import { EmptyState, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
 import StatusBar from './StatusBar'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
@@ -320,7 +320,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
   // 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ）。パソコンはツールバーの下、スマホは波形マップの下
   const touchLike = mobile || isMobile()
-  const editBarOn = p.settings.editBar === 'on' || (p.settings.editBar === 'auto' && touchLike)
+  const editBarOn = editBarEnabled(p.settings.editBar, touchLike)
   const editBar = editBarOn && (selected.length > 0 || range) ? <BlockEditBar commands={commands} mode={selected.length > 0 ? 'block' : 'range'} /> : null
 
   return (

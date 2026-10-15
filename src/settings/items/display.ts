@@ -1,12 +1,11 @@
 // 「表示」の項目と、表示メニューとツールバーで切り替えるもの（名前と既定値は WeVocalSynth と同じ）
 import type { LangSetting } from '../../i18n'
-import type { Preset } from 'pevenmui'
+import type { EditBarSetting, Preset } from 'pevenmui'
 import { DEFAULT_VIDEO_PREFS, type VideoExportPrefs } from 'wevocalconverter/host'
 import type { BlockPreset } from '../../BlockDialog'
 import { check, choice, defineItems, value } from './define'
 
 export type ThemeSetting = 'system' | 'light' | 'dark'
-export type EditBarSetting = 'auto' | 'on' | 'off'
 
 /** 「表示」 */
 export const display = defineItems('display', {
