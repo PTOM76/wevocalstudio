@@ -30,8 +30,15 @@ export function usePlayerSync(o: {
   useEffect(() => {
     if (!playing) return
     let id = 0
+    let lastTick = 0
     const tick = () => {
       const pos = player.current.position()
+      // 先読みの予約を足す（0.5 秒ごと。毎フレームでは多すぎる）
+      const now = performance.now()
+      if (now - lastTick > 500) {
+        lastTick = now
+        player.current.tick(project)
+      }
       // 範囲の終わりで止める。リピートなら範囲の頭に戻る
       if (range && pos >= range.end) {
         if (repeat) {

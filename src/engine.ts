@@ -19,6 +19,8 @@ function bufferOf(ctx: BaseAudioContext, clip: Clip) {
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
+/** 再生のときに先に予約しておく長さ（秒）。全部を一度に予約すると、波形ブロックが多い曲では位置を変えるたびにノードが何百も増え、音が止まる */
+const LOOKAHEAD = 8
 /** かたまりのつなぎ目で重ねる長さ（秒。片ごとに前後へこれだけ伸ばす） */
 const XFADE = 0.005
 
@@ -115,7 +117,7 @@ class Graph {
   private static pieceKey = (pc: Piece) => `${clipId(pc.clip)}:${pc.a}`
 
   /** from 秒より後ろの波形ブロックを鳴らす。変わっていないものはそのまま。差し替えるものは FADE でつなぐ */
-  sync(p: Project, from: number, now: number, smooth: boolean) {
+  sync(p: Project, from: number, now: number, smooth: boolean, ahead = LOOKAHEAD) {
     // マスターとトラックの値（鳴らしたまま変える）
     const at = this.ctx.currentTime
     this.master.gain.setTargetAtTime(p.master.mute ? 0 : dbToGain(p.master.volume), at, 0.01)
@@ -155,6 +157,8 @@ class Graph {
       const source = p.sources.find((s) => s.id === b.source)
       const track = this.tracks.get(b.track)
       if (b.mute || !source || !track || b.start + b.length <= from) continue
+      // 先読みの外（まだ先の波形ブロック）は、近づいたら予約する（tick）。予約済みのものはそのまま
+      if (b.start > from + ahead && !this.blocks.has(b.id)) continue
       // 作ったかたまりの片（変えていなければ元の音）。できていない所は鳴らさない
       const pieces = piecesFor(b, source)
       if (!pieces.length) continue
@@ -328,6 +332,12 @@ export class Player {
     preparePitch(p, from).catch(() => {})
   }
 
+  /** 再生が進んだら、先読みの中に入った波形ブロックを予約する（再生中に少しずつ呼ぶ） */
+  tick(p: Project) {
+    if (!this.playing || !this.graph || !this.ctx) return
+    this.graph.sync(p, this.position(), this.ctx.currentTime + 0.01, false)
+  }
+
   /** 再生中に変えたものだけを差し替える（位置はそのまま） */
   update(p: Project) {
     if (!this.playing || !this.graph || !this.ctx) return
@@ -360,7 +370,7 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000): Prom
   await preparePitch(p)
   const length = Math.max(1, Math.ceil(Math.max(projectEnd(p), until) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
-  new Graph(ctx, 0).sync(p, 0, 0, false)
+  new Graph(ctx, 0).sync(p, 0, 0, false, Infinity)
   const out = await ctx.startRendering()
   return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
 }
