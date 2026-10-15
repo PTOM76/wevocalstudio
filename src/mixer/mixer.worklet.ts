@@ -94,9 +94,16 @@ class BlockMixer extends AudioWorkletProcessor {
     const t1 = t0 + n / sampleRate
     if (this.stoppedAt > 0 && t0 > this.stoppedAt + FADE) return false
     const stopping = this.stoppedAt > 0
-    // 終わった声を捨てる（始まりの順なので、前から見て終わりを過ぎたものだけ）
-    if (this.live.length && this.live.some((l) => l.v.t1 <= t0 || (l.diedAt > 0 && t0 > l.diedAt + FADE))) this.live = this.live.filter((l) => l.v.t1 > t0 && !(l.diedAt > 0 && t0 > l.diedAt + FADE))
-    for (const l of this.live) {
+    // 終わった声をその場で詰めて捨てる（process の中では配列を作らない）
+    const live = this.live
+    let w = 0
+    for (let r = 0; r < live.length; r++) {
+      const l = live[r]
+      if (l.v.t1 <= t0 || (l.diedAt > 0 && t0 > l.diedAt + FADE)) continue
+      live[w++] = l
+    }
+    live.length = w
+    for (const l of live) {
       const v = l.v
       if (v.t0 >= t1) break
       const clip = clips.get(v.clip)
@@ -115,9 +122,10 @@ class BlockMixer extends AudioWorkletProcessor {
       // 元の音の位置（ctx と元の音のサンプルレートが違えば、その比で進める）
       const step = clip.sampleRate / sampleRate
       const startPos = v.f0 + (t0 - v.t0) * clip.sampleRate
-      for (let i = 0; i < n; i++) {
-        const t = t0 + i / sampleRate
-        if (t < v.t0 || t >= v.t1) continue
+      // 128 サンプルのうち声にかかる所だけを回す
+      const i0 = Math.max(0, Math.ceil((v.t0 - t0) * sampleRate))
+      const i1 = Math.min(n, Math.ceil((v.t1 - t0) * sampleRate))
+      for (let i = i0; i < i1; i++) {
         const pos = startPos + i * step
         const k = Math.floor(pos)
         if (k < 0 || k + 1 >= len) continue

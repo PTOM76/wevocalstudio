@@ -27,6 +27,8 @@ const sentClips = new WeakMap<BaseAudioContext, Set<number>>()
 /** 1 つの再生（Graph）のミキサー。トラックごとに 1 つの AudioWorkletNode を置き、トラックの入口につなぐ */
 export class Mixers {
   private readonly nodes = new Map<string, AudioWorkletNode>()
+  /** トラックごとに最後に送った声の一覧（同じなら送らない。ドラッグ中は動かしたトラックだけを送る） */
+  private readonly sent = new Map<string, string>()
   private readonly ctx: BaseAudioContext
   private pings = 0
 
@@ -70,6 +72,9 @@ export class Mixers {
   }
 
   voices(trackId: string, voices: Voice[], smooth: boolean) {
+    const sig = voices.map((v) => v.key + '#' + v.sig).join('|')
+    if (this.sent.get(trackId) === sig) return
+    this.sent.set(trackId, sig)
     this.nodes.get(trackId)?.port.postMessage({ type: 'voices', voices, smooth } satisfies MixerMessage)
   }
 
@@ -80,6 +85,7 @@ export class Mixers {
     n.port.postMessage({ type: 'stop' } satisfies MixerMessage)
     n.disconnect()
     this.nodes.delete(trackId)
+    this.sent.delete(trackId)
   }
 
   /** 全部をフェードアウトして止める（ミキサーは止まったら処理をやめる） */
@@ -90,6 +96,7 @@ export class Mixers {
   disconnect() {
     for (const n of this.nodes.values()) n.disconnect()
     this.nodes.clear()
+    this.sent.clear()
   }
 
   /** 送ったものを、すべてのミキサーが受け取るまで待つ（書き出しを始める前） */
