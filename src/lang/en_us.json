@@ -389,7 +389,6 @@
   "toast.baked": "Committed",
   "toast.exported": "Exported",
   "toast.voicesSplit": "Split the harmony into two tracks",
-  "toast.newerFormat": "This file was saved by a newer version. Please update.",
 
   "bake.job": "Commit",
 

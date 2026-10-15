@@ -51,14 +51,12 @@ export function writeProject(p: Project): Blob {
   return new Blob([head, ...pcm], { type: 'application/octet-stream' })
 }
 
-/** onNewer は、自分より新しい形式のファイルのときに呼ぶ（開くのは止めない。新しい項目は読み飛ばす） */
-export async function readProject(file: Blob, onNewer?: () => void): Promise<Project> {
+export async function readProject(file: Blob): Promise<Project> {
   const buf = await file.arrayBuffer()
   const view = new DataView(buf)
   if (buf.byteLength < 8 || new TextDecoder().decode(new Uint8Array(buf, 0, 4)) !== MAGIC) throw new Error('not a WeVocal Studio project')
   const length = view.getUint32(4, true)
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, length))) as Header
-  if (header.version > VERSION) onNewer?.()
   let at = 8 + length + ((4 - ((8 + length) % 4)) % 4)
   const sources: Source[] = header.sources.map((s) => {
     const channels: Float32Array[] = []

@@ -35,7 +35,7 @@ export function useAutosave(o: {
         if (!r) return
         doc.replace(r.project, 'history.restore')
         setFileName(r.fileName)
-        setNotice(t(r.newer ? 'toast.newerFormat' : 'toast.restored'))
+        setNotice(t('toast.restored'))
       })
       .catch(fail)
       .finally(() => setRestored(true))

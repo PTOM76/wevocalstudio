@@ -100,7 +100,7 @@ export async function saveAutosave(p: Project, fileName: string) {
 }
 
 /** 前回の作業。なければ null */
-export async function loadAutosave(): Promise<{ project: Project; fileName: string; newer: boolean } | null> {
+export async function loadAutosave(): Promise<{ project: Project; fileName: string } | null> {
   const meta = await get<Meta>(metaKey())
   if (!meta || !meta.blocks?.length) return null
   const sources: Source[] = []
@@ -117,7 +117,6 @@ export async function loadAutosave(): Promise<{ project: Project; fileName: stri
   return {
     project: { sources, tempo: { ...DEFAULT_TEMPO, ...meta.tempo }, markers: meta.markers ?? [], master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks.map(fillTrack) : base.tracks, blocks, ...(meta.end !== undefined ? { end: meta.end } : {}) },
     fileName: meta.fileName,
-    newer: (meta.formatVersion ?? 1) > FORMAT,
   }
 }
 

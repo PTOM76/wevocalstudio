@@ -54,7 +54,7 @@ export function useProjectFile(o: {
   const openProjectFile = async (file: File) => {
     if (dirty && !(await o.confirmDiscard())) return
     try {
-      const p = await readProject(file, () => o.notify(t('toast.newerFormat')))
+      const p = await readProject(file)
       fileRef.current = fileRefOf(file) ?? null
       setSaved(p)
       o.onOpened(p, file.name.replace(/\.[^.]+$/, ''))
