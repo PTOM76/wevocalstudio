@@ -44,11 +44,17 @@ export function usePlayerSync(o: {
           return
         }
       } else if (!range && end > 0 && pos >= end) {
-        // 曲の終わり（最後の波形ブロックの終わり）で止める
-        player.current.stop()
-        setPlayPos(null)
-        setPlaying(false)
-        return
+        if (repeat) {
+          // 範囲がないリピートは、曲の終わりまで行ったら最初に戻る
+          void player.current.play(project, 0).catch(fail)
+          setPlayPos(0)
+        } else {
+          // 曲の終わり（最後の波形ブロックの終わり）で止める
+          player.current.stop()
+          setPlayPos(null)
+          setPlaying(false)
+          return
+        }
       }
       id = requestAnimationFrame(tick)
     }
