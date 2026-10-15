@@ -3,7 +3,7 @@
 // 再生位置（止まっていれば編集カーソル）に近いかたまりから作り、できたものから鳴らす。
 // Worker は CPU のコアに合わせて複数使う。作ったかたまりは、使われなくなってもしばらく残す（戻したときに作り直さない）
 import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
-import { CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
+import { audible, CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
 import type { DspRequest, PitchResponse } from './worker'
 
 type Req = DspRequest extends infer T ? (T extends { id: number } ? Omit<T, 'id'> : never) : never
@@ -278,6 +278,9 @@ function prune(used: Set<string>) {
 /** 再生位置より前のかたまりの遠さに掛ける重み（これから鳴る所を先に作る） */
 const BEHIND = 4
 
+/** 鳴らない波形ブロック（ミュート、鳴らないトラック）の遠さに足す値（鳴るものを全部作ってから作る） */
+const SILENT = 1e6
+
 /** プロジェクトの波形ブロックの音を用意する（around は再生位置か編集カーソル。近い所から）。新しく作ったものがあれば true */
 export async function preparePitch(p: Project, around = 0) {
   const used = new Set<string>()
@@ -286,6 +289,8 @@ export async function preparePitch(p: Project, around = 0) {
     const source = p.sources.find((s) => s.id === b.source)
     if (!needsProcess(b) || !source) continue
     const params = paramsOf(b)
+    const track = p.tracks.find((t) => t.id === b.track)
+    const silent = b.mute || !track || !audible(p, track) ? SILENT : 0
     for (const k of chunksOf(b)) {
       const key = `${params}#${k}`
       used.add(key)
@@ -294,7 +299,7 @@ export async function preparePitch(p: Project, around = 0) {
       const t0 = b.start + (Math.max(b.offset, k * CHUNK) - b.offset) / b.rate
       const t1 = b.start + (Math.min(b.offset + b.length * b.rate, (k + 1) * CHUNK) - b.offset) / b.rate
       // これから鳴る所（再生位置より後ろ）を先にし、過ぎた所は離れているほど後に回す
-      const distance = around < t0 ? t0 - around : around > t1 ? (around - t1) * BEHIND : 0
+      const distance = silent + (around < t0 ? t0 - around : around > t1 ? (around - t1) * BEHIND : 0)
       const old = next.get(key)
       if (!old || distance < old.distance) next.set(key, { key, b, source, k, distance })
     }
