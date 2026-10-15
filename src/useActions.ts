@@ -47,6 +47,8 @@ export interface ActionContext {
   gridStep: () => number
   newProject: () => void
   newWindow: () => void
+  /** 最適化して保存するダイアログを開く */
+  saveOptimized: () => void
   /** 動画の書き出し（追加機能「変換」） */
   exportVideo: () => void
   /** WeVocalSynth のプロジェクト（.wvsp）への書き出し（選んだトラック。なければ全トラック） */
@@ -248,6 +250,7 @@ export function useActions(c: ActionContext) {
     saveRangeToFolder: { enabled: !!c.folder && !!c.range, run: () => c.folder?.saveRange() },
     saveBlocksToFolder: { enabled: !!c.folder && any, run: () => c.folder?.saveBlocks(ids) },
     import: { run: c.importFiles },
+    saveOptimized: { enabled: doc.project.blocks.length > 0, run: c.saveOptimized },
     export: { enabled: doc.project.blocks.length > 0, run: c.openExport },
     exportVideo: { enabled: doc.project.blocks.length > 0, run: c.exportVideo },
     exportWvsp: { enabled: doc.project.blocks.length > 0, run: c.exportWvsp },
@@ -300,7 +303,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.file'),
       accessKey: 'F',
-      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), divider, item('import'), item('export'), item('exportVideo'), item('exportWvsp'), ...(c.folder ? [item('saveRangeToFolder'), item('saveBlocksToFolder')] : []), divider, { label: t('menu.settings'), onClick: c.openSettings }],
+      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), item('saveOptimized'), divider, item('import'), item('export'), item('exportVideo'), item('exportWvsp'), ...(c.folder ? [item('saveRangeToFolder'), item('saveBlocksToFolder')] : []), divider, { label: t('menu.settings'), onClick: c.openSettings }],
     },
     {
       label: t('menu.edit'),

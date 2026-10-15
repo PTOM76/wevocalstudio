@@ -64,6 +64,7 @@ export type Action =
   | 'open'
   | 'save'
   | 'saveAs'
+  | 'saveOptimized'
   | 'exportVideo'
   | 'exportWvsp'
   | 'saveRangeToFolder'
@@ -162,6 +163,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   open: ['Ctrl+KeyO'],
   save: ['Ctrl+KeyS'],
   saveAs: ['Ctrl+Shift+KeyS'],
+  // 最適化して別のファイルに保存（使っていない部分を捨て、加工を確定する）
+  saveOptimized: [],
   // 動画の書き出し（追加機能「変換」）
   exportVideo: [],
   // WeVocalSynth のプロジェクト（.wvsp）への書き出し

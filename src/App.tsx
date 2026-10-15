@@ -269,6 +269,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     openDialog: (id, arg) => dialogs.open(id, arg),
     // 動画の書き出し: 追加機能「変換」を確かめ、プレビューに使う音を作ってから開く
     exportWvsp: () => files.exportWvsp(selectedTracks),
+    saveOptimized: () => dialogs.open('optimize', selected),
     exportVideo: () =>
       void (async () => {
         if (!(await addonInstall.ensure(CONVERTER_ADDON))) return
@@ -506,7 +507,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
       <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track, emptyAt.marker) : []} onClose={() => setEmptyAt(null)} />
-      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} onTogglePlay={() => (playing ? pause() : play())} />
+      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} range={range} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} onTogglePlay={() => (playing ? pause() : play())} />
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar

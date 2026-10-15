@@ -136,6 +136,7 @@
   "menu.splitVoicesByVolume": "Split harmony into louder and quieter (experimental)",
   "menu.setEndHere": "Set end position here",
   "menu.autoEnd": "Clear end position",
+  "menu.saveOptimized": "Save Optimized…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -398,6 +399,7 @@
   "toast.baked": "Committed",
   "toast.exported": "Exported",
   "toast.voicesSplit": "Split the harmony into two tracks",
+  "toast.optimized": "Saved optimized (sources {before} → {after})",
 
   "bake.job": "Commit",
 
@@ -761,5 +763,19 @@
   "fx.presetSave": "Save current values",
   "fx.presetRemove": "Delete",
   "fx.presetName": "Preset {n}",
-  "fx.applyHelp": "Writes the FX chain into the track audio and clears the chain"
+  "fx.applyHelp": "Writes the FX chain into the track audio and clears the chain",
+
+  "optimize.title": "Save Optimized",
+  "optimize.help": "Saves a lighter copy of the project as a separate file. The current project is not changed",
+  "optimize.bake": "Commit processing",
+  "optimize.bakeNone": "Do not commit",
+  "optimize.bakePitch": "Commit pitch and speed only",
+  "optimize.bakeAll": "Commit everything (including volume, fades, and envelopes)",
+  "optimize.onlySelected": "Selected blocks only",
+  "optimize.bakeHelp": "Committed blocks are saved with their processed audio as the source. Their processing can no longer be changed",
+  "optimize.discard": "Discard",
+  "optimize.trim": "Trim unused parts of sources",
+  "optimize.dropUnused": "Remove unused sources",
+  "optimize.run": "Save…",
+  "optimize.job": "Optimizing"
 }

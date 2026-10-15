@@ -136,6 +136,7 @@
   "menu.splitVoicesByVolume": "和音を大きい方と小さい方に分離（試験的）",
   "menu.setEndHere": "最終位置に現在位置を指定する",
   "menu.autoEnd": "最終位置の指定を解除する",
+  "menu.saveOptimized": "最適化して保存…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -398,6 +399,7 @@
   "toast.baked": "確定しました",
   "toast.exported": "書き出しました",
   "toast.voicesSplit": "和音を2つのトラックに分離しました",
+  "toast.optimized": "最適化して保存しました（元の音 {before} → {after}）",
 
   "bake.job": "確定",
 
@@ -761,5 +763,19 @@
   "fx.presetSave": "今の値を保存",
   "fx.presetRemove": "削除",
   "fx.presetName": "プリセット {n}",
-  "fx.applyHelp": "FX の列をトラックの音声に書き込み、列を空に戻します"
+  "fx.applyHelp": "FX の列をトラックの音声に書き込み、列を空に戻します",
+
+  "optimize.title": "最適化して保存",
+  "optimize.help": "プロジェクトを軽くして、別のファイルとして保存します。今のプロジェクトは変わりません",
+  "optimize.bake": "加工の確定",
+  "optimize.bakeNone": "確定しない",
+  "optimize.bakePitch": "ピッチと速度だけ確定",
+  "optimize.bakeAll": "すべて確定（音量、フェード、エンベロープも）",
+  "optimize.onlySelected": "選んでいる波形ブロックだけ",
+  "optimize.bakeHelp": "確定した波形ブロックは、加工後の音を元の音として保存します。あとから加工を変えることはできません",
+  "optimize.discard": "捨てるもの",
+  "optimize.trim": "使っていない部分を切り落とす",
+  "optimize.dropUnused": "使っていない元の音を消す",
+  "optimize.run": "保存…",
+  "optimize.job": "最適化中"
 }

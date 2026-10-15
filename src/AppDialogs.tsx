@@ -21,6 +21,8 @@ import { app } from './appConfig'
 import { i18n, useT } from './i18n'
 import SettingsDialog from './settings/SettingsDialog'
 import type { Settings } from './settings/settings'
+import OptimizeDialog from './OptimizeDialog'
+import type { OptimizeOptions } from './optimize'
 import ShortcutsDialog from './ShortcutsDialog'
 import type { useProject } from './useProject'
 
@@ -35,11 +37,14 @@ export default function AppDialogs(p: {
   fileName: string
   range: Range | null
   onExport: (s: ExportSettings, win?: Window | null) => void
+  onOptimize: (o: OptimizeOptions) => void
   onVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void
   fail: (e: unknown) => void
   /** 再生中か、再生と一時停止の切り替え（FX を開いたまま聞く） */
   playing: boolean
   onTogglePlay: () => void
+  /** 音を作る処理の負荷（0〜1。測れなければ null） */
+  load: number | null
   /** 編集カーソル（作った音、並べた音符を置く位置） */
   cursor: number
   /** ボーカルと伴奏に分ける関数を用意する（一音ずつ切り出しで使う） */
@@ -89,6 +94,7 @@ export default function AppDialogs(p: {
         finish={{ normalize: p.settings.exportNormalize, fadeMs: p.settings.exportFadeMs }}
         onFinishChange={(f) => p.onSettingsChange({ exportNormalize: f.normalize, exportFadeMs: f.fadeMs })}
       />
+      <OptimizeDialog open={dialogs.isOpen('optimize')} selected={dialogs.arg<string[]>('optimize') ?? []} onClose={dialogs.closer('optimize')} onRun={p.onOptimize} />
       <SettingsDialog open={dialogs.isOpen('settings')} onClose={dialogs.closer('settings')} settings={p.settings} onChange={p.onSettingsChange} />
       <LicensesDialog
         open={dialogs.isOpen('licenses')}
@@ -131,6 +137,7 @@ export default function AppDialogs(p: {
           onChange={(fx, merge) => (fxTarget.id === 'master' ? doc.updateMaster({ fx }, merge && `master:${merge}`) : doc.updateTrack(fxTarget.id, { fx }, merge && `${fxTarget.id}:${merge}`))}
           playing={p.playing}
           onTogglePlay={p.onTogglePlay}
+          load={p.playing ? p.load : null}
           userPresets={p.settings.fxPresets}
           onUserPresetsChange={(plugin, list) => p.onSettingsChange({ fxPresets: { ...p.settings.fxPresets, [plugin]: list } })}
           onClose={() => {

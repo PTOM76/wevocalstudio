@@ -29,6 +29,8 @@ src/
   LevelMeter.tsx  音量メーター（wevocal-lib の ThemedLevelMeter。WeVocalSynth と共通）
   main.tsx  起動。設定を読み、言語、テーマ、画面の大きさを PevenProvider に渡す
   MeterFader.tsx  音量のつまみとレベルメーターを一つにした部品と、パンの棒（wevocal-lib の MeterFader。WeVocalSynth と共通）
+  optimize.ts  最適化して保存するためのプロジェクトの整理（波形ブロックの確定、使っていない元の音の部分を切る、使っていない元の音を消す）。元のプロジェクトは書き換えない
+  OptimizeDialog.tsx  最適化して保存のダイアログ（何を確定し、何を捨てるかを選ぶ。実行は useProjectFile の saveOptimized）
   overlap.ts  重なった波形ブロックの段の割り当て（重なっている所だけトラックの高さを段に分ける）。画面を知らない
   overview.ts  ミニマップ用の、全トラックを重ねた小さな音（1 秒 1000 点の振幅）。元の音は書き換えず、波形ブロックの位置と音量から作る
   peaks.ts  波形の描画用のピーク（縮めた形）。元の音ごとに一度だけ、何段階かの細かさで最小と最大を作っておく（描くたびに元の音を読まないように）
@@ -66,6 +68,7 @@ src/mixer/
 
 src/settings/
   DataSection.tsx  設定の「データ」（使用量と、作業データ、キャッシュ、追加機能、設定の削除。部品と処理は PevenMUI。WeVocalSynth と同じ）
+  PluginsSection.tsx  設定の「プラグイン」（導入と管理。部品は wevocal-lib の PluginManager。WeVocalSynth と共通）
   settings.ts  設定の保存と読み込み、Context（PevenMUI の createSettingsStore。WeVocalSynth と同じ）。項目の定義は items/ にある
   SettingsDialog.tsx  設定のダイアログ（PevenMUI の設定画面に、分類と中身を渡す。WeVocalSynth と同じ）
   SettingsPages.tsx  設定画面の分類ごとの中身（定義のある項目は S(名前) の 1 行。WeVocalSynth と同じ形）
@@ -77,7 +80,7 @@ src/settings/items/
   display.ts  「表示」の項目と、表示メニューとツールバーで切り替えるもの（名前と既定値は WeVocalSynth と同じ）
   general.ts  「全般」「編集」「キーとマウス」「ファイル」の項目（名前と既定値は WeVocalSynth と同じ）
   index.ts  設定の項目をまとめ、型と既定値を作る（PevenMUI の collectItems。WeVocalSynth と同じ形）
-  process.ts  「ピッチ」と時間軸の線の項目
+  process.ts  「処理」（ピッチの処理方式）と時間軸の線の項目
   SettingRow.tsx  項目の定義から設定画面の 1 行を作る（部品は PevenMUI の SettingRow。WeVocalSynth と同じ）
 
 src/storage/

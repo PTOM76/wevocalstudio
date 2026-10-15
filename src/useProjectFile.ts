@@ -11,6 +11,7 @@ import { videoHost } from './addons'
 import type { useT } from './i18n'
 import type { Project } from './project'
 import { exportWvsp } from './wvspExport'
+import { optimizeProject, sourcesBytes, type OptimizeOptions } from './optimize'
 import { LEGACY_PROJECT_EXT, PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings/settings'
 import { idbGet, idbPut } from './storage/idb'
@@ -122,6 +123,25 @@ export function useProjectFile(o: {
     }
   }
 
+  /** 最適化したプロジェクトを、別のファイルとして保存する（今のプロジェクトとファイルは変えない） */
+  const runOptimizedSave = async (opt: OptimizeOptions) => {
+    const target = await pickSaveTarget(`${o.fileName}-optimized${PROJECT_EXT}`, 'project', { description: t('file.projectType'), mime: 'application/octet-stream', ext: PROJECT_EXT }, window, true)
+    if (!target) return
+    const job = startJob('export', t('optimize.job'))
+    job.update(-1)
+    try {
+      const before = sourcesBytes(o.project)
+      const q = await optimizeProject(o.project, opt, (v) => job.update(v))
+      await target.write(writeProject(q))
+      const mb = (n: number) => `${(n / 1048576).toFixed(1)} MB`
+      o.notify(t('toast.optimized', { before: mb(before), after: mb(sourcesBytes(q)) }))
+    } catch (e) {
+      o.fail(e)
+    } finally {
+      job.end()
+    }
+  }
+
   /** WeVocalSynth のプロジェクト（.wvsp）に書き出す（トラックごとに描画。選んだトラックがなければ全トラック） */
   const runWvspExport = async (selected: string[]) => {
     const target = await pickSaveTarget(`${o.fileName}${WVSP_EXT}`, 'wvsp', { description: t('file.wvspType'), mime: 'application/octet-stream', ext: WVSP_EXT })
@@ -210,6 +230,7 @@ export function useProjectFile(o: {
     save: () => void save(),
     saveAs: () => void save(true),
     exportWvsp: (selected: string[]) => void runWvspExport(selected),
+    saveOptimized: (opt: OptimizeOptions) => void runOptimizedSave(opt),
     runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
     runVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void runVideoExport(v, look, win),
     /** 動画のプレビューに使う音（全体） */
