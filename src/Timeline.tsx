@@ -268,6 +268,17 @@ export default function Timeline(p: {
     setRange: (start) => setView((v) => ({ ...v, scroll: start })),
     seek: (t) => p.onSeek(Math.max(0, t)),
   })
+  // 波形ブロックのドラッグで端に来たときも流す（再生位置は動かさない）
+  const blockEdge = useEdgeScroll({
+    canvasRef,
+    view: { start: view.scroll, dur: visible },
+    duration: Math.max(end + visible, view.scroll + visible),
+    setRange: (start) => setView((v) => ({ ...v, scroll: start })),
+    seek: () => {},
+  })
+  // ドラッグを始めたときの左端の時刻と、最後に動かした位置（流れている間は指が止まっていても、ブロックが付いてくるように使う）
+  const dragScroll0 = useRef(0)
+  const lastMove = useRef<{ x: number; y: number; altKey: boolean; shiftKey: boolean } | null>(null)
 
   const snapping = { mode: p.grid, division: p.division, tempo: p.project.tempo, markers: p.project.markers, pps: view.pps }
   /** 編集カーソルと範囲選択の端は、スナップが入っていればいちばん近いグリッドの線に合わせる（Shift で外す） */
@@ -441,8 +452,46 @@ export default function Timeline(p: {
     e.currentTarget.setPointerCapture(e.pointerId)
     const trackIndex = p.project.tracks.findIndex((t) => t.id === hit.block.track)
     const others = hit.kind === 'move' ? p.project.blocks.filter((b) => group.includes(b.id) && b.id !== id) : []
+    dragScroll0.current = view.scroll
+    lastMove.current = null
     drag.current = { kind: hit.kind, block: hit.block, others, x, y, trackIndex, merge: `drag${dragCount.current++}`, copy: ctrl && hit.kind === 'move' ? { wasSelected, done: false } : undefined }
   }
+
+  /** ドラッグ中の波形ブロックを、指の位置（と流れた分）に合わせて動かす */
+  const moveDrag = (d: NonNullable<typeof drag.current>, x: number, y: number, altKey: boolean, shiftKey: boolean) => {
+    // Ctrl で始めたら、動かし始めたときに写しをその場に残す（動かすのは元のもの）
+    if (d.copy && !d.copy.done) {
+      if (Math.hypot(x - d.x, y - d.y) < 4) return
+      d.copy.done = true
+      p.onCopyBlocks([d.block, ...d.others])
+    }
+    // Shift を押している間は吸い付けない
+    const raw = (x - d.x) / view.pps + (view.scroll - dragScroll0.current)
+    const exclude = [d.block.id, ...d.others.map((b) => b.id)]
+    // Alt で本体をつまんだら、中の音だけをずらす（吸い付けない）
+    if (altKey && d.kind === 'move') {
+      const all = [d.block, ...d.others]
+      return p.onBlocksChange(Object.fromEntries(all.map((b) => [b.id, slipPatch(p.project, b, raw)])), d.merge)
+    }
+    let dt = p.snap && !shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), snapping) : raw
+    const di = rowDelta(d.y, y)
+    // Alt を押しながら端をドラッグすると速度ごと伸び縮みする
+    if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di, altKey), d.merge)
+    // まとめて動かす。一番前のものが 0 より前に出ない所、トラックの外に出ない所で止める
+    const all = [d.block, ...d.others]
+    dt = Math.max(dt, -Math.min(...all.map((b) => b.start)))
+    const rows = all.map((b) => p.project.tracks.findIndex((t) => t.id === b.track))
+    const shift = Math.max(-Math.min(...rows), Math.min(p.project.tracks.length - 1 - Math.max(...rows), di))
+    p.onBlocksChange(Object.fromEntries(all.map((b, i) => [b.id, { start: b.start + dt, track: p.project.tracks[rows[i] + shift].id }])), d.merge)
+  }
+
+  // 端で表示が流れている間は、指が動かなくても波形ブロックを付いてこさせる
+  useEffect(() => {
+    const d = drag.current
+    const m = lastMove.current
+    if (d && m) moveDrag(d, m.x, m.y, m.altKey, m.shiftKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view.scroll])
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     longPress.move(e.clientX, e.clientY)
@@ -510,34 +559,12 @@ export default function Timeline(p: {
       setCursor(hit ? CURSOR[hit.kind] : 'default')
       return
     }
-    edge.update(e.clientX)
+    blockEdge.update(e.clientX)
     const oy = e.nativeEvent.offsetY
     if (oy > height - 24) setVscroll((v) => Math.min(maxRef.current, v + 8))
     else if (oy > TOP && oy < TOP + 24) setVscroll((v) => Math.max(0, v - 8))
-    // Ctrl で始めたら、動かし始めたときに写しをその場に残す（動かすのは元のもの）
-    if (d.copy && !d.copy.done) {
-      if (Math.hypot(x - d.x, y - d.y) < 4) return
-      d.copy.done = true
-      p.onCopyBlocks([d.block, ...d.others])
-    }
-    // Shift を押している間は吸い付けない
-    const raw = (x - d.x) / view.pps
-    const exclude = [d.block.id, ...d.others.map((b) => b.id)]
-    // Alt で本体をつまんだら、中の音だけをずらす（吸い付けない）
-    if (e.altKey && d.kind === 'move') {
-      const all = [d.block, ...d.others]
-      return p.onBlocksChange(Object.fromEntries(all.map((b) => [b.id, slipPatch(p.project, b, raw)])), d.merge)
-    }
-    let dt = p.snap && !e.shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), snapping) : raw
-    const di = rowDelta(d.y, y)
-    // Alt を押しながら端をドラッグすると速度ごと伸び縮みする
-    if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di, e.altKey), d.merge)
-    // まとめて動かす。一番前のものが 0 より前に出ない所、トラックの外に出ない所で止める
-    const all = [d.block, ...d.others]
-    dt = Math.max(dt, -Math.min(...all.map((b) => b.start)))
-    const rows = all.map((b) => p.project.tracks.findIndex((t) => t.id === b.track))
-    const shift = Math.max(-Math.min(...rows), Math.min(p.project.tracks.length - 1 - Math.max(...rows), di))
-    p.onBlocksChange(Object.fromEntries(all.map((b, i) => [b.id, { start: b.start + dt, track: p.project.tracks[rows[i] + shift].id }])), d.merge)
+    lastMove.current = { x, y, altKey: e.altKey, shiftKey: e.shiftKey }
+    moveDrag(d, x, y, e.altKey, e.shiftKey)
   }
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -565,6 +592,8 @@ export default function Timeline(p: {
     rangeDrag.current = null
     scrub.current = false
     edge.stop()
+    blockEdge.stop()
+    lastMove.current = null
     drag.current = null
     p.onEndMerge()
   }
