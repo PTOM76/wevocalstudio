@@ -118,7 +118,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     const from = range && (at < range.start || at >= range.end) ? range.start : at
     setPaused(null)
     setPlayPos(from)
-    void player.current.play(project, from).then(() => setPlaying(true)).catch(fail)
+    void player.current.play(project, from).then(() => player.current.playing && setPlaying(true)).catch(fail)
   }
   // 追加機能の導入の確かめ（動画の書き出し。PevenMUI）
   const addonInstall = useAddonInstall()
@@ -242,7 +242,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       setCursor(at)
       setPaused(null)
       setPlayPos(at)
-      void player.current.play(project, at).then(() => setPlaying(true)).catch(fail)
+      void player.current.play(project, at).then(() => player.current.playing && setPlaying(true)).catch(fail)
     },
     end,
     openDialog: (id, arg) => dialogs.open(id, arg),

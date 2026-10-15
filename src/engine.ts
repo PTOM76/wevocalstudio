@@ -261,14 +261,23 @@ export class Player {
   private startedAt = 0
   private from = 0
   playing = false
+  // play の呼び出しの通し番号（続けて呼ばれたら、待っている途中の古い呼び出しは捨てる）
+  private seq = 0
+  // play が AudioContext の準備を待っている間
+  private starting = false
 
   /** from 秒から鳴らす（鳴っていれば、古い音を消して新しく始める） */
   async play(p: Project, from: number) {
-    const again = this.playing
+    // 待っている間に次の play や stop が来たら、この呼び出しは何もしない（古いグラフが残って鳴り続けたり、新しいグラフを壊したりしない）
+    const again = this.playing || this.starting
     this.stop()
+    const id = ++this.seq
+    this.starting = true
     this.ctx ??= new AudioContext()
     // iPhone、iPad はマナーモードでも鳴るように、再生の音声セッションにしてから起こす（wevocal-lib。WeVocalSynth と同じ）
     await startContext(this.ctx, 'player')
+    if (id !== this.seq) return
+    this.starting = false
     this.from = from
     // 鳴らし直すときは待たずに続ける（前の音は stop で消えていく）
     this.startedAt = this.ctx.currentTime + (again ? 0.01 : 0.05)
@@ -289,6 +298,8 @@ export class Player {
   }
 
   stop() {
+    this.seq++
+    this.starting = false
     this.graph?.stopAll()
     this.graph = null
     this.playing = false
