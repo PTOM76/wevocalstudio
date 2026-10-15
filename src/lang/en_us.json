@@ -132,6 +132,8 @@
   "menu.exportVideo": "Export as Video…",
   "menu.exportWvsp": "Export as WeVocalSynth Project…",
   "menu.kanaCut": "Cut into morae…",
+  "menu.splitVoicesByPitch": "Split harmony into higher and lower (experimental)",
+  "menu.splitVoicesByVolume": "Split harmony into louder and quieter (experimental)",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -256,6 +258,8 @@
   "settings.beatsPerBar": "Beats per bar",
   "settings.showLegacyAlgorithms": "Show legacy methods",
   "settings.showLegacyAlgorithmsHelp": "List Legacy Solis, Legacy Pisol and Legacy Wevia in the menu and defaults",
+  "settings.showVoiceSplit": "Show \"Split harmony\"",
+  "settings.showVoiceSplitHelp": "Adds items to Tools and the block right-click \"Vocal extraction\" menu that split the selected block into two voices (higher and lower, or louder and quieter) on new tracks. Works best on simple harmony",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
@@ -323,6 +327,10 @@
   "track.freeze": "Freeze",
   "track.unfreeze": "Unfreeze",
   "track.frozen": "Frozen (blocks can't be edited)",
+  "track.voiceHigh": "{name} (higher)",
+  "track.voiceLow": "{name} (lower)",
+  "track.voiceLoud": "{name} (louder)",
+  "track.voiceQuiet": "{name} (quieter)",
 
   "export.title": "Export",
   "export.format": "Format",
@@ -375,6 +383,7 @@
   "toast.extracted": "Extracted",
   "toast.baked": "Committed",
   "toast.exported": "Exported",
+  "toast.voicesSplit": "Split the harmony into two tracks",
 
   "bake.job": "Commit",
 
@@ -654,6 +663,7 @@
 
   "task.exporting": "Exporting…",
   "task.extractVocals": "Extracting vocals…",
+  "task.splitVoices": "Splitting harmony…",
 
   "pitchTool.flatten": "Flatten pitch fluctuation (selection, or whole)",
   "pitchTool.create": "Create",

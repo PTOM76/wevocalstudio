@@ -1,7 +1,8 @@
-// ボーカル抽出と楽器ごとの分離（手順は extractor の host.ts。WeVocalSynth と共通）。選んだ波形ブロックの音を分けて、新しいトラックに並べる
+// ボーカル抽出と楽器ごとの分離、和音の分離（手順は extractor の host.ts。WeVocalSynth と共通）。選んだ波形ブロックの音を分けて、新しいトラックに並べる
 import { startJob, useAddonInstall, useConfirm } from 'pevenmui'
 import { isMobile } from 'pevenmui/web'
 import type { Clip } from 'wevocal-lib'
+import { splitVoices } from './dsp/pitch'
 import { createHost, LEAD_MODEL, prepareExtract, resolveModel, STEM_MODELS, STEM_ORDER, VOCAL_MODELS, type ExtractOptions } from 'wevocalextractor/host'
 import { addonFileUrl, installedManifest, loadAddon } from './addons'
 import { useT, type MessageKey } from './i18n'
@@ -33,7 +34,7 @@ export function useExtract(o: { doc: ReturnType<typeof useProject>; settings: Se
   const ui = { ensure: install.ensure, confirmCpu, noAdapter: t('extract.noAdapter') }
 
   /** 選んだ波形ブロックの音を `split` で分け、名前を付けて新しいトラックに並べる */
-  const run = async (blockId: string, label: MessageKey, split: (c: Clip, onProgress: (p: number) => void) => Promise<[MessageKey, Float32Array[] | undefined][]>) => {
+  const run = async (blockId: string, label: MessageKey, split: (c: Clip, onProgress: (p: number) => void) => Promise<[MessageKey, Float32Array[] | undefined][]>, done: MessageKey = 'toast.extracted') => {
     const p = o.doc.project
     const b = p.blocks.find((x) => x.id === blockId)
     const clip = b && segmentOf(p, b)
@@ -47,7 +48,7 @@ export function useExtract(o: { doc: ReturnType<typeof useProject>; settings: Se
         b.id,
         stems.flatMap(([key, ch]) => (ch ? [{ name: t(key, { name }), clip: { sampleRate: clip.sampleRate, channels: ch } }] : [])),
       )
-      o.notify(t('toast.extracted'))
+      o.notify(t(done))
     } catch (e) {
       o.fail(e)
     } finally {
@@ -92,6 +93,25 @@ export function useExtract(o: { doc: ReturnType<typeof useProject>; settings: Se
         ]
       })
     },
+    /** 和音を 2 つの声（高い方と低い方、または大きい方と小さい方）に分ける（試験的。wevocal-lib の voices。足すと元の音になる） */
+    splitVoices: (blockId: string, by: 'pitch' | 'volume') =>
+      run(
+        blockId,
+        'task.splitVoices',
+        async (c, onProgress) => {
+          const r = await splitVoices(c.channels, c.sampleRate, by, onProgress)
+          return by === 'pitch'
+            ? [
+                ['track.voiceHigh', r.a],
+                ['track.voiceLow', r.b],
+              ]
+            : [
+                ['track.voiceLoud', r.a],
+                ['track.voiceQuiet', r.b],
+              ]
+        },
+        'toast.voicesSplit',
+      ),
     /** 楽器ごとに分ける（Demucs。設定でボーカルを主旋律とハモリにも分ける） */
     splitInstruments: async (blockId: string) => {
       const opts = await prepareExtract({ ...base(), stemModel: s.stemModel }, STEM_MODELS[s.stemModel].addon, ui)

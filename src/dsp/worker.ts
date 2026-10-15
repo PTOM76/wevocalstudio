@@ -1,4 +1,4 @@
-// wasm の処理（ピッチと速度の変更、テンポの解析）を画面のスレッドの外で行う Worker
+// wasm の処理（ピッチと速度の変更、テンポの解析、和音の分離）を画面のスレッドの外で行う Worker
 import wasmUrl from './dsp.wasm?url'
 
 interface DspExports {
@@ -11,6 +11,7 @@ interface DspExports {
   segment_bound(frames: number, sampleRate: number, k: number, field: number): number
   stitch_planar(input: number, frames: number, channels: number, sampleRate: number, stretch: number): number
   analyze_tempo(input: number, frames: number, sampleRate: number): number
+  split_voices_planar(input: number, frames: number, channels: number, sampleRate: number, by: number): number
   output_ptr(): number
 }
 
@@ -59,7 +60,16 @@ export interface StitchRequest {
   stretch: number
 }
 
-export type DspRequest = PitchRequest | TempoRequest | SegPlanRequest | StitchRequest
+/** 和音を 2 つの声に分ける（by は 0 = 高さ、1 = 音量）。結果は A の全チャンネル、B の全チャンネルの順 */
+export interface VoicesRequest {
+  kind: 'voices'
+  id: number
+  channels: Float32Array[]
+  sampleRate: number
+  by: number
+}
+
+export type DspRequest = PitchRequest | TempoRequest | SegPlanRequest | StitchRequest | VoicesRequest
 
 export type PitchResponse = { id: number; channels: Float32Array[] } | { id: number; error: string } | { id: number; progress: number }
 
@@ -140,13 +150,27 @@ function stitch(dsp: DspExports, r: StitchRequest): Float32Array[] {
   }
 }
 
+function splitVoices(dsp: DspExports, r: VoicesRequest): Float32Array[] {
+  const frames = r.channels[0]?.length ?? 0
+  const len = frames * r.channels.length
+  const ptr = dsp.alloc_f32(len)
+  try {
+    r.channels.forEach((c, i) => new Float32Array(dsp.memory.buffer, ptr, len).set(c, i * frames))
+    const n = dsp.split_voices_planar(ptr, frames, r.channels.length, r.sampleRate, r.by)
+    const out = new Float32Array(dsp.memory.buffer, dsp.output_ptr(), n * r.channels.length * 2)
+    return Array.from({ length: r.channels.length * 2 }, (_, i) => out.slice(i * n, (i + 1) * n))
+  } finally {
+    dsp.free_f32(ptr, len)
+  }
+}
+
 scope.onmessage = async (e: MessageEvent<DspRequest>) => {
   const req = e.data
   try {
     const dsp = await ready
     currentId = req.id
     lastPct = -1
-    const channels = req.kind === 'tempo' ? tempo(dsp, req) : req.kind === 'segplan' ? segplan(dsp, req) : req.kind === 'stitch' ? stitch(dsp, req) : process(dsp, req)
+    const channels = req.kind === 'tempo' ? tempo(dsp, req) : req.kind === 'segplan' ? segplan(dsp, req) : req.kind === 'stitch' ? stitch(dsp, req) : req.kind === 'voices' ? splitVoices(dsp, req) : process(dsp, req)
     scope.postMessage({ id: req.id, channels } satisfies PitchResponse, channels.map((c) => c.buffer))
   } catch (err) {
     scope.postMessage({ id: req.id, error: String(err) } satisfies PitchResponse)

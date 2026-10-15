@@ -132,6 +132,8 @@
   "menu.exportVideo": "動画ファイルに書き出す…",
   "menu.exportWvsp": "WeVocalSynth のプロジェクトに書き出す…",
   "menu.kanaCut": "一音ずつ切り出す…",
+  "menu.splitVoicesByPitch": "和音を高い方と低い方に分離（試験的）",
+  "menu.splitVoicesByVolume": "和音を大きい方と小さい方に分離（試験的）",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -256,6 +258,8 @@
   "settings.beatsPerBar": "1小節の拍数",
   "settings.showLegacyAlgorithms": "従来の処理方式を使用する",
   "settings.showLegacyAlgorithmsHelp": "従来アルゴリズムであるLegacy Solis、Legacy Pisol、Legacy Weviaを選択肢に表示する",
+  "settings.showVoiceSplit": "「和音を分離」を表示する",
+  "settings.showVoiceSplitHelp": "「ツール」と波形ブロックの右クリックの「ボーカル抽出」に、選択した波形ブロックを2つの声（高い方と低い方、または大きい方と小さい方）に分離する項目を表示する。分離した音は新しいトラックに配置される。単純な和音向け",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
@@ -323,6 +327,10 @@
   "track.freeze": "フリーズ",
   "track.unfreeze": "フリーズを解除",
   "track.frozen": "フリーズ中（波形ブロックは編集できません）",
+  "track.voiceHigh": "{name}（高い方）",
+  "track.voiceLow": "{name}（低い方）",
+  "track.voiceLoud": "{name}（大きい方）",
+  "track.voiceQuiet": "{name}（小さい方）",
 
   "export.title": "書き出す",
   "export.format": "形式",
@@ -375,6 +383,7 @@
   "toast.extracted": "抽出しました",
   "toast.baked": "確定しました",
   "toast.exported": "書き出しました",
+  "toast.voicesSplit": "和音を2つのトラックに分離しました",
 
   "bake.job": "確定",
 
@@ -654,6 +663,7 @@
 
   "task.exporting": "書き出し中…",
   "task.extractVocals": "ボーカル抽出中…",
+  "task.splitVoices": "和音を分離しています…",
 
   "pitchTool.flatten": "ピッチの揺れを平らにする（選択範囲、なければ全体）",
   "pitchTool.create": "作成",

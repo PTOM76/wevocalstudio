@@ -1,7 +1,7 @@
 //! WeVocal Studio の wasm。wevocal-lib のピッチ変更とピッチカーブ（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。
 
 use std::cell::RefCell;
-use wevocal_lib::{curve, formant, process_with_progress, segment, tempo, Algorithm, Formant};
+use wevocal_lib::{curve, formant, process_with_progress, segment, tempo, voices, Algorithm, Formant};
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "env")]
@@ -22,6 +22,27 @@ fn host_progress(p: f64) {
 
 thread_local! {
     static OUTPUT: RefCell<Vec<f32>> = const { RefCell::new(Vec::new()) };
+}
+
+/// 和音を 2 つの声に分け（試作。`by` は 0 = 高さ、1 = 音量）、フレーム数（= `frames`）を返す（WeVocalSynth と同じ）。
+/// 結果は `output_ptr` で、A の全チャンネル、B の全チャンネルの順のプレーナー形式
+///
+/// # Safety
+/// `input` は `frames * channels` 個の有効な f32 を指していること。
+#[no_mangle]
+pub unsafe extern "C" fn split_voices_planar(input: *const f32, frames: usize, channels: usize, sample_rate: f32, by: u32) -> usize {
+    let all = std::slice::from_raw_parts(input, frames * channels);
+    let chans: Vec<&[f32]> = all.chunks(frames.max(1)).take(channels).collect();
+    let by = if by == 1 { voices::SplitBy::Volume } else { voices::SplitBy::Pitch };
+    let (a, b) = voices::split(&chans, sample_rate, by, &mut host_progress);
+    OUTPUT.with(|o| {
+        let mut o = o.borrow_mut();
+        o.clear();
+        for c in a.iter().chain(&b) {
+            o.extend_from_slice(c);
+        }
+    });
+    frames
 }
 
 /// wasm メモリ上に f32 を `len` 個確保し、そのポインタを返す。

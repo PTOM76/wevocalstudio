@@ -344,6 +344,13 @@ export async function preparePitch(p: Project, around = 0) {
   return madeCount > before
 }
 
+/** 和音を 2 つの声に分ける（試験的機能。WeVocalSynth と同じ）。a は高い声か大きい声、b は低い声か小さい声。a + b は元の音 */
+export async function splitVoices(channels: Float32Array[], sampleRate: number, by: 'pitch' | 'volume', onProgress?: (p: number) => void) {
+  const out = await request({ kind: 'voices', channels: channels.map((c) => c.slice()), sampleRate, by: by === 'volume' ? 1 : 0 }, onProgress)
+  const n = out.length / 2
+  return { a: out.slice(0, n), b: out.slice(n) }
+}
+
 /** テンポの候補（強い順）。offset は 1 拍目の位置（秒、音の頭から） */
 export async function analyzeTempo(samples: Float32Array, sampleRate: number) {
   const [raw] = await request({ kind: 'tempo', samples, sampleRate })

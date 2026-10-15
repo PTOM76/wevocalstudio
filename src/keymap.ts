@@ -42,6 +42,8 @@ export type Action =
   | 'splitVocals'
   | 'splitLead'
   | 'splitInstruments'
+  | 'splitVoicesByPitch'
+  | 'splitVoicesByVolume'
   | 'showAll'
   | 'zoomRange'
   | 'playRange'
@@ -134,6 +136,9 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   splitVocals: [],
   splitLead: [],
   splitInstruments: [],
+  // 和音を 2 つの声に分ける（試験的。設定の開発者向けで表示する）
+  splitVoicesByPitch: [],
+  splitVoicesByVolume: [],
   // 全体を表示、範囲に合わせて拡大
   showAll: ['Ctrl+Digit9'],
   zoomRange: ['Ctrl+Digit8'],

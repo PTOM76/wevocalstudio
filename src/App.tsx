@@ -275,7 +275,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         dialogs.open('video', await files.renderPreview())
       })().catch(fail),
     bake: (ids) => void bake(ids),
-    extract: { vocals: (id) => void extract.splitVocals(id), lead: (id) => void extract.splitLead(id), instruments: (id) => void extract.splitInstruments(id) },
+    extract: { vocals: (id) => void extract.splitVocals(id), lead: (id) => void extract.splitLead(id), instruments: (id) => void extract.splitInstruments(id), voices: (id, by) => void extract.splitVoices(id, by) },
+    voiceSplit: p.settings.showVoiceSplit,
     newWindow: () =>
       void openWindowCount().then((n) => (n >= p.settings.maxWindows && !p.settings.extraWindows ? setNotice(t('window.limit', { n: p.settings.maxWindows })) : openNewWindow())),
     zoom: (f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) })),

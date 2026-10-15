@@ -9,6 +9,8 @@ export const debug = defineItems('debug', {
   showDebug: check(false, { label: 'settings.showDebug', help: 'settings.showDebugHelp' }),
   // 版の番号が同じでも、新しいコミットがあれば更新を知らせる
   devUpdates: check(true, { label: 'settings.devUpdates', help: 'settings.devUpdatesHelp' }),
+  // 試験的機能の和音の分離をメニューに出す（WeVocalSynth と同じ）
+  showVoiceSplit: check(false, { label: 'settings.showVoiceSplit', help: 'settings.showVoiceSplitHelp' }),
   filePicker: choice<PickerMode>('auto', {
     label: 'settings.filePicker',
     help: 'settings.filePickerHelp',

@@ -56,7 +56,9 @@ export interface ActionContext {
   openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo', arg?: string) => void
   /** 選んだ波形ブロックを確定する（音にして元の音を置き換える） */
   bake: (ids: string[]) => void
-  extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void }
+  extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void; voices: (id: string, by: 'pitch' | 'volume') => void }
+  /** 和音の分離をメニューに出すか（設定） */
+  voiceSplit: boolean
   openProperties: (id: string) => void
   openFile: () => void
   importFiles: () => void
@@ -196,6 +198,8 @@ export function useActions(c: ActionContext) {
     splitVocals: { enabled: any, run: () => any && c.extract.vocals(ids[ids.length - 1]) },
     splitLead: { enabled: any, run: () => any && c.extract.lead(ids[ids.length - 1]) },
     splitInstruments: { enabled: any, run: () => any && c.extract.instruments(ids[ids.length - 1]) },
+    splitVoicesByPitch: { enabled: any, run: () => any && c.extract.voices(ids[ids.length - 1], 'pitch') },
+    splitVoicesByVolume: { enabled: any, run: () => any && c.extract.voices(ids[ids.length - 1], 'volume') },
     showAll: { enabled: c.end > 0, run: () => c.fit(0, c.end) },
     zoomRange: { enabled: !!c.range || any, run: () => (c.range ? c.fit(c.range.start, c.range.end) : c.fit(Math.min(...chosen.map((b) => b.start)), Math.max(...chosen.map((b) => b.start + b.length)))) },
     playRange: { enabled: !!c.range, run: () => c.range && c.playAt(c.range.start) },
@@ -282,6 +286,8 @@ export function useActions(c: ActionContext) {
     onClick: commands[a].run,
   })
   const divider: MenuEntry = { divider: true }
+  // 和音の分離（試験的。設定で出したときだけ）
+  const voiceItems = c.voiceSplit ? [item('splitVoicesByPitch'), item('splitVoicesByVolume')] : []
   // 最近使用したファイル（使えないブラウザでは出さない。WeVocalSynth と同じ）
   const r = c.recent
   const recent: MenuEntry[] = r.supported
@@ -302,7 +308,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments')],
+      entries: [item('properties'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
     },
     {
       label: t('menu.track'),
@@ -329,7 +335,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.tools'),
       accessKey: 'L',
-      entries: [item('synth'), item('sampler'), item('kanaCut'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments')],
+      entries: [item('synth'), item('sampler'), item('kanaCut'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
     },
     {
       label: t('menu.transport'),
@@ -384,7 +390,7 @@ export function useActions(c: ActionContext) {
     item('split'),
     item('delete'),
     divider,
-    { label: t('menu.extract'), onClick: () => {}, submenu: [item('splitVocals'), item('splitLead'), item('splitInstruments')] },
+    { label: t('menu.extract'), onClick: () => {}, submenu: [item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems] },
     ...(c.folder ? [divider, item('saveBlocksToFolder')] : []),
   ]
 
