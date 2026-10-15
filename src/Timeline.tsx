@@ -56,8 +56,8 @@ export default function Timeline(p: {
   onMarkerEdit: (id: string) => void
   /** 波形ブロックのダブルクリック（プロパティ） */
   onProperties: (id: string) => void
-  /** トラックの EQ を開く */
-  onEq: (track: string) => void
+  /** トラックの FX の列を開く（マスターは 'master'） */
+  onFx: (track: string) => void
   /** レベルメーター（出さなければ省く） */
   meter?: (trackId: string) => readonly AnalyserNode[] | null
   masterMeter?: () => readonly AnalyserNode[] | null
@@ -657,7 +657,7 @@ export default function Timeline(p: {
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
         <Box sx={{ width: header, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0 }} />
-          <MasterHeader master={p.project.master} height={MASTER} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
+          <MasterHeader master={p.project.master} height={MASTER} onFx={() => p.onFx('master')} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
           {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
           <Box
             ref={headerContainerRef as React.RefObject<HTMLDivElement>}
@@ -729,7 +729,7 @@ export default function Timeline(p: {
                   }}
                   onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
                   onEndMerge={p.onEndMerge}
-                  onEq={() => p.onEq(track.id)}
+                  onFx={() => p.onFx(track.id)}
                   meter={p.meter && (() => p.meter!(track.id))}
                   depth={depthOf(p.tree, track)}
                   hasChildren={p.tree.tracks.some((t) => t.parent === track.id)}

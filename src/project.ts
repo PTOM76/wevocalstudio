@@ -1,5 +1,5 @@
 // プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
-import type { Algorithm, Clip, TrackEq } from 'wevocal-lib'
+import { eqToSlot, isFlatEq, type Algorithm, type Clip, type FxSlot, type TrackEq } from 'wevocal-lib'
 
 /** 読み込んだ音声ファイル（元の音）。波形ブロックはこれを参照するだけで、中身を書き換えない */
 export interface Source {
@@ -28,7 +28,9 @@ export interface Track {
   parent?: string
   /** 子のトラックをたたんで隠す */
   collapsed?: boolean
-  /** グラフィック EQ（WeVocalSynth と同じ。無ければ平ら） */
+  /** FX の列（WeVocal プラグイン。上から順に掛ける。無ければ何も掛けない） */
+  fx?: FxSlot[]
+  /** 古いプロジェクトのグラフィック EQ。読み込み時に fx の先頭へ読み替えて消す（fillTrack）。保存はしない */
   eq?: TrackEq
   /** 時間軸での縦の大きさ（px）。なければ既定値 */
   height?: number
@@ -78,6 +80,8 @@ export interface Master {
   /** パン（-1〜1） */
   pan: number
   mute: boolean
+  /** FX の列（マスターに掛ける） */
+  fx?: FxSlot[]
 }
 
 /** テンポ（WeVocalSynth の ProjectTempo と同じ形） */
@@ -213,6 +217,13 @@ export const BLOCK_LIMITS = {
   fadeIn: [0, Infinity],
   fadeOut: [0, Infinity],
 } as const satisfies Record<string, readonly [number, number]>
+
+/** 古いファイルのトラックの eq を、FX の列の先頭の EQ に読み替える（保存したデータは壊さない）。平らな EQ は捨てる */
+export function fillTrack(t: Track): Track {
+  const { eq, ...rest } = t
+  if (!eq) return t
+  return rest.fx ? rest : { ...rest, fx: isFlatEq(eq) ? [] : [eqToSlot(eq)] }
+}
 
 /** 古いファイルの波形ブロックに無い項目を既定値で埋める（保存したデータは壊さない） */
 export const fillBlock = (b: Partial<Block> & Pick<Block, 'id'>): Block => ({ rate: 1, gain: 0, pitch: 0, formant: 0, algorithm: 'sola3', preserveFormant: true, fadeIn: 0, fadeOut: 0, mute: false, ...b }) as Block

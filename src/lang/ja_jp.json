@@ -260,6 +260,8 @@
   "settings.showLegacyAlgorithmsHelp": "従来アルゴリズムであるLegacy Solis、Legacy Pisol、Legacy Weviaを選択肢に表示する",
   "settings.showVoiceSplit": "「和音を分離」を表示する",
   "settings.showVoiceSplitHelp": "「ツール」と波形ブロックの右クリックの「ボーカル抽出」に、選択した波形ブロックを2つの声（高い方と低い方、または大きい方と小さい方）に分離する項目を表示する。分離した音は新しいトラックに配置される。単純な和音向け",
+  "settings.showDevPlugins": "開発用のプラグインを表示する",
+  "settings.showDevPluginsHelp": "FX の「追加」に、作る人向けの雛形のプラグインを表示します",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
@@ -331,6 +333,7 @@
   "track.voiceLow": "{name}（低い方）",
   "track.voiceLoud": "{name}（大きい方）",
   "track.voiceQuiet": "{name}（小さい方）",
+  "track.fx": "FX",
 
   "export.title": "書き出す",
   "export.format": "形式",
@@ -384,6 +387,7 @@
   "toast.baked": "確定しました",
   "toast.exported": "書き出しました",
   "toast.voicesSplit": "和音を2つのトラックに分離しました",
+  "toast.newerFormat": "新しい版で保存されたファイルです。更新してください",
 
   "bake.job": "確定",
 
@@ -731,5 +735,19 @@
   "algorithm.sms": "Specraw",
   "algorithm.smsHint": "試験的。往復や重ねた加工で劣化しにくい方式。和音や伴奏にも",
 
-  "freeze.job": "フリーズ中"
+  "freeze.job": "フリーズ中",
+
+  "fx.title": "FX（{name}）",
+  "fx.add": "追加",
+  "fx.empty": "エフェクトがありません。追加から選んでください。",
+  "fx.remove": "削除",
+  "fx.up": "上へ",
+  "fx.down": "下へ",
+  "fx.missing": "このエフェクト（{id}）は入っていないため、素通しにしています。値は残してあります。",
+  "fx.on": "オン",
+  "fx.preset": "プリセット",
+  "fx.presetEmpty": "プリセットがありません",
+  "fx.presetSave": "今の値を保存",
+  "fx.presetRemove": "削除",
+  "fx.presetName": "プリセット {n}"
 }

@@ -1,5 +1,5 @@
 // トラックのフリーズ。トラックの波形ブロックの音（ピッチ、速度、音量、フェード、エンベロープ）を書き出して普通の音声として鳴らし、ピッチなどの処理を止める。
-// 音量、パン、EQ、位相の反転、サブトラックは書き出さない（フリーズ中も変えられる）。元の波形ブロックは残し、解除すれば戻る
+// 音量、パン、FX、位相の反転、サブトラックは書き出さない（フリーズ中も変えられる）。元の波形ブロックは残し、解除すれば戻る
 import { renderMix } from './engine'
 import { newId, newProject, newTrack, type Project, type Track } from './project'
 
@@ -10,7 +10,7 @@ export async function freezeTrack(p: Project, trackId: string): Promise<Project>
   if (!track || !blocks.length) return p
   const start = Math.min(...blocks.map((b) => b.start))
   const end = Math.max(...blocks.map((b) => b.start + b.length))
-  // 音量 0 dB、パンは中央、EQ なしの 1 本だけのプロジェクトにして描画する
+  // 音量 0 dB、パンは中央、FX なしの 1 本だけのプロジェクトにして描画する
   const solo = newTrack(1)
   const q: Project = { ...newProject(), sources: p.sources, tracks: [solo], blocks: blocks.map((b) => ({ ...b, track: solo.id, start: b.start - start })) }
   const clip = await renderMix(q, end - start)

@@ -1,13 +1,13 @@
 // プロジェクトファイル（.wvst）の読み書き。先頭に JSON（トラック、波形ブロック、元の音の形）、そのあとに元の音の PCM を並べる
 import type { Clip } from 'wevocal-lib'
-import { DEFAULT_TEMPO, fillBlock, newProject, type Project, type Source } from './project'
+import { DEFAULT_TEMPO, fillBlock, fillTrack, newProject, type Project, type Source } from './project'
 
 export const PROJECT_EXT = '.wvst'
 /** 拡張子を短くする前の名前（中身は同じなので、そのまま開く） */
 export const LEGACY_PROJECT_EXT = '.wvstudio'
 const MAGIC = 'WVST'
 /** 形を変えたら上げる。古い版は読み替える（docs/ARCHITECTURE.md の「保存したデータは壊さない」） */
-const VERSION = 1
+const VERSION = 2
 
 interface StoredSource {
   id: string
@@ -49,13 +49,14 @@ export function writeProject(p: Project): Blob {
   return new Blob([head, ...pcm], { type: 'application/octet-stream' })
 }
 
-export async function readProject(file: Blob): Promise<Project> {
+/** onNewer は、自分より新しい形式のファイルのときに呼ぶ（開くのは止めない。新しい項目は読み飛ばす） */
+export async function readProject(file: Blob, onNewer?: () => void): Promise<Project> {
   const buf = await file.arrayBuffer()
   const view = new DataView(buf)
   if (buf.byteLength < 8 || new TextDecoder().decode(new Uint8Array(buf, 0, 4)) !== MAGIC) throw new Error('not a WeVocal Studio project')
   const length = view.getUint32(4, true)
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, length))) as Header
-  if (header.version > VERSION) throw new Error('this project was saved by a newer version')
+  if (header.version > VERSION) onNewer?.()
   let at = 8 + length + ((4 - ((8 + length) % 4)) % 4)
   const sources: Source[] = header.sources.map((s) => {
     const channels: Float32Array[] = []
@@ -67,5 +68,5 @@ export async function readProject(file: Blob): Promise<Project> {
     return { id: s.id, name: s.name, clip, duration: s.frames / s.sampleRate }
   })
   // 足した項目が古いファイルに無くても動くよう、既定値で埋める
-  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, markers: header.markers ?? [], master: { ...newProject().master, ...header.master }, tracks: header.tracks, blocks: header.blocks.map(fillBlock) }
+  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, markers: header.markers ?? [], master: { ...newProject().master, ...header.master }, tracks: header.tracks.map(fillTrack), blocks: header.blocks.map(fillBlock) }
 }

@@ -1,6 +1,6 @@
 // 作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く。書き込みは Worker
 import type { Clip } from 'wevocal-lib'
-import { DEFAULT_TEMPO, fillBlock, newProject, type Project, type Source } from '../project'
+import { DEFAULT_TEMPO, fillBlock, fillTrack, newProject, type Project, type Source } from '../project'
 import { slotKey } from 'pevenmui/web'
 import type { AutosaveMessage, AutosaveReply } from './autosaveWorker'
 
@@ -10,7 +10,11 @@ const sourceKey = (id: string) => slotKey(`autosave:source:${id}`)
 /** 一度に Worker に渡す大きさ（サンプル数。4 MB） */
 const CHUNK = 1 << 20
 
+/** 自動保存の形式の版（プロジェクトファイルの VERSION と同じく、形を変えたら上げる） */
+const FORMAT = 2
+
 interface Meta {
+  formatVersion?: number
   fileName: string
   sources: { id: string; name: string; sampleRate: number }[]
   tempo?: Project['tempo']
@@ -75,6 +79,7 @@ export async function saveAutosave(p: Project, fileName: string) {
     written.add(s.id)
   }
   const meta: Meta = {
+    formatVersion: FORMAT,
     fileName,
     sources: p.sources.map((s) => ({ id: s.id, name: s.name, sampleRate: s.clip.sampleRate })),
     tempo: p.tempo,
@@ -93,7 +98,7 @@ export async function saveAutosave(p: Project, fileName: string) {
 }
 
 /** 前回の作業。なければ null */
-export async function loadAutosave(): Promise<{ project: Project; fileName: string } | null> {
+export async function loadAutosave(): Promise<{ project: Project; fileName: string; newer: boolean } | null> {
   const meta = await get<Meta>(metaKey())
   if (!meta || !meta.blocks?.length) return null
   const sources: Source[] = []
@@ -108,8 +113,9 @@ export async function loadAutosave(): Promise<{ project: Project; fileName: stri
   const blocks = meta.blocks.filter((b) => sources.some((s) => s.id === b.source)).map(fillBlock)
   const base = newProject()
   return {
-    project: { sources, tempo: { ...DEFAULT_TEMPO, ...meta.tempo }, markers: meta.markers ?? [], master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks : base.tracks, blocks },
+    project: { sources, tempo: { ...DEFAULT_TEMPO, ...meta.tempo }, markers: meta.markers ?? [], master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks.map(fillTrack) : base.tracks, blocks },
     fileName: meta.fileName,
+    newer: (meta.formatVersion ?? 1) > FORMAT,
   }
 }
 

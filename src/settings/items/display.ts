@@ -56,4 +56,6 @@ export const stored = defineItems(null, {
   exportVideo: value<VideoExportPrefs>(DEFAULT_VIDEO_PREFS),
   // 波形ブロックのプロパティのプリセット（音の作り方）
   presets: value<Preset<BlockPreset>[]>([]),
+  // FX のプリセット（プラグインの id ごと）
+  fxPresets: value<Record<string, Preset<Record<string, number>>[]>>({}),
 })

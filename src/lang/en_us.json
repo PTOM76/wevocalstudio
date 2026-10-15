@@ -260,6 +260,8 @@
   "settings.showLegacyAlgorithmsHelp": "List Legacy Solis, Legacy Pisol and Legacy Wevia in the menu and defaults",
   "settings.showVoiceSplit": "Show \"Split harmony\"",
   "settings.showVoiceSplitHelp": "Adds items to Tools and the block right-click \"Vocal extraction\" menu that split the selected block into two voices (higher and lower, or louder and quieter) on new tracks. Works best on simple harmony",
+  "settings.showDevPlugins": "Show development plugins",
+  "settings.showDevPluginsHelp": "Shows the template plugin for plugin authors in the FX Add list",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
@@ -331,6 +333,7 @@
   "track.voiceLow": "{name} (lower)",
   "track.voiceLoud": "{name} (louder)",
   "track.voiceQuiet": "{name} (quieter)",
+  "track.fx": "FX",
 
   "export.title": "Export",
   "export.format": "Format",
@@ -384,6 +387,7 @@
   "toast.baked": "Committed",
   "toast.exported": "Exported",
   "toast.voicesSplit": "Split the harmony into two tracks",
+  "toast.newerFormat": "This file was saved by a newer version. Please update.",
 
   "bake.job": "Commit",
 
@@ -731,5 +735,19 @@
   "algorithm.sms": "Specraw",
   "algorithm.smsHint": "Experimental. Degrades less on round trips and repeated edits. Works on chords and backing too",
 
-  "freeze.job": "Freezing"
+  "freeze.job": "Freezing",
+
+  "fx.title": "FX ({name})",
+  "fx.add": "Add",
+  "fx.empty": "No effects. Choose one from Add.",
+  "fx.remove": "Remove",
+  "fx.up": "Move up",
+  "fx.down": "Move down",
+  "fx.missing": "This effect ({id}) is not installed, so it is bypassed. Its values are kept.",
+  "fx.on": "On",
+  "fx.preset": "Presets",
+  "fx.presetEmpty": "No presets",
+  "fx.presetSave": "Save current values",
+  "fx.presetRemove": "Delete",
+  "fx.presetName": "Preset {n}"
 }

@@ -7,7 +7,7 @@ import { pevenFont, useDoubleTap, useLongPress } from 'pevenmui'
 import { ContextMenu } from 'pevenmui'
 import { MeterFader, PanBar } from './MeterFader'
 import { useT } from './i18n'
-import { isFlatEq } from 'wevocal-lib'
+import { isNeutralChain } from 'wevocal-lib'
 import type { Master, Track } from './project'
 
 /** 入り切りの小さなボタン（WeVocalSynth の MixToggle と同じ見た目。入っているときだけ色で塗る） */
@@ -70,7 +70,7 @@ export default function TrackHeader(p: {
   onSelect: (e: React.PointerEvent) => void
   onChange: (patch: Partial<Track>, merge?: string) => void
   onEndMerge: () => void
-  onEq: () => void
+  onFx: () => void
   onDuplicate: () => void
   /** フリーズとその解除 */
   onFreeze: () => void
@@ -211,8 +211,8 @@ export default function TrackHeader(p: {
         panExtra={
           <>
             <MixToggle label="Ø" title={t('track.invert')} on={!!track.invert} color="primary.main" onClick={() => p.onChange({ invert: !track.invert })} />
-            {/* EQ。掛けているときは色を付ける */}
-            <MixToggle label="EQ" wide title={t('track.eq')} on={!!track.eq && !isFlatEq(track.eq)} color="primary.main" onClick={p.onEq} />
+            {/* FX の列。何か掛けているときは色を付ける */}
+            <MixToggle label="FX" wide title={t('track.fx')} on={!isNeutralChain(track.fx)} color="primary.main" onClick={p.onFx} />
           </>
         }
       />
@@ -246,7 +246,7 @@ export default function TrackHeader(p: {
 }
 
 /** マスタートラックの欄（トラックの一番上。トラックと同じ形で波形ブロックは置かない） */
-export function MasterHeader(p: { master: Master; height: number; onChange: (patch: Partial<Master>, merge?: string) => void; onEndMerge: () => void; meter?: () => readonly AnalyserNode[] | null }) {
+export function MasterHeader(p: { master: Master; height: number; onFx: () => void; onChange: (patch: Partial<Master>, merge?: string) => void; onEndMerge: () => void; meter?: () => readonly AnalyserNode[] | null }) {
   const t = useT()
   const { master } = p
   return (
@@ -270,6 +270,7 @@ export function MasterHeader(p: { master: Master; height: number; onChange: (pat
             {t('track.master')}
           </Typography>
         </Box>
+        <MixToggle label="FX" wide title={t('track.fx')} on={!isNeutralChain(master.fx)} color="primary.main" onClick={p.onFx} />
         <MixToggle label="M" title={t('track.mute')} on={master.mute} color="warning.main" onClick={() => p.onChange({ mute: !master.mute })} />
       </Box>
       <Faders value={master} merge="master" onChange={p.onChange} onEndMerge={p.onEndMerge} meter={p.meter} rows={2} />

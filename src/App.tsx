@@ -401,7 +401,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onMasterChange={doc.updateMaster}
         onTrackChange={(id, patch, merge) => {
           // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量とパンは差分で）
-          if (selectedTracks.length < 2 || !selectedTracks.includes(id) || 'name' in patch || 'eq' in patch) return doc.updateTrack(id, patch, merge)
+          if (selectedTracks.length < 2 || !selectedTracks.includes(id) || 'name' in patch || 'fx' in patch) return doc.updateTrack(id, patch, merge)
           const base = project.tracks.find((tr) => tr.id === id)!
           doc.updateTracks(
             Object.fromEntries(
@@ -426,7 +426,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onCopyBlocks={(blocks) => void doc.insertBlocks(blocks)}
         onMarkerEdit={(id) => dialogs.open('marker', id)}
         onProperties={(id) => dialogs.open('block', selected.includes(id) ? selected : [id])}
-        onEq={(id) => dialogs.open('eq', id)}
+        onFx={(id) => dialogs.open('fx', id)}
         meter={p.settings.showMeters ? player.current.meter : undefined}
         masterMeter={p.settings.showMeters ? player.current.masterMeters : undefined}
         onDuplicateTrack={doc.duplicateTrack}

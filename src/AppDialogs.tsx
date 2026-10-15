@@ -4,7 +4,7 @@ import KanaCutDialog from 'wevocalanalyzer/KanaCutDialog'
 import { placeMorae } from './sampler'
 import { segmentOf } from './useExtract'
 import { Link } from '@mui/material'
-import { AUDIO_ACCEPT, flatEq, segmentAt, tempoSegments } from 'wevocal-lib'
+import { AUDIO_ACCEPT, segmentAt, tempoSegments } from 'wevocal-lib'
 import BlockDialog from './BlockDialog'
 import type { Dialogs } from './useDialogs'
 import { AboutDialog, HistoryDialog, LicensesDialog, RenameDialog } from 'pevenmui'
@@ -13,12 +13,12 @@ import { videoLook, type VideoLook } from 'wevocalconverter/host'
 import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { kanaHost, videoHost } from './addons'
 import type { Range } from 'wevocal-lib'
-import { EqDialog, ExportDialog, MarkerTempoDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
+import { ExportDialog, FxChainDialog, MarkerTempoDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
 import { addClipTrack } from './project'
 import { AppIcon } from './AppHeader'
 import { app } from './appConfig'
-import { useT } from './i18n'
+import { i18n, useT } from './i18n'
 import SettingsDialog from './settings/SettingsDialog'
 import type { Settings } from './settings/settings'
 import ShortcutsDialog from './ShortcutsDialog'
@@ -37,7 +37,7 @@ export default function AppDialogs(p: {
   onExport: (s: ExportSettings, win?: Window | null) => void
   onVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void
   fail: (e: unknown) => void
-  /** 再生中か、再生と一時停止の切り替え（EQ を開いたまま聞く） */
+  /** 再生中か、再生と一時停止の切り替え（FX を開いたまま聞く） */
   playing: boolean
   onTogglePlay: () => void
   /** 編集カーソル（作った音、並べた音符を置く位置） */
@@ -50,11 +50,14 @@ export default function AppDialogs(p: {
   const t = useT()
   const { dialogs, doc } = p
   const { project } = doc
-  // プロパティを開いている波形ブロック（複数なら一括で変える）、編集しているマーカー、EQ を開いているトラック
+  // プロパティを開いている波形ブロック（複数なら一括で変える）、編集しているマーカー、FX を開いているトラック
   const editing = dialogs.arg<string[]>('block') ?? []
   const marker = project.markers.find((m) => m.id === dialogs.arg<string>('marker')) ?? null
   const tempoMarker = project.markers.find((m) => m.id === dialogs.arg<string>('markerTempo')) ?? null
-  const eqOf = project.tracks.find((tr) => tr.id === dialogs.arg<string>('eq'))
+  const fxId = dialogs.arg<string>('fx')
+  const fxTrack = project.tracks.find((tr) => tr.id === fxId)
+  const fxTarget = fxId === 'master' ? { id: 'master', name: t('track.master'), slots: project.master.fx ?? [] } : fxTrack && { id: fxTrack.id, name: fxTrack.name, slots: fxTrack.fx ?? [] }
+  const lang = i18n.useLang()
   const sourceInput = useRef<HTMLInputElement>(null)
   // 一音ずつ切り出す波形ブロックと、その音（元の音の、波形ブロックが使っている範囲）
   const kanaBlock = project.blocks.find((b) => b.id === dialogs.arg<string>('kanaCut'))
@@ -116,20 +119,23 @@ export default function AppDialogs(p: {
           ],
         ]}
       />
-      {eqOf && (
-        // グラフィック EQ（wevocal-lib の EqDialog。WeVocalSynth と同じ。元の音は書き換えないので「適用」はない）
-        <EqDialog
+      {fxTarget && (
+        // FX の列（wevocal-lib の FxChainDialog。WeVocalSynth と同じ。元の音は書き換えない）
+        <FxChainDialog
           t={t}
+          lang={lang}
           open
+          name={fxTarget.name}
+          slots={fxTarget.slots}
+          dev={p.settings.showDevPlugins}
+          onChange={(fx, merge) => (fxTarget.id === 'master' ? doc.updateMaster({ fx }, merge && `master:${merge}`) : doc.updateTrack(fxTarget.id, { fx }, merge && `${fxTarget.id}:${merge}`))}
           playing={p.playing}
           onTogglePlay={p.onTogglePlay}
-          busy={false}
-          trackName={eqOf.name}
-          eq={eqOf.eq ?? flatEq()}
-          onChange={(eq) => doc.updateTrack(eqOf.id, { eq }, `eq:${eqOf.id}`)}
+          userPresets={p.settings.fxPresets}
+          onUserPresetsChange={(plugin, list) => p.onSettingsChange({ fxPresets: { ...p.settings.fxPresets, [plugin]: list } })}
           onClose={() => {
             doc.endMerge()
-            dialogs.close('eq')
+            dialogs.close('fx')
           }}
         />
       )}

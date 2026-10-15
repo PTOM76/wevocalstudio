@@ -1,6 +1,6 @@
 // 再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
-// トラックの EQ、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
-import { createLiveEq, flatEq, limitedOutput, startContext, updateLiveEq, type Clip, type LiveEq } from 'wevocal-lib'
+// トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
+import { createFxChain, limitedOutput, startContext, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
@@ -16,8 +16,8 @@ interface TrackNodes {
   meter: [AnalyserNode, AnalyserNode]
   /** 出し先（親のトラックの id か 'master'。変わったときだけつなぎ直す） */
   dest: string
-  /** 鳴らしたまま値を変えられる EQ（WeVocalSynth の再生と同じ wevocal-lib のもの） */
-  eq: LiveEq
+  /** FX の列（WeVocal プラグイン。鳴らしたまま値を変える。wevocal-lib） */
+  fx: FxChain
 }
 /** 組んだノード（トラックごとの入口とミキサー、マスター） */
 class Graph {
@@ -26,6 +26,10 @@ class Graph {
   readonly masterMeters: [AnalyserNode, AnalyserNode]
   private readonly master: GainNode
   private readonly masterPan: StereoPannerNode
+  /** マスターの FX の列 */
+  private readonly masterFx: FxChain
+  /** プロジェクトのテンポ（ディレイの同期に使う） */
+  private bpm = 120
   private readonly tracks = new Map<string, TrackNodes>()
   /** トラックごとのミキサー（波形ブロックの音を足す） */
   private readonly mixers: Mixers
@@ -40,8 +44,10 @@ class Graph {
     this.master = ctx.createGain()
     this.masterPan = ctx.createStereoPanner()
     this.out = ctx.createGain()
+    this.masterFx = createFxChain(ctx, [], this.host)
     // 再生は耳とスピーカーを守るリミッターを通す（wevocal-lib。WeVocalSynth と同じ）。書き出しは通さない
-    this.master.connect(this.masterPan).connect(this.out).connect(ctx instanceof AudioContext ? limitedOutput(ctx) : ctx.destination)
+    this.master.connect(this.masterFx.input)
+    this.masterFx.output.connect(this.masterPan).connect(this.out).connect(ctx instanceof AudioContext ? limitedOutput(ctx) : ctx.destination)
     // 左右に分けて別々に測る（AnalyserNode はチャンネルを混ぜて読むため。WeVocalSynth と同じ）
     const split = ctx.createChannelSplitter(2)
     this.out.connect(split)
@@ -51,6 +57,9 @@ class Graph {
     split.connect(r, 1)
     this.masterMeters = [l, r]
   }
+
+  /** プラグインに渡すホストの情報 */
+  private readonly host = { bpm: () => this.bpm }
 
   /** レベルメーター用の AnalyserNode（時間波形を読むだけなので小さくてよい） */
   private static analyser(ctx: BaseAudioContext) {
@@ -67,23 +76,25 @@ class Graph {
   private buildTrack(t: Track): TrackNodes {
     const input = this.ctx.createGain()
     const pan = this.ctx.createStereoPanner()
-    // トラック: 音量 → EQ → パン → マスター
-    const eq = createLiveEq(this.ctx, t.eq ?? flatEq())
-    input.connect(eq.input)
-    eq.output.connect(pan)
+    // トラック: 音量 → FX の列 → パン → マスター
+    const fx = createFxChain(this.ctx, t.fx ?? [], this.host)
+    input.connect(fx.input)
+    fx.output.connect(pan)
     const split = this.ctx.createChannelSplitter(2)
     const meter: [AnalyserNode, AnalyserNode] = [Graph.analyser(this.ctx), Graph.analyser(this.ctx)]
     pan.connect(split)
     split.connect(meter[0], 0)
     split.connect(meter[1], 1)
     // 出し先（マスターか親のトラック）は sync でつなぐ
-    return { input, pan, eq, split, meter, dest: '' }
+    return { input, pan, fx, split, meter, dest: '' }
   }
 
   /** 波形ブロックの声の一覧をミキサーに送る。変わっていない声はそのまま鳴り続け、差し替えた声は FADE でつなぐ（smooth のとき） */
   sync(p: Project, smooth: boolean) {
     // マスターとトラックの値（鳴らしたまま変える）
     const at = this.ctx.currentTime
+    this.bpm = p.tempo.bpm
+    this.masterFx.update(p.master.fx ?? [])
     this.master.gain.setTargetAtTime(p.master.mute ? 0 : dbToGain(p.master.volume), at, 0.01)
     this.masterPan.pan.setTargetAtTime(p.master.pan, at, 0.01)
     for (const t of p.tracks) {
@@ -91,7 +102,7 @@ class Graph {
       if (!n) {
         n = this.buildTrack(t)
         this.tracks.set(t.id, n)
-      } else updateLiveEq(n.eq, t.eq ?? flatEq())
+      } else n.fx.update(t.fx ?? [])
       // ミュートとソロは音量 0 にする（ノードは残す）
       n.input.gain.setTargetAtTime(audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, at, 0.01)
       n.pan.pan.setTargetAtTime(t.pan, at, 0.01)
@@ -153,7 +164,7 @@ class Graph {
     return this.mixers.flush()
   }
 
-  /** 全部を消して止める。消え終わったら、トラック（EQ、パン、メーター）とマスターのノードも外す（残すと、再生位置を変えるたびに溜まり、無音でも処理され続けて重くなる） */
+  /** 全部を消して止める。消え終わったら、トラック（FX の列、パン、メーター）とマスターのノードも外す（残すと、再生位置を変えるたびに溜まり、無音でも処理され続けて重くなる） */
   stopAll() {
     const t = this.ctx.currentTime
     this.out.gain.setTargetAtTime(0, t, FADE / 3)
@@ -166,12 +177,13 @@ class Graph {
     this.mixers.disconnect()
     for (const n of this.tracks.values()) {
       n.input.disconnect()
-      n.eq.output.disconnect()
+      n.fx.dispose()
       n.pan.disconnect()
       n.split.disconnect()
     }
     this.tracks.clear()
     this.master.disconnect()
+    this.masterFx.dispose()
     this.masterPan.disconnect()
     this.out.disconnect()
   }
@@ -259,7 +271,7 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000): Prom
 
 /**
  * 1 本のトラックだけを混ぜた音（ステレオ。長さは `length` 秒）。.wvsp への書き出し用。
- * 波形ブロックの加工、トラックの EQ、先祖のトラックのフェーダーと EQ は音に含める。
+ * 波形ブロックの加工、トラックの FX の列、先祖のトラックのフェーダーと FX は音に含める。
  * 自分の音量、パン、位相の反転、ミュート、ソロは含めない（書き出し先のトラックの状態として渡す）
  */
 export async function renderTrack(p: Project, trackId: string, length: number, sampleRate = 48000): Promise<Clip> {
