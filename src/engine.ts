@@ -1,6 +1,6 @@
 // 再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
-import { createFxChain, limitedOutput, preloadFx, startContext, startRenderLoad, type Clip, type FxChain } from 'wevocal-lib'
+import { chainLatency, createFxChain, limitedOutput, preloadFx, startContext, startRenderLoad, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
@@ -10,6 +10,8 @@ import { ancestors, audible, dbToGain, songEnd, type Project, type Track } from 
 const FADE = 0.02
 interface TrackNodes {
   input: GainNode
+  /** 波形ブロックの音の入口。FX の遅れ（latency）をそろえるため、遅れの少ないトラックを遅らせる（子のトラックの音は入らない） */
+  comp: DelayNode
   pan: StereoPannerNode
   /** レベルメーターの入口（パンのあと）と、左右の AnalyserNode（WeVocalSynth と同じく左右を別に測る） */
   split: ChannelSplitterNode
@@ -75,6 +77,8 @@ class Graph {
 
   private buildTrack(t: Track): TrackNodes {
     const input = this.ctx.createGain()
+    const comp = this.ctx.createDelay(1)
+    comp.connect(input)
     const pan = this.ctx.createStereoPanner()
     // トラック: 音量 → FX の列 → パン → マスター
     const fx = createFxChain(this.ctx, t.fx ?? [], this.host)
@@ -86,7 +90,7 @@ class Graph {
     split.connect(meter[0], 0)
     split.connect(meter[1], 1)
     // 出し先（マスターか親のトラック）は sync でつなぐ
-    return { input, pan, fx, split, meter, dest: '' }
+    return { input, comp, pan, fx, split, meter, dest: '' }
   }
 
   /** 波形ブロックの声の一覧をミキサーに送る。変わっていない声はそのまま鳴り続け、差し替えた声は FADE でつなぐ（smooth のとき） */
@@ -123,6 +127,7 @@ class Graph {
     for (const [id, n] of this.tracks) {
       if (p.tracks.some((t) => t.id === id)) continue
       this.mixers.drop(id)
+      n.comp.disconnect()
       n.input.disconnect()
       n.pan.disconnect()
       this.tracks.delete(id)
@@ -154,7 +159,14 @@ class Graph {
       const env = (b.envelope ?? []).flatMap((pt) => [t0 + pt.t, dbToGain(pt.db)])
       list.push(...voicesOf(b, pieces, this.zero, dbToGain(b.gain), env))
     }
-    for (const t of p.tracks) this.mixers.node(t.id, this.tracks.get(t.id)!.input)
+    // FX の遅れ（秒）が違うトラックをそろえる: 波形ブロックから出口までの遅れが、どのトラックも同じになるように入口で遅らせる
+    const late = new Map(p.tracks.map((t) => [t.id, [t, ...ancestors(p, t)].reduce((s, x) => s + chainLatency(x.fx, this.ctx.sampleRate), 0)]))
+    const slowest = Math.max(0, ...late.values())
+    for (const t of p.tracks) {
+      const n = this.tracks.get(t.id)!
+      n.comp.delayTime.setTargetAtTime(Math.min(1, slowest - late.get(t.id)!), at, 0.01)
+      this.mixers.node(t.id, n.comp)
+    }
     this.mixers.syncClips(used, new Set(p.sources.map((s) => clipId(s.clip))))
     for (const [id, list] of voices) this.mixers.voices(id, list, smooth)
   }
@@ -176,6 +188,7 @@ class Graph {
   private dispose() {
     this.mixers.disconnect()
     for (const n of this.tracks.values()) {
+      n.comp.disconnect()
       n.input.disconnect()
       n.fx.dispose()
       n.pan.disconnect()
