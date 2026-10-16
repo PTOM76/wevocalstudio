@@ -5,13 +5,14 @@ import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint, type Range } from 'wevocal-lib'
 import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
+import { hitMidi, type MidiDragKind } from './midiBlocks'
 import { layoutRows } from './overlap'
 import { depthOf, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN } from './project'
 import { ENVELOPES, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { MASTER, RULER, TOP, drawCursors, drawTimeline, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
-import type { Block, Master, Project, Track } from './project'
+import type { Block, Master, MidiBlock, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
 
@@ -94,6 +95,10 @@ export default function Timeline(p: {
   autoEdit: boolean
   /** オートメーションの点を変えた（トラックの id か 'master'、FX の項目、つまみ、点。merge はドラッグ中にまとめる履歴のキー） */
   onAutoChange: (target: string, slot: number, param: string, points: AutoPoint[], merge?: string) => void
+  /** MIDI ブロックを動かした、長さを変えた（merge はドラッグ中にまとめる履歴のキー） */
+  onMidiChange: (id: string, patch: Partial<MidiBlock>, merge?: string) => void
+  /** MIDI ブロックのダブルクリック（ピアノロールを開く） */
+  onMidiEdit: (id: string) => void
   onView: (fn: (v: TimelineView) => TimelineView) => void
   /** 波形を描く所の幅（px。ミニマップの枠に使う） */
   onWidth: (w: number) => void
@@ -119,6 +124,8 @@ export default function Timeline(p: {
   const envDrag = useRef<{ block: string; index: number; merge: string } | null>(null)
   // ドラッグしているオートメーションの点（レーンの target と点の番号）
   const autoDrag = useRef<{ target: string; index: number; merge: string } | null>(null)
+  // ドラッグしている MIDI ブロック（つかんだ所の、ブロックの左端からの px）
+  const midiDrag = useRef<{ id: string; kind: MidiDragKind; grabPx: number; merge: string } | null>(null)
   // Shift+クリックの起点（前に押した波形ブロック）
   const anchor = useRef<string | null>(null)
   // 右ドラッグの枠で選ぶ。moved なら右クリックのメニューは出さない
@@ -350,6 +357,9 @@ export default function Timeline(p: {
     }
     if (y > TOP) {
       const hit = hitBlock(p.project, x, y, toTime, view.pps)
+      // MIDI ブロックのダブルクリックは、ピアノロールを開く
+      const mh = !hit && hitMidi(p.project, x, y, toTime, view.pps)
+      if (mh) return p.onMidiEdit(mh.block.id)
       if (!hit) return
       // エンベロープの点のダブルクリックは、その点を消す
       if (p.envKind) {
@@ -467,6 +477,17 @@ export default function Timeline(p: {
       p.onSeek(gridAt(x, e.shiftKey))
       return
     }
+    // MIDI ブロック（波形ブロックがない所）: 選んで、動かす、端で長さを変える
+    if (!hit && y > TOP && !p.envKind && !p.autoEdit && e.pointerType !== 'touch') {
+      const mh = hitMidi(p.project, x, y, toTime, view.pps)
+      if (mh) {
+        p.onSelect([mh.block.id])
+        p.onSelectTrack(mh.block.track)
+        e.currentTarget.setPointerCapture(e.pointerId)
+        midiDrag.current = { id: mh.block.id, kind: mh.kind, grabPx: x - (mh.block.start - view.scroll) * view.pps, merge: `midi${dragCount.current++}` }
+        return
+      }
+    }
     // タッチで空いている所: なぞるとスクロール（長押しはメニュー）
     if (!hit && e.pointerType === 'touch') {
       const track = trackAt(y)
@@ -582,6 +603,13 @@ export default function Timeline(p: {
     }
     const { offsetX: x } = e.nativeEvent
     const y = cy(e.nativeEvent.offsetY)
+    const md = midiDrag.current
+    if (md) {
+      const b = (p.project.midi ?? []).find((x) => x.id === md.id)
+      if (!b) return
+      if (md.kind === 'move') return p.onMidiChange(b.id, { start: Math.max(0, gridAt(x - md.grabPx, e.shiftKey)) }, md.merge)
+      return p.onMidiChange(b.id, { length: Math.max(0.05, gridAt(x, e.shiftKey) - b.start) }, md.merge)
+    }
     const ad = autoDrag.current
     if (ad) {
       const lane = allLanes(p.project).find((l) => l.target === ad.target)
@@ -669,6 +697,7 @@ export default function Timeline(p: {
     if (e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY)) doubleAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
     envDrag.current = null
     autoDrag.current = null
+    midiDrag.current = null
     if (marquee.current) {
       // 動かしたら、このあとの右クリックのメニューは出さない
       if (!marquee.current.moved) marquee.current = null

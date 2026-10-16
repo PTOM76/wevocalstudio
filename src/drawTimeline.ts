@@ -2,6 +2,7 @@
 import { alpha, type Range } from 'wevocal-lib'
 import { gridLines, type GridDivision, type GridMode } from './grid'
 import { drawLanes } from './autoLane'
+import { drawMidiBlocks } from './midiBlocks'
 import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
@@ -203,6 +204,8 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       }
       g.globalAlpha = 1
     }
+    // MIDI ブロック（音符を小さな帯で見せる）
+    drawMidiBlocks(g, p, track.id, view.scroll, view.pps, o.vscroll, w, selected, { block: c.block, blockSelected: c.blockSelected, note: c.wave, text: c.text })
   })
   g.restore()
 

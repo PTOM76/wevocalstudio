@@ -39,6 +39,10 @@ export type Action =
   | 'bake'
   | 'synth'
   | 'kanaCut'
+  | 'addMidiBlock'
+  | 'importMidi'
+  | 'editMidi'
+  | 'trackInstrument'
   | 'sampler'
   | 'splitVocals'
   | 'splitLead'
@@ -136,6 +140,11 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   synth: [],
   // 選んだ波形ブロックを一音（あ、い、う…）ずつに分ける（追加機能「歌詞の文字化」と「解析」）
   kanaCut: [],
+  // MIDI ブロックを選んでいるトラックの編集カーソルに足す、MIDI ファイルを読み込む、ピアノロールを開く、トラックの音源を選ぶ
+  addMidiBlock: [],
+  importMidi: [],
+  editMidi: [],
+  trackInstrument: [],
   sampler: [],
   splitVocals: [],
   splitLead: [],

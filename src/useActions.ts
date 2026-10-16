@@ -55,7 +55,9 @@ export interface ActionContext {
   exportWvsp: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
-  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo', arg?: string) => void
+  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument', arg?: string) => void
+  /** MIDI ファイルを選んで、トラックと MIDI ブロックにする */
+  importMidi: () => void
   /** 選んだ波形ブロックを確定する（音にして元の音を置き換える） */
   bake: (ids: string[]) => void
   extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void; voices: (id: string, by: 'pitch' | 'volume') => void }
@@ -110,6 +112,8 @@ interface Command {
 export function useActions(c: ActionContext) {
   const t = useT()
   const { doc } = c
+  // 選んでいる MIDI ブロック（ピアノロールで開く）
+  const midiSel = (doc.project.midi ?? []).find((b) => c.selected.includes(b.id))
   const chosen = doc.project.blocks.filter((b) => c.selected.includes(b.id))
   const ids = chosen.map((b) => b.id)
   const any = chosen.length > 0
@@ -200,6 +204,15 @@ export function useActions(c: ActionContext) {
     synth: { run: () => c.openDialog('synth') },
     sampler: { enabled: any, run: () => any && c.openDialog('sampler', ids[ids.length - 1]) },
     kanaCut: { enabled: any, run: () => any && c.openDialog('kanaCut', ids[ids.length - 1]) },
+    addMidiBlock: {
+      run: () => {
+        const id = doc.addMidiAt(c.selectedTrack ?? doc.project.tracks[0]?.id, c.cursor)
+        if (id) c.select([id])
+      },
+    },
+    importMidi: { run: c.importMidi },
+    editMidi: { enabled: !!midiSel, run: () => midiSel && c.openDialog('pianoRoll', midiSel.id) },
+    trackInstrument: { enabled: !!track, run: () => track && c.openDialog('instrument', track.id) },
     splitVocals: { enabled: any, run: () => any && c.extract.vocals(ids[ids.length - 1]) },
     splitLead: { enabled: any, run: () => any && c.extract.lead(ids[ids.length - 1]) },
     splitInstruments: { enabled: any, run: () => any && c.extract.instruments(ids[ids.length - 1]) },
@@ -316,7 +329,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
+      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
     },
     {
       label: t('menu.track'),
@@ -425,6 +438,7 @@ export function useActions(c: ActionContext) {
       : [
           { label: t('menu.pasteHere'), disabled: commands.paste.enabled === false, onClick: () => paste({ time, track }) },
           { label: t('menu.importHere'), onClick: () => c.importAt(time, track) },
+          { label: t('menu.addMidiBlock'), onClick: () => c.select([doc.addMidiAt(track ?? c.selectedTrack ?? doc.project.tracks[0]?.id, time)].filter((x): x is string => !!x)) },
           divider,
           item('selectAll'),
           item('splitRange'),

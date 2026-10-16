@@ -22,6 +22,7 @@ import type { Settings } from './settings/settings'
 import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
+import { importMidi } from './midiImport'
 import { addWvspTracks, newProject, songEnd, trackHeight, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, visibleTracks, type Track } from './project'
 import Timeline, { useHeaderWidth } from './Timeline'
 import Toolbar from './Toolbar'
@@ -297,6 +298,17 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       importTarget.current = undefined
       audioInput.current?.click()
     },
+    // MIDI ファイルを選んで、トラックと MIDI ブロックにする（編集カーソルの位置から）
+    importMidi: () => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.mid,.midi,audio/midi'
+      input.onchange = () => {
+        const file = input.files?.[0]
+        if (file) void importMidi(project, file, cursor).then((q) => (q ? doc.apply(() => q) : setNotice(t('midi.empty')))).catch(fail)
+      }
+      input.click()
+    },
     importAt: (time, track) => {
       importTarget.current = track ? { track, start: time } : undefined
       audioInput.current?.click()
@@ -457,6 +469,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         division={p.settings.gridDivision}
         envKind={p.settings.envelope ? 'volume' : p.settings.pitchEnvelope ? 'pitch' : null}
         autoEdit={p.settings.autoEdit}
+        onMidiChange={doc.updateMidiBlock}
+        onMidiEdit={(id) => dialogs.open('pianoRoll', id)}
         onAutoChange={(target, slot, param, points, merge) => {
           const fx = target === 'master' ? project.master.fx : project.tracks.find((tr) => tr.id === target)?.fx
           if (!fx?.[slot]) return

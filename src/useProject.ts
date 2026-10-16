@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { keepFrozen } from './freeze'
 import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip, type FxSlot } from 'wevocal-lib'
 import { describeChange } from './history'
+import { defaultInstrument } from './midiImport'
 import type { MessageKey } from './i18n'
 import { BLOCK_LIMITS, DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
@@ -383,6 +384,22 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
 
   const removeBlocks = useCallback((ids: string[]) => change((p) => ({ ...p, blocks: p.blocks.filter((b) => !ids.includes(b.id)), ...(p.midi ? { midi: p.midi.filter((b) => !ids.includes(b.id)) } : {}) })), [change])
 
+  /** トラックの time 秒に、2 小節の空の MIDI ブロックを足す。音源がなければ標準のシンセを付ける。足したブロックの id（トラックがなければ null） */
+  const addMidiAt = useCallback(
+    (trackId: string | undefined, time: number): string | null => {
+      if (!trackId) return null
+      const id = newId()
+      change((p) => {
+        const t = p.tracks.find((x) => x.id === trackId)
+        if (!t) return p
+        const length = (p.tempo.beatsPerBar * 60 * 2) / p.tempo.bpm
+        const block: MidiBlock = { id, track: trackId, start: Math.max(0, time), length, notes: [], mute: false }
+        return { ...p, tracks: p.tracks.map((x) => (x === t && !t.instrument ? { ...x, instrument: defaultInstrument() } : x)), midi: [...(p.midi ?? []), block] }
+      })
+      return id
+    },
+    [change],
+  )
   /** MIDI ブロックを足す */
   const addMidiBlock = useCallback((block: MidiBlock) => change((p) => ({ ...p, midi: [...(p.midi ?? []), block] })), [change])
   /** MIDI ブロックを変える（ドラッグ中は merge で 1 回分にまとめる） */
@@ -464,6 +481,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     removeTrack,
     duplicateTrack,
     addMidiBlock,
+    addMidiAt,
     updateMidiBlock,
     addSubtrack,
     indentTrack,

@@ -23,6 +23,8 @@ import SettingsDialog from './settings/SettingsDialog'
 import type { Settings } from './settings/settings'
 import OptimizeDialog from './OptimizeDialog'
 import type { OptimizeOptions } from './optimize'
+import InstrumentDialog from './InstrumentDialog'
+import PianoRollDialog from './PianoRollDialog'
 import SendDialog from './SendDialog'
 import ShortcutsDialog from './ShortcutsDialog'
 import type { useProject } from './useProject'
@@ -126,6 +128,36 @@ export default function AppDialogs(p: {
           ],
         ]}
       />
+      {(() => {
+        const id = dialogs.arg<string>('pianoRoll')
+        const block = (project.midi ?? []).find((b) => b.id === id) ?? null
+        return (
+          block && (
+            <PianoRollDialog
+              open
+              project={project}
+              block={block}
+              onChange={(notes, merge) => doc.updateMidiBlock(block.id, { notes }, merge && `${block.id}:${merge}`)}
+              onClose={() => {
+                doc.endMerge()
+                dialogs.close('pianoRoll')
+              }}
+            />
+          )
+        )
+      })()}
+      {dialogs.arg<string>('instrument') && (
+        <InstrumentDialog
+          open
+          project={project}
+          track={dialogs.arg<string>('instrument')!}
+          onChange={(instrument) => doc.updateTrack(dialogs.arg<string>('instrument')!, { instrument }, `instrument:${dialogs.arg<string>('instrument')}`)}
+          onClose={() => {
+            doc.endMerge()
+            dialogs.close('instrument')
+          }}
+        />
+      )}
       {dialogs.arg<string>('sends') && (
         <SendDialog
           open
