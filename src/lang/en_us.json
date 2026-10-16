@@ -138,6 +138,10 @@
   "menu.autoEnd": "Clear end position",
   "menu.saveOptimized": "Save Optimized…",
   "menu.autoEdit": "Edit automation",
+  "menu.addMidiBlock": "Add MIDI block",
+  "menu.importMidi": "Import MIDI file…",
+  "menu.editMidi": "Open piano roll",
+  "menu.trackInstrument": "Track instrument…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -599,6 +603,7 @@
   "midi.trackItem": "{name} ({count} notes)",
   "midi.transpose": "Transpose",
   "midi.title": "Fit pitch to MIDI",
+  "midi.empty": "The MIDI file has no tracks with notes",
 
   "play.preview": "Preview",
 
@@ -826,5 +831,16 @@
 
   "send.title": "Sends ({name})",
   "send.help": "Sends this track's sound (after the fader) to the input of another track. Send to a track with a reverb to share it among tracks. At the minimum, nothing is sent.",
-  "send.none": "No track to send to"
+  "send.none": "No track to send to",
+
+  "roll.title": "Piano roll",
+  "roll.grid": "Grid",
+  "roll.help": "Click to add a note, drag to move, drag the right edge to resize, double-click or Delete to remove. Scroll to change the pitch range",
+
+  "instrument.title": "Instrument ({name})",
+  "instrument.help": "The instrument that plays the notes of MIDI blocks. Volume, FX, and pan use the track's.",
+  "instrument.plugin": "Instrument",
+  "instrument.none": "None",
+  "instrument.sample": "Sample source",
+  "instrument.noSample": "Not selected"
 }
