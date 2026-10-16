@@ -1,5 +1,6 @@
 // 操作の表（キーとメニューから行うもの）と、メニューバーの並び
 import { glideBlocks } from './glide'
+import type { MidiBlock } from './project'
 import { useEffect, useRef, useState } from 'react'
 import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
@@ -56,7 +57,7 @@ export interface ActionContext {
   exportWvsp: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
-  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument', arg?: string) => void
+  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument' | 'midiProps', arg?: string) => void
   /** MIDI ファイルを選んで、トラックと MIDI ブロックにする */
   importMidi: () => void
   /** 選んだ波形ブロックを確定する（音にして元の音を置き換える） */
@@ -114,13 +115,17 @@ export function useActions(c: ActionContext) {
   const t = useT()
   const { doc } = c
   // 選んでいる MIDI ブロック（ピアノロールで開く）
-  const midiSel = (doc.project.midi ?? []).find((b) => c.selected.includes(b.id))
+  const midiChosen = (doc.project.midi ?? []).filter((b) => c.selected.includes(b.id))
+  const midiSel = midiChosen[0]
   const chosen = doc.project.blocks.filter((b) => c.selected.includes(b.id))
   const ids = chosen.map((b) => b.id)
-  const any = chosen.length > 0
+  // 波形ブロックか MIDI ブロックを選んでいる
+  const any = chosen.length > 0 || midiChosen.length > 0
+  const anyWave = chosen.length > 0
   const track = doc.project.tracks.find((tr) => tr.id === c.selectedTrack)
   // コピーした波形ブロック。元の音はプロジェクトにあるものを指す
   const clipboard = useRef<Block[]>([])
+  const midiClipboard = useRef<MidiBlock[]>([])
   // コピーしたトラック（波形ブロックを選ばずにトラックを選んで Ctrl+C）
   const trackClipboard = useRef<{ track: Track; blocks: Block[] } | null>(null)
   // コピーしたら描き直す（「貼り付け」を押せるようにする。ref だけでは古いまま押せなかった）
@@ -138,22 +143,37 @@ export function useActions(c: ActionContext) {
       return
     }
     const blocks = clipboard.current
-    if (!blocks.length) return
+    const midi = midiClipboard.current
+    if (!blocks.length && !midi.length) return
     const { tracks } = doc.project
-    const first = Math.min(...blocks.map((b) => b.start))
-    const top = Math.min(...blocks.map((b) => tracks.findIndex((tr) => tr.id === b.track)))
+    // 波形ブロックと MIDI ブロックを合わせて、トラックと時間の並びを保つ
+    const items = [...blocks, ...midi]
+    const first = Math.min(...items.map((b) => b.start))
+    const top = Math.min(...items.map((b) => tracks.findIndex((tr) => tr.id === b.track)))
     const target = Math.max(0, tracks.findIndex((tr) => tr.id === selectedTrack))
-    const at = (b: Block) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
-    c.select(doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))))
+    const at = (b: { track: string }) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
+    const ids = [
+      ...doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))),
+      ...doc.insertMidi(midi.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))),
+    ]
+    c.select(ids)
     // 貼り付けたものの右端に再生位置を移す（Ctrl+V を続けると、すき間なく並ぶ）
-    c.moveCursor(cursor + Math.max(...blocks.map((b) => b.start + b.length)) - first)
+    c.moveCursor(cursor + Math.max(...items.map((b) => b.start + b.length)) - first)
   }
 
   /** 選んでいるものをまとめて、すぐ後ろに並べる */
   const duplicate = () => {
-    const first = Math.min(...chosen.map((b) => b.start))
-    const last = Math.max(...chosen.map((b) => b.start + b.length))
-    c.select(doc.insertBlocks(chosen.map((b) => ({ ...b, start: b.start + last - first }))))
+    const items = [...chosen, ...midiChosen]
+    const first = Math.min(...items.map((b) => b.start))
+    const last = Math.max(...items.map((b) => b.start + b.length))
+    c.select([...doc.insertBlocks(chosen.map((b) => ({ ...b, start: b.start + last - first }))), ...doc.insertMidi(midiChosen.map((b) => ({ ...b, start: b.start + last - first })))])
+  }
+
+  /** 選んでいるものを、グリッド 1 つぶん動かす（波形ブロックと MIDI ブロック） */
+  const nudge = (dir: 1 | -1) => {
+    const d = dir * c.gridStep()
+    doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { start: Math.max(0, b.start + d) }])))
+    doc.updateMidiBlocks(Object.fromEntries(midiChosen.map((b) => [b.id, { start: Math.max(0, b.start + d) }])))
   }
 
   const commands: Record<Action, Command> = {
@@ -166,8 +186,8 @@ export function useActions(c: ActionContext) {
     toStart: { run: () => c.seek(0) },
     cursorLeft: { run: () => c.seek(Math.max(0, c.cursor - c.gridStep())) },
     cursorRight: { run: () => c.seek(c.cursor + c.gridStep()) },
-    nudgeLeft: { enabled: any, run: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { start: Math.max(0, b.start - c.gridStep()) }]))) },
-    nudgeRight: { enabled: any, run: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { start: b.start + c.gridStep() }]))) },
+    nudgeLeft: { enabled: any, run: () => nudge(-1) },
+    nudgeRight: { enabled: any, run: () => nudge(1) },
     newProject: { run: c.newProject },
     toEnd: { run: () => c.seek(doc.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)) },
     snap: { run: c.toggleSnap },
@@ -177,12 +197,12 @@ export function useActions(c: ActionContext) {
     autoEdit: { run: c.toggleAutoEdit },
     zoomIn: { run: () => c.zoom(1.5) },
     zoomOut: { run: () => c.zoom(1 / 1.5) },
-    properties: { enabled: any, run: () => any && c.openProperties(chosen[0].id) },
+    properties: { enabled: any, run: () => (anyWave ? c.openProperties(chosen[0].id) : midiSel && c.openDialog('midiProps', midiSel.id)) },
     addMarker: { run: () => doc.addMarker(c.cursor) },
     nextMarker: { run: () => { const m = doc.project.markers.find((m) => m.time > c.cursor + 1e-3); if (m) c.seek(m.time) } },
     prevMarker: { run: () => { const m = doc.project.markers.findLast((m) => m.time < c.cursor - 1e-3); if (m) c.seek(m.time) } },
     split: { run: () => doc.split(c.cursor, ids) },
-    splitSilence: { enabled: any, run: () => doc.splitBySilence(ids) },
+    splitSilence: { enabled: anyWave, run: () => doc.splitBySilence(ids) },
     selectAll: { run: () => c.select(doc.project.blocks.map((b) => b.id)) },
     // 範囲の両端で、かかっている波形ブロックを全部分ける
     splitRange: {
@@ -199,12 +219,12 @@ export function useActions(c: ActionContext) {
     deleteRange: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => deleteRange(p, c.range!)), c.setRange(null)) },
     insertSilence: { enabled: !!c.range, run: () => c.range && doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start)) },
     repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId)) },
-    normalize: { enabled: any, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
-    bake: { enabled: any, run: () => c.bake(ids) },
+    normalize: { enabled: anyWave, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
+    bake: { enabled: anyWave, run: () => c.bake(ids) },
     // 分けるのは 1 つずつ（選んでいる最後のもの）
     synth: { run: () => c.openDialog('synth') },
-    sampler: { enabled: any, run: () => any && c.openDialog('sampler', ids[ids.length - 1]) },
-    kanaCut: { enabled: any, run: () => any && c.openDialog('kanaCut', ids[ids.length - 1]) },
+    sampler: { enabled: anyWave, run: () => any && c.openDialog('sampler', ids[ids.length - 1]) },
+    kanaCut: { enabled: anyWave, run: () => any && c.openDialog('kanaCut', ids[ids.length - 1]) },
     addMidiBlock: {
       run: () => {
         const id = doc.addMidiAt(c.selectedTrack ?? doc.project.tracks[0]?.id, c.cursor)
@@ -214,13 +234,13 @@ export function useActions(c: ActionContext) {
     importMidi: { run: c.importMidi },
     editMidi: { enabled: !!midiSel, run: () => midiSel && c.openDialog('pianoRoll', midiSel.id) },
     trackInstrument: { enabled: !!track, run: () => track && c.openDialog('instrument', track.id) },
-    splitVocals: { enabled: any, run: () => any && c.extract.vocals(ids[ids.length - 1]) },
-    splitLead: { enabled: any, run: () => any && c.extract.lead(ids[ids.length - 1]) },
-    splitInstruments: { enabled: any, run: () => any && c.extract.instruments(ids[ids.length - 1]) },
-    splitVoicesByPitch: { enabled: any, run: () => any && c.extract.voices(ids[ids.length - 1], 'pitch') },
-    splitVoicesByVolume: { enabled: any, run: () => any && c.extract.voices(ids[ids.length - 1], 'volume') },
+    splitVocals: { enabled: anyWave, run: () => any && c.extract.vocals(ids[ids.length - 1]) },
+    splitLead: { enabled: anyWave, run: () => any && c.extract.lead(ids[ids.length - 1]) },
+    splitInstruments: { enabled: anyWave, run: () => any && c.extract.instruments(ids[ids.length - 1]) },
+    splitVoicesByPitch: { enabled: anyWave, run: () => any && c.extract.voices(ids[ids.length - 1], 'pitch') },
+    splitVoicesByVolume: { enabled: anyWave, run: () => any && c.extract.voices(ids[ids.length - 1], 'volume') },
     showAll: { enabled: c.end > 0, run: () => c.fit(0, c.end) },
-    zoomRange: { enabled: !!c.range || any, run: () => (c.range ? c.fit(c.range.start, c.range.end) : c.fit(Math.min(...chosen.map((b) => b.start)), Math.max(...chosen.map((b) => b.start + b.length)))) },
+    zoomRange: { enabled: !!c.range || anyWave, run: () => (c.range ? c.fit(c.range.start, c.range.end) : c.fit(Math.min(...chosen.map((b) => b.start)), Math.max(...chosen.map((b) => b.start + b.length)))) },
     playRange: { enabled: !!c.range, run: () => c.range && c.playAt(c.range.start) },
     renameTrack: { enabled: !!c.selectedTrack, run: () => c.selectedTrack && c.openDialog('renameTrack', c.selectedTrack) },
     duplicateTrack: { enabled: !!c.selectedTrack, run: () => c.selectedTrack && doc.duplicateTrack(c.selectedTrack) },
@@ -230,7 +250,7 @@ export function useActions(c: ActionContext) {
     delete: {
       enabled: any,
       run: () => {
-        doc.removeBlocks(ids)
+        doc.removeBlocks([...ids, ...midiChosen.map((b) => b.id)])
         c.select([])
       },
     },
@@ -241,9 +261,10 @@ export function useActions(c: ActionContext) {
       enabled: any,
       run: () => {
         clipboard.current = chosen
+        midiClipboard.current = midiChosen
         trackClipboard.current = null
         setCopied((n) => n + 1)
-        doc.removeBlocks(ids)
+        doc.removeBlocks([...ids, ...midiChosen.map((b) => b.id)])
         c.select([])
       },
     },
@@ -254,10 +275,11 @@ export function useActions(c: ActionContext) {
         const track = !any ? doc.project.tracks.find((t) => t.id === c.selectedTrack) : undefined
         trackClipboard.current = track ? { track, blocks: doc.project.blocks.filter((b) => b.track === track.id) } : null
         clipboard.current = track ? [] : chosen
+        midiClipboard.current = track ? [] : midiChosen
         setCopied((n) => n + 1)
       },
     },
-    paste: { enabled: clipboard.current.length > 0 || !!trackClipboard.current, run: () => paste() },
+    paste: { enabled: clipboard.current.length > 0 || midiClipboard.current.length > 0 || !!trackClipboard.current, run: () => paste() },
     duplicate: { enabled: any, run: duplicate },
     open: { run: c.openFile },
     // 上限に達していれば知らせる（設定の「同時に開くウィンドウの数」。WeVocalSynth と同じ）
@@ -271,11 +293,11 @@ export function useActions(c: ActionContext) {
     export: { enabled: doc.project.blocks.length > 0, run: c.openExport },
     exportVideo: { enabled: doc.project.blocks.length > 0, run: c.exportVideo },
     exportWvsp: { enabled: doc.project.blocks.length > 0, run: c.exportWvsp },
-    pitchUp: { enabled: any, run: () => doc.nudgePitch(ids, 1) },
-    pitchDown: { enabled: any, run: () => doc.nudgePitch(ids, -1) },
-    pitchUpFine: { enabled: any, run: () => doc.nudgePitch(ids, 0.1) },
-    pitchDownFine: { enabled: any, run: () => doc.nudgePitch(ids, -0.1) },
-    pitchReset: { enabled: any, run: () => doc.nudgePitch(ids, null) },
+    pitchUp: { enabled: anyWave, run: () => doc.nudgePitch(ids, 1) },
+    pitchDown: { enabled: anyWave, run: () => doc.nudgePitch(ids, -1) },
+    pitchUpFine: { enabled: anyWave, run: () => doc.nudgePitch(ids, 0.1) },
+    pitchDownFine: { enabled: anyWave, run: () => doc.nudgePitch(ids, -0.1) },
+    pitchReset: { enabled: anyWave, run: () => doc.nudgePitch(ids, null) },
     glidePitch: { enabled: ids.length >= 2, run: () => doc.apply((p) => glideBlocks(p, ids)) },
   }
 

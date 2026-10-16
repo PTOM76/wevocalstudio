@@ -841,12 +841,19 @@
 
   "roll.title": "Piano roll",
   "roll.grid": "Grid",
-  "roll.help": "Click to add a note, drag to move, drag the right edge to resize, double-click or Delete to remove. Scroll to change the pitch range",
+  "roll.help": "Click to add a note, drag to move, drag the right edge to resize, double-click or Delete to remove. Shift adds to the selection or drags a box, Ctrl+A selects all. The bottom strip is velocity. Scroll to change the pitch range",
+  "roll.velocity": "Velocity",
+  "roll.selected": "{n} selected",
 
   "instrument.title": "Instrument ({name})",
   "instrument.help": "The instrument that plays the notes of MIDI blocks. Volume, FX, and pan use the track's.",
   "instrument.plugin": "Instrument",
   "instrument.none": "None",
   "instrument.sample": "Sample source",
-  "instrument.noSample": "Not selected"
+  "instrument.noSample": "Not selected",
+
+  "midiProps.title": "MIDI block properties",
+  "midiProps.length": "Length",
+  "midiProps.notes": "{n} notes",
+  "midiProps.mute": "Mute"
 }

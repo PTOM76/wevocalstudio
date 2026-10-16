@@ -841,12 +841,19 @@
 
   "roll.title": "ピアノロール",
   "roll.grid": "グリッド",
-  "roll.help": "空いている所を押して音符を足し、ドラッグで動かす。右端で長さ、ダブルクリックか Delete で消す。ホイールで音の高さをずらす",
+  "roll.help": "空いている所を押して音符を足し、ドラッグで動かす。右端で長さ、ダブルクリックか Delete で消す。Shift で選択の足し引きと枠での選択、Ctrl+A で全部。下の帯は音の強さ。ホイールで音の高さをずらす",
+  "roll.velocity": "強さ",
+  "roll.selected": "{n} 個選択",
 
   "instrument.title": "音源（{name}）",
   "instrument.help": "MIDI ブロックの音符を鳴らす音源です。音源を選ぶと、音量、FX、パンはトラックのものを使います",
   "instrument.plugin": "音源",
   "instrument.none": "なし",
   "instrument.sample": "音色にする元の音",
-  "instrument.noSample": "選んでいない"
+  "instrument.noSample": "選んでいない",
+
+  "midiProps.title": "MIDI ブロックのプロパティ",
+  "midiProps.length": "長さ",
+  "midiProps.notes": "音符 {n} 個",
+  "midiProps.mute": "ミュート"
 }

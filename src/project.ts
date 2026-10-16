@@ -364,6 +364,23 @@ export function subtreeEnd(p: Project, index: number) {
 }
 
 /** 位置 t で波形ブロックを 2 つに分ける */
+/**
+ * MIDI ブロックを時刻 t で 2 つに分ける。またぐ音符は、前の方では t で切り、後ろの方では頭から残りの長さで続ける。
+ * t がブロックの中でなければ null
+ */
+export function splitMidiBlock(b: MidiBlock, t: number): [MidiBlock, MidiBlock] | null {
+  const at = t - b.start
+  if (at <= 0.001 || at >= b.length - 0.001) return null
+  const left = b.notes.filter((n) => n.t < at).map((n) => ({ ...n, dur: Math.min(n.dur, at - n.t) }))
+  const right = b.notes
+    .filter((n) => n.t + n.dur > at)
+    .map((n) => ({ ...n, t: Math.max(0, n.t - at), dur: Math.min(n.dur, n.t + n.dur - at) }))
+  return [
+    { ...b, length: at, notes: left },
+    { ...b, id: newId(), start: t, length: b.length - at, notes: right },
+  ]
+}
+
 export function splitBlock(b: Block, t: number): [Block, Block] | null {
   const at = t - b.start
   if (at <= 0.001 || at >= b.length - 0.001) return null

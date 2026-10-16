@@ -13,7 +13,7 @@ export type DialogId =
   // トラックの名前の変更（トラックの id）
   | 'renameTrack'
   // ピアノロール（MIDI ブロックの id）、トラックの音源（トラックの id）
-  | 'pianoRoll' | 'instrument'
+  | 'pianoRoll' | 'instrument' | 'midiProps'
   // トラックのセンド（トラックの id）
   | 'sends'
   // 動画の書き出し（プレビューに使う音）

@@ -24,6 +24,7 @@ import type { Settings } from './settings/settings'
 import OptimizeDialog from './OptimizeDialog'
 import type { OptimizeOptions } from './optimize'
 import InstrumentDialog from './InstrumentDialog'
+import MidiBlockDialog from './MidiBlockDialog'
 import PianoRollDialog from './PianoRollDialog'
 import SendDialog from './SendDialog'
 import ShortcutsDialog from './ShortcutsDialog'
@@ -48,6 +49,8 @@ export default function AppDialogs(p: {
   onTogglePlay: () => void
   /** 音を作る処理の負荷（0〜1。測れなければ null） */
   load: number | null
+  /** 音源で音を鳴らす、離す（ピアノロール）。トラックの id、高さ、強さ、鳴らすか */
+  onPreview: (track: string, pitch: number, vel: number, on: boolean) => void
   /** 編集カーソル（作った音、並べた音符を置く位置） */
   cursor: number
   /** ボーカルと伴奏に分ける関数を用意する（一音ずつ切り出しで使う） */
@@ -138,9 +141,31 @@ export default function AppDialogs(p: {
               project={project}
               block={block}
               onChange={(notes, merge) => doc.updateMidiBlock(block.id, { notes }, merge && `${block.id}:${merge}`)}
+              onPreview={(pitch, vel, on) => p.onPreview(block.track, pitch, vel, on)}
               onClose={() => {
                 doc.endMerge()
                 dialogs.close('pianoRoll')
+              }}
+            />
+          )
+        )
+      })()}
+      {(() => {
+        const id = dialogs.arg<string>('midiProps')
+        const block = (project.midi ?? []).find((b) => b.id === id) ?? null
+        return (
+          block && (
+            <MidiBlockDialog
+              open
+              block={block}
+              onChange={(patch, merge) => doc.updateMidiBlock(block.id, patch, merge)}
+              onPianoRoll={() => {
+                dialogs.close('midiProps')
+                dialogs.open('pianoRoll', block.id)
+              }}
+              onClose={() => {
+                doc.endMerge()
+                dialogs.close('midiProps')
               }}
             />
           )

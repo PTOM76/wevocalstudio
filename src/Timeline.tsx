@@ -607,7 +607,8 @@ export default function Timeline(p: {
     if (md) {
       const b = (p.project.midi ?? []).find((x) => x.id === md.id)
       if (!b) return
-      if (md.kind === 'move') return p.onMidiChange(b.id, { start: Math.max(0, gridAt(x - md.grabPx, e.shiftKey)) }, md.merge)
+      // 動かすときは、縦に動かすと、ほかのトラックへも移る
+      if (md.kind === 'move') return p.onMidiChange(b.id, { start: Math.max(0, gridAt(x - md.grabPx, e.shiftKey)), ...(trackAt(y) ? { track: trackAt(y)!.id } : {}) }, md.merge)
       return p.onMidiChange(b.id, { length: Math.max(0.05, gridAt(x, e.shiftKey) - b.start) }, md.merge)
     }
     const ad = autoDrag.current

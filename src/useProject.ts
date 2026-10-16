@@ -5,7 +5,7 @@ import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip, type FxSlot } from 
 import { describeChange } from './history'
 import { defaultInstrument } from './midiImport'
 import type { MessageKey } from './i18n'
-import { BLOCK_LIMITS, DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
+import { BLOCK_LIMITS, DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, splitMidiBlock, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
 const PITCH_MAX = 256
@@ -400,6 +400,20 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     },
     [change],
   )
+  /** MIDI ブロックの写しを足す（コピーの貼り付け、複製）。足した id の一覧 */
+  const insertMidi = useCallback(
+    (blocks: MidiBlock[]) => {
+      const copies = blocks.map((b) => ({ ...b, id: newId(), notes: b.notes.map((n) => ({ ...n })) }))
+      change((p) => ({ ...p, midi: [...(p.midi ?? []), ...copies] }))
+      return copies.map((b) => b.id)
+    },
+    [change],
+  )
+  /** MIDI ブロックをまとめて変える（id → 変える項目） */
+  const updateMidiBlocks = useCallback(
+    (patches: Record<string, Partial<MidiBlock>>, merge?: string) => change((p) => ({ ...p, midi: (p.midi ?? []).map((b) => (patches[b.id] ? { ...b, ...patches[b.id] } : b)) }), merge),
+    [change],
+  )
   /** MIDI ブロックを足す */
   const addMidiBlock = useCallback((block: MidiBlock) => change((p) => ({ ...p, midi: [...(p.midi ?? []), block] })), [change])
   /** MIDI ブロックを変える（ドラッグ中は merge で 1 回分にまとめる） */
@@ -451,7 +465,12 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
 
   /** 位置 t で分ける。ids が空なら、t にかかる波形ブロックを全部分ける */
   const split = useCallback(
-    (t: number, ids: string[] = []) => change((p) => ({ ...p, blocks: p.blocks.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitBlock(b, t) ?? [b]))) })),
+    (t: number, ids: string[] = []) =>
+      change((p) => ({
+        ...p,
+        blocks: p.blocks.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitBlock(b, t) ?? [b]))),
+        ...(p.midi ? { midi: p.midi.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitMidiBlock(b, t) ?? [b]))) } : {}),
+      })),
     [change],
   )
 
@@ -482,6 +501,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     duplicateTrack,
     addMidiBlock,
     addMidiAt,
+    insertMidi,
+    updateMidiBlocks,
     updateMidiBlock,
     addSubtrack,
     indentTrack,
