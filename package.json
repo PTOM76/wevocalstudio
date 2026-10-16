@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "i18n": "node scripts/i18n.mjs",
     "map": "node scripts/map.mjs",
+    "docs:toc": "node scripts/manual-toc.mjs",
     "build:icons": "node scripts/build-icons.mjs",
     "prepare": "git config core.hooksPath .githooks",
     "build:addons": "node scripts/build-addons.mjs"
