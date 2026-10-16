@@ -7,7 +7,7 @@ import { pevenFont, useDoubleTap, useLongPress } from 'pevenmui'
 import { ContextMenu } from 'pevenmui'
 import { MeterFader, PanBar } from './MeterFader'
 import { useT } from './i18n'
-import { isNeutralChain } from 'wevocal-lib'
+import { isNeutralChain, type FxSlot } from 'wevocal-lib'
 import type { Master, Track } from './project'
 
 /** 入り切りの小さなボタン（WeVocalSynth の MixToggle と同じ見た目。入っているときだけ色で塗る） */
@@ -61,6 +61,12 @@ function Faders<T extends { volume: number; pan: number }>(p: {
       </Box>
     </>
   )
+}
+
+/** FX ボタンの文字。掛けているエフェクト（オンのもの）の数を添える */
+const fxLabel = (fx: FxSlot[] | undefined) => {
+  const n = fx?.filter((s) => s.on).length ?? 0
+  return n ? `FX ${n}` : 'FX'
 }
 
 export default function TrackHeader(p: {
@@ -212,7 +218,7 @@ export default function TrackHeader(p: {
           <>
             <MixToggle label="Ø" title={t('track.invert')} on={!!track.invert} color="primary.main" onClick={() => p.onChange({ invert: !track.invert })} />
             {/* FX の列。何か掛けているときは色を付ける */}
-            <MixToggle label="FX" wide title={t('track.fx')} on={!isNeutralChain(track.fx)} color="primary.main" onClick={p.onFx} />
+            <MixToggle label={fxLabel(track.fx)} wide title={t('track.fx')} on={!isNeutralChain(track.fx)} color="primary.main" onClick={p.onFx} />
           </>
         }
       />
@@ -270,7 +276,7 @@ export function MasterHeader(p: { master: Master; height: number; onFx: () => vo
             {t('track.master')}
           </Typography>
         </Box>
-        <MixToggle label="FX" wide title={t('track.fx')} on={!isNeutralChain(master.fx)} color="primary.main" onClick={p.onFx} />
+        <MixToggle label={fxLabel(master.fx)} wide title={t('track.fx')} on={!isNeutralChain(master.fx)} color="primary.main" onClick={p.onFx} />
         <MixToggle label="M" title={t('track.mute')} on={master.mute} color="warning.main" onClick={() => p.onChange({ mute: !master.mute })} />
       </Box>
       <Faders value={master} merge="master" onChange={p.onChange} onEndMerge={p.onEndMerge} meter={p.meter} rows={2} />

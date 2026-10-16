@@ -792,6 +792,10 @@
   "plugins.error.id": "The id is not valid",
   "plugins.error.processor": "No processor is specified",
   "plugins.error.reserved": "The id of a built-in plugin cannot be used",
+  "plugins.update": "Update",
+  "plugins.updated": "Updated",
+  "plugins.upToDate": "Up to date",
+  "plugins.noSource": "Cannot update because the source is unknown",
 
   "optimize.title": "Save Optimized",
   "optimize.help": "Saves a lighter copy of the project as a separate file. The current project is not changed",

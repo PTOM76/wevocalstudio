@@ -5,8 +5,8 @@ import { useColorScheme } from '@mui/material'
 import '@fontsource/roboto/400.css'
 import '@fontsource/roboto/500.css'
 import { AddonsContext, PevenProvider, WindowLimitScreen, preventPageZoom, setUiScale } from 'pevenmui'
-import { loadInstalledPlugins } from 'wevocal-lib'
-import { acquireSlot, configureWindowSlots } from 'pevenmui/web'
+import { loadInstalledPlugins, setPluginStore } from 'wevocal-lib'
+import { acquireSlot, configureWindowSlots, createPackageStore, packageFolderOf } from 'pevenmui/web'
 import App from './App'
 import { addonsContext } from './addons'
 import { app } from './appConfig'
@@ -14,7 +14,8 @@ import { i18n, t } from './i18n'
 import { loadSettings, useSettings, type Settings } from './settings/settings'
 
 preventPageZoom()
-// 導入したプラグインを読む（FX の列が使う）
+// 導入したプラグインの置き場（Cache Storage と、追加機能と共用する保存先のフォルダー）を決めて、読む（FX の列が使う）
+setPluginStore(createPackageStore({ cache: 'wevocal-plugins', folder: packageFolderOf(addonsContext.addons.folder, 'plugin.') }))
 void loadInstalledPlugins()
 
 /** 設定のテーマを反映する（ThemeProvider の内側で呼ぶ） */
