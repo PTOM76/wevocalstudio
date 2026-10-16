@@ -14,6 +14,8 @@ export type DialogId =
   | 'renameTrack'
   // ピアノロール（MIDI ブロックの id）、トラックの音源（トラックの id）
   | 'pianoRoll' | 'instrument' | 'midiProps'
+  // プラグインの道具と解析
+  | 'tool' | 'analyze'
   // トラックのセンド（トラックの id）
   | 'sends'
   // 動画の書き出し（プレビューに使う音）

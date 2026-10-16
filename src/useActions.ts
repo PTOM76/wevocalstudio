@@ -57,7 +57,7 @@ export interface ActionContext {
   exportWvsp: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
-  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument' | 'midiProps', arg?: string) => void
+  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument' | 'midiProps' | 'tool' | 'analyze', arg?: string) => void
   /** MIDI ファイルを選んで、トラックと MIDI ブロックにする */
   importMidi: () => void
   /** 選んだ波形ブロックを確定する（音にして元の音を置き換える） */
@@ -232,6 +232,8 @@ export function useActions(c: ActionContext) {
       },
     },
     importMidi: { run: c.importMidi },
+    pluginTool: { run: () => c.openDialog('tool') },
+    pluginAnalyze: { run: () => c.openDialog('analyze') },
     editMidi: { enabled: !!midiSel, run: () => midiSel && c.openDialog('pianoRoll', midiSel.id) },
     trackInstrument: { enabled: !!track, run: () => track && c.openDialog('instrument', track.id) },
     splitVocals: { enabled: anyWave, run: () => any && c.extract.vocals(ids[ids.length - 1]) },
@@ -386,7 +388,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.tools'),
       accessKey: 'L',
-      entries: [item('synth'), item('sampler'), item('kanaCut'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
+      entries: [item('synth'), item('sampler'), item('kanaCut'), divider, item('pluginTool'), item('pluginAnalyze'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
     },
     {
       label: t('menu.transport'),

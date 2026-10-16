@@ -143,6 +143,8 @@
   "menu.editMidi": "ピアノロールを開く",
   "menu.trackInstrument": "トラックの音源…",
   "menu.glidePitch": "ピッチをなめらかにつなぐ",
+  "menu.pluginTool": "プラグインの道具…",
+  "menu.pluginAnalyze": "プラグインの解析…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -855,5 +857,14 @@
   "midiProps.title": "MIDI ブロックのプロパティ",
   "midiProps.length": "長さ",
   "midiProps.notes": "音符 {n} 個",
-  "midiProps.mute": "ミュート"
+  "midiProps.mute": "ミュート",
+
+  "tool.title": "道具",
+  "tool.analyzeTitle": "解析",
+  "tool.plugin": "種類",
+  "tool.run": "実行",
+  "tool.analyze": "解析する",
+  "tool.running": "処理中…",
+  "tool.noSelection": "波形ブロックを選んでください",
+  "tool.help": "選んだ波形ブロック {n} 個の今の音に対して実行し、結果の音を新しい元の音にして置き換えます（元に戻せます）"
 }

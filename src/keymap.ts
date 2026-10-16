@@ -40,6 +40,8 @@ export type Action =
   | 'synth'
   | 'kanaCut'
   | 'addMidiBlock'
+  | 'pluginTool'
+  | 'pluginAnalyze'
   | 'importMidi'
   | 'editMidi'
   | 'trackInstrument'
@@ -143,6 +145,9 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   kanaCut: [],
   // MIDI ブロックを選んでいるトラックの編集カーソルに足す、MIDI ファイルを読み込む、ピアノロールを開く、トラックの音源を選ぶ
   addMidiBlock: [],
+  // プラグインの道具（選んだ波形ブロックの音を加工する）と解析（結果を見る）
+  pluginTool: [],
+  pluginAnalyze: [],
   importMidi: [],
   editMidi: [],
   trackInstrument: [],

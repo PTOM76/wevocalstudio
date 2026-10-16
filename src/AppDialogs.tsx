@@ -27,6 +27,7 @@ import InstrumentDialog from './InstrumentDialog'
 import MidiBlockDialog from './MidiBlockDialog'
 import PianoRollDialog from './PianoRollDialog'
 import SendDialog from './SendDialog'
+import ToolDialog from './ToolDialog'
 import ShortcutsDialog from './ShortcutsDialog'
 import type { useProject } from './useProject'
 
@@ -171,6 +172,17 @@ export default function AppDialogs(p: {
           )
         )
       })()}
+      {(dialogs.isOpen('tool') || dialogs.isOpen('analyze')) && (
+        <ToolDialog
+          open
+          kind={dialogs.isOpen('tool') ? 'tool' : 'analyzer'}
+          project={project}
+          ids={doc.selected.filter((id) => project.blocks.some((b) => b.id === id))}
+          onApply={(next) => doc.apply(() => next)}
+          fail={p.fail}
+          onClose={() => dialogs.close(dialogs.isOpen('tool') ? 'tool' : 'analyze')}
+        />
+      )}
       {dialogs.arg<string>('instrument') && (
         <InstrumentDialog
           open

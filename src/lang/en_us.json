@@ -143,6 +143,8 @@
   "menu.editMidi": "Open piano roll",
   "menu.trackInstrument": "Track instrument…",
   "menu.glidePitch": "Glide pitch between blocks",
+  "menu.pluginTool": "Plugin tools…",
+  "menu.pluginAnalyze": "Plugin analysis…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -855,5 +857,14 @@
   "midiProps.title": "MIDI block properties",
   "midiProps.length": "Length",
   "midiProps.notes": "{n} notes",
-  "midiProps.mute": "Mute"
+  "midiProps.mute": "Mute",
+
+  "tool.title": "Tools",
+  "tool.analyzeTitle": "Analysis",
+  "tool.plugin": "Type",
+  "tool.run": "Run",
+  "tool.analyze": "Analyze",
+  "tool.running": "Working…",
+  "tool.noSelection": "Select waveform blocks first",
+  "tool.help": "Runs on the current sound of {n} selected waveform blocks and replaces them with the result as a new source (undoable)"
 }
