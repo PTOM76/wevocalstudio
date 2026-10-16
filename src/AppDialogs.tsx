@@ -138,6 +138,7 @@ export default function AppDialogs(p: {
           playing={p.playing}
           onTogglePlay={p.onTogglePlay}
           load={p.playing ? p.load : null}
+          sidechainSources={project.tracks.filter((tr) => tr.id !== fxTarget.id).map((tr) => ({ id: tr.id, name: tr.name }))}
           userPresets={p.settings.fxPresets}
           onUserPresetsChange={(plugin, list) => p.onSettingsChange({ fxPresets: { ...p.settings.fxPresets, [plugin]: list } })}
           onClose={() => {

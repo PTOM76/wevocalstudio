@@ -1,7 +1,7 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
 import { keepFrozen } from './freeze'
-import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip } from 'wevocal-lib'
+import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip, type FxSlot } from 'wevocal-lib'
 import { describeChange } from './history'
 import type { MessageKey } from './i18n'
 import { BLOCK_LIMITS, DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
@@ -61,6 +61,24 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
       const selected = h.present.selected.filter((id) => next.blocks.some((b) => b.id === id))
       const present = { project: next, selected, label: merged ? h.present.label : describeChange(h.present.project, next) }
       return { past: merged ? h.past : [...h.past, h.present].slice(-limit.current), present, future: [] }
+    })
+  }, [])
+
+  /** プラグインの状態を FX の項目に入れる。プラグイン自身が知らせるもので操作ではないので、履歴には積まない */
+  const setFxState = useCallback((target: string, index: number, state: string) => {
+    const put = (fx: FxSlot[] | undefined) => (fx?.[index] && fx[index].state !== state ? fx.map((s, i) => (i === index ? { ...s, state } : s)) : fx)
+    setHistory((h) => {
+      const p = h.present.project
+      let next = p
+      if (target === 'master') {
+        const fx = put(p.master.fx)
+        if (fx !== p.master.fx) next = { ...p, master: { ...p.master, fx } }
+      } else {
+        const t = p.tracks.find((x) => x.id === target)
+        const fx = t && put(t.fx)
+        if (t && fx !== t.fx) next = { ...p, tracks: p.tracks.map((x) => (x === t ? { ...x, fx } : x)) }
+      }
+      return next === p ? h : { ...h, present: { ...h.present, project: next } }
     })
   }, [])
 
@@ -446,6 +464,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     updateTempo,
     addMarker,
     setEnd,
+    setFxState,
     updateMarker,
     removeMarker,
     updateMaster,

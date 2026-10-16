@@ -1,6 +1,6 @@
 // 再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
-import { chainLatency, createFxChain, limitedOutput, preloadFx, startContext, startRenderLoad, type Clip, type FxChain } from 'wevocal-lib'
+import { chainLatency, createFxChain, type ChainOptions, limitedOutput, preloadFx, startContext, startRenderLoad, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
@@ -12,6 +12,8 @@ interface TrackNodes {
   input: GainNode
   /** 波形ブロックの音の入口。FX の遅れ（latency）をそろえるため、遅れの少ないトラックを遅らせる（子のトラックの音は入らない） */
   comp: DelayNode
+  /** サイドチェーンの取り出し口（パンのあとの音。ほかのトラックの FX がこれを聞く） */
+  tap: GainNode
   pan: StereoPannerNode
   /** レベルメーターの入口（パンのあと）と、左右の AnalyserNode（WeVocalSynth と同じく左右を別に測る） */
   split: ChannelSplitterNode
@@ -38,6 +40,10 @@ class Graph {
   private readonly ctx: BaseAudioContext
   /** 時間軸の 0 秒が ctx の何秒か */
   private readonly zero: number
+  /** 最後に同期したプロジェクト（サイドチェーンの輪を作らないかの確認に使う） */
+  private proj: Project | null = null
+  /** プラグインが状態を保存したいとき（どのトラックか 'master'、何番目の項目か、base64）。再生のときだけ */
+  onFxState: ((target: string, index: number, state: string) => void) | null = null
 
   constructor(ctx: BaseAudioContext, zero: number) {
     this.ctx = ctx
@@ -46,7 +52,7 @@ class Graph {
     this.master = ctx.createGain()
     this.masterPan = ctx.createStereoPanner()
     this.out = ctx.createGain()
-    this.masterFx = createFxChain(ctx, [], this.host)
+    this.masterFx = createFxChain(ctx, [], this.host, this.chainOptions('master'))
     // 再生は耳とスピーカーを守るリミッターを通す（wevocal-lib。WeVocalSynth と同じ）。書き出しは通さない
     this.master.connect(this.masterFx.input)
     this.masterFx.output.connect(this.masterPan).connect(this.out).connect(ctx instanceof AudioContext ? limitedOutput(ctx) : ctx.destination)
@@ -58,6 +64,34 @@ class Graph {
     split.connect(l, 0)
     split.connect(r, 1)
     this.masterMeters = [l, r]
+  }
+
+  /** FX の列とのやり取り: 状態の保存と、サイドチェーンの音の取り出し（輪になるものは断る） */
+  private chainOptions(target: string): ChainOptions {
+    return {
+      onState: (i, st) => this.onFxState?.(target, i, st),
+      sidechain: (source) => (this.canTap(target, source) ? (this.tracks.get(source)?.tap ?? null) : null),
+    }
+  }
+
+  /** target の FX が source の音を聞いてよいか。音の流れ（子から親へ、サイドチェーンから聞く先へ）が輪にならなければよい */
+  private canTap(target: string, source: string): boolean {
+    const p = this.proj
+    if (!p || target === source) return false
+    // target から音が流れていく先をたどり、source に着くなら輪になる
+    const seen = new Set<string>()
+    const stack = [target]
+    while (stack.length) {
+      const id = stack.pop()!
+      if (id === source) return false
+      if (seen.has(id)) continue
+      seen.add(id)
+      const t = p.tracks.find((x) => x.id === id)
+      if (t?.parent) stack.push(t.parent)
+      for (const x of p.tracks) if (x.fx?.some((s) => s.sidechain === id)) stack.push(x.id)
+      if (id === 'master') continue
+    }
+    return true
   }
 
   /** プラグインに渡すホストの情報 */
@@ -78,19 +112,21 @@ class Graph {
   private buildTrack(t: Track): TrackNodes {
     const input = this.ctx.createGain()
     const comp = this.ctx.createDelay(1)
+    const tap = this.ctx.createGain()
     comp.connect(input)
     const pan = this.ctx.createStereoPanner()
     // トラック: 音量 → FX の列 → パン → マスター
-    const fx = createFxChain(this.ctx, t.fx ?? [], this.host)
+    const fx = createFxChain(this.ctx, t.fx ?? [], this.host, this.chainOptions(t.id))
     input.connect(fx.input)
     fx.output.connect(pan)
     const split = this.ctx.createChannelSplitter(2)
     const meter: [AnalyserNode, AnalyserNode] = [Graph.analyser(this.ctx), Graph.analyser(this.ctx)]
     pan.connect(split)
+    pan.connect(tap)
     split.connect(meter[0], 0)
     split.connect(meter[1], 1)
     // 出し先（マスターか親のトラック）は sync でつなぐ
-    return { input, comp, pan, fx, split, meter, dest: '' }
+    return { input, comp, tap, pan, fx, split, meter, dest: '' }
   }
 
   /** 波形ブロックの声の一覧をミキサーに送る。変わっていない声はそのまま鳴り続け、差し替えた声は FADE でつなぐ（smooth のとき） */
@@ -98,6 +134,7 @@ class Graph {
     // マスターとトラックの値（鳴らしたまま変える）
     const at = this.ctx.currentTime
     this.bpm = p.tempo.bpm
+    this.proj = p
     this.masterFx.update(p.master.fx ?? [])
     this.master.gain.setTargetAtTime(p.master.mute ? 0 : dbToGain(p.master.volume), at, 0.01)
     this.masterPan.pan.setTargetAtTime(p.master.pan, at, 0.01)
@@ -120,6 +157,7 @@ class Graph {
       if (n.dest) {
         n.pan.disconnect()
         n.pan.connect(n.split)
+        n.pan.connect(n.tap)
       }
       n.pan.connect(parent ? parent.input : this.master)
       n.dest = dest
@@ -128,6 +166,7 @@ class Graph {
       if (p.tracks.some((t) => t.id === id)) continue
       this.mixers.drop(id)
       n.comp.disconnect()
+      n.tap.disconnect()
       n.input.disconnect()
       n.pan.disconnect()
       this.tracks.delete(id)
@@ -189,6 +228,7 @@ class Graph {
     this.mixers.disconnect()
     for (const n of this.tracks.values()) {
       n.comp.disconnect()
+      n.tap.disconnect()
       n.input.disconnect()
       n.fx.dispose()
       n.pan.disconnect()
@@ -210,6 +250,8 @@ const fxLists = (p: Project) => [p.master.fx, ...p.tracks.map((t) => t.fx)]
 export class Player {
   /** 音を作る処理の負荷（0〜1）が変わったときに呼ぶ。対応していないブラウザでは呼ばない */
   onLoad: ((load: number) => void) | null = null
+  /** プラグインが状態を保存したいとき（トラックの id か 'master'、項目の番号、base64） */
+  onFxState: ((target: string, index: number, state: string) => void) | null = null
   private meterStarted = false
   private ctx: AudioContext | null = null
   private graph: Graph | null = null
@@ -239,6 +281,7 @@ export class Player {
     // 鳴らし直すときは待たずに続ける（前の音は stop で消えていく）
     this.startedAt = this.ctx.currentTime + (again ? 0.01 : 0.05)
     this.graph = new Graph(this.ctx, this.startedAt - from)
+    this.graph.onFxState = this.onFxState
     if (again) {
       this.graph.out.gain.setValueAtTime(0, this.startedAt)
       this.graph.out.gain.linearRampToValueAtTime(1, this.startedAt + FADE)

@@ -66,7 +66,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [renderLoad, setRenderLoad] = useState<number | null>(null)
   useEffect(() => {
     player.current.onLoad = setRenderLoad
-  }, [])
+    // プラグインが保存したい状態を、FX の項目に入れる（操作ではないので履歴には積まない）
+    player.current.onFxState = doc.setFxState
+  }, [doc.setFxState])
   const [playing, setPlaying] = useState(false)
   // 編集カーソル（押した所、貼り付ける所。再生では動かない）と、再生カーソル（再生中と一時停止中だけ。 2 本）
   const [cursor, setCursor] = useState(0)
