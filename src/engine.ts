@@ -60,6 +60,8 @@ class Graph {
   private cacheSources = new Map<string, AudioBufferSourceNode[]>()
   /** 最後に同期したプロジェクト（サイドチェーンの輪を作らないかの確認に使う） */
   private proj: Project | null = null
+  /** 最初の同期を済ませたか（マスターの値を、最初だけならさずに入れる） */
+  private synced = false
   /** プラグインが状態を保存したいとき（どのトラックか 'master'、何番目の項目か、base64）。再生のときだけ */
   onFxState: ((target: string, index: number, state: string) => void) | null = null
 
@@ -267,18 +269,23 @@ class Graph {
     // オートメーションのあるつまみは、今の時刻の値にする（再生中は automate が動かし続ける）
     const now = this.timeNow()
     this.masterFx.update(automatedSlots(p.master.fx ?? [], now))
-    this.master.gain.setTargetAtTime(p.master.mute ? 0 : dbToGain(p.master.volume), at, 0.01)
-    this.masterPan.pan.setTargetAtTime(p.master.pan, at, 0.01)
+    // 作った直後の値は、ならさずにそのまま入れる（ならすと、ミュートや音量 0 のトラックの音が、最初の数十ミリ秒だけ漏れる）
+    const first = !this.synced
+    this.synced = true
+    const to = (param: AudioParam, v: number, now: boolean) => (now ? (param.value = v) : param.setTargetAtTime(v, at, 0.01))
+    to(this.master.gain, p.master.mute ? 0 : dbToGain(p.master.volume), first)
+    to(this.masterPan.pan, p.master.pan, first)
     for (const t of p.tracks) {
       let n = this.tracks.get(t.id)
+      const fresh = !n
       if (!n) {
         n = this.buildTrack(t)
         this.tracks.set(t.id, n)
       } else n.fx.update(automatedSlots(this.liveFx(t), now))
-      n.cache.gain.setTargetAtTime(audible(p, t) ? 1 : 0, at, 0.01)
+      to(n.cache.gain, audible(p, t) ? 1 : 0, fresh)
       // ミュートとソロは音量 0 にする（ノードは残す）
-      n.input.gain.setTargetAtTime(audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, at, 0.01)
-      n.pan.pan.setTargetAtTime(t.pan, at, 0.01)
+      to(n.input.gain, audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, fresh)
+      to(n.pan.pan, t.pan, fresh)
     }
     for (const t of p.tracks) this.syncInstrument(p, t, this.tracks.get(t.id)!)
     // センド: フェーダーのあとの音を、送り先のトラックの入口（FX の前）へ。輪になるものと、なくなった送り先は外す
@@ -296,6 +303,7 @@ class Graph {
           g = this.ctx.createGain()
           n.tap.connect(g).connect(this.tracks.get(to)!.input)
           n.sends.set(to, g)
+          g.gain.value = dbToGain(db)
         }
         g.gain.setTargetAtTime(dbToGain(db), at, 0.01)
       }
