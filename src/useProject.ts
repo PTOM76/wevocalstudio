@@ -59,7 +59,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
       if (next === h.present.project) return h
       // まとめるときは名前も前のまま
       // 消えた波形ブロックは選択から外す
-      const selected = h.present.selected.filter((id) => next.blocks.some((b) => b.id === id))
+      const selected = h.present.selected.filter((id) => next.blocks.some((b) => b.id === id) || next.midi?.some((b) => b.id === id))
       const present = { project: next, selected, label: merged ? h.present.label : describeChange(h.present.project, next) }
       return { past: merged ? h.past : [...h.past, h.present].slice(-limit.current), present, future: [] }
     })

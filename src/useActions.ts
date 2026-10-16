@@ -247,11 +247,17 @@ export function useActions(c: ActionContext) {
     muteTrack: { enabled: !!track, run: () => track && doc.updateTrack(track.id, { mute: !track.mute }) },
     soloTrack: { enabled: !!track, run: () => track && doc.updateTrack(track.id, { solo: !track.solo }) },
     clearMarkers: { enabled: doc.project.markers.length > 0, run: () => doc.apply((p) => ({ ...p, markers: [] })) },
+    // 波形ブロックか MIDI ブロックを選んでいればそれを、選んでいなければ選んでいるトラックを（元に戻せる）
     delete: {
-      enabled: any,
+      enabled: any || !!c.selectedTrack,
       run: () => {
-        doc.removeBlocks([...ids, ...midiChosen.map((b) => b.id)])
-        c.select([])
+        if (any) {
+          doc.removeBlocks([...ids, ...midiChosen.map((b) => b.id)])
+          c.select([])
+        } else if (c.selectedTrack) {
+          doc.removeTrack(c.selectedTrack)
+          c.selectTrack(null)
+        }
       },
     },
     undo: { enabled: doc.canUndo, run: doc.undo },
