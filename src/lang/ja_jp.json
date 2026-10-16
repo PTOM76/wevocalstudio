@@ -143,8 +143,8 @@
   "menu.editMidi": "ピアノロールを開く",
   "menu.trackInstrument": "トラックの音源…",
   "menu.glidePitch": "ピッチをなめらかにつなぐ",
-  "menu.pluginTool": "プラグインの道具…",
-  "menu.pluginAnalyze": "プラグインの解析…",
+  "menu.pluginTool": "プラグインで処理…",
+  "menu.pluginAnalyze": "プラグインで解析…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -859,9 +859,9 @@
   "midiProps.notes": "音符 {n} 個",
   "midiProps.mute": "ミュート",
 
-  "tool.title": "道具",
-  "tool.analyzeTitle": "解析",
-  "tool.plugin": "種類",
+  "tool.title": "プラグインで処理",
+  "tool.analyzeTitle": "プラグインで解析",
+  "tool.plugin": "プラグイン",
   "tool.run": "実行",
   "tool.analyze": "解析する",
   "tool.running": "処理中…",

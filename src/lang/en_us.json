@@ -143,8 +143,8 @@
   "menu.editMidi": "Open piano roll",
   "menu.trackInstrument": "Track instrument…",
   "menu.glidePitch": "Glide pitch between blocks",
-  "menu.pluginTool": "Plugin tools…",
-  "menu.pluginAnalyze": "Plugin analysis…",
+  "menu.pluginTool": "Process with plugin…",
+  "menu.pluginAnalyze": "Analyze with plugin…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -859,9 +859,9 @@
   "midiProps.notes": "{n} notes",
   "midiProps.mute": "Mute",
 
-  "tool.title": "Tools",
-  "tool.analyzeTitle": "Analysis",
-  "tool.plugin": "Type",
+  "tool.title": "Process with plugin",
+  "tool.analyzeTitle": "Analyze with plugin",
+  "tool.plugin": "Plugin",
   "tool.run": "Run",
   "tool.analyze": "Analyze",
   "tool.running": "Working…",

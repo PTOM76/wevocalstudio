@@ -280,21 +280,35 @@ export default function Timeline(p: {
   // ホイール: Shift で横に動かす。Ctrl で拡大と縮小（マウスの位置を中心に）
   useEffect(() => {
     const canvas = canvasRef.current!
+    // ホイールは 1 フレームぶんをまとめて 1 回だけ反映する（描き直しは重く、再生中にたくさん描くと、音が途切れる原因になる）
+    const acc = { vy: 0, sx: 0, zoom: 1, zx: 0, raf: 0 }
+    const flush = () => {
+      acc.raf = 0
+      const { vy, sx, zoom, zx } = acc
+      acc.vy = acc.sx = 0
+      acc.zoom = 1
+      if (vy) setVscroll((v) => Math.max(0, Math.min(maxRef.current, v + vy)))
+      if (sx || zoom !== 1)
+        setView((v) => {
+          const pps = Math.min(2000, Math.max(2, v.pps * zoom))
+          return { pps, scroll: Math.max(0, v.scroll + zx / v.pps - zx / pps + sx / pps) }
+        })
+    }
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       // 何も押していなければ縦にスクロール
-      if (!e.ctrlKey && !e.shiftKey && !e.deltaX) return setVscroll((v) => Math.max(0, Math.min(maxRef.current, v + e.deltaY)))
-      const x = e.offsetX
-      setView((v) => {
-        if (e.ctrlKey) {
-          const pps = Math.min(2000, Math.max(2, v.pps * (e.deltaY < 0 ? 1.2 : 1 / 1.2)))
-          return { pps, scroll: Math.max(0, v.scroll + x / v.pps - x / pps) }
-        }
-        return { ...v, scroll: Math.max(0, v.scroll + (e.deltaX || e.deltaY) / v.pps) }
-      })
+      if (!e.ctrlKey && !e.shiftKey && !e.deltaX) acc.vy += e.deltaY
+      else if (e.ctrlKey) {
+        acc.zoom *= e.deltaY < 0 ? 1.2 : 1 / 1.2
+        acc.zx = e.offsetX
+      } else acc.sx += e.deltaX || e.deltaY
+      if (!acc.raf) acc.raf = requestAnimationFrame(flush)
     }
     canvas.addEventListener('wheel', onWheel, { passive: false })
-    return () => canvas.removeEventListener('wheel', onWheel)
+    return () => {
+      canvas.removeEventListener('wheel', onWheel)
+      cancelAnimationFrame(acc.raf)
+    }
   }, [setView])
   const maxRef = useRef(0)
   maxRef.current = maxV

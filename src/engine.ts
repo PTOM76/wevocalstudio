@@ -595,7 +595,16 @@ export class Player {
 
   /** 今の位置（秒） */
   position() {
-    return this.ctx && this.playing ? this.from + Math.max(0, this.ctx.currentTime - this.startedAt) : this.from
+    return this.ctx && this.playing ? this.from + Math.max(0, this.ctx.currentTime - this.startedAt - this.outputLatency()) : this.from
+  }
+
+  /**
+   * 音が出口に着くまでの遅れ（秒）。currentTime は音を作った時刻なので、スピーカーから聞こえるのはこの分あとになる。
+   * 再生位置の表示をこの分だけ遅らせて、聞こえる音と合わせる（iPad や Bluetooth のように遅れが大きいと、位置だけ先に進んで見えていた）
+   */
+  private outputLatency() {
+    const c = this.ctx
+    return c ? c.outputLatency || c.baseLatency || 0 : 0
   }
 }
 
