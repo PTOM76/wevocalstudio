@@ -22,6 +22,8 @@ export const general = defineItems('general', {
   recordEchoCancellation: check(false, { label: 'settings.recordEcho' }),
   recordNoiseSuppression: check(false, { label: 'settings.recordNoise' }),
   recordAutoGain: check(false, { label: 'settings.recordAutoGain', help: 'settings.recordHelp' }),
+  // MIDI キーボードをつなぐ（弾いた音を、音源のあるトラックで鳴らす。録音待機のトラックでは MIDI ブロックに録る）。Chrome、Edge のみ
+  midiInput: check(false, { label: 'settings.midiInput', help: 'settings.midiInputHelp' }),
 })
 
 /** 「編集」 */

@@ -59,6 +59,7 @@ export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings;
           {S('recordEchoCancellation')}
           {S('recordNoiseSuppression')}
           {S('recordAutoGain')}
+          {S('midiInput')}
         </Group>
         <Group title={t('settings.groupUpdate')}>
           <UpdateSection />

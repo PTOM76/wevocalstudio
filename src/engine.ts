@@ -410,6 +410,9 @@ export class Player {
   /** プラグインが状態を保存したいとき（トラックの id か 'master'、項目の番号、base64） */
   onFxState: ((target: string, index: number, state: string) => void) | null = null
   private meterStarted = false
+  /** 再生していないときの、キーボードで鳴らす音のためのグラフ（波形ブロックと MIDI ブロックは持たず、音源と FX の列だけ） */
+  private monitor: Graph | null = null
+  private monitorKey = ''
   /** 重いプラグインを持つトラックの音を、先に作って鳴らす（設定。anticipate.ts） */
   anticipative = false
   /** 先に作って鳴らしているトラック（id → 音を決めるものの識別、次に作るかたまりの番号） */
@@ -431,6 +434,7 @@ export class Player {
     // 待っている間に次の play や stop が来たら、この呼び出しは何もしない（古いグラフが残って鳴り続けたり、新しいグラフを壊したりしない）
     const again = this.playing || this.starting
     this.stop()
+    this.stopMonitor()
     const id = ++this.seq
     this.starting = true
     this.ctx ??= new AudioContext()
@@ -554,6 +558,31 @@ export class Player {
     } finally {
       ant.busy = false
     }
+  }
+
+  /** キーボードの音を鳴らす、離す。再生中は再生のグラフの音源で、していなければ、音源と FX の列だけのグラフで鳴らす */
+  async monitorNote(p: Project, track: string, pitch: number, vel: number, on: boolean) {
+    const send = (g: Graph) => (on ? g.noteOn(track, pitch, vel) : g.noteOff(track, pitch))
+    if (this.playing && this.graph) return send(this.graph)
+    const ctx = (this.ctx ??= new AudioContext())
+    const q: Project = { ...p, blocks: [], midi: [] }
+    // 音源と FX の列、音量、パンが変わったときだけ組み直す
+    const key = JSON.stringify([p.tracks.map((t) => [t.id, t.instrument, t.fx, t.volume, t.pan, t.invert, t.mute, t.solo, t.parent]), p.master, p.tempo.bpm])
+    if (!this.monitor || key !== this.monitorKey) {
+      await Promise.all([startContext(ctx, 'player'), loadMixer(ctx), preloadFx(ctx, ...fxLists(q)), preloadInstruments(ctx, instrumentIds(q))])
+      if (this.playing) return
+      this.monitor ??= new Graph(ctx, 0)
+      this.monitor.sync(q, false)
+      this.monitorKey = key
+    }
+    send(this.monitor)
+  }
+
+  /** キーボードのモニターのグラフを止める（再生を始めるとき） */
+  private stopMonitor() {
+    this.monitor?.stopAll()
+    this.monitor = null
+    this.monitorKey = ''
   }
 
   /** 今の位置（秒） */

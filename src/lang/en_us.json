@@ -282,6 +282,8 @@
   "settings.groupDefaultAlgorithm": "Algorithm",
   "settings.anticipativeFx": "Compute heavy plugins ahead of playback (experimental)",
   "settings.anticipativeFxHelp": "Renders tracks that have heavy added plugins on another thread ahead of the playback position. It reduces the load on the audio thread and makes dropouts less likely, but playback takes a moment to start. If you edit such a track during playback, it goes back to normal processing until the next playback.",
+  "settings.midiInput": "Use a MIDI keyboard",
+  "settings.midiInputHelp": "Plays a connected MIDI keyboard through the instrument of a track (the armed track, or the selected track). Recording captures the notes into a MIDI block. Available in Chrome and Edge.",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",

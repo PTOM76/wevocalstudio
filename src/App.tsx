@@ -36,6 +36,7 @@ import BlockEditBar from './BlockEditBar'
 import { CONVERTER_ADDON } from 'wevocalconverter/host'
 import { applyBaked, bakeBlocks } from './bake'
 import { freezeTrack, unfreezeTrack } from './freeze'
+import { useMidiInput } from './useMidiInput'
 import { useRecorder } from './useRecorder'
 import { useAutosave } from './useAutosave'
 import { usePlayerSync } from './usePlayerSync'
@@ -168,7 +169,22 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice })
 
   // 録音（再生位置から、ほかのトラックを鳴らしながら録る）
-  const { recording, live, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), fail })
+  const { recording: audioRecording, midiRec, onMidiNote, live, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), position: () => player.current.position(), fail })
+  // 音を録っているか、弾いた音符（MIDI）を録っているか
+  const recording = audioRecording ?? (midiRec ? true : null)
+
+  // MIDI キーボード: 弾いた音を、録音待機（なければ選んでいる、音源のある最初の）トラックの音源で鳴らす。録音中は MIDI ブロックに録る
+  useMidiInput({
+    enabled: p.settings.midiInput,
+    onNote: (pitch, vel, on) => {
+      const tracks = project.tracks.filter((tr) => tr.instrument)
+      const target = tracks.find((tr) => tr.armed) ?? tracks.find((tr) => tr.id === selectedTrack) ?? tracks[0]
+      if (!target) return
+      void player.current.monitorNote(project, target.id, pitch, vel, on)
+      onMidiNote(pitch, vel, on)
+    },
+    fail,
+  })
 
   /** 一時停止。再生カーソルはその場に残す */
   const pause = () => {
