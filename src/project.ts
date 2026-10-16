@@ -53,6 +53,24 @@ export interface InstrumentSlot {
   sample?: string
 }
 
+/**
+ * ブロックの共通の形。時間軸に並べるものは、波形ブロック（Block）も MIDI ブロック（MidiBlock）も、
+ * どのトラックの、いつから、どれだけの長さで、ミュートしているか、を持つ。動かす、長さを変える、選ぶ、消す、コピーするなどは、この形だけで扱える
+ */
+export interface BaseBlock {
+  id: string
+  track: string
+  /** 時間軸での開始位置（秒） */
+  start: number
+  /** 長さ（秒。時間軸の上での長さ） */
+  length: number
+  mute: boolean
+}
+
+/** どちらのブロックか */
+export type AnyBlock = Block | MidiBlock
+export const isMidiBlock = (b: AnyBlock): b is MidiBlock => 'notes' in b
+
 /** 音符（MIDI ブロックの頭からの秒） */
 export interface Note {
   t: number
@@ -64,15 +82,8 @@ export interface Note {
 }
 
 /** MIDI ブロック。音符を MIDI のまま持ち、トラックの音源で鳴らす */
-export interface MidiBlock {
-  id: string
-  track: string
-  /** 時間軸での開始位置（秒） */
-  start: number
-  /** 長さ（秒） */
-  length: number
+export interface MidiBlock extends BaseBlock {
   notes: Note[]
-  mute: boolean
 }
 
 /** 時間軸に出しているオートメーション */
@@ -90,16 +101,10 @@ export interface Send {
 export const SEND_MIN = -60
 
 /** 波形ブロック。元の音のどこを、いつ、どう鳴らすか */
-export interface Block {
-  id: string
-  track: string
+export interface Block extends BaseBlock {
   source: string
-  /** 時間軸での開始位置（秒） */
-  start: number
   /** 元の音の中での開始位置（秒） */
   offset: number
-  /** 長さ（秒。時間軸の上での長さ） */
-  length: number
   /** 速度（1 が元の速さ、2 で倍の速さ）。ピッチは変えずに長さが変わる。元の音の上では length × rate 秒を使う */
   rate: number
   /** 音量（dB） */
@@ -318,6 +323,9 @@ export function flowsTo(p: Project, from: string, to: string): boolean {
 
 /** track から送れるトラック（送ると音が輪になるものと、自分は除く） */
 export const sendTargets = (p: Project, track: string): Track[] => p.tracks.filter((x) => x.id !== track && !flowsTo(p, x.id, track))
+
+/** 全部のブロック（波形ブロックと MIDI ブロック） */
+export const allBlocks = (p: Project): AnyBlock[] => [...p.blocks, ...(p.midi ?? [])]
 
 /** 最後の波形ブロックの終わり（秒） */
 export const projectEnd = (p: Project) => Math.max(p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0), (p.midi ?? []).reduce((m, b) => Math.max(m, b.start + b.length), 0))

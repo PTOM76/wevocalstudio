@@ -7,7 +7,7 @@ import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, use
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { hitMidi, type MidiDragKind } from './midiBlocks'
 import { layoutRows } from './overlap'
-import { depthOf, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN } from './project'
+import { depthOf, projectEnd, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN } from './project'
 import { ENVELOPES, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
@@ -310,7 +310,7 @@ export default function Timeline(p: {
   }
   // 目盛りのドラッグで端に来たら表示を流す（WeVocalSynth と同じ wevocal-lib の部品）。流せる先は曲の終わりの少し先まで
   const visible = width / view.pps
-  const end = p.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
+  const end = projectEnd(p.project)
   const edge = useEdgeScroll({
     canvasRef,
     view: { start: view.scroll, dur: visible },
@@ -584,11 +584,23 @@ export default function Timeline(p: {
     p.onBlocksChange(Object.fromEntries(all.map((b, i) => [b.id, { start: b.start + dt, track: p.project.tracks[rows[i] + shift].id }])), d.merge)
   }
 
-  // 端で表示が流れている間は、指が動かなくても波形ブロックを付いてこさせる
+  /** ドラッグしている MIDI ブロックを、指の位置に合わせて動かす（波形ブロックと同じく、縦に動かすとほかのトラックへ移り、端で表示が流れる） */
+  const moveMidi = (md: NonNullable<typeof midiDrag.current>, x: number, y: number, shiftKey: boolean) => {
+    const b = (p.project.midi ?? []).find((q) => q.id === md.id)
+    if (!b) return
+    if (md.kind === 'move') {
+      const tr = trackAt(y)
+      return p.onMidiChange(b.id, { start: Math.max(0, gridAt(x - md.grabPx, shiftKey)), ...(tr ? { track: tr.id } : {}) }, md.merge)
+    }
+    p.onMidiChange(b.id, { length: Math.max(0.05, gridAt(x, shiftKey) - b.start) }, md.merge)
+  }
+
+  // 端で表示が流れている間は、指が動かなくても波形ブロックと MIDI ブロックを付いてこさせる
   useEffect(() => {
     const d = drag.current
     const m = lastMove.current
     if (d && m) moveDrag(d, m.x, m.y, m.altKey, m.shiftKey)
+    else if (midiDrag.current && m) moveMidi(midiDrag.current, m.x, m.y, m.shiftKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.scroll])
 
@@ -605,11 +617,13 @@ export default function Timeline(p: {
     const y = cy(e.nativeEvent.offsetY)
     const md = midiDrag.current
     if (md) {
-      const b = (p.project.midi ?? []).find((x) => x.id === md.id)
-      if (!b) return
-      // 動かすときは、縦に動かすと、ほかのトラックへも移る
-      if (md.kind === 'move') return p.onMidiChange(b.id, { start: Math.max(0, gridAt(x - md.grabPx, e.shiftKey)), ...(trackAt(y) ? { track: trackAt(y)!.id } : {}) }, md.merge)
-      return p.onMidiChange(b.id, { length: Math.max(0.05, gridAt(x, e.shiftKey) - b.start) }, md.merge)
+      // 端に来たら表示を流し、上下の端では縦にスクロールする（波形ブロックと同じ）
+      blockEdge.update(e.clientX)
+      const oy = e.nativeEvent.offsetY
+      if (oy > height - 24) setVscroll((v) => Math.min(maxRef.current, v + 8))
+      else if (oy > TOP && oy < TOP + 24) setVscroll((v) => Math.max(0, v - 8))
+      lastMove.current = { x, y, altKey: e.altKey, shiftKey: e.shiftKey }
+      return moveMidi(md, x, y, e.shiftKey)
     }
     const ad = autoDrag.current
     if (ad) {
