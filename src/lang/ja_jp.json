@@ -142,6 +142,7 @@
   "menu.importMidi": "MIDI ファイルを読み込む…",
   "menu.editMidi": "ピアノロールを開く",
   "menu.trackInstrument": "トラックの音源…",
+  "menu.glidePitch": "ピッチをなめらかにつなぐ",
 
   "settings.title": "設定",
   "settings.general": "全般",

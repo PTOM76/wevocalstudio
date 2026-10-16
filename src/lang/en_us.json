@@ -142,6 +142,7 @@
   "menu.importMidi": "Import MIDI file…",
   "menu.editMidi": "Open piano roll",
   "menu.trackInstrument": "Track instrument…",
+  "menu.glidePitch": "Glide pitch between blocks",
 
   "settings.title": "Settings",
   "settings.general": "General",

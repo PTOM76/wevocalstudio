@@ -81,6 +81,7 @@ export type Action =
   | 'pitchUpFine'
   | 'pitchDownFine'
   | 'pitchReset'
+  | 'glidePitch'
 
 /**
  * キーの書き方は `Ctrl+Shift+キー`（キーは KeyboardEvent の code）。1 つの操作に複数のキーを割り当てられる。
@@ -194,6 +195,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   pitchUpFine: ['Shift+Numpad9', 'Ctrl+Shift+ArrowUp'],
   pitchDownFine: ['Shift+Numpad3', 'Ctrl+Shift+ArrowDown'],
   pitchReset: ['Ctrl+Backspace', 'Ctrl+Digit0', 'Ctrl+Numpad0'],
+  // 選んだ波形ブロックを、前の波形ブロックのピッチからなめらかにつなぐ（ピッチのエンベロープを足す）
+  glidePitch: [],
 }
 
 /** 操作の一覧（並びは設定の画面の並び） */

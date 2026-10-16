@@ -1,4 +1,5 @@
 // 操作の表（キーとメニューから行うもの）と、メニューバーの並び
+import { glideBlocks } from './glide'
 import { useEffect, useRef, useState } from 'react'
 import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
@@ -275,6 +276,7 @@ export function useActions(c: ActionContext) {
     pitchUpFine: { enabled: any, run: () => doc.nudgePitch(ids, 0.1) },
     pitchDownFine: { enabled: any, run: () => doc.nudgePitch(ids, -0.1) },
     pitchReset: { enabled: any, run: () => doc.nudgePitch(ids, null) },
+    glidePitch: { enabled: ids.length >= 2, run: () => doc.apply((p) => glideBlocks(p, ids)) },
   }
 
   // キーの割り当ては keymap.ts の表。文字の入力中は奪わない
@@ -329,7 +331,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
+      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), item('glidePitch'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
     },
     {
       label: t('menu.track'),
