@@ -25,6 +25,7 @@ interface Header {
   master: Project['master']
   tracks: Project['tracks']
   blocks: Project['blocks']
+  midi?: Project['midi']
   end?: number
 }
 
@@ -38,6 +39,7 @@ export function writeProject(p: Project): Blob {
     master: p.master,
     tracks: p.tracks,
     blocks: p.blocks,
+    ...(p.midi?.length ? { midi: p.midi } : {}),
     end: p.end,
   }
   const json = new TextEncoder().encode(JSON.stringify(header))
@@ -68,5 +70,5 @@ export async function readProject(file: Blob): Promise<Project> {
     return { id: s.id, name: s.name, clip, duration: s.frames / s.sampleRate }
   })
   // 足した項目が古いファイルに無くても動くよう、既定値で埋める
-  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, markers: header.markers ?? [], master: { ...newProject().master, ...header.master }, tracks: header.tracks.map(fillTrack), blocks: header.blocks.map(fillBlock), ...(header.end !== undefined ? { end: header.end } : {}) }
+  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, markers: header.markers ?? [], master: { ...newProject().master, ...header.master }, tracks: header.tracks.map(fillTrack), blocks: header.blocks.map(fillBlock), ...(header.midi?.length ? { midi: header.midi } : {}), ...(header.end !== undefined ? { end: header.end } : {}) }
 }

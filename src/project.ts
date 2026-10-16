@@ -34,12 +34,45 @@ export interface Track {
   sends?: Send[]
   /** 時間軸に出しているオートメーション（FX の何番目の項目の、どのつまみか）。編集するときにだけ使う表示の状態 */
   autoLane?: AutoLane
+  /** 音源（MIDI ブロックの音符を鳴らす。波形ブロックの音と一緒に、音量、FX の列、パンへ流れる） */
+  instrument?: InstrumentSlot
   /** 古いプロジェクトのグラフィック EQ。読み込み時に fx の先頭へ読み替えて消す（fillTrack）。保存はしない */
   eq?: TrackEq
   /** 時間軸での縦の大きさ（px）。なければ既定値 */
   height?: number
   /** フリーズ。波形ブロックの音を書き出した元の音（source）と、その頭の時間軸の位置（秒）。あれば波形ブロックの代わりにこれを鳴らす（src/freeze.ts） */
   frozen?: { source: string; start: number }
+}
+
+/** トラックの音源 */
+export interface InstrumentSlot {
+  /** 音源のプラグインの id（wevocal.synth など） */
+  plugin: string
+  values: Record<string, number>
+  /** サンプラーの音色に使う元の音（source の id） */
+  sample?: string
+}
+
+/** 音符（MIDI ブロックの頭からの秒） */
+export interface Note {
+  t: number
+  dur: number
+  /** MIDI ノート番号（C4 = 60） */
+  pitch: number
+  /** 強さ 0〜1 */
+  vel: number
+}
+
+/** MIDI ブロック。音符を MIDI のまま持ち、トラックの音源で鳴らす */
+export interface MidiBlock {
+  id: string
+  track: string
+  /** 時間軸での開始位置（秒） */
+  start: number
+  /** 長さ（秒） */
+  length: number
+  notes: Note[]
+  mute: boolean
 }
 
 /** 時間軸に出しているオートメーション */
@@ -181,6 +214,8 @@ export interface Project {
   master: Master
   tracks: Track[]
   blocks: Block[]
+  /** MIDI ブロック（無ければなし。古いプロジェクトには無い） */
+  midi?: MidiBlock[]
   /** 曲の終わり（秒）。無ければ自動（最後の波形ブロックの終わり＋FX の余韻） */
   end?: number
 }
@@ -285,7 +320,7 @@ export function flowsTo(p: Project, from: string, to: string): boolean {
 export const sendTargets = (p: Project, track: string): Track[] => p.tracks.filter((x) => x.id !== track && !flowsTo(p, x.id, track))
 
 /** 最後の波形ブロックの終わり（秒） */
-export const projectEnd = (p: Project) => p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
+export const projectEnd = (p: Project) => Math.max(p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0), (p.midi ?? []).reduce((m, b) => Math.max(m, b.start + b.length), 0))
 
 /** 曲の終わり（秒）。決めていなければ、最後の波形ブロックの終わりに、全トラックとマスターの FX の余韻の最大を足す。書き出しの長さと「曲の終わりで止める」に使う */
 export function songEnd(p: Project): number {

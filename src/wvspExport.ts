@@ -12,7 +12,7 @@ const firstEq = (fx: Track['fx']) => {
 /** 書き出すトラックの id（選んだトラックとその子孫で波形ブロックがあるもの。選んでいなければ全トラック） */
 export function wvspTargets(p: Project, selected: string[]): string[] {
   const picked = selected.length ? new Set(selected.flatMap((id) => [id, ...descendants(p, p.tracks.find((t) => t.id === id)!).map((t) => t.id)])) : null
-  return p.tracks.filter((t) => (!picked || picked.has(t.id)) && p.blocks.some((b) => b.track === t.id)).map((t) => t.id)
+  return p.tracks.filter((t) => (!picked || picked.has(t.id)) && (p.blocks.some((b) => b.track === t.id) || (p.midi ?? []).some((b) => b.track === t.id))).map((t) => t.id)
 }
 
 export async function exportWvsp(p: Project, fileName: string, selected: string[], onProgress?: (v: number) => void): Promise<Blob> {

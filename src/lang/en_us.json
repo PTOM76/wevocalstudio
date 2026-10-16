@@ -462,6 +462,7 @@
   "history.opened": "Opened",
   "history.current": "Current",
   "history.end": "End position",
+  "history.midi": "MIDI",
 
   "confirm.newProject": "Close the current work and start a new project? Unsaved changes will be lost.",
   "confirm.discard": "There are unsaved changes. Discard them and open?",

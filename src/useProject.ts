@@ -4,7 +4,7 @@ import { keepFrozen } from './freeze'
 import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip, type FxSlot } from 'wevocal-lib'
 import { describeChange } from './history'
 import type { MessageKey } from './i18n'
-import { BLOCK_LIMITS, DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
+import { BLOCK_LIMITS, DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
 const PITCH_MAX = 256
@@ -244,7 +244,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
         if (i < 0) return p
         const copy = { ...p.tracks[i], id: newId(), name: `${p.tracks[i].name} (2)`, armed: false }
         const blocks = p.blocks.filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
-        return { ...p, tracks: [...p.tracks.slice(0, i + 1), copy, ...p.tracks.slice(i + 1)], blocks: [...p.blocks, ...blocks] }
+        const midi = (p.midi ?? []).filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
+        return { ...p, tracks: [...p.tracks.slice(0, i + 1), copy, ...p.tracks.slice(i + 1)], blocks: [...p.blocks, ...blocks], ...(midi.length ? { midi: [...(p.midi ?? []), ...midi] } : {}) }
       }),
     [change],
   )
@@ -269,10 +270,11 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     (id: string) =>
       change((p) => {
         const blocks = p.blocks.filter((b) => b.track !== id)
+        const midi = p.midi?.filter((b) => b.track !== id)
         // 子は一つ上の階層に上げる
         const gone = p.tracks.find((t) => t.id === id)
         const tracks = p.tracks.filter((t) => t.id !== id).map((t) => (t.parent === id ? { ...t, parent: gone?.parent } : t))
-        return { ...p, tracks, blocks, sources: p.sources.filter((s) => blocks.some((b) => b.source === s.id) || tracks.some((t) => t.frozen?.source === s.id)) }
+        return { ...p, tracks, blocks, ...(midi ? { midi } : {}), sources: p.sources.filter((s) => blocks.some((b) => b.source === s.id) || tracks.some((t) => t.frozen?.source === s.id || t.instrument?.sample === s.id)) }
       }),
     [change],
   )
@@ -379,7 +381,12 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     [change],
   )
 
-  const removeBlocks = useCallback((ids: string[]) => change((p) => ({ ...p, blocks: p.blocks.filter((b) => !ids.includes(b.id)) })), [change])
+  const removeBlocks = useCallback((ids: string[]) => change((p) => ({ ...p, blocks: p.blocks.filter((b) => !ids.includes(b.id)), ...(p.midi ? { midi: p.midi.filter((b) => !ids.includes(b.id)) } : {}) })), [change])
+
+  /** MIDI ブロックを足す */
+  const addMidiBlock = useCallback((block: MidiBlock) => change((p) => ({ ...p, midi: [...(p.midi ?? []), block] })), [change])
+  /** MIDI ブロックを変える（ドラッグ中は merge で 1 回分にまとめる） */
+  const updateMidiBlock = useCallback((id: string, patch: Partial<MidiBlock>, merge?: string) => change((p) => ({ ...p, midi: (p.midi ?? []).map((b) => (b.id === id ? { ...b, ...patch } : b)) }), merge), [change])
 
   /** 波形ブロックの写しを置き、新しい id を返す（複製、貼り付け）。元の音がもう無いものは置かない */
   const insertBlocks = useCallback(
@@ -456,6 +463,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     addTrack,
     removeTrack,
     duplicateTrack,
+    addMidiBlock,
+    updateMidiBlock,
     addSubtrack,
     indentTrack,
     outdentTrack,

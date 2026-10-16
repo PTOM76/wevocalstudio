@@ -21,7 +21,7 @@ export const sourcesBytes = (p: Project) => p.sources.reduce((sum, s) => sum + s
 
 /** 元の音をどこかが使っているか（波形ブロック、トラックのフリーズ） */
 function usedSources(p: Project): Set<string> {
-  return new Set([...p.blocks.map((b) => b.source), ...p.tracks.flatMap((t) => (t.frozen ? [t.frozen.source] : []))])
+  return new Set([...p.blocks.map((b) => b.source), ...p.tracks.flatMap((t) => [...(t.frozen ? [t.frozen.source] : []), ...(t.instrument?.sample ? [t.instrument.sample] : [])])])
 }
 
 /** 波形ブロックが使う、元の音の範囲（秒） */
