@@ -772,6 +772,8 @@
   "fx.presetExport": "プリセットを書き出す",
   "fx.presetImport": "プリセットを読み込む",
   "fx.presetImportError": "このエフェクトのプリセットのファイルではありません",
+  "fx.offlineOnly": "書き出しのみ",
+  "fx.offlineOnlyHelp": "このプラグインは書き出しのときだけ掛かります。再生中は素通しです。",
 
   "plugins.intro": "FX に使うプラグインを URL から追加します。追加したプラグインはこの端末に保存され、ネットがなくても使えます。",
   "plugins.url": "プラグインのマニフェストの URL",

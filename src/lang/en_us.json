@@ -772,6 +772,8 @@
   "fx.presetExport": "Export presets",
   "fx.presetImport": "Import presets",
   "fx.presetImportError": "This is not a preset file for this effect",
+  "fx.offlineOnly": "Export only",
+  "fx.offlineOnlyHelp": "This plugin is applied only when exporting. It is bypassed during playback.",
 
   "plugins.intro": "Add plugins for FX from a URL. Added plugins are saved on this device and work offline.",
   "plugins.url": "URL of the plugin manifest",
