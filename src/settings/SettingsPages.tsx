@@ -104,6 +104,7 @@ export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings;
         </Row>
         {S('showLegacyAlgorithms')}
         {S('preserveFormant')}
+        {S('anticipativeFx')}
       </Group>
     ),
     vocal: (

@@ -12,6 +12,8 @@ export const pitch = defineItems('process', {
   showLegacyAlgorithms: check(false, { label: 'settings.showLegacyAlgorithms', help: 'settings.showLegacyAlgorithmsHelp' }),
   // 新しい波形ブロックでフォルマント（声の響き）を保つか
   preserveFormant: check(true, { label: 'settings.preserveFormant' }),
+  // 重いプラグインを持つトラックの音を、再生位置より先に作って鳴らす（試験的。音を出すスレッドの負担が減り、音が途切れにくい。再生を始めるまで少し待つ）
+  anticipativeFx: check(false, { label: 'settings.anticipativeFx', help: 'settings.anticipativeFxHelp' }),
 })
 
 /** 時間軸の線（「編集」に出す） */

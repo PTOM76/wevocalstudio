@@ -1,5 +1,6 @@
 // 再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
+import { AHEAD, anticipated, CHUNK, PREROLL, signature } from './anticipate'
 import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, limitedOutput, preloadFx, startContext, startRenderLoad, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
@@ -12,6 +13,8 @@ interface TrackNodes {
   input: GainNode
   /** 波形ブロックの音の入口。FX の遅れ（latency）をそろえるため、遅れの少ないトラックを遅らせる（子のトラックの音は入らない） */
   comp: DelayNode
+  /** 先に作った音の入口（FX の列の出口へ足す。ミュートとソロはここで切る） */
+  cache: GainNode
   /** サイドチェーンの取り出し口（パンのあとの音。ほかのトラックの FX がこれを聞く） */
   tap: GainNode
   /** センド（送り先のトラックの id → 送る量のゲイン） */
@@ -42,6 +45,10 @@ class Graph {
   private readonly ctx: BaseAudioContext
   /** 時間軸の 0 秒が ctx の何秒か */
   private readonly zero: number
+  /** 先に作った音で鳴らすトラック（波形ブロックと FX の列は動かさない） */
+  private anticipated = new Set<string>()
+  /** 先に作った音の再生（トラックごと。止めるときに使う） */
+  private cacheSources = new Map<string, AudioBufferSourceNode[]>()
   /** 最後に同期したプロジェクト（サイドチェーンの輪を作らないかの確認に使う） */
   private proj: Project | null = null
   /** プラグインが状態を保存したいとき（どのトラックか 'master'、何番目の項目か、base64）。再生のときだけ */
@@ -81,6 +88,47 @@ class Graph {
     return !!this.proj && target !== source && !flowsTo(this.proj, target, source)
   }
 
+  /** そのトラックで、今ノードとして動かす FX の列（先に作った音で鳴らすトラックは空） */
+  private liveFx(t: Track) {
+    return this.anticipated.has(t.id) ? [] : (t.fx ?? [])
+  }
+
+  /** 先に作った音で鳴らすトラックを決める（sync の前に呼ぶ） */
+  setAnticipated(ids: Iterable<string>) {
+    this.anticipated = new Set(ids)
+  }
+
+  /** 先に作った音を、曲の時刻 start から鳴らす。すでに過ぎた分は、途中から */
+  playChunk(trackId: string, buffer: AudioBuffer, start: number) {
+    const n = this.tracks.get(trackId)
+    if (!n) return
+    const src = this.ctx.createBufferSource()
+    src.buffer = buffer
+    src.connect(n.cache)
+    const when = this.zero + start
+    const now = this.ctx.currentTime
+    if (when >= now) src.start(when)
+    else if (now - when < buffer.duration) src.start(now, now - when)
+    const list = this.cacheSources.get(trackId) ?? []
+    list.push(src)
+    this.cacheSources.set(trackId, list)
+    src.onended = () => this.cacheSources.set(trackId, (this.cacheSources.get(trackId) ?? []).filter((x) => x !== src))
+  }
+
+  /** 先に作った音をやめ、ノードの FX の列と波形ブロックの声で鳴らす（編集したときと、先読みが間に合わなかったとき） */
+  release(trackId: string) {
+    for (const s of this.cacheSources.get(trackId) ?? []) {
+      try {
+        s.stop()
+      } catch {
+        // まだ始まっていないものは止められる。終わったものは無視
+      }
+      s.disconnect()
+    }
+    this.cacheSources.delete(trackId)
+    this.anticipated.delete(trackId)
+  }
+
   /** 曲の中の今の時刻（秒）。再生中は ctx の時計から求める */
   private timeNow() {
     return Math.max(0, this.ctx.currentTime - this.zero)
@@ -97,7 +145,7 @@ class Graph {
     const p = this.proj
     if (!p) return
     if (hasAutomation(p.master.fx)) this.masterFx.update(automatedSlots(p.master.fx ?? [], t))
-    for (const tr of p.tracks) if (hasAutomation(tr.fx)) this.tracks.get(tr.id)?.fx.update(automatedSlots(tr.fx ?? [], t))
+    for (const tr of p.tracks) if (hasAutomation(tr.fx) && !this.anticipated.has(tr.id)) this.tracks.get(tr.id)?.fx.update(automatedSlots(tr.fx ?? [], t))
   }
 
   /** プラグインに渡すホストの情報 */
@@ -122,9 +170,11 @@ class Graph {
     comp.connect(input)
     const pan = this.ctx.createStereoPanner()
     // トラック: 音量 → FX の列 → パン → マスター
-    const fx = createFxChain(this.ctx, t.fx ?? [], this.host, this.chainOptions(t.id))
+    const fx = createFxChain(this.ctx, this.liveFx(t), this.host, this.chainOptions(t.id))
     input.connect(fx.input)
     fx.output.connect(pan)
+    const cache = this.ctx.createGain()
+    cache.connect(fx.output)
     const split = this.ctx.createChannelSplitter(2)
     const meter: [AnalyserNode, AnalyserNode] = [Graph.analyser(this.ctx), Graph.analyser(this.ctx)]
     pan.connect(split)
@@ -132,7 +182,7 @@ class Graph {
     split.connect(meter[0], 0)
     split.connect(meter[1], 1)
     // 出し先（マスターか親のトラック）は sync でつなぐ
-    return { input, comp, tap, sends: new Map(), pan, fx, split, meter, dest: '' }
+    return { input, comp, cache, tap, sends: new Map(), pan, fx, split, meter, dest: '' }
   }
 
   /** 波形ブロックの声の一覧をミキサーに送る。変わっていない声はそのまま鳴り続け、差し替えた声は FADE でつなぐ（smooth のとき） */
@@ -151,7 +201,8 @@ class Graph {
       if (!n) {
         n = this.buildTrack(t)
         this.tracks.set(t.id, n)
-      } else n.fx.update(automatedSlots(t.fx ?? [], now))
+      } else n.fx.update(automatedSlots(this.liveFx(t), now))
+      n.cache.gain.setTargetAtTime(audible(p, t) ? 1 : 0, at, 0.01)
       // ミュートとソロは音量 0 にする（ノードは残す）
       n.input.gain.setTargetAtTime(audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, at, 0.01)
       n.pan.pan.setTargetAtTime(t.pan, at, 0.01)
@@ -193,6 +244,7 @@ class Graph {
       if (p.tracks.some((t) => t.id === id)) continue
       this.mixers.drop(id)
       n.comp.disconnect()
+      n.cache.disconnect()
       for (const g of n.sends.values()) g.disconnect()
       n.tap.disconnect()
       n.input.disconnect()
@@ -218,7 +270,7 @@ class Graph {
     for (const b of p.blocks) {
       const source = p.sources.find((s) => s.id === b.source)
       const list = voices.get(b.track)
-      if (b.mute || !source || !list || frozen.has(b.track)) continue
+      if (b.mute || !source || !list || frozen.has(b.track) || this.anticipated.has(b.track)) continue
       const pieces = piecesFor(b, source)
       if (!pieces.length) continue
       for (const pc of pieces) used.set(clipId(pc.clip), pc.clip)
@@ -256,6 +308,7 @@ class Graph {
     this.mixers.disconnect()
     for (const n of this.tracks.values()) {
       n.comp.disconnect()
+      n.cache.disconnect()
       for (const g of n.sends.values()) g.disconnect()
       n.tap.disconnect()
       n.input.disconnect()
@@ -282,6 +335,10 @@ export class Player {
   /** プラグインが状態を保存したいとき（トラックの id か 'master'、項目の番号、base64） */
   onFxState: ((target: string, index: number, state: string) => void) | null = null
   private meterStarted = false
+  /** 重いプラグインを持つトラックの音を、先に作って鳴らす（設定。anticipate.ts） */
+  anticipative = false
+  /** 先に作って鳴らしているトラック（id → 音を決めるものの識別、次に作るかたまりの番号） */
+  private ant: { sigs: Map<string, string>; next: Map<string, number>; busy: boolean; timer: ReturnType<typeof setInterval> } | null = null
   /** オートメーションを反映し続ける間隔の ID */
   private automation: ReturnType<typeof setInterval> | null = null
   private ctx: AudioContext | null = null
@@ -307,12 +364,20 @@ export class Player {
     await Promise.all([startContext(this.ctx, 'player'), loadMixer(this.ctx), preloadFx(this.ctx, ...fxLists(p))])
     this.startLoadMeter()
     if (id !== this.seq) return
+    // 先に作って鳴らすトラックは、最初のかたまりができてから始める（作っている間は、ほかの音も待つ）
+    const first = this.anticipative ? p.tracks.filter((t) => anticipated(p, t)) : []
+    const k0 = Math.floor(from / CHUNK)
+    const primed = await Promise.all(first.map((t) => this.makeChunk(p, t.id, k0).catch(() => null)))
+    if (id !== this.seq) return
     this.starting = false
     this.from = from
     // 鳴らし直すときは待たずに続ける（前の音は stop で消えていく）
     this.startedAt = this.ctx.currentTime + (again ? 0.01 : 0.05)
     this.graph = new Graph(this.ctx, this.startedAt - from)
     this.graph.onFxState = this.onFxState
+    // 最初のかたまりができたトラックだけを先読みにする（できなかったトラックは今までどおりノードで鳴らす）
+    const ok = first.filter((_, i) => primed[i])
+    this.graph.setAnticipated(ok.map((t) => t.id))
     this.automation = setInterval(() => this.graph?.automate(), 20)
     if (again) {
       this.graph.out.gain.setValueAtTime(0, this.startedAt)
@@ -320,6 +385,11 @@ export class Player {
     }
     this.graph.sync(p, false)
     this.playing = true
+    if (ok.length) {
+      this.ant = { sigs: new Map(ok.map((t) => [t.id, signature(p, t)])), next: new Map(ok.map((t) => [t.id, k0 + 1])), busy: false, timer: setInterval(() => void this.tick(), 250) }
+      for (const [i, t] of first.entries()) if (primed[i]) this.graph.playChunk(t.id, primed[i]!, k0 * CHUNK)
+      this.project = p
+    }
     // ピッチを変えた波形ブロックは、ここから近い所（これから鳴る所）から作り直す。できたかたまりから鳴る（update）
     preparePitch(p, from).catch(() => {})
   }
@@ -327,11 +397,19 @@ export class Player {
   /** 再生中に変えたものだけを差し替える（位置はそのまま） */
   update(p: Project) {
     if (!this.playing || !this.graph) return
+    // 先に作った音の元が変わったトラックは、先読みをやめてノードで鳴らす（次に再生を始めるまで）
+    this.project = p
+    for (const [id, sig] of this.ant?.sigs ?? []) {
+      const t = p.tracks.find((x) => x.id === id)
+      if (!t || signature(p, t) !== sig) this.release(id)
+    }
     this.graph.sync(p, true)
   }
 
   stop() {
     this.seq++
+    if (this.ant) clearInterval(this.ant.timer)
+    this.ant = null
     if (this.automation) clearInterval(this.automation)
     this.automation = null
     this.starting = false
@@ -353,9 +431,75 @@ export class Player {
     }
   }
 
+  private project: Project | null = null
+
+  /** 先読みのかたまり k（曲の k * CHUNK 秒から CHUNK 秒）を作って、音を出す ctx の AudioBuffer にする */
+  private async makeChunk(p: Project, trackId: string, k: number): Promise<AudioBuffer> {
+    const ctx = this.ctx!
+    const ch = await renderTrackChunk(p, trackId, k * CHUNK, CHUNK, ctx.sampleRate)
+    const buf = ctx.createBuffer(2, ch[0].length, ctx.sampleRate)
+    ch.forEach((c, i) => buf.copyToChannel(c as Float32Array<ArrayBuffer>, i))
+    return buf
+  }
+
+  /** 先読みをやめる（編集したとき、先読みが間に合わなかったとき） */
+  private release(id: string) {
+    this.graph?.release(id)
+    this.ant?.sigs.delete(id)
+    this.ant?.next.delete(id)
+    // ノードの列に戻すので、今のプロジェクトで組み直す
+    if (this.project) this.graph?.sync(this.project, true)
+  }
+
+  /** 先読みを進める。再生位置から AHEAD 秒先まで作って音を出す側へ渡し、間に合っていなければ先読みをやめる */
+  private async tick() {
+    const ant = this.ant
+    const p = this.project
+    if (!ant || !p || !this.graph || ant.busy) return
+    const now = this.position()
+    const end = songEnd(p)
+    ant.busy = true
+    try {
+      for (const id of [...ant.next.keys()]) {
+        const k = ant.next.get(id)!
+        // 作ったかたまりの先頭に再生位置が追いついたら、間に合っていない
+        if (k * CHUNK < now) return this.release(id)
+        if (k * CHUNK > now + AHEAD || k * CHUNK > end) continue
+        const buf = await this.makeChunk(p, id, k)
+        // 作っている間に再生が止まったか、先読みがやめられていたら、使わない
+        if (this.ant !== ant || !ant.next.has(id)) return
+        this.graph.playChunk(id, buf, k * CHUNK)
+        ant.next.set(id, k + 1)
+      }
+    } catch {
+      // 作れなかったら、次の周期でもう一度試す（続けて間に合わなければ release になる）
+    } finally {
+      ant.busy = false
+    }
+  }
+
   /** 今の位置（秒） */
   position() {
     return this.ctx && this.playing ? this.from + Math.max(0, this.ctx.currentTime - this.startedAt) : this.from
+  }
+}
+
+/**
+ * オートメーションがあれば、一定の間隔（128 サンプルの倍数の時刻）でレンダリングを止めて、つまみを動かす。
+ * offset は、描画の 0 秒が曲の何秒か（先に作る音は途中から描くので、その時刻の値にする）
+ */
+function scheduleAutomation(ctx: OfflineAudioContext, graph: Graph, length: number, sampleRate: number, offset: number) {
+  if (!graph.automated) return
+  const step = 0.025
+  const done = new Set<number>()
+  for (let t = step; t < length / sampleRate; t += step) {
+    const q = Math.round((t * sampleRate) / 128) * 128
+    if (done.has(q) || q >= length) continue
+    done.add(q)
+    void ctx.suspend(q / sampleRate).then(() => {
+      graph.automate(offset + q / sampleRate)
+      void ctx.resume()
+    })
   }
 }
 
@@ -370,22 +514,38 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000): Prom
   const graph = new Graph(ctx, 0)
   graph.sync(p, false)
   await graph.flush()
-  // オートメーションがあれば、一定の間隔（128 サンプルの倍数の時刻）でレンダリングを止めて、つまみを動かす
-  if (graph.automated) {
-    const step = 0.025
-    const done = new Set<number>()
-    for (let t = step; t < length / sampleRate; t += step) {
-      const q = Math.round((t * sampleRate) / 128) * 128
-      if (done.has(q) || q >= length) continue
-      done.add(q)
-      void ctx.suspend(q / sampleRate).then(() => {
-        graph.automate(q / sampleRate)
-        void ctx.resume()
-      })
-    }
-  }
+  scheduleAutomation(ctx, graph, length, sampleRate, 0)
   const out = await ctx.startRendering()
   return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
+}
+
+
+/**
+ * 1 本のトラックの、曲の時刻 start から dur 秒の音（ステレオ。音量、位相の反転、FX の列まで。パンとミュート、ソロは含めない）。
+ * 先に作って鳴らす（anticipate.ts）ためのもの。状態を作るため、PREROLL 秒前から流して、その分は捨てる
+ */
+export async function renderTrackChunk(p: Project, trackId: string, start: number, dur: number, sampleRate: number): Promise<Float32Array[]> {
+  const track = p.tracks.find((t) => t.id === trackId)
+  if (!track) throw new Error('track not found')
+  const t0 = Math.max(0, start - PREROLL)
+  const lead = start - t0
+  const q: Project = {
+    ...p,
+    master: { volume: 0, pan: 0, mute: false },
+    tracks: [{ ...track, parent: undefined, pan: 0, mute: false, solo: false, sends: [], autoLane: undefined }],
+    blocks: p.blocks.filter((b) => b.track === trackId),
+  }
+  await preparePitch(q)
+  const length = Math.max(128, Math.ceil((lead + dur) * sampleRate))
+  const ctx = new OfflineAudioContext(2, length, sampleRate)
+  await Promise.all([loadMixer(ctx), preloadFx(ctx, ...fxLists(q))])
+  const graph = new Graph(ctx, -t0)
+  graph.sync(q, false)
+  await graph.flush()
+  scheduleAutomation(ctx, graph, length, sampleRate, t0)
+  const out = await ctx.startRendering()
+  const from = Math.round(lead * sampleRate)
+  return [out.getChannelData(0).slice(from), out.getChannelData(1).slice(from)]
 }
 
 /**
