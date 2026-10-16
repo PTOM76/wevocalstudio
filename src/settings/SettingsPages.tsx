@@ -170,7 +170,7 @@ export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings;
         </Group>
       </>
     ),
-    plugins: <PluginsSection />,
+    plugins: <PluginsSection vst={draft.showVst} />,
     data: (
       <Group title={t('settings.groupData')}>
         <DataSection onClose={onClose} />
