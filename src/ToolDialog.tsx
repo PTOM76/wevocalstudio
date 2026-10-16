@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Box, Button, DialogActions, DialogContent, Typography } from '@mui/material'
 import { WindowDialog, pevenFont } from 'pevenmui'
 import { FxParams, LabeledSelect as Choice } from 'wevocal-lib/react'
-import { availableTools, defaultValues, findTool, fxText, runTool, type ToolPlugin, type ToolRow } from 'wevocal-lib'
+import { availableTools, defaultValues, findTool, fxDescription, fxText, runTool, type ToolPlugin, type ToolRow } from 'wevocal-lib'
 import { applyBaked, bakeBlocks, type Baked } from './bake'
 import { i18n, useT } from './i18n'
 import type { Project } from './project'
@@ -70,6 +70,7 @@ export default function ToolDialog(p: {
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <Choice label={t('tool.plugin')} value={plugin?.manifest.id ?? ''} options={list.map((x): [string, string] => [x.manifest.id, fxText(x, 'name', lang)])} onChange={setId} />
+          {plugin && <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{fxDescription(plugin, lang)}</Typography>}
           {plugin && plugin.manifest.params.length > 0 && <FxParams plugin={{ manifest: plugin.manifest, lang: plugin.lang, create: () => null as never }} values={values} lang={lang} onChange={(k, v) => setValues((x) => ({ ...x, [k]: v }))} />}
           {!p.ids.length && <Typography sx={{ fontSize: pevenFont('base'), color: 'text.secondary' }}>{t('tool.noSelection')}</Typography>}
           {p.kind === 'tool' && p.ids.length > 0 && <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{t('tool.help', { n: p.ids.length })}</Typography>}

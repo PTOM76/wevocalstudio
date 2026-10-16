@@ -2,7 +2,7 @@
 import { Box, Button, DialogActions, DialogContent, Typography } from '@mui/material'
 import { WindowDialog, pevenFont } from 'pevenmui'
 import { FxParams, LabeledSelect as Choice } from 'wevocal-lib/react'
-import { availableInstruments, defaultValues, findInstrument, fxText, migrateValues } from 'wevocal-lib'
+import { availableInstruments, defaultValues, findInstrument, fxDescription, fxText, migrateValues } from 'wevocal-lib'
 import { i18n, useT } from './i18n'
 import type { InstrumentSlot, Project } from './project'
 
@@ -29,6 +29,7 @@ export default function InstrumentDialog(p: { open: boolean; project: Project; t
               p.onChange(next ? { plugin: id, values: defaultValues(next.manifest), ...(next.sample && p.project.sources[0] ? { sample: p.project.sources[0].id } : {}) } : undefined)
             }}
           />
+          {plugin && <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{fxDescription(plugin, lang)}</Typography>}
           {plugin?.sample && (
             <Choice
               label={t('instrument.sample')}
