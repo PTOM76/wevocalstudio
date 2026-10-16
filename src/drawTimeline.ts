@@ -1,6 +1,7 @@
 // 時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
 import { alpha, type Range } from 'wevocal-lib'
 import { gridLines, type GridDivision, type GridMode } from './grid'
+import { drawLanes } from './autoLane'
 import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
@@ -32,6 +33,8 @@ export interface DrawOptions {
   /** 音量のエンベロープを描く */
   /** 出すエンベロープ（音量かピッチ。出さなければ null） */
   envKind: EnvKind | null
+  /** オートメーションを編集している（レーンの点を出す） */
+  autoEdit: boolean
   /** 縦のスクロール量（px。トラックの行だけをずらす。目盛りとマスターは固定） */
   vscroll: number
 }
@@ -202,6 +205,9 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
     }
   })
   g.restore()
+
+  // オートメーションのレーン（トラックとマスターに重ねる折れ線）
+  drawLanes(g, p, view.scroll, view.pps, w, o.vscroll, o.autoEdit)
 
   // 範囲選択（全トラックにかかる）
   if (range) {

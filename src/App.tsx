@@ -311,9 +311,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     follow: p.settings.follow,
     envelope: p.settings.envelope,
     // 音量とピッチのエンベロープは、どちらか一方だけを出す
-    toggleEnvelope: () => p.onSettingsChange({ envelope: !p.settings.envelope, pitchEnvelope: false }),
+    toggleEnvelope: () => p.onSettingsChange({ envelope: !p.settings.envelope, pitchEnvelope: false, autoEdit: false }),
     pitchEnvelope: p.settings.pitchEnvelope,
-    togglePitchEnvelope: () => p.onSettingsChange({ pitchEnvelope: !p.settings.pitchEnvelope, envelope: false }),
+    togglePitchEnvelope: () => p.onSettingsChange({ pitchEnvelope: !p.settings.pitchEnvelope, envelope: false, autoEdit: false }),
+    autoEdit: p.settings.autoEdit,
+    toggleAutoEdit: () => p.onSettingsChange({ autoEdit: !p.settings.autoEdit, envelope: false, pitchEnvelope: false }),
     toggleFollow: () => p.onSettingsChange({ follow: !p.settings.follow }),
     beatGrid: p.settings.grid === 'beats',
     toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
@@ -452,6 +454,14 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         grid={p.settings.grid}
         division={p.settings.gridDivision}
         envKind={p.settings.envelope ? 'volume' : p.settings.pitchEnvelope ? 'pitch' : null}
+        autoEdit={p.settings.autoEdit}
+        onAutoChange={(target, slot, param, points, merge) => {
+          const fx = target === 'master' ? project.master.fx : project.tracks.find((tr) => tr.id === target)?.fx
+          if (!fx?.[slot]) return
+          const next = fx.map((s, i) => (i === slot ? { ...s, auto: { ...s.auto, [param]: points } } : s))
+          if (target === 'master') doc.updateMaster({ fx: next }, merge)
+          else doc.updateTrack(target, { fx: next }, merge)
+        }}
         onView={setView}
         onWidth={setTimelineWidth}
         madeVersion={madeVersion}

@@ -151,6 +151,13 @@ export default function AppDialogs(p: {
           playing={p.playing}
           onTogglePlay={p.onTogglePlay}
           load={p.playing ? p.load : null}
+          autoLane={fxTarget.id === 'master' ? project.master.autoLane : fxTrack?.autoLane}
+          onAutoLane={(lane) => {
+            // 時間軸に出すつまみを選んだら、オートメーションの編集に切り替える（エンベロープの編集は止める）
+            if (lane) p.onSettingsChange({ autoEdit: true, envelope: false, pitchEnvelope: false })
+            if (fxTarget.id === 'master') doc.updateMaster({ autoLane: lane ?? undefined })
+            else doc.updateTrack(fxTarget.id, { autoLane: lane ?? undefined })
+          }}
           sidechainSources={project.tracks.filter((tr) => tr.id !== fxTarget.id).map((tr) => ({ id: tr.id, name: tr.name }))}
           userPresets={p.settings.fxPresets}
           onUserPresetsChange={(plugin, list) => p.onSettingsChange({ fxPresets: { ...p.settings.fxPresets, [plugin]: list } })}

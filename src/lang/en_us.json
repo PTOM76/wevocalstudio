@@ -137,6 +137,7 @@
   "menu.setEndHere": "Set end position here",
   "menu.autoEnd": "Clear end position",
   "menu.saveOptimized": "Save Optimized…",
+  "menu.autoEdit": "Edit automation",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -777,6 +778,7 @@
   "fx.offlineOnlyHelp": "This plugin is applied only when exporting. It is bypassed during playback.",
   "fx.sidechainSource": "Sidechain source",
   "fx.sidechainSelf": "This track itself",
+  "fx.autoLane": "Show on the timeline to automate",
 
   "plugins.intro": "Add plugins for FX from a URL. Added plugins are saved on this device and work offline.",
   "plugins.url": "URL of the plugin manifest",

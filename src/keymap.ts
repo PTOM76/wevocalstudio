@@ -20,6 +20,7 @@ export type Action =
   | 'follow'
   | 'envelope'
   | 'pitchEnvelope'
+  | 'autoEdit'
   | 'zoomIn'
   | 'zoomOut'
   | 'detectTempo'
@@ -108,6 +109,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   envelope: ['KeyE'],
   // ピッチのエンベロープを出して編集する
   pitchEnvelope: ['Shift+KeyE'],
+  // エフェクトのつまみのオートメーションを編集する
+  autoEdit: [],
   zoomIn: ['NumpadAdd', 'Equal'],
   zoomOut: ['NumpadSubtract', 'Minus'],
   // マーカー（M で足す）

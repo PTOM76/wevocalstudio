@@ -137,6 +137,7 @@
   "menu.setEndHere": "最終位置に現在位置を指定する",
   "menu.autoEnd": "最終位置の指定を解除する",
   "menu.saveOptimized": "最適化して保存…",
+  "menu.autoEdit": "オートメーションを編集",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -777,6 +778,7 @@
   "fx.offlineOnlyHelp": "このプラグインは書き出しのときだけ掛かります。再生中は素通しです。",
   "fx.sidechainSource": "サイドチェーンの音",
   "fx.sidechainSelf": "このトラック自身",
+  "fx.autoLane": "時間軸に出してオートメーションを編集",
 
   "plugins.intro": "FX に使うプラグインを URL から追加します。追加したプラグインはこの端末に保存され、ネットがなくても使えます。",
   "plugins.url": "プラグインのマニフェストの URL",

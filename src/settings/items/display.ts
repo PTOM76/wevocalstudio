@@ -45,6 +45,8 @@ export const view = defineItems(null, {
   envelope: value(false, { label: 'menu.envelope' }),
   // ピッチのエンベロープを出して編集する（音量のエンベロープとはどちらか一方）
   pitchEnvelope: value(false, { label: 'menu.pitchEnvelope' }),
+  // 時間軸でエフェクトのつまみのオートメーションを編集する（FX のダイアログで出すつまみを選ぶ）
+  autoEdit: value(false, { label: 'menu.autoEdit' }),
 })
 
 /** 画面の操作で覚えておく値（設定画面には出さない。WeVocalSynth の stored と同じ） */

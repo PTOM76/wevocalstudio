@@ -32,12 +32,20 @@ export interface Track {
   fx?: FxSlot[]
   /** センド（フェーダーのあとの音を、ほかのトラックの入口へ送る） */
   sends?: Send[]
+  /** 時間軸に出しているオートメーション（FX の何番目の項目の、どのつまみか）。編集するときにだけ使う表示の状態 */
+  autoLane?: AutoLane
   /** 古いプロジェクトのグラフィック EQ。読み込み時に fx の先頭へ読み替えて消す（fillTrack）。保存はしない */
   eq?: TrackEq
   /** 時間軸での縦の大きさ（px）。なければ既定値 */
   height?: number
   /** フリーズ。波形ブロックの音を書き出した元の音（source）と、その頭の時間軸の位置（秒）。あれば波形ブロックの代わりにこれを鳴らす（src/freeze.ts） */
   frozen?: { source: string; start: number }
+}
+
+/** 時間軸に出しているオートメーション */
+export interface AutoLane {
+  slot: number
+  param: string
 }
 
 /** センド 1 本: 送り先のトラックと、送る量（dB。SEND_MIN は送らない） */
@@ -92,6 +100,7 @@ export interface Master {
   mute: boolean
   /** FX の列（マスターに掛ける） */
   fx?: FxSlot[]
+  autoLane?: AutoLane
 }
 
 /** テンポ（WeVocalSynth の ProjectTempo と同じ形） */

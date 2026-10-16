@@ -2,8 +2,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
-import { SELECTION_DARK, SELECTION_LIGHT, alpha, type Range } from 'wevocal-lib'
+import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint, type Range } from 'wevocal-lib'
 import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
+import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { layoutRows } from './overlap'
 import { depthOf, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN } from './project'
 import { ENVELOPES, hitEnvPoint, type EnvKind } from './envelopes'
@@ -89,6 +90,10 @@ export default function Timeline(p: {
   /** 音量のエンベロープを描いて編集する */
   /** 編集するエンベロープ（音量かピッチ。出さなければ null） */
   envKind: EnvKind | null
+  /** オートメーションを編集する（FX のダイアログで選んだつまみのレーンの点を、足す、動かす、消す） */
+  autoEdit: boolean
+  /** オートメーションの点を変えた（トラックの id か 'master'、FX の項目、つまみ、点。merge はドラッグ中にまとめる履歴のキー） */
+  onAutoChange: (target: string, slot: number, param: string, points: AutoPoint[], merge?: string) => void
   onView: (fn: (v: TimelineView) => TimelineView) => void
   /** 波形を描く所の幅（px。ミニマップの枠に使う） */
   onWidth: (w: number) => void
@@ -112,6 +117,8 @@ export default function Timeline(p: {
   const scrub = useRef(false)
   // エンベロープの点をドラッグしている所
   const envDrag = useRef<{ block: string; index: number; merge: string } | null>(null)
+  // ドラッグしているオートメーションの点（レーンの target と点の番号）
+  const autoDrag = useRef<{ target: string; index: number; merge: string } | null>(null)
   // Shift+クリックの起点（前に押した波形ブロック）
   const anchor = useRef<string | null>(null)
   // 右ドラッグの枠で選ぶ。moved なら右クリックのメニューは出さない
@@ -211,7 +218,7 @@ export default function Timeline(p: {
       view,
       p.selected,
       p.range,
-      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, vscroll: vs },
+      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, autoEdit: p.autoEdit, vscroll: vs },
       {
         bg: pal.background.default,
         lane: pal.divider,
@@ -227,7 +234,7 @@ export default function Timeline(p: {
         range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
       },
     )
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, vs])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.autoEdit, vs])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -335,6 +342,12 @@ export default function Timeline(p: {
   /** ダブルクリック（タッチはダブルタップ）。波形ブロックはプロパティ、エンベロープの点は消す、マーカーは編集 */
   const doubleAt = (x: number, oy: number) => {
     const y = cy(oy)
+    // オートメーションの点のダブルクリックは、その点を消す
+    if (p.autoEdit && y >= RULER) {
+      const lane = laneAt(p.project, y)
+      const i = lane ? hitAutoPoint(lane, x, y, view.scroll, view.pps) : -1
+      if (lane && i >= 0) return p.onAutoChange(lane.target, lane.lane.slot, lane.lane.param, lane.points.filter((_, k) => k !== i))
+    }
     if (y > TOP) {
       const hit = hitBlock(p.project, x, y, toTime, view.pps)
       if (!hit) return
@@ -428,6 +441,24 @@ export default function Timeline(p: {
         marquee.current = { x, y, moved: false }
       }
       return
+    }
+    // オートメーションの編集: レーンを出しているトラックとマスターでは、点を足す、動かす（波形ブロックの操作はしない）
+    if (p.autoEdit && y >= RULER && e.pointerType !== 'touch') {
+      const lane = laneAt(p.project, y)
+      if (lane) {
+        const pts = [...lane.points]
+        let index = hitAutoPoint(lane, x, y, view.scroll, view.pps)
+        const merge = `auto${dragCount.current++}`
+        if (index < 0) {
+          const t = Math.max(0, gridAt(x, e.shiftKey))
+          index = pts.filter((pt) => pt.t <= t).length
+          pts.splice(index, 0, { t, v: fracToParam(lane.def, (y - lane.top) / lane.h) })
+          p.onAutoChange(lane.target, lane.lane.slot, lane.lane.param, pts, merge)
+        }
+        e.currentTarget.setPointerCapture(e.pointerId)
+        autoDrag.current = { target: lane.target, index, merge }
+        return
+      }
     }
     const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
     if (y < RULER) {
@@ -551,6 +582,17 @@ export default function Timeline(p: {
     }
     const { offsetX: x } = e.nativeEvent
     const y = cy(e.nativeEvent.offsetY)
+    const ad = autoDrag.current
+    if (ad) {
+      const lane = allLanes(p.project).find((l) => l.target === ad.target)
+      if (!lane || !lane.points[ad.index]) return
+      const pts = [...lane.points]
+      // 前後の点は越えない
+      const lo = pts[ad.index - 1]?.t ?? 0
+      const hi = pts[ad.index + 1]?.t ?? Infinity
+      pts[ad.index] = { t: Math.max(lo, Math.min(hi, gridAt(x, e.shiftKey))), v: fracToParam(lane.def, (y - lane.top) / lane.h) }
+      return p.onAutoChange(lane.target, lane.lane.slot, lane.lane.param, pts, ad.merge)
+    }
     const ed = envDrag.current
     if (ed) {
       const b = p.project.blocks.find((x) => x.id === ed.block)
@@ -626,6 +668,7 @@ export default function Timeline(p: {
     }
     if (e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY)) doubleAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
     envDrag.current = null
+    autoDrag.current = null
     if (marquee.current) {
       // 動かしたら、このあとの右クリックのメニューは出さない
       if (!marquee.current.moved) marquee.current = null

@@ -84,6 +84,8 @@ export interface ActionContext {
   /** ピッチのエンベロープを出して編集する */
   pitchEnvelope: boolean
   togglePitchEnvelope: () => void
+  autoEdit: boolean
+  toggleAutoEdit: () => void
   toggleFollow: () => void
   /** 線を拍と小節で取るか（でなければ秒） */
   beatGrid: boolean
@@ -167,6 +169,7 @@ export function useActions(c: ActionContext) {
     follow: { run: c.toggleFollow },
     envelope: { run: c.toggleEnvelope },
     pitchEnvelope: { run: c.togglePitchEnvelope },
+    autoEdit: { run: c.toggleAutoEdit },
     zoomIn: { run: () => c.zoom(1.5) },
     zoomOut: { run: () => c.zoom(1 / 1.5) },
     properties: { enabled: any, run: () => any && c.openProperties(chosen[0].id) },
@@ -364,7 +367,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.view'),
       accessKey: 'V',
-      entries: [item('zoomIn'), item('zoomOut'), item('showAll'), item('zoomRange'), divider, { ...item('snap'), checked: c.snap }, { ...item('follow'), checked: c.follow }, { ...item('envelope'), checked: c.envelope }, { ...item('pitchEnvelope'), checked: c.pitchEnvelope }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.analysis'), checked: c.showAnalysis, onClick: c.toggleAnalysis }, { label: t('menu.meters'), checked: c.showMeters, onClick: c.toggleMeters }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
+      entries: [item('zoomIn'), item('zoomOut'), item('showAll'), item('zoomRange'), divider, { ...item('snap'), checked: c.snap }, { ...item('follow'), checked: c.follow }, { ...item('envelope'), checked: c.envelope }, { ...item('pitchEnvelope'), checked: c.pitchEnvelope }, { ...item('autoEdit'), checked: c.autoEdit }, { label: t('menu.beatGrid'), checked: c.beatGrid, onClick: c.toggleGrid }, { label: t('menu.analysis'), checked: c.showAnalysis, onClick: c.toggleAnalysis }, { label: t('menu.meters'), checked: c.showMeters, onClick: c.toggleMeters }, { label: t('menu.minimap'), checked: c.showMinimap, onClick: c.toggleMinimap }, { label: t('menu.statusBar'), checked: c.showStatusBar, onClick: c.toggleStatusBar }],
     },
     {
       label: t('menu.help'),

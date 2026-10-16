@@ -1,6 +1,6 @@
 // 再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
-import { chainLatency, createFxChain, type ChainOptions, limitedOutput, preloadFx, startContext, startRenderLoad, type Clip, type FxChain } from 'wevocal-lib'
+import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, limitedOutput, preloadFx, startContext, startRenderLoad, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
@@ -81,6 +81,25 @@ class Graph {
     return !!this.proj && target !== source && !flowsTo(this.proj, target, source)
   }
 
+  /** 曲の中の今の時刻（秒）。再生中は ctx の時計から求める */
+  private timeNow() {
+    return Math.max(0, this.ctx.currentTime - this.zero)
+  }
+
+  /** オートメーションがあるか */
+  get automated(): boolean {
+    const p = this.proj
+    return !!p && (hasAutomation(p.master.fx) || p.tracks.some((t) => hasAutomation(t.fx)))
+  }
+
+  /** オートメーションのあるエフェクトのつまみを、時刻 t（省くと今）の値にする。再生中は一定の間隔で呼ぶ */
+  automate(t = this.timeNow()) {
+    const p = this.proj
+    if (!p) return
+    if (hasAutomation(p.master.fx)) this.masterFx.update(automatedSlots(p.master.fx ?? [], t))
+    for (const tr of p.tracks) if (hasAutomation(tr.fx)) this.tracks.get(tr.id)?.fx.update(automatedSlots(tr.fx ?? [], t))
+  }
+
   /** プラグインに渡すホストの情報 */
   private readonly host = { bpm: () => this.bpm }
 
@@ -122,7 +141,9 @@ class Graph {
     const at = this.ctx.currentTime
     this.bpm = p.tempo.bpm
     this.proj = p
-    this.masterFx.update(p.master.fx ?? [])
+    // オートメーションのあるつまみは、今の時刻の値にする（再生中は automate が動かし続ける）
+    const now = this.timeNow()
+    this.masterFx.update(automatedSlots(p.master.fx ?? [], now))
     this.master.gain.setTargetAtTime(p.master.mute ? 0 : dbToGain(p.master.volume), at, 0.01)
     this.masterPan.pan.setTargetAtTime(p.master.pan, at, 0.01)
     for (const t of p.tracks) {
@@ -130,7 +151,7 @@ class Graph {
       if (!n) {
         n = this.buildTrack(t)
         this.tracks.set(t.id, n)
-      } else n.fx.update(t.fx ?? [])
+      } else n.fx.update(automatedSlots(t.fx ?? [], now))
       // ミュートとソロは音量 0 にする（ノードは残す）
       n.input.gain.setTargetAtTime(audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, at, 0.01)
       n.pan.pan.setTargetAtTime(t.pan, at, 0.01)
@@ -261,6 +282,8 @@ export class Player {
   /** プラグインが状態を保存したいとき（トラックの id か 'master'、項目の番号、base64） */
   onFxState: ((target: string, index: number, state: string) => void) | null = null
   private meterStarted = false
+  /** オートメーションを反映し続ける間隔の ID */
+  private automation: ReturnType<typeof setInterval> | null = null
   private ctx: AudioContext | null = null
   private graph: Graph | null = null
   private startedAt = 0
@@ -290,6 +313,7 @@ export class Player {
     this.startedAt = this.ctx.currentTime + (again ? 0.01 : 0.05)
     this.graph = new Graph(this.ctx, this.startedAt - from)
     this.graph.onFxState = this.onFxState
+    this.automation = setInterval(() => this.graph?.automate(), 20)
     if (again) {
       this.graph.out.gain.setValueAtTime(0, this.startedAt)
       this.graph.out.gain.linearRampToValueAtTime(1, this.startedAt + FADE)
@@ -308,6 +332,8 @@ export class Player {
 
   stop() {
     this.seq++
+    if (this.automation) clearInterval(this.automation)
+    this.automation = null
     this.starting = false
     this.graph?.stopAll()
     this.graph = null
@@ -344,6 +370,20 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000): Prom
   const graph = new Graph(ctx, 0)
   graph.sync(p, false)
   await graph.flush()
+  // オートメーションがあれば、一定の間隔（128 サンプルの倍数の時刻）でレンダリングを止めて、つまみを動かす
+  if (graph.automated) {
+    const step = 0.025
+    const done = new Set<number>()
+    for (let t = step; t < length / sampleRate; t += step) {
+      const q = Math.round((t * sampleRate) / 128) * 128
+      if (done.has(q) || q >= length) continue
+      done.add(q)
+      void ctx.suspend(q / sampleRate).then(() => {
+        graph.automate(q / sampleRate)
+        void ctx.resume()
+      })
+    }
+  }
   const out = await ctx.startRendering()
   return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
 }
