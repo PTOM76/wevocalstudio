@@ -820,6 +820,7 @@
   "plugins.error.id": "The id is not valid",
   "plugins.error.processor": "No processor is specified",
   "plugins.error.reserved": "The id of a built-in plugin cannot be used",
+  "plugins.error.vst": "Could not load the VST (an unsupported DLL, or it uses instructions the emulator does not support)",
   "plugins.update": "Update",
   "plugins.updated": "Updated",
   "plugins.upToDate": "Up to date",

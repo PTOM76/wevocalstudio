@@ -820,6 +820,7 @@
   "plugins.error.id": "id の形が正しくありません",
   "plugins.error.processor": "processor が指定されていません",
   "plugins.error.reserved": "標準のプラグインの id は使えません",
+  "plugins.error.vst": "VST を読み込めませんでした（動かせない DLL、またはエミュレーターが対応していない命令があります）",
   "plugins.update": "更新",
   "plugins.updated": "更新しました",
   "plugins.upToDate": "最新です",
