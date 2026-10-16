@@ -769,6 +769,9 @@
   "fx.load": "Load {n}%",
   "fx.overloaded": "Bypassed",
   "fx.overloadedHelp": "Bypassed automatically because it was too heavy and the sound broke up. Turn it off and on to try again.",
+  "fx.presetExport": "Export presets",
+  "fx.presetImport": "Import presets",
+  "fx.presetImportError": "This is not a preset file for this effect",
 
   "plugins.intro": "Add plugins for FX from a URL. Added plugins are saved on this device and work offline.",
   "plugins.url": "URL of the plugin manifest",

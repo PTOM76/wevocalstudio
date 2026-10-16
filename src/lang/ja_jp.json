@@ -769,6 +769,9 @@
   "fx.load": "負荷 {n}%",
   "fx.overloaded": "素通し中",
   "fx.overloadedHelp": "処理が重く音が途切れるため、自動で素通しにしました。オフにしてからオンにすると、もう一度試します。",
+  "fx.presetExport": "プリセットを書き出す",
+  "fx.presetImport": "プリセットを読み込む",
+  "fx.presetImportError": "このエフェクトのプリセットのファイルではありません",
 
   "plugins.intro": "FX に使うプラグインを URL から追加します。追加したプラグインはこの端末に保存され、ネットがなくても使えます。",
   "plugins.url": "プラグインのマニフェストの URL",
