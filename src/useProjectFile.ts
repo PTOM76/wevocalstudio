@@ -9,7 +9,7 @@ import { VIDEO_EXT, VIDEO_MIME, type VideoLook } from 'wevocalconverter/host'
 import type { VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { videoHost } from './addons'
 import type { useT } from './i18n'
-import type { Project } from './project'
+import { missingFx, type Project } from './project'
 import { exportWvsp } from './wvspExport'
 import { optimizeProject, sourcesBytes, type OptimizeOptions } from './optimize'
 import { LEGACY_PROJECT_EXT, PROJECT_EXT, readProject, writeProject } from './projectFile'
@@ -59,6 +59,7 @@ export function useProjectFile(o: {
       fileRef.current = fileRefOf(file) ?? null
       setSaved(p)
       o.onOpened(p, file.name.replace(/\.[^.]+$/, ''))
+      void missingFx(p).then((ids) => ids.length && o.notify(t('toast.missingPlugins', { ids: ids.join(', ') })))
     } catch (e) {
       o.fail(e)
     }

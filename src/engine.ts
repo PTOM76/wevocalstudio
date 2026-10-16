@@ -1,6 +1,6 @@
 // 再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
-import { createFxChain, limitedOutput, preloadFx, startContext, type Clip, type FxChain } from 'wevocal-lib'
+import { createFxChain, limitedOutput, preloadFx, startContext, startRenderLoad, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
@@ -255,13 +255,12 @@ export class Player {
   /** マスターの左右のレベルメーター */
   masterMeters = () => (this.playing ? (this.graph?.masterMeters ?? null) : null)
 
-  /** 音を作る処理の負荷を測り始める（AudioRenderCapacity。1 秒ごと） */
+  /** 音を作る処理の負荷を測り始める（wevocal-lib の startRenderLoad。1 秒ごと） */
   private startLoadMeter() {
-    const rc = (this.ctx as (AudioContext & { renderCapacity?: { start(o: { updateInterval: number }): void; addEventListener(t: 'update', f: (e: { averageLoad: number }) => void): void } }) | null)?.renderCapacity
-    if (!rc || this.meterStarted) return
-    this.meterStarted = true
-    rc.addEventListener('update', (e) => this.onLoad?.(e.averageLoad))
-    rc.start({ updateInterval: 1 })
+    if (this.ctx && !this.meterStarted) {
+      this.meterStarted = true
+      startRenderLoad(this.ctx, (v) => this.onLoad?.(v))
+    }
   }
 
   /** 今の位置（秒） */

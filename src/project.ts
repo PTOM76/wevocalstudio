@@ -1,5 +1,5 @@
 // プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
-import { chainTail, eqToSlot, isFlatEq, type Algorithm, type Clip, type FxSlot, type TrackEq } from 'wevocal-lib'
+import { chainTail, eqToSlot, missingPlugins, whenPluginsLoaded, isFlatEq, type Algorithm, type Clip, type FxSlot, type TrackEq } from 'wevocal-lib'
 
 /** 読み込んだ音声ファイル（元の音）。波形ブロックはこれを参照するだけで、中身を書き換えない */
 export interface Source {
@@ -225,6 +225,12 @@ export function fillTrack(t: Track): Track {
   const { eq, ...rest } = t
   if (!eq) return t
   return rest.fx ? rest : { ...rest, fx: isFlatEq(eq) ? [] : [eqToSlot(eq)] }
+}
+
+/** プロジェクトの FX の列にある、入っていないプラグインの id（導入済みの読み込みが終わってから調べる） */
+export async function missingFx(p: Project): Promise<string[]> {
+  await whenPluginsLoaded()
+  return missingPlugins(p.master.fx, ...p.tracks.map((t) => t.fx))
 }
 
 /** 古いファイルの波形ブロックに無い項目を既定値で埋める（保存したデータは壊さない） */

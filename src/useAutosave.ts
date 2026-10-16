@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { slot } from 'pevenmui/web'
 import type { MessageKey } from './i18n'
 import { useT } from './i18n'
-import type { Project } from './project'
+import { missingFx, type Project } from './project'
 import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
 
 export function useAutosave(o: {
@@ -36,6 +36,7 @@ export function useAutosave(o: {
         doc.replace(r.project, 'history.restore')
         setFileName(r.fileName)
         setNotice(t('toast.restored'))
+        void missingFx(r.project).then((ids) => ids.length && setNotice(t('toast.missingPlugins', { ids: ids.join(', ') })))
       })
       .catch(fail)
       .finally(() => setRestored(true))

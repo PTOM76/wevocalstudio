@@ -401,6 +401,7 @@
   "toast.exported": "書き出しました",
   "toast.voicesSplit": "和音を2つのトラックに分離しました",
   "toast.optimized": "最適化して保存しました（元の音 {before} → {after}）",
+  "toast.missingPlugins": "入っていないプラグインがあります（{ids}）。設定の「プラグイン」で追加してください。それまでは素通しになります",
 
   "bake.job": "確定",
 
@@ -766,6 +767,8 @@
   "fx.presetName": "プリセット {n}",
   "fx.applyHelp": "FX の列をトラックの音声に書き込み、列を空に戻します",
   "fx.load": "負荷 {n}%",
+  "fx.overloaded": "素通し中",
+  "fx.overloadedHelp": "処理が重く音が途切れるため、自動で素通しにしました。オフにしてからオンにすると、もう一度試します。",
 
   "plugins.intro": "FX に使うプラグインを URL から追加します。追加したプラグインはこの端末に保存され、ネットがなくても使えます。",
   "plugins.url": "プラグインのマニフェストの URL",
