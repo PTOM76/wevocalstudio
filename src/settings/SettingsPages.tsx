@@ -181,6 +181,7 @@ export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings;
         {S('showDebug')}
         {S('devUpdates')}
         {S('showVoiceSplit')}
+        {S('showVst')}
         {S('showDevPlugins')}
         {S('filePicker')}
         <Row label={t('settings.dialogWindow')}>

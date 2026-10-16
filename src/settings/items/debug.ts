@@ -11,6 +11,8 @@ export const debug = defineItems('debug', {
   devUpdates: check(true, { label: 'settings.devUpdates', help: 'settings.devUpdatesHelp' }),
   // 試験的機能の和音の分離をメニューに出す（WeVocalSynth と同じ）
   showVoiceSplit: check(false, { label: 'settings.showVoiceSplit', help: 'settings.showVoiceSplitHelp' }),
+  // 試験的機能の VST（Windows の DLL をエミュレーターで動かす。書き出しのときだけ掛かる）を、設定のプラグインから導入できるようにする
+  showVst: check(false, { label: 'settings.showVst', help: 'settings.showVstHelp' }),
   // 開発者向けのプラグイン（雛形）を FX の追加の一覧に出す
   showDevPlugins: check(false, { label: 'settings.showDevPlugins', help: 'settings.showDevPluginsHelp' }),
   filePicker: choice<PickerMode>('auto', {
