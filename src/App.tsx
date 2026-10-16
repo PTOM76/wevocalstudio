@@ -441,6 +441,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         masterMeter={p.settings.showMeters ? player.current.masterMeters : undefined}
         onDuplicateTrack={doc.duplicateTrack}
         onFreezeTrack={freeze}
+        onSends={(id) => dialogs.open('sends', id)}
         onRemoveTrack={(id) => {
           doc.removeTrack(id)
           setSelected([])

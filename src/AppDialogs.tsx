@@ -23,6 +23,7 @@ import SettingsDialog from './settings/SettingsDialog'
 import type { Settings } from './settings/settings'
 import OptimizeDialog from './OptimizeDialog'
 import type { OptimizeOptions } from './optimize'
+import SendDialog from './SendDialog'
 import ShortcutsDialog from './ShortcutsDialog'
 import type { useProject } from './useProject'
 
@@ -125,6 +126,18 @@ export default function AppDialogs(p: {
           ],
         ]}
       />
+      {dialogs.arg<string>('sends') && (
+        <SendDialog
+          open
+          project={project}
+          track={dialogs.arg<string>('sends')!}
+          onChange={(sends) => doc.updateTrack(dialogs.arg<string>('sends')!, { sends }, `sends:${dialogs.arg<string>('sends')}`)}
+          onClose={() => {
+            doc.endMerge()
+            dialogs.close('sends')
+          }}
+        />
+      )}
       {fxTarget && (
         // FX の列（wevocal-lib の FxChainDialog。WeVocalSynth と同じ。元の音は書き換えない）
         <FxChainDialog

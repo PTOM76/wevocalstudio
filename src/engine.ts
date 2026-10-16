@@ -4,7 +4,7 @@ import { chainLatency, createFxChain, type ChainOptions, limitedOutput, preloadF
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
-import { ancestors, audible, dbToGain, songEnd, type Project, type Track } from './project'
+import { ancestors, audible, flowsTo, SEND_MIN, dbToGain, songEnd, type Project, type Track } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
@@ -14,6 +14,8 @@ interface TrackNodes {
   comp: DelayNode
   /** サイドチェーンの取り出し口（パンのあとの音。ほかのトラックの FX がこれを聞く） */
   tap: GainNode
+  /** センド（送り先のトラックの id → 送る量のゲイン） */
+  sends: Map<string, GainNode>
   pan: StereoPannerNode
   /** レベルメーターの入口（パンのあと）と、左右の AnalyserNode（WeVocalSynth と同じく左右を別に測る） */
   split: ChannelSplitterNode
@@ -74,24 +76,9 @@ class Graph {
     }
   }
 
-  /** target の FX が source の音を聞いてよいか。音の流れ（子から親へ、サイドチェーンから聞く先へ）が輪にならなければよい */
+  /** target の FX が source の音を聞いてよいか。音の流れ（子から親へ、サイドチェーンから聞く先へ、センド）が輪にならなければよい */
   private canTap(target: string, source: string): boolean {
-    const p = this.proj
-    if (!p || target === source) return false
-    // target から音が流れていく先をたどり、source に着くなら輪になる
-    const seen = new Set<string>()
-    const stack = [target]
-    while (stack.length) {
-      const id = stack.pop()!
-      if (id === source) return false
-      if (seen.has(id)) continue
-      seen.add(id)
-      const t = p.tracks.find((x) => x.id === id)
-      if (t?.parent) stack.push(t.parent)
-      for (const x of p.tracks) if (x.fx?.some((s) => s.sidechain === id)) stack.push(x.id)
-      if (id === 'master') continue
-    }
-    return true
+    return !!this.proj && target !== source && !flowsTo(this.proj, target, source)
   }
 
   /** プラグインに渡すホストの情報 */
@@ -126,7 +113,7 @@ class Graph {
     split.connect(meter[0], 0)
     split.connect(meter[1], 1)
     // 出し先（マスターか親のトラック）は sync でつなぐ
-    return { input, comp, tap, pan, fx, split, meter, dest: '' }
+    return { input, comp, tap, sends: new Map(), pan, fx, split, meter, dest: '' }
   }
 
   /** 波形ブロックの声の一覧をミキサーに送る。変わっていない声はそのまま鳴り続け、差し替えた声は FADE でつなぐ（smooth のとき） */
@@ -148,6 +135,25 @@ class Graph {
       n.input.gain.setTargetAtTime(audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, at, 0.01)
       n.pan.pan.setTargetAtTime(t.pan, at, 0.01)
     }
+    // センド: フェーダーのあとの音を、送り先のトラックの入口（FX の前）へ。輪になるものと、なくなった送り先は外す
+    for (const t of p.tracks) {
+      const n = this.tracks.get(t.id)!
+      const want = new Map((t.sends ?? []).filter((s) => s.db > SEND_MIN && this.tracks.has(s.to) && !flowsTo(p, s.to, t.id)).map((s) => [s.to, s.db]))
+      for (const [to, g] of n.sends) {
+        if (want.has(to)) continue
+        g.disconnect()
+        n.sends.delete(to)
+      }
+      for (const [to, db] of want) {
+        let g = n.sends.get(to)
+        if (!g) {
+          g = this.ctx.createGain()
+          n.tap.connect(g).connect(this.tracks.get(to)!.input)
+          n.sends.set(to, g)
+        }
+        g.gain.setTargetAtTime(dbToGain(db), at, 0.01)
+      }
+    }
     // 出し先をつなぐ。サブトラックは親のトラックの入口へ、ほかはマスターへ
     for (const t of p.tracks) {
       const n = this.tracks.get(t.id)!
@@ -166,6 +172,7 @@ class Graph {
       if (p.tracks.some((t) => t.id === id)) continue
       this.mixers.drop(id)
       n.comp.disconnect()
+      for (const g of n.sends.values()) g.disconnect()
       n.tap.disconnect()
       n.input.disconnect()
       n.pan.disconnect()
@@ -228,6 +235,7 @@ class Graph {
     this.mixers.disconnect()
     for (const n of this.tracks.values()) {
       n.comp.disconnect()
+      for (const g of n.sends.values()) g.disconnect()
       n.tap.disconnect()
       n.input.disconnect()
       n.fx.dispose()

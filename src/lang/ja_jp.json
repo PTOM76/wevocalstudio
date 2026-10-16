@@ -347,6 +347,7 @@
   "track.voiceLoud": "{name}（大きい方）",
   "track.voiceQuiet": "{name}（小さい方）",
   "track.fx": "FX",
+  "track.sends": "センド…",
 
   "export.title": "書き出す",
   "export.format": "形式",
@@ -816,5 +817,9 @@
   "optimize.trim": "使っていない部分を切り落とす",
   "optimize.dropUnused": "使っていない元の音を消す",
   "optimize.run": "保存…",
-  "optimize.job": "最適化中"
+  "optimize.job": "最適化中",
+
+  "send.title": "センド（{name}）",
+  "send.help": "このトラックの音（フェーダーのあと）を、ほかのトラックの入口へ送ります。リバーブなどを入れたトラックに送ると、複数のトラックで共有できます。下限にすると送りません。",
+  "send.none": "送れるトラックがありません"
 }

@@ -347,6 +347,7 @@
   "track.voiceLoud": "{name} (louder)",
   "track.voiceQuiet": "{name} (quieter)",
   "track.fx": "FX",
+  "track.sends": "Sends…",
 
   "export.title": "Export",
   "export.format": "Format",
@@ -816,5 +817,9 @@
   "optimize.trim": "Trim unused parts of sources",
   "optimize.dropUnused": "Remove unused sources",
   "optimize.run": "Save…",
-  "optimize.job": "Optimizing"
+  "optimize.job": "Optimizing",
+
+  "send.title": "Sends ({name})",
+  "send.help": "Sends this track's sound (after the fader) to the input of another track. Send to a track with a reverb to share it among tracks. At the minimum, nothing is sent.",
+  "send.none": "No track to send to"
 }

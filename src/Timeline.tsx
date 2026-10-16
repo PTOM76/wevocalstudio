@@ -63,6 +63,8 @@ export default function Timeline(p: {
   masterMeter?: () => readonly AnalyserNode[] | null
   onDuplicateTrack: (id: string) => void
   onFreezeTrack: (id: string) => void
+  /** トラックのセンドを開く */
+  onSends: (id: string) => void
   /** サブトラックの操作 */
   onTrackOp: (op: 'addSubtrack' | 'indent' | 'outdent', id: string) => void
   /** トラックをスロット to（0〜N）へ並び替える */
@@ -742,6 +744,7 @@ export default function Timeline(p: {
                   onMoveDown={() => i < p.project.tracks.length - 1 && p.onMoveTrack(track.id, i + 2)}
                   onDuplicate={() => p.onDuplicateTrack(track.id)}
                   onFreeze={() => p.onFreezeTrack(track.id)}
+                  onSends={() => p.onSends(track.id)}
                   onRemove={() => p.onRemoveTrack(track.id)}
                 />
               )})}

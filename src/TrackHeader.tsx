@@ -80,6 +80,7 @@ export default function TrackHeader(p: {
   onDuplicate: () => void
   /** フリーズとその解除 */
   onFreeze: () => void
+  onSends: () => void
   onRemove: () => void
   /** レベルメーター（出さなければ省く） */
   meter?: () => readonly AnalyserNode[] | null
@@ -229,6 +230,7 @@ export default function TrackHeader(p: {
           { label: t('track.rename'), onClick: () => setEditing(true) },
           { label: t('track.duplicate'), onClick: p.onDuplicate },
           { label: t(track.frozen ? 'track.unfreeze' : 'track.freeze'), onClick: p.onFreeze },
+          { label: t('track.sends'), onClick: p.onSends },
           { divider: true },
           { label: t('track.addSubtrack'), onClick: p.onAddSubtrack },
           { label: t('track.indent'), onClick: p.onIndent },

@@ -12,6 +12,8 @@ export type DialogId =
   | 'synth' | 'sampler'
   // トラックの名前の変更（トラックの id）
   | 'renameTrack'
+  // トラックのセンド（トラックの id）
+  | 'sends'
   // 動画の書き出し（プレビューに使う音）
   | 'video'
   // 一音ずつ切り出す（波形ブロックの id）

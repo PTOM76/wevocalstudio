@@ -30,6 +30,8 @@ export interface Track {
   collapsed?: boolean
   /** FX の列（WeVocal プラグイン。上から順に掛ける。無ければ何も掛けない） */
   fx?: FxSlot[]
+  /** センド（フェーダーのあとの音を、ほかのトラックの入口へ送る） */
+  sends?: Send[]
   /** 古いプロジェクトのグラフィック EQ。読み込み時に fx の先頭へ読み替えて消す（fillTrack）。保存はしない */
   eq?: TrackEq
   /** 時間軸での縦の大きさ（px）。なければ既定値 */
@@ -37,6 +39,14 @@ export interface Track {
   /** フリーズ。波形ブロックの音を書き出した元の音（source）と、その頭の時間軸の位置（秒）。あれば波形ブロックの代わりにこれを鳴らす（src/freeze.ts） */
   frozen?: { source: string; start: number }
 }
+
+/** センド 1 本: 送り先のトラックと、送る量（dB。SEND_MIN は送らない） */
+export interface Send {
+  to: string
+  db: number
+}
+/** センドの下限（dB）。ここまで下げると送らない */
+export const SEND_MIN = -60
 
 /** 波形ブロック。元の音のどこを、いつ、どう鳴らすか */
 export interface Block {
@@ -244,6 +254,26 @@ export function fitBlock(b: Block, duration: number): Block {
   const fadeIn = Math.min(b.fadeIn, length)
   return { ...b, rate, offset, length, fadeIn, fadeOut: Math.min(b.fadeOut, length - fadeIn) }
 }
+
+/** from から音が流れていく先（親、サイドチェーンで聞くトラック、センドの送り先）をたどって、to に着くか */
+export function flowsTo(p: Project, from: string, to: string): boolean {
+  const seen = new Set<string>()
+  const stack = [from]
+  while (stack.length) {
+    const id = stack.pop()!
+    if (id === to) return true
+    if (seen.has(id)) continue
+    seen.add(id)
+    const t = p.tracks.find((x) => x.id === id)
+    if (t?.parent) stack.push(t.parent)
+    for (const s of t?.sends ?? []) stack.push(s.to)
+    for (const x of p.tracks) if (x.fx?.some((s) => s.sidechain === id)) stack.push(x.id)
+  }
+  return false
+}
+
+/** track から送れるトラック（送ると音が輪になるものと、自分は除く） */
+export const sendTargets = (p: Project, track: string): Track[] => p.tracks.filter((x) => x.id !== track && !flowsTo(p, x.id, track))
 
 /** 最後の波形ブロックの終わり（秒） */
 export const projectEnd = (p: Project) => p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
