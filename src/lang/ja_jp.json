@@ -789,6 +789,9 @@
   "fx.sidechainSource": "サイドチェーンの音",
   "fx.sidechainSelf": "このトラック自身",
   "fx.autoLane": "時間軸に出してオートメーションを編集",
+  "fx.search": "名前で探す",
+  "fx.noMatch": "見つかりません",
+  "fx.addCancel": "やめる",
 
   "plugins.intro": "FX に使うプラグインを URL から追加します。追加したプラグインはこの端末に保存され、ネットがなくても使えます。",
   "plugins.url": "プラグインのマニフェストの URL",

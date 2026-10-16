@@ -789,6 +789,9 @@
   "fx.sidechainSource": "Sidechain source",
   "fx.sidechainSelf": "This track itself",
   "fx.autoLane": "Show on the timeline to automate",
+  "fx.search": "Search by name",
+  "fx.noMatch": "No match",
+  "fx.addCancel": "Cancel",
 
   "plugins.intro": "Add plugins for FX from a URL. Added plugins are saved on this device and work offline.",
   "plugins.url": "URL of the plugin manifest",
