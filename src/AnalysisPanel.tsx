@@ -4,7 +4,7 @@ import { Box, Typography } from '@mui/material'
 import { faEraser, faHand, faPen } from '@fortawesome/free-solid-svg-icons'
 import { Divider, ToolButton } from './Toolbar'
 import PitchToolBar from './PitchToolBar'
-import { usePalette } from 'pevenmui'
+import { localPoint, usePalette } from 'pevenmui'
 import type { Clip, Range } from 'wevocal-lib'
 import { analyzePitch, analyzeSpectrogram, renderSpectrogram, type Pitch, type Spectrogram } from 'wevocalanalyzer'
 import { clipFor } from './dsp/pitch'
@@ -294,17 +294,19 @@ export default function AnalysisPanel(p: {
             ref={canvasRef}
             style={{ display: 'block', width, height: HEIGHT, cursor: pen ? 'crosshair' : tool === 'grab' ? (grabbing.current ? 'grabbing' : 'grab') : 'default', touchAction: 'none' }}
             onPointerDown={(e) => {
+              // 位置は clientX、clientY から求める（offsetX は画面の拡大やタッチでずれることがある。時間軸と同じ）
+              const at = localPoint(e.currentTarget, e.clientX, e.clientY)
               if (tool === 'grab' && p.block) {
-                const span = grabSpan(e.nativeEvent.offsetX)
+                const span = grabSpan(at.x)
                 if (!span) return
                 e.currentTarget.setPointerCapture(e.pointerId)
-                grabbing.current = { s0: span[0], s1: span[1], base: p.block.curve ?? { from: p.block.offset, st: [] }, y: e.nativeEvent.offsetY, merge: `grab${strokes.current++}` }
+                grabbing.current = { s0: span[0], s1: span[1], base: p.block.curve ?? { from: p.block.offset, st: [] }, y: at.y, merge: `grab${strokes.current++}` }
                 return
               }
               if (!pen || !p.block) return
               e.currentTarget.setPointerCapture(e.pointerId)
               drawing.current = { last: null, merge: `curve${strokes.current++}`, curve: p.block.curve ?? { from: p.block.offset, st: [] } }
-              drawAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY, e.altKey)
+              drawAt(at.x, at.y, e.altKey)
             }}
             onPointerUp={() => {
               drawing.current = null
@@ -312,9 +314,10 @@ export default function AnalysisPanel(p: {
               p.onEndMerge()
             }}
             onPointerMove={(e) => {
-              setHover({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY })
-              if (drawing.current) drawAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY, e.altKey)
-              if (grabbing.current) grabAt(e.nativeEvent.offsetY, e.shiftKey)
+              const at = localPoint(e.currentTarget, e.clientX, e.clientY)
+              setHover({ x: at.x, y: at.y })
+              if (drawing.current) drawAt(at.x, at.y, e.altKey)
+              if (grabbing.current) grabAt(at.y, e.shiftKey)
             }}
             onPointerLeave={() => setHover(null)}
           />

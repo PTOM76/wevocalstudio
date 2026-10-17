@@ -3,7 +3,7 @@
 // 下の帯は音の強さ（ベロシティ）。棒をドラッグして変える。音符を押したり動かしたりすると、その高さの音を音源で鳴らす
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, DialogActions, DialogContent, Typography } from '@mui/material'
-import { WindowDialog, pevenFont, usePalette } from 'pevenmui'
+import { WindowDialog, localPoint, pevenFont, usePalette } from 'pevenmui'
 import { LabeledSelect as Choice } from 'wevocal-lib/react'
 import { useT } from './i18n'
 import type { MidiBlock, Note, Project } from './project'
@@ -134,8 +134,7 @@ export default function PianoRollDialog(p: {
   /** 強さの帯の、押した所の音符（棒の近く） */
   const hitVel = (x: number) => (block ? block.notes.findLastIndex((n) => Math.abs(KEYS + n.t * pps + 1 - x) < 4) : -1)
   const pos = (e: { clientX: number; clientY: number }) => {
-    const r = canvas.current!.getBoundingClientRect()
-    return { x: e.clientX - r.left, y: e.clientY - r.top }
+    return localPoint(canvas.current!, e.clientX, e.clientY)
   }
   const velAt = (y: number) => Math.max(0.02, Math.min(1, 1 - (y - ROLL - GAP) / VEL))
 
