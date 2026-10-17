@@ -379,7 +379,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ）。パソコンはツールバーの下、スマホは波形マップの下
   const touchLike = mobile || isMobile()
   const editBarOn = editBarEnabled(p.settings.editBar, touchLike)
-  const editBar = editBarOn && (selected.length > 0 || range) ? <BlockEditBar commands={commands} mode={selected.length > 0 ? 'block' : 'range'} /> : null
+  const editBar = editBarOn && (selected.length > 0 || range) ? <BlockEditBar commands={commands} mode={selected.length > 0 ? 'block' : 'range'} top={!touchLike} /> : null
 
   return (
     // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）

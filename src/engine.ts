@@ -387,6 +387,7 @@ class Graph {
 
   /** ノードを全部外す */
   private dispose() {
+    for (const id of [...this.cacheSources.keys()]) this.release(id)
     this.mixers.disconnect()
     for (const n of this.tracks.values()) {
       n.inst?.instance.dispose()
