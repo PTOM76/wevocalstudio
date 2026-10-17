@@ -2,8 +2,8 @@
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
 import { AHEAD, anticipated, CHUNK, PREROLL, signature } from './anticipate'
 import { createInstrument, findInstrument, preloadInstruments, type InstrumentInstance, type NoteEvent } from 'wevocal-lib'
-import { liveProcessors } from 'wevocal-lib'
-import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, limitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
+import { liveProcessors, renderLoad } from 'wevocal-lib'
+import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, createLimitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
@@ -70,6 +70,8 @@ class Graph {
   private cacheSources = new Map<string, AudioBufferSourceNode[]>()
   /** 最後に同期したプロジェクト（サイドチェーンの輪を作らないかの確認に使う） */
   private proj: Project | null = null
+  /** 再生の出口のリミッター（書き出しは通さない） */
+  private readonly limiter: AudioNode | null
   /** 最初の同期を済ませたか（マスターの値を、最初だけならさずに入れる） */
   private synced = false
   /** プラグインが状態を保存したいとき（どのトラックか 'master'、何番目の項目か、base64）。再生のときだけ */
@@ -85,7 +87,9 @@ class Graph {
     this.masterFx = createFxChain(ctx, [], this.host, this.chainOptions('master'))
     // 再生は耳とスピーカーを守るリミッターを通す（wevocal-lib。WeVocalSynth と同じ）。書き出しは通さない
     this.master.connect(this.masterFx.input)
-    this.masterFx.output.connect(this.masterPan).connect(this.out).connect(ctx instanceof AudioContext ? limitedOutput(ctx) : ctx.destination)
+    // リミッターは再生ごとに作る（どこかで壊れた値が一度入っても、次の再生に残さない）
+    this.limiter = ctx instanceof AudioContext ? createLimitedOutput(ctx) : null
+    this.masterFx.output.connect(this.masterPan).connect(this.out).connect(this.limiter ?? ctx.destination)
     // 左右に分けて別々に測る（AnalyserNode はチャンネルを混ぜて読むため。WeVocalSynth と同じ）
     const split = (this.masterSplit = ctx.createChannelSplitter(2))
     this.out.connect(split)
@@ -449,6 +453,7 @@ class Graph {
     this.masterFx.dispose()
     this.masterPan.disconnect()
     this.out.disconnect()
+    this.limiter?.disconnect()
     this.masterSplit.disconnect()
   }
 
@@ -598,7 +603,8 @@ export class Player {
   debugLines(): string[] {
     const g = this.graph ?? this.monitor
     const state = this.playing ? 'playing' : this.starting ? 'starting' : this.monitor ? 'monitor' : 'stopped'
-    return [`player ${state}${this.ant ? ` anticipating ${this.ant.next.size}` : ''} processors ${liveProcessors()}`, ...(g?.debugLines() ?? [])]
+    const load = renderLoad()
+    return [`player ${state}${this.ant ? ` anticipating ${this.ant.next.size}` : ''} processors ${liveProcessors()}${load !== undefined ? ` load ${Math.round(load * 100)}%` : ''}`, ...(g?.debugLines() ?? [])]
   }
 
   /** 音を作る処理の負荷を測り始める（wevocal-lib の startRenderLoad。1 秒ごと） */
