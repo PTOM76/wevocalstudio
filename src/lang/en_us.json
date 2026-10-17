@@ -491,6 +491,8 @@
   "job.export": "Exporting",
   "job.extract": "Vocal extraction",
   "job.update": "Updating",
+  "job.freeze": "Freezing",
+  "job.bake": "Committing",
 
   "file.projectType": "WeVocal Studio project",
   "file.wvspType": "WeVocalSynth project",

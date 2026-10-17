@@ -491,6 +491,8 @@
   "job.export": "書き出し中",
   "job.extract": "ボーカル抽出",
   "job.update": "更新中",
+  "job.freeze": "フリーズ中",
+  "job.bake": "確定中",
 
   "file.projectType": "WeVocal Studio プロジェクト",
   "file.wvspType": "WeVocalSynth プロジェクト",
