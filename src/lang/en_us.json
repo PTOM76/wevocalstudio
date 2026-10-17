@@ -291,6 +291,8 @@
   "settings.showVstHelp": "Lets you pick a VST DLL in Settings > Plugins. The DLL runs in an emulator, so it is heavy; heavy plugins are bypassed automatically during playback. Experimental; some plugins do not work",
   "settings.playbackOffsetMs": "Playback position offset",
   "settings.playbackOffsetMsHelp": "Delays the playhead display to match what you hear. Increase it when the playhead looks ahead of the sound, for example on iPad or Bluetooth speakers (the output latency is also subtracted automatically).",
+  "settings.anticipativeCacheMb": "Pre-computed audio to keep",
+  "settings.anticipativeCacheMbHelp": "Keeps pre-computed audio after playback stops, so replaying the same part does not need to compute it again. Set to 0 to keep nothing.",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",

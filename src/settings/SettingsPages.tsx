@@ -107,6 +107,7 @@ export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings;
         {S('showLegacyAlgorithms')}
         {S('preserveFormant')}
         {S('anticipativeFx')}
+        {S('anticipativeCacheMb')}
       </Group>
     ),
     vocal: (

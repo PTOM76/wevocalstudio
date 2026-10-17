@@ -291,6 +291,8 @@
   "settings.showVstHelp": "設定の「プラグイン」で、VST の DLL を選んで導入できるようにする。DLL はエミュレーターで動かすため、処理が重い。重いプラグインは再生中に自動で素通しになる。試験的な機能で、動かないプラグインもある",
   "settings.playbackOffsetMs": "再生位置の補正",
   "settings.playbackOffsetMsHelp": "再生位置の表示を、聞こえる音に合わせて遅らせます。iPad や Bluetooth のスピーカーで、再生位置だけ先に進んで見えるときに増やします（音が出口に着くまでの遅れは、自動でも引いています）",
+  "settings.anticipativeCacheMb": "先に計算した音を保持する量",
+  "settings.anticipativeCacheMbHelp": "先に計算した音を、再生を止めたあとも保持します。同じ所をもう一度再生するときに、計算し直さずに再生できます。0 にすると保持しません。",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

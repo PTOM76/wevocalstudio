@@ -1,6 +1,7 @@
 // 再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
 import { AHEAD, anticipated, CHUNK, PREROLL, signature } from './anticipate'
+import { ChunkCache, chunkKey } from './fxCache'
 import { createInstrument, findInstrument, preloadInstruments, type InstrumentInstance, type NoteEvent } from 'wevocal-lib'
 import { liveProcessors, renderLoad } from 'wevocal-lib'
 import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, createLimitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
@@ -618,7 +619,7 @@ export class Player {
     const g = this.graph ?? this.monitor
     const state = this.playing ? 'playing' : this.starting ? 'starting' : this.monitor ? 'monitor' : 'stopped'
     const load = renderLoad()
-    return [`player ${state}${this.ant ? ` anticipating ${this.ant.next.size}` : ''} processors ${liveProcessors()}${load !== undefined ? ` load ${Math.round(load * 100)}%` : ''}`, ...(g?.debugLines() ?? [])]
+    return [`player ${state}${this.ant ? ` anticipating ${this.ant.next.size}` : ''} processors ${liveProcessors()}${load !== undefined ? ` load ${Math.round(load * 100)}%` : ''}`, `fx cache ${this.chunks.describe()}`, ...(g?.debugLines() ?? [])]
   }
 
   /** 音を作る処理の負荷を測り始める（wevocal-lib の startRenderLoad。1 秒ごと） */
@@ -632,12 +633,23 @@ export class Player {
   private project: Project | null = null
 
   /** 先読みのかたまり k（曲の k * CHUNK 秒から CHUNK 秒）を作って、音を出す ctx の AudioBuffer にする */
-  private async makeChunk(p: Project, trackId: string, k: number): Promise<AudioBuffer> {
+  /** 作ったかたまりは再生をまたいで取っておき、同じトラックの同じ音、同じ位置なら描かずに使う（fxCache.ts） */
+  private makeChunk(p: Project, trackId: string, k: number): Promise<AudioBuffer> {
     const ctx = this.ctx!
-    const ch = await renderTrackChunk(p, trackId, k * CHUNK, CHUNK, ctx.sampleRate)
-    const buf = ctx.createBuffer(2, ch[0].length, ctx.sampleRate)
-    ch.forEach((c, i) => buf.copyToChannel(c as Float32Array<ArrayBuffer>, i))
-    return buf
+    return this.chunks.get(chunkKey(p, trackId, k), async () => {
+      const ch = await renderTrackChunk(p, trackId, k * CHUNK, CHUNK, ctx.sampleRate)
+      const buf = ctx.createBuffer(2, ch[0].length, ctx.sampleRate)
+      ch.forEach((c, i) => buf.copyToChannel(c as Float32Array<ArrayBuffer>, i))
+      return buf
+    })
+  }
+
+  /** 先に作った音の置き場 */
+  private readonly chunks = new ChunkCache()
+  /** 置き場の上限（MB。設定。0 で取っておかない） */
+  set chunkCacheMb(mb: number) {
+    this.chunks.limit = mb * 1024 * 1024
+    this.chunks.trim()
   }
 
   /** 先読みをやめる（編集したとき、先読みが間に合わなかったとき） */

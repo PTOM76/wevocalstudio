@@ -2,7 +2,7 @@
 import type { Algorithm } from 'wevocal-lib'
 import type { StemModel, VocalModel } from 'wevocalextractor/host'
 import type { GridDivision, GridMode } from '../../grid'
-import { check, choice, defineItems, value } from './define'
+import { check, choice, defineItems, number, value } from './define'
 
 /** 「処理」 */
 export const pitch = defineItems('process', {
@@ -14,6 +14,8 @@ export const pitch = defineItems('process', {
   preserveFormant: check(true, { label: 'settings.preserveFormant' }),
   // 重いプラグインを持つトラックの音を、再生位置より先に作って鳴らす（試験的。音を出すスレッドの負担が減り、音が途切れにくい。再生を始めるまで少し待つ）
   anticipativeFx: check(false, { label: 'settings.anticipativeFx', help: 'settings.anticipativeFxHelp' }),
+  // 先に計算した音を、再生をまたいで取っておく量（MB。0 で取っておかない。memo/fx-cache.md）
+  anticipativeCacheMb: number(256, { label: 'settings.anticipativeCacheMb', help: 'settings.anticipativeCacheMbHelp', min: 0, max: 2048, step: 64, unit: 'MB' }),
 })
 
 /** 時間軸の線（「編集」に出す） */
