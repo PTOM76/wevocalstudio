@@ -60,6 +60,20 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
   useEffect(() => setOutputDevice(p.settings.outputDevice), [p.settings.outputDevice])
   useEffect(() => setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null), [p.settings.outputLimit, p.settings.outputLimitDb])
+  // Ctrl+Shift+D でデバッグ表示を切り替える（WeVocalSynth と同じ）
+  const settingsRef = useRef(p.settings)
+  settingsRef.current = p.settings
+  const { onSettingsChange } = p
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyD') {
+        e.preventDefault()
+        onSettingsChange({ showDebug: !settingsRef.current.showDebug })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onSettingsChange])
   const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit })
   const { project, selected } = doc
   const setSelected = doc.select
