@@ -803,6 +803,9 @@
   "fx.addCancel": "Cancel",
   "fx.guiNative": "Plugin GUI",
   "fx.guiStandard": "Standard GUI",
+  "fx.guiZoomAuto": "Auto",
+  "fx.guiZoomIn": "Zoom in",
+  "fx.guiZoomOut": "Zoom out",
 
   "plugins.intro": "Add plugins for FX from a URL. Added plugins are saved on this device and work offline (WebAudio Modules are fetched from the network each time).",
   "plugins.url": "URL of a plugin manifest or a WebAudio Module (.js)",
