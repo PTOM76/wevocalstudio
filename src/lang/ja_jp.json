@@ -294,7 +294,7 @@
   "settings.anticipativeCacheMb": "先に計算した音を保持する量",
   "settings.anticipativeCacheMbHelp": "先に計算した音を、再生を止めたあとも保持します。同じ所をもう一度再生するときに、計算し直さずに再生できます。0 にすると保持しません。",
   "settings.addonFolder": "指定したフォルダーに保存する",
-  "settings.addonFolderHelp": "モデルなどの追加機能を、ブラウザのデータ領域ではなく、指定したフォルダーに保存します。（Chrome、Edge）。導入済みの追加機能も、このフォルダーへ移動できます",
+  "settings.addonFolderHelp": "モデルなどの追加機能を、ブラウザのデータ領域ではなく、指定したフォルダーに保存します。設定と自動保存した作業も写すので、PWA を削除しても戻せます（Chrome、Edge）。導入済みの追加機能も、このフォルダーへ移動できます",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
@@ -560,6 +560,16 @@
   "data.addonsHelp": "ダウンロードした追加機能（{size}）。削除すると、次に使用するときは再度ダウンロードが必要です",
   "data.addonsConfirm": "ダウンロードした追加機能をすべて削除します。よろしいですか？",
   "data.addonsDone": "追加機能を削除しました",
+  "data.browser": "ブラウザ内のデータ",
+  "data.folder": "保存先フォルダーのデータ（{name}）",
+  "data.folderAddonsConfirm": "保存先フォルダーに保存した追加機能をすべて削除します。よろしいですか？",
+  "data.folderAddonsHelp": "保存先フォルダーに保存した追加機能（{size}）。削除すると、次に使用するときは再度ダウンロードが必要です",
+  "data.folderData": "設定と作業データの写し",
+  "data.folderDataConfirm": "指定したフォルダーの設定と作業データの写しを削除します。よろしいですか？",
+  "data.folderDataDone": "写しを削除しました",
+  "data.folderDataHelp": "指定したフォルダーに写した設定と自動保存した作業（{size}）。PWA を削除したあとも、ここから戻せます",
+  "data.folderRestore": "戻す",
+  "data.folderRestoreConfirm": "指定したフォルダーの設定と作業データをブラウザに戻して、再読み込みします。今の設定と自動保存した作業は置き換わります。よろしいですか？",
 
   "record.title": "録音",
 
@@ -893,8 +903,5 @@
   "tool.analyze": "解析する",
   "tool.running": "処理中…",
   "tool.noSelection": "波形ブロックを選んでください",
-  "tool.help": "選んだ波形ブロック {n} 個の今の音に対して実行し、結果の音を新しい元の音にして置き換えます（元に戻せます）",
-
-  "addonFolder.allow": "アクセスを許可",
-  "addonFolder.permission": "追加機能の保存先のフォルダーへのアクセスが必要です"
+  "tool.help": "選んだ波形ブロック {n} 個の今の音に対して実行し、結果の音を新しい元の音にして置き換えます（元に戻せます）"
 }

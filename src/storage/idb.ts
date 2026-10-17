@@ -8,6 +8,7 @@ export const idb = db
 
 export const idbGet = db.get
 export const idbPut = db.put
+export const idbKeys = db.keys
 /** いくつかのキーを消す */
 export const idbDelete = async (keys: string[]) => {
   for (const k of keys) await db.delete(k)

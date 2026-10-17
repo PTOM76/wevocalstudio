@@ -1,8 +1,9 @@
 // 設定の「データ」（使用量と、作業データ、キャッシュ、追加機能、設定の削除。部品と処理は PevenMUI。WeVocalSynth と同じ）
 import { useEffect, useState } from 'react'
-import { Button } from '@mui/material'
-import { DangerButton, DataRow, DataText, useConfirm, useDownloadingIds } from 'pevenmui'
-import { ADDON_CACHE, addonsSizeIn, clearAddonsIn } from '../addons'
+import { Box, Button } from '@mui/material'
+import { DangerButton, DataHeading, DataRow, DataText, useConfirm, useDownloadingIds } from 'pevenmui'
+import { ADDON_CACHE, addonFolder, addonsSizeIn, clearAddonsIn } from '../addons'
+import { dataFolder, restoreFromFolder } from '../storage/dataFolder'
 import { clearLocalItems, clearOfflineCache, formatMb, isPersisted, requestPersist, storageUsage } from 'pevenmui/web'
 import { app } from '../appConfig'
 import { useT, type MessageKey } from '../i18n'
@@ -15,6 +16,8 @@ export default function DataSection({ onClose }: { onClose: () => void }) {
   const [persisted, setPersisted] = useState<boolean | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [addonBytes, setAddonBytes] = useState(0)
+  // 追加機能の保存先のフォルダー（試験的）。選んでいて許可があるときだけ、そのデータを分けて表示する
+  const [folder, setFolder] = useState<{ name: string; bytes: number; dataBytes: number } | null>(null)
   // 追加機能のダウンロード中は、追加機能を消す操作を押せなくする（書きかけを消して壊さないため）
   const downloading = useDownloadingIds().size > 0
   const { confirm, dialog } = useConfirm()
@@ -22,6 +25,10 @@ export default function DataSection({ onClose }: { onClose: () => void }) {
     void storageUsage().then(setUsage)
     void isPersisted().then(setPersisted)
     void addonsSizeIn('cache').then(setAddonBytes)
+    void (async () => {
+      const dir = await addonFolder.saved()
+      setFolder(dir && (await addonFolder.permission()) === 'granted' ? { name: dir.name, bytes: await addonsSizeIn('folder'), dataBytes: await dataFolder.mirroredSize() } : null)
+    })()
   }
   useEffect(refresh, [])
 
@@ -36,6 +43,8 @@ export default function DataSection({ onClose }: { onClose: () => void }) {
 
   return (
     <>
+      {/* 保存先のフォルダーがあるときは、ブラウザ内と保存先フォルダーに分けて見出しを出す */}
+      {folder && <DataHeading>{t('data.browser')}</DataHeading>}
       <DataText>{usage ? t('data.usage', { usage: formatMb(usage.usage), quota: formatMb(usage.quota) }) : t('data.usageUnknown')}</DataText>
       {/* 何が容量を使っているかの内訳（Chrome などだけ） */}
       {usage?.details && (
@@ -97,6 +106,33 @@ export default function DataSection({ onClose }: { onClose: () => void }) {
           {t('data.persistButton')}
         </Button>
       </DataRow>
+      {folder && (
+        <>
+          <DataHeading>{t('data.folder', { name: folder.name })}</DataHeading>
+          <DataRow label={t('data.addons')} help={t('data.folderAddonsHelp', { size: formatMb(folder.bytes) })}>
+            <DangerButton label={t('data.delete')} disabled={downloading} onClick={() => void act('data.delete', 'data.folderAddonsConfirm', () => clearAddonsIn('folder'), 'data.addonsDone')} />
+          </DataRow>
+          {/* 写した設定と作業（PWA を入れ直したときは、ここから戻す。storage/dataFolder.ts） */}
+          <DataRow label={t('data.folderData')} help={t('data.folderDataHelp', { size: formatMb(folder.dataBytes) })}>
+            <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={!folder.dataBytes}
+                onClick={() =>
+                  void (async () => {
+                    if (!(await confirm({ message: t('data.folderRestoreConfirm'), okLabel: t('data.folderRestore') }))) return
+                    if (await restoreFromFolder()) location.reload()
+                  })()
+                }
+              >
+                {t('data.folderRestore')}
+              </Button>
+              <DangerButton label={t('data.delete')} disabled={!folder.dataBytes} onClick={() => void act('data.delete', 'data.folderDataConfirm', dataFolder.mirrorClearAll, 'data.folderDataDone')} />
+            </Box>
+          </DataRow>
+        </>
+      )}
       {message && <DataText done>{message}</DataText>}
       {dialog}
     </>

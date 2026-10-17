@@ -16,7 +16,8 @@ export const ADDONS: AddonInfo<MessageKey>[] = [
   { id: CONVERTER_ADDON, name: 'addon.converter' },
 ]
 
-const addons = createAddons({ appId: APP_INFO.id, idb, addons: ADDONS, base: import.meta.env.BASE_URL })
+// 選んだフォルダーの中の置き場所は WeVocal のアプリで共通（同じフォルダーを選べば、同じモデルを使う。vite.config.ts と一致させる）
+const addons = createAddons({ appId: APP_INFO.id, idb, addons: ADDONS, base: import.meta.env.BASE_URL, folderName: 'wevocal-addons' })
 
 /** 部品とフックが使う追加機能（main.tsx の AddonsContext に入れる） */
 export const addonsContext: AddonsContextValue = {
@@ -27,7 +28,7 @@ export const addonsContext: AddonsContextValue = {
   },
 }
 
-export const { installedManifest, addonFileUrl, loadAddon, addonsSizeIn, clearAddonsIn, notifyAddonsChanged } = addons
+export const { installedManifest, addonFileUrl, loadAddon, addonsSizeIn, clearAddonsIn } = addons
 /** 追加機能の保存先のフォルダー（試験的。設定の addonFolder） */
 export const addonFolder = addons.folder
 /** 保存先の名前（Cache Storage。設定の「データ」で消す） */

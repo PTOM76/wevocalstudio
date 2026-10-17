@@ -28,6 +28,8 @@ interface Meta {
 }
 
 let worker: Worker | null = null
+/** 指定したフォルダーにも写すか（Worker を作り直したときにも伝える） */
+let folderOn = false
 const waiting = new Map<number, (r: AutosaveReply) => void>()
 let nextId = 1
 function getWorker() {
@@ -37,10 +39,23 @@ function getWorker() {
       waiting.get(e.data.id)?.(e.data)
       waiting.delete(e.data.id)
     }
+    if (folderOn) worker.postMessage({ type: 'folder', on: true } satisfies AutosaveMessage)
   }
   return worker
 }
 const send = (m: AutosaveMessage, transfer: Transferable[] = []) => getWorker().postMessage(m, transfer)
+
+/** 自動保存を、指定したフォルダーにも写すか（設定の「指定したフォルダーに保存する」。dataFolder.ts） */
+export function setAutosaveFolder(on: boolean) {
+  folderOn = on
+  send({ type: 'folder', on })
+}
+/** フォルダーを選び直したときや、許可したときに、今ある作業をまとめて写し直す */
+export function resyncAutosaveFolder() {
+  if (!folderOn) return
+  send({ type: 'folder', on: false })
+  send({ type: 'folder', on: true })
+}
 
 function get<T>(key: string): Promise<T | undefined> {
   const id = nextId++

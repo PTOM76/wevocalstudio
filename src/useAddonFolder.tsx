@@ -1,26 +1,21 @@
-// 追加機能の保存先のフォルダー（試験的。WeVocalSynth と同じ。memo/addon-folder.md は Synth）。開いたときに許可がなければ、通知から許可してもらう
-import { useEffect, useState } from 'react'
-import { NoticeMessage } from 'pevenmui'
-import { addonFolder, notifyAddonsChanged } from './addons'
-import { t } from './i18n'
+// 追加機能の保存先のフォルダー（試験的）。許可の通知と、設定と自動保存した作業の写しは PevenMUI の useAddonFolderSync（WeVocalSynth と同じ）
+import { useState } from 'react'
+import { NoticeMessage, useAddonFolderSync, type NoticeMessageData } from 'pevenmui'
+import { resyncAutosaveFolder, setAutosaveFolder } from './storage/autosave'
+import { dataFolder, restoreFromFolder } from './storage/dataFolder'
 
-/** 設定がオンなら保存先をフォルダーにし、許可を求める通知を返す（Service Worker からは許可を求められない） */
+/** 設定がオンなら保存先をフォルダーにして写しを始め、知らせる通知を返す */
 export function useAddonFolder(enabled: boolean) {
-  const [ask, setAsk] = useState(false)
-  useEffect(() => {
-    addonFolder.setEnabled(enabled)
-    setAsk(false)
-    if (!enabled) return
-    void addonFolder.permission().then((p) => setAsk(p === 'prompt'))
-  }, [enabled])
-  const allow = () => {
-    setAsk(false)
-    void addonFolder.requestPermission().then((ok) => ok && notifyAddonsChanged())
-  }
-  return (
-    <NoticeMessage
-      message={ask ? { severity: 'info', message: t('addonFolder.permission'), actions: [{ label: t('addonFolder.allow'), onClick: allow }] } : null}
-      onClose={() => setAsk(false)}
-    />
-  )
+  const [notice, setNotice] = useState<NoticeMessageData | null>(null)
+  useAddonFolderSync({
+    enabled,
+    dataFolder,
+    setAutosaveFolder: (on, resync) => {
+      setAutosaveFolder(on)
+      if (resync) resyncAutosaveFolder()
+    },
+    restore: restoreFromFolder,
+    notify: setNotice,
+  })
+  return <NoticeMessage message={notice} onClose={() => setNotice(null)} />
 }

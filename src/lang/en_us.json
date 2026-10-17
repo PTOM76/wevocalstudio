@@ -294,7 +294,7 @@
   "settings.anticipativeCacheMb": "Pre-computed audio to keep",
   "settings.anticipativeCacheMbHelp": "Keeps pre-computed audio after playback stops, so replaying the same part does not need to compute it again. Set to 0 to keep nothing.",
   "settings.addonFolder": "Save to a specified folder",
-  "settings.addonFolderHelp": "Saves add-ons such as models to a specified folder instead of the browser's storage (Chrome, Edge). Installed add-ons can also be moved to this folder",
+  "settings.addonFolderHelp": "Saves add-ons such as models to a specified folder instead of the browser's storage. Settings and autosaved work are also copied there, so you can restore them even after removing the PWA (Chrome, Edge). Installed add-ons can also be moved to this folder",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
@@ -560,6 +560,16 @@
   "data.addonsHelp": "Downloaded add-ons ({size}). After deleting, they need to be downloaded again to use",
   "data.addonsConfirm": "Delete all downloaded add-ons?",
   "data.addonsDone": "Add-ons deleted",
+  "data.browser": "Data in the browser",
+  "data.folder": "Data in the folder ({name})",
+  "data.folderAddonsConfirm": "Delete all add-ons stored in the folder?",
+  "data.folderAddonsHelp": "Add-ons saved in the folder ({size}). After deleting, they need to be downloaded again to use",
+  "data.folderData": "Copy of settings and work data",
+  "data.folderDataConfirm": "Delete the copy of settings and work data in the specified folder?",
+  "data.folderDataDone": "Copy deleted",
+  "data.folderDataHelp": "Settings and autosaved work copied to the specified folder ({size}). You can restore them from here even after removing the PWA",
+  "data.folderRestore": "Restore",
+  "data.folderRestoreConfirm": "Restore the settings and work data from the specified folder and reload. Your current settings and autosaved work will be replaced. Continue?",
 
   "record.title": "Record",
 
@@ -893,8 +903,5 @@
   "tool.analyze": "Analyze",
   "tool.running": "Working…",
   "tool.noSelection": "Select waveform blocks first",
-  "tool.help": "Runs on the current sound of {n} selected waveform blocks and replaces them with the result as a new source (undoable)",
-
-  "addonFolder.allow": "Allow access",
-  "addonFolder.permission": "Access to the add-on folder is needed"
+  "tool.help": "Runs on the current sound of {n} selected waveform blocks and replaces them with the result as a new source (undoable)"
 }
