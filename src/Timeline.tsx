@@ -31,6 +31,14 @@ function localPos(canvas: HTMLCanvasElement, e: { clientX: number; clientY: numb
   return { x: ((e.clientX - r.left) * w) / (r.width || w), y: ((e.clientY - r.top) * h) / (r.height || h) }
 }
 
+/** canvas の大きさを画面の大きさ（デバイスピクセル）に合わせる。同じなら何もしない */
+function fitCanvas(canvas: HTMLCanvasElement, width: number, height: number) {
+  const w = Math.round(width * devicePixelRatio)
+  const h = Math.round(height * devicePixelRatio)
+  if (canvas.width !== w) canvas.width = w
+  if (canvas.height !== h) canvas.height = h
+}
+
 export default function Timeline(p: {
   project: Project
   /** 編集カーソル */
@@ -227,8 +235,8 @@ export default function Timeline(p: {
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current!
-    canvas.width = width * devicePixelRatio
-    canvas.height = height * devicePixelRatio
+    // 大きさが変わったときだけ設定する（代入すると、同じ値でも描画のバッファを作り直すため、スクロールのたびに重くなる。描くときに全体を塗り直す）
+    fitCanvas(canvas, width, height)
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
     drawTimeline(
       canvas,
@@ -262,8 +270,8 @@ export default function Timeline(p: {
   followRef.current = { follow: p.follow, visible: width / view.pps, scroll: view.scroll }
   useLayoutEffect(() => {
     const canvas = overlayRef.current!
-    canvas.width = width * devicePixelRatio
-    canvas.height = height * devicePixelRatio
+    // 大きさが変わったときだけ設定する（代入すると、同じ値でも描画のバッファを作り直すため、スクロールのたびに重くなる。描くときに全体を塗り直す）
+    fitCanvas(canvas, width, height)
     const colors = { editCursor: '#e53935', playhead: pal.text.primary }
     // 録音中の波形ブロック（録っているトラックの行に、録った分だけ描く）
     const liveBlock = (): LiveBlock | null => {
