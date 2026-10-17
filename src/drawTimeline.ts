@@ -7,7 +7,7 @@ import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
-import { audible, trackHeight, type Block, type Project } from './project'
+import { ownAudible, trackHeight, type Block, type Project } from './project'
 
 export const RULER = 24
 /** マスタートラックの行の高さ（目盛りのすぐ下。一番上） */
@@ -128,7 +128,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       const bw = b.length * view.pps
       if (x > w || x + bw < 0) continue
       // 鳴らないトラック（ミュート、ほかのソロ）と、ミュートした波形ブロックは薄く出す（WeVocalSynth と同じ）。フリーズ中のトラックも少し薄くする（編集できない）
-      g.globalAlpha = b.mute || !audible(p, track) ? 0.35 : track.frozen ? 0.6 : 1
+      g.globalAlpha = b.mute || !ownAudible(p, track) ? 0.35 : track.frozen ? 0.6 : 1
       g.fillStyle = selected.includes(b.id) ? c.blockSelected : c.block
       g.fillRect(x, y + 2, bw, H - 5)
       g.fillStyle = c.wave

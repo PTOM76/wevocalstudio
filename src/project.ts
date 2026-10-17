@@ -345,6 +345,12 @@ export function audible(p: Project, track: Track) {
   return track.solo || ancestors(p, track).some((t) => t.solo) || descendants(p, track).some((t) => t.solo)
 }
 
+/** そのトラック自身の音（波形ブロック、音源）を鳴らすか。ソロのとき、子がソロなだけの親は自分の音は鳴らさず、子の音を通すだけ（audible は通すほう） */
+export function ownAudible(p: Project, track: Track) {
+  if (!p.tracks.some((t) => t.solo)) return audible(p, track)
+  return track.solo || ancestors(p, track).some((t) => t.solo)
+}
+
 /** 親から先祖をたどる（近い順） */
 export function ancestors(p: Project, track: Track): Track[] {
   const out: Track[] = []

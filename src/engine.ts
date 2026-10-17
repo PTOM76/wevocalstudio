@@ -6,7 +6,7 @@ import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainO
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
-import { ancestors, audible, flowsTo, SEND_MIN, dbToGain, songEnd, type Project, type Track } from './project'
+import { ancestors, audible, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, type Project, type Track } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
@@ -40,7 +40,10 @@ interface TrackNodes {
 const instrumentIds = (p: Project) => p.tracks.flatMap((t) => (t.instrument ? [t.instrument.plugin] : []))
 
 /** トラックの MIDI ブロックの識別（変わったら、送った音符を取り消して送り直す） */
-const midiSig = (p: Project, track: string) => JSON.stringify((p.midi ?? []).filter((b) => b.track === track))
+const midiSig = (p: Project, track: string) => {
+  const t = p.tracks.find((x) => x.id === track)
+  return JSON.stringify([t && ownAudible(p, t), (p.midi ?? []).filter((b) => b.track === track)])
+}
 /** 組んだノード（トラックごとの入口とミキサー、マスター） */
 class Graph {
   readonly out: GainNode
@@ -149,8 +152,10 @@ class Graph {
   /** そのトラックの音符を、AudioContext の時刻にして並べる（曲の時刻が [from, to) に始まるもの） */
   private noteEvents(p: Project, track: string, from: number, to: number): NoteEvent[] {
     const out: NoteEvent[] = []
+    const tr = p.tracks.find((t) => t.id === track)
+    const own = !!tr && ownAudible(p, tr)
     for (const b of p.midi ?? []) {
-      if (b.track !== track || b.mute) continue
+      if (b.track !== track || b.mute || !own) continue
       for (const n of b.notes) {
         const t = b.start + n.t
         // ブロックの外にはみ出した音符は、ブロックの終わりで切る
@@ -299,7 +304,7 @@ class Graph {
         n = this.buildTrack(t)
         this.tracks.set(t.id, n)
       } else n.fx.update(automatedSlots(this.liveFx(t), now))
-      to(n.cache.gain, audible(p, t) ? 1 : 0, fresh)
+      to(n.cache.gain, ownAudible(p, t) ? 1 : 0, fresh)
       // ミュートとソロは音量 0 にする（ノードは残す）
       to(n.input.gain, audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, fresh)
       to(n.pan.pan, t.pan, fresh)
@@ -361,6 +366,10 @@ class Graph {
     for (const t of p.tracks) {
       const src = t.frozen && p.sources.find((s) => s.id === t.frozen!.source)
       if (!t.frozen || !src) continue
+      if (!ownAudible(p, t)) {
+        frozen.add(t.id)
+        continue
+      }
       // フリーズしたトラックは、書き出した音を 1 つの声として鳴らす（波形ブロックは鳴らさない）
       frozen.add(t.id)
       const id = clipId(src.clip)
@@ -372,7 +381,7 @@ class Graph {
     for (const b of p.blocks) {
       const source = p.sources.find((s) => s.id === b.source)
       const list = voices.get(b.track)
-      if (b.mute || !source || !list || frozen.has(b.track) || this.anticipated.has(b.track)) continue
+      if (b.mute || !source || !list || frozen.has(b.track) || this.anticipated.has(b.track) || !ownAudible(p, p.tracks.find((t) => t.id === b.track)!)) continue
       const pieces = piecesFor(b, source)
       if (!pieces.length) continue
       for (const pc of pieces) used.set(clipId(pc.clip), pc.clip)

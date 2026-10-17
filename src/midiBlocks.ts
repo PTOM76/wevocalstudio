@@ -1,5 +1,5 @@
 // MIDI ブロックの時間軸での描画と、押した所の判定（音符は小さな帯で見せる）。画面を知らない
-import { audible, trackHeight, type MidiBlock, type Project } from './project'
+import { ownAudible, trackHeight, type MidiBlock, type Project } from './project'
 import { trackTop } from './drawTimeline'
 
 /** 端をつかめる幅（px） */
@@ -54,7 +54,7 @@ export function drawMidiBlocks(g: CanvasRenderingContext2D, p: Project, trackId:
     const r = midiRect(p, b, scroll, pps, vscroll)
     if (!r || r.x > width || r.x + r.w < 0) continue
     g.save()
-    g.globalAlpha = b.mute || !audible(p, track) ? 0.35 : 1
+    g.globalAlpha = b.mute || !ownAudible(p, track) ? 0.35 : 1
     g.fillStyle = selected.includes(b.id) ? c.blockSelected : c.block
     g.fillRect(r.x, r.y, r.w, r.h)
     g.beginPath()

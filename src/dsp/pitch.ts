@@ -4,7 +4,7 @@
 // 近い所は先に軽い方式で下見の音を作って鳴らし、高品質のかたまりができたら差し替える（間に合わない所を無音にしない）。
 // Worker は CPU のコアに合わせて複数使う。作ったかたまりは、使われなくなってもしばらく残す（戻したときに作り直さない）
 import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
-import { audible, CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
+import { ownAudible, CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
 import type { DspRequest, PitchResponse } from './worker'
 
 type Req = DspRequest extends infer T ? (T extends { id: number } ? Omit<T, 'id'> : never) : never
@@ -306,7 +306,7 @@ export async function preparePitch(p: Project, around = 0) {
     const track = p.tracks.find((t) => t.id === b.track)
     // フリーズしたトラックは作らない（書き出した音を鳴らす）
     if (track?.frozen) continue
-    const silent = b.mute || !track || !audible(p, track) ? SILENT : 0
+    const silent = b.mute || !track || !ownAudible(p, track) ? SILENT : 0
     for (const k of chunksOf(b)) {
       const key = `${params}#${k}`
       used.add(key)
