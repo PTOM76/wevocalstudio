@@ -16,6 +16,8 @@ export const general = defineItems('general', {
   // 音声の出力先（'' は既定。設定画面は wevocal-lib の行）と、鳴らす音の上限（耳とスピーカーを守る）
   outputDevice: value(''),
   outputLimit: check(true, { label: 'settings.outputLimit', help: 'settings.outputLimitHelp' }),
+  // 再生位置の表示の補正（ms。音が出口に着く遅れの分を、表示から引く。iPad など、位置だけ先に進んで見えるときに増やす）
+  playbackOffsetMs: number(0, { label: 'settings.playbackOffsetMs', help: 'settings.playbackOffsetMsHelp', min: -300, max: 500, step: 10, unit: 'ms' }),
   outputLimitDb: number(-1, { label: 'settings.outputLimitDb', min: -24, max: 0, step: 1, unit: 'dB' }),
   // 録音の入力元（'' は既定の入力。設定画面は自前の行）と、ブラウザの音声処理（原音のまま録るので既定はオフ）
   inputDevice: value(''),

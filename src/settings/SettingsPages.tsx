@@ -53,6 +53,7 @@ export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings;
           <OutputDeviceRow value={draft.outputDevice} onChange={(outputDevice) => set({ outputDevice })} t={t} />
           {S('outputLimit')}
           {draft.outputLimit && S('outputLimitDb')}
+          {S('playbackOffsetMs')}
         </Group>
         <Group title={t('settings.groupRecord')}>
           <InputDeviceRow value={draft.inputDevice} onChange={(inputDevice) => set({ inputDevice })} t={t} />

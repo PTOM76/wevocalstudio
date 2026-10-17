@@ -20,6 +20,17 @@ import type { DropAt } from './useProject'
 /** トラックの欄の幅（スマホは時間軸を広く取るため狭くする） */
 export const useHeaderWidth = () => (useMobileLayout() ? 136 : 200)
 
+/**
+ * 時間軸（canvas）の中の座標。clientX、clientY から求める（offsetX、offsetY は、画面の拡大（CSS の zoom）や、iPad のタッチで、描いている座標とずれることがある）。
+ * 見えている大きさ（getBoundingClientRect）と、描いている大きさの比で換算するので、拡大していても合う
+ */
+function localPos(canvas: HTMLCanvasElement, e: { clientX: number; clientY: number }) {
+  const r = canvas.getBoundingClientRect()
+  const w = canvas.width / devicePixelRatio
+  const h = canvas.height / devicePixelRatio
+  return { x: ((e.clientX - r.left) * w) / (r.width || w), y: ((e.clientY - r.top) * h) / (r.height || h) }
+}
+
 export default function Timeline(p: {
   project: Project
   /** 編集カーソル */
@@ -282,6 +293,7 @@ export default function Timeline(p: {
     const canvas = canvasRef.current!
     // ホイールは 1 フレームぶんをまとめて 1 回だけ反映する（描き直しは重く、再生中にたくさん描くと、音が途切れる原因になる）
     const acc = { vy: 0, sx: 0, zoom: 1, zx: 0, raf: 0 }
+    const localX = (e: WheelEvent) => localPos(canvas, e).x
     const flush = () => {
       acc.raf = 0
       const { vy, sx, zoom, zx } = acc
@@ -300,7 +312,7 @@ export default function Timeline(p: {
       if (!e.ctrlKey && !e.shiftKey && !e.deltaX) acc.vy += e.deltaY
       else if (e.ctrlKey) {
         acc.zoom *= e.deltaY < 0 ? 1.2 : 1 / 1.2
-        acc.zx = e.offsetX
+        acc.zx = localX(e)
       } else acc.sx += e.deltaX || e.deltaY
       if (!acc.raf) acc.raf = requestAnimationFrame(flush)
     }
@@ -421,18 +433,21 @@ export default function Timeline(p: {
     canvasRef,
     view: { start: view.scroll, dur: width / view.pps },
     setRange: (start, dur) => setView(() => ({ scroll: Math.max(0, start), pps: Math.min(2000, Math.max(2, width / dur)) })),
-    seekAt: (clientX) => p.onSeek(gridAt(clientX - canvasRef.current!.getBoundingClientRect().left, false)),
+    seekAt: (clientX) => p.onSeek(gridAt(localPos(canvasRef.current!, { clientX, clientY: 0 }).x, false)),
   })
   // 空いている所を 1 本指でなぞったときのスクロール（始めた位置と、そのときの表示）
   // 長押しでメニューを開いたあと（指を離しても、再生位置を移さない）
   const longPressed = useRef(false)
   const pan = useRef<{ x0: number; y0: number; scroll0: number; v0: number } | null>(null)
+  // 長押しから始めた範囲選択（動かさずに離したら、メニューを出す）
+  const touchRange = useRef<{ x: number; oy: number; cx: number; cy: number; moved: boolean } | null>(null)
+  const local = (e: { clientX: number; clientY: number }) => localPos(canvasRef.current!, e)
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // 時間軸を押したら、スライダーなどに残ったフォーカスを外す（キーが時間軸の操作に届くように）
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-    const { offsetX: x } = e.nativeEvent
-    const y = cy(e.nativeEvent.offsetY)
+    const { x, y: ry } = local(e)
+    const y = cy(ry)
     // 2 本目の指が触れたらピンチにする（始めたドラッグはやめる）
     if (touch.down(e)) {
       longPress.cancel()
@@ -448,13 +463,22 @@ export default function Timeline(p: {
     if (e.pointerType === 'touch') {
       // 長押しでメニューが開いても、指を離したことがここに届くようにつかんでおく（届かないと、次のタップを 2 本目の指とみなしてしまう）
       e.currentTarget.setPointerCapture(e.pointerId)
-      const { offsetY: oy } = e.nativeEvent
+      const oy = ry
       const { clientX, clientY } = e
       longPressed.current = false
+      touchRange.current = null
       longPress.start(clientX, clientY, () => {
         // 長押しになったら、始めたドラッグはやめる。離したときに再生位置も移さない
         longPressed.current = true
         drag.current = null
+        // 空いている所の長押し: そのままなぞると範囲選択、動かさずに離すとメニュー（波形ブロックの上は、すぐメニュー）
+        if (y > TOP && !hitBlock(p.project, x, y, toTime, view.pps) && !hitMidi(p.project, x, y, toTime, view.pps)) {
+          pan.current = null
+          rangeDrag.current = { t: gridAt(x, false), x }
+          touchRange.current = { x, oy, cx: clientX, cy: clientY, moved: false }
+          navigator.vibrate?.(15)
+          return
+        }
         menuAt(x, oy, clientX, clientY, false)
       })
     }
@@ -627,13 +651,13 @@ export default function Timeline(p: {
       setVscroll(Math.max(0, Math.min(maxRef.current, pn.v0 - (e.clientY - pn.y0))))
       return
     }
-    const { offsetX: x } = e.nativeEvent
-    const y = cy(e.nativeEvent.offsetY)
+    const { x, y: ry } = local(e)
+    const y = cy(ry)
     const md = midiDrag.current
     if (md) {
       // 端に来たら表示を流し、上下の端では縦にスクロールする（波形ブロックと同じ）
       blockEdge.update(e.clientX)
-      const oy = e.nativeEvent.offsetY
+      const oy = ry
       if (oy > height - 24) setVscroll((v) => Math.min(maxRef.current, v + 8))
       else if (oy > TOP && oy < TOP + 24) setVscroll((v) => Math.max(0, v - 8))
       lastMove.current = { x, y, altKey: e.altKey, shiftKey: e.shiftKey }
@@ -694,6 +718,7 @@ export default function Timeline(p: {
     const r = rangeDrag.current
     if (r) {
       if (Math.abs(x - r.x) < 3) return
+      if (touchRange.current) touchRange.current.moved = true
       const snapped = gridAt(x, e.shiftKey)
       p.onRange({ start: Math.min(r.t, snapped), end: Math.max(r.t, snapped) })
       return
@@ -706,7 +731,7 @@ export default function Timeline(p: {
       return
     }
     blockEdge.update(e.clientX)
-    const oy = e.nativeEvent.offsetY
+    const oy = ry
     if (oy > height - 24) setVscroll((v) => Math.min(maxRef.current, v + 8))
     else if (oy > TOP && oy < TOP + 24) setVscroll((v) => Math.max(0, v - 8))
     lastMove.current = { x, y, altKey: e.altKey, shiftKey: e.shiftKey }
@@ -721,19 +746,26 @@ export default function Timeline(p: {
     pan.current = null
     if (pn && !longPressed.current && Math.hypot(e.clientX - pn.x0, e.clientY - pn.y0) < 8) {
       p.onSelect([])
-      p.onSeek(gridAt(e.nativeEvent.offsetX, false))
+      p.onSeek(gridAt(local(e).x, false))
     }
-    if (e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY)) doubleAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
+    if (e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY)) doubleAt(local(e).x, local(e).y)
     envDrag.current = null
     autoDrag.current = null
     midiDrag.current = null
+    // 長押しから始めた範囲選択を、動かさずに離したら、そこにメニューを出す
+    const tr = touchRange.current
+    touchRange.current = null
+    if (tr && !tr.moved) {
+      rangeDrag.current = null
+      menuAt(tr.x, tr.oy, tr.cx, tr.cy, false)
+    }
     if (marquee.current) {
       // 動かしたら、このあとの右クリックのメニューは出さない
       if (!marquee.current.moved) marquee.current = null
       setBox(null)
     }
     // 範囲を作らずに離したら、範囲を消す
-    if (rangeDrag.current && Math.abs(e.nativeEvent.offsetX - rangeDrag.current.x) < 3) {
+    if (rangeDrag.current && Math.abs(local(e).x - rangeDrag.current.x) < 3) {
       p.onRange(null)
       p.onSeek(gridAt(rangeDrag.current.x, e.shiftKey))
     }
@@ -753,8 +785,9 @@ export default function Timeline(p: {
   const onDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    const track = trackAt(cy(e.nativeEvent.offsetY))
-    p.onDropFiles(Array.from(e.dataTransfer.files), track && { track: track.id, start: Math.max(0, toTime(e.nativeEvent.offsetX)) })
+    const at = local(e)
+    const track = trackAt(cy(at.y))
+    p.onDropFiles(Array.from(e.dataTransfer.files), track && { track: track.id, start: Math.max(0, toTime(at.x)) })
   }
 
   return (
@@ -876,10 +909,10 @@ export default function Timeline(p: {
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onDoubleClick={(e) => doubleAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+            onDoubleClick={(e) => doubleAt(local(e).x, local(e).y)}
             onContextMenu={(e) => {
               e.preventDefault()
-              menuAt(e.nativeEvent.offsetX, e.nativeEvent.offsetY, e.clientX, e.clientY, e.shiftKey)
+              menuAt(local(e).x, local(e).y, e.clientX, e.clientY, e.shiftKey)
             }}
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}

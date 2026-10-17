@@ -73,6 +73,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   }, [doc.setFxState])
   // 重いプラグインを先に計算して鳴らすか（設定）
   player.current.anticipative = p.settings.anticipativeFx
+  player.current.offsetMs = p.settings.playbackOffsetMs
   const [playing, setPlaying] = useState(false)
   // 編集カーソル（押した所、貼り付ける所。再生では動かない）と、再生カーソル（再生中と一時停止中だけ。 2 本）
   const [cursor, setCursor] = useState(0)

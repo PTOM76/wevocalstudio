@@ -289,6 +289,8 @@
   "settings.midiInputHelp": "つないだ MIDI キーボードの音を、音源のあるトラック（録音待機のトラック、なければ選んでいるトラック）で鳴らします。録音すると、弾いた音符を MIDI ブロックに録ります。Chrome、Edge で使えます",
   "settings.showVst": "VST（Windows のプラグイン）を読み込めるようにする（試験的）",
   "settings.showVstHelp": "設定の「プラグイン」で、VST の DLL を選んで導入できるようにする。DLL はエミュレーターで動かすため、処理が重く、書き出しのときだけ掛かる（再生中は素通し）。試験的な機能で、動かないプラグインもある",
+  "settings.playbackOffsetMs": "再生位置の補正",
+  "settings.playbackOffsetMsHelp": "再生位置の表示を、聞こえる音に合わせて遅らせます。iPad や Bluetooth のスピーカーで、再生位置だけ先に進んで見えるときに増やします（音が出口に着くまでの遅れは、自動でも引いています）",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

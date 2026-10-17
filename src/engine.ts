@@ -411,6 +411,8 @@ class Graph {
 /** プロジェクトの FX の列（マスターとトラック）。導入したプラグインの準備に使う */
 const fxLists = (p: Project) => [p.master.fx, ...p.tracks.map((t) => t.fx)]
 
+const IOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+
 /** 再生。位置は AudioContext の時計から求める */
 export class Player {
   /** 音を作る処理の負荷（0〜1）が変わったときに呼ぶ。対応していないブラウザでは呼ばない */
@@ -604,8 +606,13 @@ export class Player {
    */
   private outputLatency() {
     const c = this.ctx
-    return c ? c.outputLatency || c.baseLatency || 0 : 0
+    if (!c) return 0
+    // outputLatency を持たないブラウザ（iPhone、iPad の Safari）は、基本の遅れに、よくある出口の遅れの分を足す。足りない分は、設定の補正で足す
+    const base = c.outputLatency || (c.baseLatency || 0) + (IOS ? 0.06 : 0)
+    return Math.max(0, base + this.offsetMs / 1000)
   }
+  /** 設定の「再生位置の補正」（ms） */
+  offsetMs = 0
 }
 
 /**
