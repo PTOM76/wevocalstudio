@@ -808,6 +808,9 @@
   "fx.guiZoomAuto": "自動",
   "fx.guiZoomIn": "拡大",
   "fx.guiZoomOut": "縮小",
+  "fx.copy": "コピー",
+  "fx.paste": "貼り付け",
+  "fx.duplicate": "複製",
 
   "plugins.intro": "FX に使うプラグインを URL から追加します。追加したプラグインはこの端末に保存され、ネットがなくても使えます（WebAudio Modules は読み込みのたびにネットから取得します）。",
   "plugins.url": "プラグインのマニフェスト、または WebAudio Modules（.js）の URL",
