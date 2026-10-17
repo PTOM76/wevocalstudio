@@ -12,6 +12,8 @@ import { ancestors, audible, flowsTo, SEND_MIN, dbToGain, songEnd, type Project,
 const FADE = 0.02
 /** 再生位置を続けて変えたときに、グラフを組み直す間隔の下限（秒） */
 const MIN_REBUILD = 0.12
+/** 位置だけ動かすときの、送り直しの間隔の下限（秒） */
+const MIN_SEEK = 0.03
 interface TrackNodes {
   input: GainNode
   /** 波形ブロックの音の入口。FX の遅れ（latency）をそろえるため、遅れの少ないトラックを遅らせる（子のトラックの音は入らない） */
@@ -57,7 +59,7 @@ class Graph {
   private readonly mixers: Mixers
   private readonly ctx: BaseAudioContext
   /** 時間軸の 0 秒が ctx の何秒か */
-  private readonly zero: number
+  private zero: number
   /** 先に作った音で鳴らすトラック（波形ブロックと FX の列は動かさない） */
   private anticipated = new Set<string>()
   /** 先に作った音の再生（トラックごと。止めるときに使う） */
@@ -185,6 +187,17 @@ class Graph {
       n.inst.sig = sig
       n.inst.sentUntil = this.timeNow()
     }
+  }
+
+  /** 時間軸の起点だけを付け替える（再生位置を変えたとき。グラフは作り直さず、声と音符を新しい位置で送り直す。声は FADE でつながる） */
+  reposition(p: Project, zero: number) {
+    this.zero = zero
+    for (const n of this.tracks.values()) {
+      if (!n.inst) continue
+      n.inst.instance.clear()
+      n.inst.sentUntil = this.timeNow()
+    }
+    this.sync(p, true)
   }
 
   /** 再生中、これから 0.5 秒ぶんの音符を音源へ送る（時刻つきなので、遅れずに正確に鳴る）。一定の間隔で呼ぶ */
@@ -455,7 +468,9 @@ export class Player {
   /** from 秒から鳴らす。続けて呼ばれたら、グラフの組み直しは MIN_REBUILD ごとに 1 回までにして、最後の呼び出しだけを使う（連打でノードの作り直しが溜まって不安定になるため） */
   async play(p: Project, from: number) {
     const id = ++this.latest
-    const wait = this.lastBuild + MIN_REBUILD * 1000 - performance.now()
+    // 鳴らしたまま位置だけ動かせるときは短い間隔でよい（グラフを作り直さない）
+    const light = this.playing && !!this.graph && !this.ant
+    const wait = this.lastBuild + (light ? MIN_SEEK : MIN_REBUILD) * 1000 - performance.now()
     if (wait > 0) {
       await new Promise((r) => setTimeout(r, wait))
       if (id !== this.latest) return
@@ -466,6 +481,14 @@ export class Player {
 
   /** from 秒から鳴らす（鳴っていれば、古い音を消して新しく始める） */
   private async start(p: Project, from: number) {
+    // 鳴っていて、先読みの音がなければ、グラフはそのまま、起点だけを付け替える
+    if (this.playing && this.graph && this.ctx && !this.ant) {
+      this.from = from
+      this.startedAt = this.ctx.currentTime + 0.01
+      this.graph.reposition(p, this.startedAt - from)
+      preparePitch(p, from).catch(() => {})
+      return
+    }
     // 待っている間に次の play や stop が来たら、この呼び出しは何もしない（古いグラフが残って鳴り続けたり、新しいグラフを壊したりしない）
     const again = this.playing || this.starting
     this.halt()
