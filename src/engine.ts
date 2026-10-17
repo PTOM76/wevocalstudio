@@ -44,6 +44,8 @@ class Graph {
   readonly out: GainNode
   /** マスターの左右のレベルメーター */
   readonly masterMeters: [AnalyserNode, AnalyserNode]
+  /** マスターのメーターに分ける所（外すときに切り離す。AnalyserNode は入力がつながっている限り、出力先がなくても毎回処理され、解放もされない） */
+  private readonly masterSplit: ChannelSplitterNode
   private readonly master: GainNode
   private readonly masterPan: StereoPannerNode
   /** マスターの FX の列 */
@@ -79,7 +81,7 @@ class Graph {
     this.master.connect(this.masterFx.input)
     this.masterFx.output.connect(this.masterPan).connect(this.out).connect(ctx instanceof AudioContext ? limitedOutput(ctx) : ctx.destination)
     // 左右に分けて別々に測る（AnalyserNode はチャンネルを混ぜて読むため。WeVocalSynth と同じ）
-    const split = ctx.createChannelSplitter(2)
+    const split = (this.masterSplit = ctx.createChannelSplitter(2))
     this.out.connect(split)
     const l = Graph.analyser(ctx)
     const r = Graph.analyser(ctx)
@@ -327,12 +329,15 @@ class Graph {
     for (const [id, n] of this.tracks) {
       if (p.tracks.some((t) => t.id === id)) continue
       this.mixers.drop(id)
+      n.inst?.instance.dispose()
       n.comp.disconnect()
       n.cache.disconnect()
       for (const g of n.sends.values()) g.disconnect()
       n.tap.disconnect()
       n.input.disconnect()
+      n.fx.dispose()
       n.pan.disconnect()
+      n.split.disconnect()
       this.tracks.delete(id)
     }
 
@@ -407,6 +412,7 @@ class Graph {
     this.masterFx.dispose()
     this.masterPan.disconnect()
     this.out.disconnect()
+    this.masterSplit.disconnect()
   }
 
 }
