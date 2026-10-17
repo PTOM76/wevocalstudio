@@ -7,7 +7,7 @@ import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
-import { ownAudible, trackHeight, type Block, type Project, type Source } from './project'
+import { bakedTracks, ownAudible, trackHeight, type Block, type Project, type Source } from './project'
 
 export const RULER = 24
 /** マスタートラックの行の高さ（目盛りのすぐ下。一番上） */
@@ -133,6 +133,8 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
     else byTrack.set(b.track, [b])
   }
   const selectedSet = new Set(selected)
+  // フリーズしたトラックとそのサブトラック（編集できない）
+  const baked = bakedTracks(p)
   p.tracks.forEach((track, i) => {
     const laneH = trackHeight(track)
     const laneY = trackTop(p, i) - o.vscroll
@@ -149,7 +151,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       const bw = b.length * view.pps
       if (x > w || x + bw < 0) continue
       // 鳴らないトラック（ミュート、ほかのソロ）と、ミュートした波形ブロックは薄く出す（WeVocalSynth と同じ）。フリーズ中のトラックも少し薄くする（編集できない）
-      g.globalAlpha = b.mute || !audible ? 0.35 : track.frozen ? 0.6 : 1
+      g.globalAlpha = b.mute || !audible ? 0.35 : baked.has(track.id) ? 0.6 : 1
       g.fillStyle = selectedSet.has(b.id) ? c.blockSelected : c.block
       g.fillRect(x, y + 2, bw, H - 5)
       g.fillStyle = c.wave

@@ -1,7 +1,7 @@
 // 先に計算して鳴らす（Anticipative FX processing）。重いプラグインを持つトラックの音を、再生位置より先に別のスレッド（OfflineAudioContext の描画）で作っておき、
 // 音を出すスレッドは、できた音を読むだけにする。判断（どのトラックか、作り直しが要るか）だけをここに置く。描画と再生は engine.ts
 import { findPlugin } from 'wevocal-lib'
-import type { Project, Track } from './project'
+import { bakedTracks, type Project, type Track } from './project'
 
 /** 一度に作る長さ（秒）。再生位置からこの先まで作っておく */
 export const CHUNK = 4
@@ -22,7 +22,7 @@ function heavy(t: Track): boolean {
  * サイドチェーンで聞かれるだけなら問題ないが、自分が聞くもの（ほかのトラックの音が要る）は除く
  */
 export function anticipated(p: Project, t: Track): boolean {
-  return heavy(t) && !t.frozen && !p.tracks.some((x) => x.parent === t.id)
+  return heavy(t) && !bakedTracks(p).has(t.id) && !p.tracks.some((x) => x.parent === t.id)
 }
 
 /** 前に作った識別（トラック、波形ブロックの並び、元の音の並び、テンポが同じなら同じ。どれも書き換えずに作り直すので、参照で比べられる） */

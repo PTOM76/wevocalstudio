@@ -368,6 +368,17 @@ export function descendants(p: Project, track: Track): Track[] {
   return p.tracks.filter((t) => ancestors(p, t).some((a) => a.id === track.id))
 }
 
+/** 音を書き出してあるトラック（フリーズしたトラックと、その子孫。波形ブロックと音符は鳴らさず、作り直さず、変えさせない） */
+const bakedCache = new WeakMap<Track[], Set<string>>()
+export function bakedTracks(p: Project): Set<string> {
+  let out = bakedCache.get(p.tracks)
+  if (!out) {
+    out = new Set(p.tracks.filter((t) => t.frozen || ancestors(p, t).some((a) => a.frozen)).map((t) => t.id))
+    bakedCache.set(p.tracks, out)
+  }
+  return out
+}
+
 /** 階層の深さ（0 が一番上） */
 export const depthOf = (p: Project, track: Track) => ancestors(p, track).length
 

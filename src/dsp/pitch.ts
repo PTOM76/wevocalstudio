@@ -5,7 +5,7 @@
 // Worker は CPU のコアに合わせて複数使う。作ったかたまりは、使われなくなってもしばらく残す（戻したときに作り直さない）
 import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
 import { markActivity } from 'pevenmui/debug'
-import { ownAudible, CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
+import { bakedTracks, ownAudible, CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
 import type { DspRequest, PitchResponse } from './worker'
 
 type Req = DspRequest extends infer T ? (T extends { id: number } ? Omit<T, 'id'> : never) : never
@@ -327,8 +327,8 @@ export async function preparePitch(p: Project, around = 0) {
     if (!needsProcess(b) || !source) continue
     const params = paramsOf(b)
     const track = p.tracks.find((t) => t.id === b.track)
-    // フリーズしたトラックは作らない（書き出した音を鳴らす）
-    if (track?.frozen) continue
+    // フリーズしたトラックとそのサブトラックは作らない（書き出した音を鳴らす）
+    if (track && bakedTracks(p).has(track.id)) continue
     const silent = b.mute || !track || !ownAudible(p, track) ? SILENT : 0
     for (const k of chunksOf(b)) {
       const key = `${params}#${k}`

@@ -8,7 +8,7 @@ import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainO
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
-import { ancestors, audible, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, liveSlots, type Project, type Track } from './project'
+import { ancestors, audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, liveSlots, type Project, type Track } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
@@ -175,7 +175,8 @@ class Graph {
   /** 音源の組み立て: トラックに音源があれば作り、変わっていれば作り直し、なければ外す。書き出しは音符を全部、作るときに渡す */
   private syncInstrument(p: Project, t: Track, n: TrackNodes) {
     const spec = t.instrument
-    const plugin = spec && !this.anticipated.has(t.id) ? findInstrument(spec.plugin) : undefined
+    // フリーズしたトラックとそのサブトラックの音符は、書き出した音に入っているので鳴らさない
+    const plugin = spec && !this.anticipated.has(t.id) && !bakedTracks(p).has(t.id) ? findInstrument(spec.plugin) : undefined
     const key = plugin ? `${spec!.plugin}|${spec!.sample ?? ''}` : ''
     if (n.inst && n.inst.key !== key) {
       n.inst.instance.dispose()
@@ -401,10 +402,12 @@ class Graph {
     // 元の音と、鳴るトラックは一度だけ引く（波形ブロックごとに全体を探さない。ドラッグ中は 50 ms ごとに走る）
     const sources = new Map(p.sources.map((s) => [s.id, s]))
     const audibleTracks = new Set(p.tracks.filter((t) => ownAudible(p, t)).map((t) => t.id))
+    const baked = bakedTracks(p)
     for (const b of p.blocks) {
       const source = sources.get(b.source)
       const list = voices.get(b.track)
-      if (b.mute || !source || !list || frozen.has(b.track) || this.anticipated.has(b.track) || !audibleTracks.has(b.track)) continue
+      // フリーズしたトラックのサブトラックの波形ブロックも、書き出した音に入っているので鳴らさない
+      if (b.mute || !source || !list || frozen.has(b.track) || baked.has(b.track) || this.anticipated.has(b.track) || !audibleTracks.has(b.track)) continue
       const pieces = piecesFor(b, source)
       if (!pieces.length) continue
       for (const pc of pieces) used.set(clipId(pc.clip), pc.clip)

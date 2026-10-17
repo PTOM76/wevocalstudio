@@ -1,24 +1,36 @@
 // トラックのフリーズ。トラックの波形ブロックの音（ピッチ、速度、音量、フェード、エンベロープ）を書き出して普通の音声として鳴らし、ピッチなどの処理を止める。
-// 音量、パン、位相の反転、サブトラックは書き出さない（フリーズ中も変えられる）。FX は withFx のときだけ含める（重い VST などを確定する）。元の波形ブロックは残し、解除すれば戻る
+// サブトラックの音（それぞれの音量、パン、FX まで）と MIDI ブロックの音も含める。フリーズ中はサブトラックも鳴らさない（DAW のフォルダーのフリーズと同じ）。
+// 自分の音量、パン、位相の反転は書き出さない（フリーズ中も変えられる）。自分の FX は withFx のときだけ含める（重い VST などを確定する）。元の波形ブロックは残し、解除すれば戻る
 import { chainLatency, chainTail } from 'wevocal-lib'
 import { renderMix } from './engine'
-import { newId, newProject, newTrack, type Project, type Track } from './project'
+import { ancestors, descendants, liveSlots, newId, newProject, type Project, type Track } from './project'
 
-/** トラックの波形ブロックだけを、フェーダーの前の音にする（withFx なら FX の列の後の音）。頭は最初の波形ブロックの位置から */
+/** トラックとサブトラックの音を、自分のフェーダーの前の音にする（withFx なら自分の FX の列の後の音）。頭は最初のブロックの位置から */
 export async function freezeTrack(p: Project, trackId: string, withFx = false): Promise<Project> {
-  const blocks = p.blocks.filter((b) => b.track === trackId)
   const track = p.tracks.find((t) => t.id === trackId)
-  if (!track || !blocks.length) return p
-  const start = Math.min(...blocks.map((b) => b.start))
+  if (!track) return p
+  const subs = descendants(p, track)
+  const ids = new Set([trackId, ...subs.map((t) => t.id)])
+  const blocks = p.blocks.filter((b) => ids.has(b.track))
+  const midi = (p.midi ?? []).filter((b) => ids.has(b.track))
+  const all = [...blocks, ...midi]
+  if (!all.length) return p
+  const start = Math.min(...all.map((b) => b.start))
   const fx = withFx ? (track.fx ?? []) : []
-  // FX の余韻（リバーブなど）の分だけ後ろを延ばす
-  const end = Math.max(...blocks.map((b) => b.start + b.length)) + (withFx ? chainTail(fx, p.tempo.bpm) : 0)
-  // 音量 0 dB、パンは中央の 1 本だけのプロジェクトにして描画する（FX は withFx のときだけ）
-  const solo = { ...newTrack(1), fx }
-  const q: Project = { ...newProject(), tempo: p.tempo, sources: p.sources, tracks: [solo], blocks: blocks.map((b) => ({ ...b, track: solo.id, start: b.start - start })) }
-  const rendered = await renderMix(q, end - start)
-  // FX の遅れの分は頭を削る（フリーズ中は FX の遅れがないものとして鳴らす）
-  const skip = Math.round(chainLatency(fx, rendered.sampleRate) * rendered.sampleRate)
+  // FX の余韻（リバーブなど）の分だけ後ろを延ばす（サブトラックの FX と、withFx なら自分の FX）
+  const tail = Math.max(withFx ? chainTail(fx, p.tempo.bpm) : 0, ...subs.map((t) => chainTail(t.fx, p.tempo.bpm)))
+  const end = Math.max(...all.map((b) => b.start + b.length)) + tail
+  // 自分は音量 0 dB、パンは中央、FX は withFx のときだけ。サブトラックはそのまま（ソロは外し、木の外へのセンドは外す）
+  const root: Track = { ...track, volume: 0, pan: 0, invert: false, mute: false, solo: false, parent: undefined, sends: [], autoLane: undefined, fx, frozen: undefined }
+  const tracks = [root, ...subs.map((t): Track => ({ ...t, solo: false, sends: (t.sends ?? []).filter((s) => ids.has(s.to)) }))]
+  // 時刻はずらさずに描く（オートメーションとテンポのマーカーを曲の時刻のまま使う）。頭の何もない所はあとで削る
+  const q: Project = { ...newProject(), tempo: p.tempo, markers: p.markers, sources: p.sources, tracks, blocks, ...(midi.length ? { midi } : {}), end }
+  const rendered = await renderMix(q, end)
+  // 最初のブロックより前と、FX の遅れの分は頭を削る（フリーズ中は FX の遅れがないものとして鳴らす）
+  // 遅れは、描画で一番遅い道（サブトラックの FX から自分の FX まで）にそろえてある
+  const sr = rendered.sampleRate
+  const late = Math.max(...q.tracks.map((t) => [t, ...ancestors(q, t)].reduce((s, x) => s + chainLatency(liveSlots(x), sr), 0)))
+  const skip = Math.round((start + late) * sr)
   const clip = skip ? { ...rendered, channels: rendered.channels.map((c) => c.slice(skip)) } : rendered
   const source = { id: newId(), name: `${track.name} (freeze)`, clip, duration: clip.channels[0].length / clip.sampleRate }
   return applyFreeze(p, trackId, source, start, withFx)
@@ -50,9 +62,11 @@ export function unfreezeTrack(p: Project, trackId: string): Project {
  */
 export function keepFrozen(prev: Project, next: Project): Project {
   if (prev === next) return next
-  const frozen = new Set(next.tracks.filter((t) => t.frozen && prev.tracks.find((x) => x.id === t.id)?.frozen?.source === t.frozen.source).map((t) => t.id))
-  if (!frozen.size) return next
-  next = keepFrozenFx(prev, next, frozen)
+  const roots = new Set(next.tracks.filter((t) => t.frozen && prev.tracks.find((x) => x.id === t.id)?.frozen?.source === t.frozen.source).map((t) => t.id))
+  if (!roots.size) return next
+  next = keepFrozenFx(prev, next, roots)
+  // サブトラックの音も書き出してあるので、サブトラックの波形ブロックも守る
+  const frozen = new Set([...roots, ...next.tracks.filter((t) => ancestors(next, t).some((a) => roots.has(a.id))).map((t) => t.id)])
   const prevById = new Map(prev.blocks.map((b) => [b.id, b]))
   const nextIds = new Set(next.blocks.map((b) => b.id))
   let changed = false
