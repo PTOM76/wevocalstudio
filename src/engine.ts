@@ -10,6 +10,8 @@ import { ancestors, audible, flowsTo, SEND_MIN, dbToGain, songEnd, type Project,
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
+/** 再生位置を続けて変えたときに、グラフを組み直す間隔の下限（秒） */
+const MIN_REBUILD = 0.12
 interface TrackNodes {
   input: GainNode
   /** 波形ブロックの音の入口。FX の遅れ（latency）をそろえるため、遅れの少ないトラックを遅らせる（子のトラックの音は入らない） */
@@ -440,11 +442,27 @@ export class Player {
   // play が AudioContext の準備を待っている間
   private starting = false
 
-  /** from 秒から鳴らす（鳴っていれば、古い音を消して新しく始める） */
+  /** 再生位置を続けて変えたときのまとめ（最後の呼び出しの通し番号と、最後にグラフを組んだ時刻） */
+  private latest = 0
+  private lastBuild = 0
+
+  /** from 秒から鳴らす。続けて呼ばれたら、グラフの組み直しは MIN_REBUILD ごとに 1 回までにして、最後の呼び出しだけを使う（連打でノードの作り直しが溜まって不安定になるため） */
   async play(p: Project, from: number) {
+    const id = ++this.latest
+    const wait = this.lastBuild + MIN_REBUILD * 1000 - performance.now()
+    if (wait > 0) {
+      await new Promise((r) => setTimeout(r, wait))
+      if (id !== this.latest) return
+    }
+    this.lastBuild = performance.now()
+    await this.start(p, from)
+  }
+
+  /** from 秒から鳴らす（鳴っていれば、古い音を消して新しく始める） */
+  private async start(p: Project, from: number) {
     // 待っている間に次の play や stop が来たら、この呼び出しは何もしない（古いグラフが残って鳴り続けたり、新しいグラフを壊したりしない）
     const again = this.playing || this.starting
-    this.stop()
+    this.halt()
     this.stopMonitor()
     const id = ++this.seq
     this.starting = true
@@ -500,6 +518,13 @@ export class Player {
   }
 
   stop() {
+    // 待っている play があれば捨てる
+    this.latest++
+    this.halt()
+  }
+
+  /** 鳴っている音を止める（play の組み直しからも使う。待っている play は捨てない） */
+  private halt() {
     this.seq++
     if (this.ant) clearInterval(this.ant.timer)
     this.ant = null
