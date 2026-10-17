@@ -313,7 +313,7 @@ class Graph {
     // 作った直後の値は、ならさずにそのまま入れる（ならすと、ミュートや音量 0 のトラックの音が、最初の数十ミリ秒だけ漏れる）
     const first = !this.synced
     this.synced = true
-    const to = (param: AudioParam, v: number, now: boolean) => (now ? (param.value = v) : param.setTargetAtTime(v, at, 0.01))
+    const to = (param: AudioParam, v: number, now: boolean) => setParam(param, v, now ? null : at)
     to(this.master.gain, p.master.mute ? 0 : dbToGain(p.master.volume), first)
     to(this.masterPan.pan, p.master.pan, first)
     for (const t of p.tracks) {
@@ -346,7 +346,7 @@ class Graph {
           n.sends.set(to, g)
           g.gain.value = dbToGain(db)
         }
-        g.gain.setTargetAtTime(dbToGain(db), at, 0.01)
+        setParam(g.gain, dbToGain(db), at)
       }
     }
     // 出し先をつなぐ。サブトラックは親のトラックの入口へ、ほかはマスターへ
@@ -397,10 +397,13 @@ class Graph {
       const t1 = t0 + src.duration
       voices.get(t.id)!.push({ key: `freeze:${t.id}:${id}`, sig: `${t0}`, t0, t1, clip: id, f0: 0, bt0: t0, bt1: t1, fadeIn: 0, fadeOut: 0, joinIn: 0, joinOut: 0, level: 1, env: [] })
     }
+    // 元の音と、鳴るトラックは一度だけ引く（波形ブロックごとに全体を探さない。ドラッグ中は 50 ms ごとに走る）
+    const sources = new Map(p.sources.map((s) => [s.id, s]))
+    const audibleTracks = new Set(p.tracks.filter((t) => ownAudible(p, t)).map((t) => t.id))
     for (const b of p.blocks) {
-      const source = p.sources.find((s) => s.id === b.source)
+      const source = sources.get(b.source)
       const list = voices.get(b.track)
-      if (b.mute || !source || !list || frozen.has(b.track) || this.anticipated.has(b.track) || !ownAudible(p, p.tracks.find((t) => t.id === b.track)!)) continue
+      if (b.mute || !source || !list || frozen.has(b.track) || this.anticipated.has(b.track) || !audibleTracks.has(b.track)) continue
       const pieces = piecesFor(b, source)
       if (!pieces.length) continue
       for (const pc of pieces) used.set(clipId(pc.clip), pc.clip)
@@ -413,7 +416,7 @@ class Graph {
     const slowest = Math.max(0, ...late.values())
     for (const t of p.tracks) {
       const n = this.tracks.get(t.id)!
-      n.comp.delayTime.setTargetAtTime(Math.min(1, slowest - late.get(t.id)!), at, 0.01)
+      setParam(n.comp.delayTime, Math.min(1, slowest - late.get(t.id)!), at)
       this.mixers.node(t.id, n.comp)
     }
     this.mixers.syncClips(used, new Set(p.sources.map((s) => clipId(s.clip))))
@@ -457,6 +460,17 @@ class Graph {
     this.masterSplit.disconnect()
   }
 
+}
+
+/** つまみに最後に入れた値 */
+const written = new WeakMap<AudioParam, number>()
+
+/** つまみに値を入れる（at があれば、その時刻からならす）。同じ値なら書き込まない（同期のたびに予定が溜まって重くなるため） */
+function setParam(param: AudioParam, v: number, at: number | null) {
+  if (written.get(param) === v) return
+  written.set(param, v)
+  if (at === null) param.value = v
+  else param.setTargetAtTime(v, at, 0.01)
 }
 
 /** プロジェクトの FX の列（マスターとトラック）。導入したプラグインの準備に使う */
