@@ -4,6 +4,7 @@ import { Box } from '@mui/material'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint, type Range } from 'wevocal-lib'
 import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
+import { markActivity } from 'pevenmui/debug'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { hitMidi, type MidiDragKind } from './midiBlocks'
 import { layoutRows } from './overlap'
@@ -237,6 +238,7 @@ export default function Timeline(p: {
     const canvas = canvasRef.current!
     // 大きさが変わったときだけ設定する（代入すると、同じ値でも描画のバッファを作り直すため、スクロールのたびに重くなる。描くときに全体を塗り直す）
     fitCanvas(canvas, width, height)
+    markActivity('draw timeline')
     // 色は WeVocalSynth の波形と同じ（波形は主の色、再生位置は文字の色、範囲選択はシアン）
     drawTimeline(
       canvas,

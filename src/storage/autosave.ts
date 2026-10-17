@@ -2,6 +2,7 @@
 import type { Clip } from 'wevocal-lib'
 import { DEFAULT_TEMPO, fillBlock, fillTrack, newProject, type Project, type Source } from '../project'
 import { slotKey } from 'pevenmui/web'
+import { markActivity } from 'pevenmui/debug'
 import type { AutosaveMessage, AutosaveReply } from './autosaveWorker'
 
 // キーはウィンドウごとに分ける（PevenMUI の windowSlot。枠 0 は前と同じキー）
@@ -80,6 +81,7 @@ export async function saveAutosave(p: Project, fileName: string) {
     await writeSource(s).finally(() => writing.delete(s.id))
     written.add(s.id)
   }
+  markActivity('autosave')
   const meta: Meta = {
     formatVersion: FORMAT,
     fileName,

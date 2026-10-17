@@ -5,9 +5,10 @@ import { faEraser, faHand, faPen } from '@fortawesome/free-solid-svg-icons'
 import { Divider, ToolButton } from './Toolbar'
 import PitchToolBar from './PitchToolBar'
 import { localPoint, usePalette } from 'pevenmui'
+import { markActivity } from 'pevenmui/debug'
 import type { Clip, Range } from 'wevocal-lib'
 import { analyzePitch, analyzeSpectrogram, renderSpectrogram, type Pitch, type Spectrogram } from 'wevocalanalyzer'
-import { clipFor } from './dsp/pitch'
+import { blockReady, clipFor, needsProcess } from './dsp/pitch'
 import type { TimelineView } from './drawTimeline'
 import { useT } from './i18n'
 import { CURVE_HOP, type Block, type PitchCurve, type Source } from './project'
@@ -86,7 +87,14 @@ export default function AnalysisPanel(p: {
   const [orig, setOrig] = useState<Pitch | null>(null)
   const drawing = useRef<{ last: { s: number; v: number } | null; merge: string; curve: PitchCurve } | null>(null)
   const strokes = useRef(0)
-  const target = useMemo(() => (p.block && p.source ? blockClip(p.block, p.source) : null), [p.block, p.source, p.version])
+  // 音が変わるのは、ピッチなどを変えた波形ブロックの音が全部できたときだけ（ほかのかたまりができるたびに作り直して解析し直さない）
+  const done = !!p.block && needsProcess(p.block) && blockReady(p.block) === 1
+  const target = useMemo(() => {
+    // デバッグ表示の止まった処理の印（音をつなぐので、長い波形ブロックでは重い）
+    markActivity('analysis clip')
+    return p.block && p.source ? blockClip(p.block, p.source) : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.block, p.source, done])
 
   useEffect(() => {
     const box = canvasRef.current!.parentElement!
@@ -142,6 +150,7 @@ export default function AnalysisPanel(p: {
     g.fillStyle = '#000'
     g.fillRect(0, 0, canvas.width, canvas.height)
     if (!spec || !target || !width) return
+    markActivity('analysis draw')
     // 時間軸とそろえる（波形ブロックの頭からの時刻）
     const viewStart = p.view.scroll - target.start
     const viewDur = width / p.view.pps

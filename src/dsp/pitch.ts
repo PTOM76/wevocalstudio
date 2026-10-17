@@ -4,6 +4,7 @@
 // 近い所は先に軽い方式で下見の音を作って鳴らし、高品質のかたまりができたら差し替える（間に合わない所を無音にしない）。
 // Worker は CPU のコアに合わせて複数使う。作ったかたまりは、使われなくなってもしばらく残す（戻したときに作り直さない）
 import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
+import { markActivity } from 'pevenmui/debug'
 import { ownAudible, CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
 import type { DspRequest, PitchResponse } from './worker'
 
@@ -318,6 +319,7 @@ const SILENT = 1e6
 
 /** プロジェクトの波形ブロックの音を用意する（around は再生位置か編集カーソル。近い所から）。新しく作ったものがあれば true */
 export async function preparePitch(p: Project, around = 0) {
+  markActivity('prepare pitch')
   const used = new Set<string>()
   const next = new Map<string, Want>()
   for (const b of p.blocks) {

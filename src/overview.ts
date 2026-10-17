@@ -1,5 +1,6 @@
 // ミニマップ用の、全トラックを重ねた小さな音（1 秒 1000 点の振幅）。元の音は書き換えず、波形ブロックの位置と音量から作る
 import type { Clip } from 'wevocal-lib'
+import { markActivity } from 'pevenmui/debug'
 import { peakRange } from './peaks'
 import { dbToGain, projectEnd, type Block, type Project, type Source } from './project'
 
@@ -27,6 +28,7 @@ function blockLevels(b: Block, source: Source): Float32Array {
 }
 
 export function buildOverview(p: Project): { clip: Clip; duration: number } {
+  markActivity('overview')
   const duration = Math.max(1, projectEnd(p))
   const out = new Float32Array(Math.ceil(duration * RATE))
   const sources = new Map(p.sources.map((s) => [s.id, s]))
