@@ -834,6 +834,9 @@
   "plugins.noSource": "取得元が分からないため更新できません",
   "plugins.vst.pick": "VST（DLL）を選ぶ",
   "plugins.vst.notice": "試験的な機能です。処理が重いプラグインは、再生中に自動で素通しになります",
+  "plugins.vst.warning": "Windows の VST をエミュレーターで動かします。読み込めても、無音になる、音が正しくないなど、動作しないことがあります",
+  "plugins.vst.load": "重さの目安: 再生の時間の約 {n}%（1 つ分）",
+  "plugins.vst.loadHeavy": "重さの目安: 再生の時間の約 {n}%。再生には間に合わないため、再生中は素通しになり、書き出しで掛かります",
 
   "optimize.title": "最適化して保存",
   "optimize.help": "プロジェクトを軽くして、別のファイルとして保存します。今のプロジェクトは変わりません",
