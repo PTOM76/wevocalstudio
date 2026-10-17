@@ -58,6 +58,7 @@ src/
   TrackHeader.tsx  トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
   Transport.tsx  再生のボタン一式（先頭へ、停止、再生と一時停止、録音、リピート、末尾へ）、時間の表示、マスターのメーター、テンポとグリッド。部品は WeVocalSynth のツールバーと同じ
   useActions.ts  操作の表（キーとメニューから行うもの）と、メニューバーの並び
+  useAddonFolder.tsx  追加機能の保存先のフォルダー（試験的。WeVocalSynth と同じ。memo/addon-folder.md は Synth）。開いたときに許可がなければ、通知から許可してもらう
   useAutosave.ts  起動時に前回の作業を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
   useDialogs.ts  ダイアログの開閉と、開くときに渡す値（PevenMUI の useDialogs。WeVocalSynth と同じ）
   useExtract.tsx  ボーカル抽出と楽器ごとの分離、和音の分離（手順は extractor の host.ts。WeVocalSynth と共通）。選んだ波形ブロックの音を分けて、新しいトラックに並べる

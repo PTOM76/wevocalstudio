@@ -293,6 +293,8 @@
   "settings.playbackOffsetMsHelp": "Delays the playhead display to match what you hear. Increase it when the playhead looks ahead of the sound, for example on iPad or Bluetooth speakers (the output latency is also subtracted automatically).",
   "settings.anticipativeCacheMb": "Pre-computed audio to keep",
   "settings.anticipativeCacheMbHelp": "Keeps pre-computed audio after playback stops, so replaying the same part does not need to compute it again. Set to 0 to keep nothing.",
+  "settings.addonFolder": "Save to a specified folder",
+  "settings.addonFolderHelp": "Saves add-ons such as models to a specified folder instead of the browser's storage (Chrome, Edge). Installed add-ons can also be moved to this folder",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
@@ -891,5 +893,8 @@
   "tool.analyze": "Analyze",
   "tool.running": "Working…",
   "tool.noSelection": "Select waveform blocks first",
-  "tool.help": "Runs on the current sound of {n} selected waveform blocks and replaces them with the result as a new source (undoable)"
+  "tool.help": "Runs on the current sound of {n} selected waveform blocks and replaces them with the result as a new source (undoable)",
+
+  "addonFolder.allow": "Allow access",
+  "addonFolder.permission": "Access to the add-on folder is needed"
 }

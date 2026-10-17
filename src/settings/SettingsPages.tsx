@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Box, Button, Typography } from '@mui/material'
 import { listInputDevices, visibleAlgorithms, type Algorithm, type InputDevice } from 'wevocal-lib'
-import { AddonSection, Check, Choice, Group, KeymapEditor, Row, pevenFont, type WindowMode } from 'pevenmui'
+import { AddonFolderRow, AddonSection, addonFolderSupported, Check, Choice, Group, KeymapEditor, Row, pevenFont, type WindowMode } from 'pevenmui'
 import { EXTRACT_MODELS, isMdxModel, resolveModel, type VocalModel } from 'wevocalextractor/host'
 import { backendAllowed } from 'wevocalextractor/compat'
 import { ADDONS } from '../addons'
@@ -185,6 +185,9 @@ export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings;
         {S('showVoiceSplit')}
         {S('showVst')}
         {S('showDevPlugins')}
+        {/* 追加機能の保存先のフォルダー（Chrome、Edge だけ） */}
+        {addonFolderSupported() && S('addonFolder')}
+        {addonFolderSupported() && draft.addonFolder && <AddonFolderRow />}
         {S('filePicker')}
         <Row label={t('settings.dialogWindow')}>
           <Choice<WindowMode | 'auto'>

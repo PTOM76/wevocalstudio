@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { Box } from '@mui/material'
 import { NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
 import StatusBar from './StatusBar'
+import { useAddonFolder } from './useAddonFolder'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
 import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web'
@@ -60,6 +61,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
   useEffect(() => setOutputDevice(p.settings.outputDevice), [p.settings.outputDevice])
   useEffect(() => setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null), [p.settings.outputLimit, p.settings.outputLimitDb])
+  const addonFolderNotice = useAddonFolder(p.settings.addonFolder)
   // Ctrl+Shift+D でデバッグ表示を切り替える（WeVocalSynth と同じ）
   const settingsRef = useRef(p.settings)
   settingsRef.current = p.settings
@@ -596,6 +598,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       {confirmDialog}
       {extract.dialog}
       {addonInstall.dialog}
+      {addonFolderNotice}
       {p.settings.showDebug && <DebugOverlay build={BUILD} extra={() => player.current.debugLines()} />}
       <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
       <NoticeMessage message={notice ? { severity: 'info', message: notice } : null} onClose={() => setNotice(null)} vertical={touchLike ? 'top' : 'bottom'} horizontal={touchLike ? 'center' : 'left'} />

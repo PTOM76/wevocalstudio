@@ -15,6 +15,8 @@ export const debug = defineItems('debug', {
   showVst: check(false, { label: 'settings.showVst', help: 'settings.showVstHelp' }),
   // 開発者向けのプラグイン（雛形）を FX の追加の一覧に出す
   showDevPlugins: check(false, { label: 'settings.showDevPlugins', help: 'settings.showDevPluginsHelp' }),
+  // 追加機能を、選んだフォルダーに保存する（試験的。Chrome、Edge。WeVocalSynth と同じ）。フォルダーは AddonFolderRow で選ぶ
+  addonFolder: check(false, { label: 'settings.addonFolder', help: 'settings.addonFolderHelp' }),
   filePicker: choice<PickerMode>('auto', {
     label: 'settings.filePicker',
     help: 'settings.filePickerHelp',

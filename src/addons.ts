@@ -27,7 +27,9 @@ export const addonsContext: AddonsContextValue = {
   },
 }
 
-export const { installedManifest, addonFileUrl, loadAddon, addonsSizeIn, clearAddonsIn } = addons
+export const { installedManifest, addonFileUrl, loadAddon, addonsSizeIn, clearAddonsIn, notifyAddonsChanged } = addons
+/** 追加機能の保存先のフォルダー（試験的。設定の addonFolder） */
+export const addonFolder = addons.folder
 /** 保存先の名前（Cache Storage。設定の「データ」で消す） */
 export const ADDON_CACHE = addons.cacheName
 

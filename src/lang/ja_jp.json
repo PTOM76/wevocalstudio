@@ -293,6 +293,8 @@
   "settings.playbackOffsetMsHelp": "再生位置の表示を、聞こえる音に合わせて遅らせます。iPad や Bluetooth のスピーカーで、再生位置だけ先に進んで見えるときに増やします（音が出口に着くまでの遅れは、自動でも引いています）",
   "settings.anticipativeCacheMb": "先に計算した音を保持する量",
   "settings.anticipativeCacheMbHelp": "先に計算した音を、再生を止めたあとも保持します。同じ所をもう一度再生するときに、計算し直さずに再生できます。0 にすると保持しません。",
+  "settings.addonFolder": "指定したフォルダーに保存する",
+  "settings.addonFolderHelp": "モデルなどの追加機能を、ブラウザのデータ領域ではなく、指定したフォルダーに保存します。（Chrome、Edge）。導入済みの追加機能も、このフォルダーへ移動できます",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
@@ -891,5 +893,8 @@
   "tool.analyze": "解析する",
   "tool.running": "処理中…",
   "tool.noSelection": "波形ブロックを選んでください",
-  "tool.help": "選んだ波形ブロック {n} 個の今の音に対して実行し、結果の音を新しい元の音にして置き換えます（元に戻せます）"
+  "tool.help": "選んだ波形ブロック {n} 個の今の音に対して実行し、結果の音を新しい元の音にして置き換えます（元に戻せます）",
+
+  "addonFolder.allow": "アクセスを許可",
+  "addonFolder.permission": "追加機能の保存先のフォルダーへのアクセスが必要です"
 }
