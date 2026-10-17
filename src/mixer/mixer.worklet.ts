@@ -20,6 +20,8 @@ interface Live {
   v: Voice
   bornAt: number
   diedAt: number
+  /** 音量のエンベロープで前に見つけた点の位置（時刻は進むので、次はここから探す） */
+  ei?: number
 }
 
 /** 時刻 t の声の音量（線形） */
@@ -37,13 +39,14 @@ function gainAt(l: Live, t: number): number {
   if (e.length) {
     if (t <= e[0]) g *= e[1]
     else if (t >= e[e.length - 2]) g *= e[e.length - 1]
-    else
-      for (let i = 2; i < e.length; i += 2)
-        if (t <= e[i]) {
-          const t0 = e[i - 2]
-          g *= t0 === e[i] ? e[i + 1] : e[i - 1] + ((e[i + 1] - e[i - 1]) * (t - t0)) / (e[i] - t0)
-          break
-        }
+    else {
+      // 前に見つけた点から探す（戻っていれば頭から）
+      let i = l.ei !== undefined && l.ei < e.length && t > e[l.ei - 2] ? l.ei : 2
+      while (i < e.length && t > e[i]) i += 2
+      l.ei = i
+      const t0 = e[i - 2]
+      g *= t0 === e[i] ? e[i + 1] : e[i - 1] + ((e[i + 1] - e[i - 1]) * (t - t0)) / (e[i] - t0)
+    }
   }
   // 途中から足された、消された
   if (l.bornAt > 0) g *= Math.min(1, Math.max(0, (t - l.bornAt) / FADE))

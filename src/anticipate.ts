@@ -25,8 +25,19 @@ export function anticipated(p: Project, t: Track): boolean {
   return heavy(t) && !t.frozen && !p.tracks.some((x) => x.parent === t.id)
 }
 
+/** 前に作った識別（トラック、波形ブロックの並び、元の音の並び、テンポが同じなら同じ。どれも書き換えずに作り直すので、参照で比べられる） */
+const sigCache = new WeakMap<Track, { blocks: Project['blocks']; sources: Project['sources']; bpm: number; sig: string }>()
+
 /** そのトラックの音を決めるものの識別。変わったら、先に作った音は捨てる（音量、パン以外、FX、波形ブロック、元の音の長さ、テンポ） */
 export function signature(p: Project, t: Track): string {
+  const c = sigCache.get(t)
+  if (c && c.blocks === p.blocks && c.sources === p.sources && c.bpm === p.tempo.bpm) return c.sig
+  const sig = makeSignature(p, t)
+  sigCache.set(t, { blocks: p.blocks, sources: p.sources, bpm: p.tempo.bpm, sig })
+  return sig
+}
+
+function makeSignature(p: Project, t: Track): string {
   const blocks = p.blocks.filter((b) => b.track === t.id)
   const sources = [...new Set(blocks.map((b) => b.source))].map((id) => {
     const s = p.sources.find((x) => x.id === id)
