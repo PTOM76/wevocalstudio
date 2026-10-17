@@ -2,7 +2,7 @@
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
 import { AHEAD, anticipated, CHUNK, PREROLL, signature } from './anticipate'
 import { createInstrument, findInstrument, preloadInstruments, type InstrumentInstance, type NoteEvent } from 'wevocal-lib'
-import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, limitedOutput, preloadFx, startContext, startRenderLoad, type Clip, type FxChain } from 'wevocal-lib'
+import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, limitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
@@ -700,7 +700,7 @@ function scheduleAutomation(ctx: OfflineAudioContext, graph: Graph, length: numb
 
 /** 全トラックをマスターまで混ぜた音（ステレオ）。書き出しの形式にするのは wevocal-lib の exportAudio */
 /** until を渡すと、そこまでの長さにする（範囲選択が曲の終わりより後ろまであるとき） */
-export async function renderMix(p: Project, until = 0, sampleRate = 48000): Promise<Clip> {
+export async function renderMix(p: Project, until = 0, sampleRate = 48000, onProgress?: (p: number) => void): Promise<Clip> {
   await preparePitch(p)
   const length = Math.max(1, Math.ceil(Math.max(songEnd(p), until) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
@@ -710,7 +710,7 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000): Prom
   graph.sync(p, false)
   await graph.flush()
   scheduleAutomation(ctx, graph, length, sampleRate, 0)
-  const out = await ctx.startRendering()
+  const out = await renderWithProgress(ctx, onProgress)
   return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
 }
 

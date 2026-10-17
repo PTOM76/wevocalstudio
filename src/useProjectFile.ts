@@ -96,8 +96,8 @@ export function useProjectFile(o: {
   }
 
   /** 書き出す音（全トラックを混ぜ、範囲があれば切り出してから仕上げを掛ける。音声、動画、フォルダーへの保存で共通。WeVocalSynth と同じ） */
-  const renderFinished = async (p: Project, range: Range | null) => {
-    let mix = await renderMix(p, range ? range.end : 0)
+  const renderFinished = async (p: Project, range: Range | null, onProgress?: (p: number) => void) => {
+    let mix = await renderMix(p, range ? range.end : 0, 48000, onProgress)
     if (range) {
       const [s, e] = toFrames(mix, range)
       mix = { sampleRate: mix.sampleRate, channels: mix.channels.map((ch) => ch.slice(s, e)) }
@@ -114,8 +114,9 @@ export function useProjectFile(o: {
     const job = startJob('export', t('job.export'))
     job.update(-1)
     try {
-      const mix = await renderFinished(o.project, c.selectionOnly ? o.range : null)
-      await target.write(await exportAudio(mix, { ...c, sampleRate: c.sampleRate || mix.sampleRate, range: null }))
+      // 描画を 0〜0.8、符号化を 0.8〜1 として、ゲージに出す
+      const mix = await renderFinished(o.project, c.selectionOnly ? o.range : null, (v) => job.update(v * 0.8))
+      await target.write(await exportAudio(mix, { ...c, sampleRate: c.sampleRate || mix.sampleRate, range: null }, (v) => job.update(0.8 + v * 0.2)))
       o.onExported()
     } catch (e) {
       o.fail(e)
