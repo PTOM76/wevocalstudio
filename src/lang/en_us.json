@@ -288,7 +288,7 @@
   "settings.midiInput": "Use a MIDI keyboard",
   "settings.midiInputHelp": "Plays a connected MIDI keyboard through the instrument of a track (the armed track, or the selected track). Recording captures the notes into a MIDI block. Available in Chrome and Edge.",
   "settings.showVst": "Allow loading VST plugins (experimental)",
-  "settings.showVstHelp": "Lets you pick a VST DLL in Settings > Plugins. The DLL runs in an emulator, so it is slow and is applied only when exporting (bypassed during playback). Experimental; some plugins do not work",
+  "settings.showVstHelp": "Lets you pick a VST DLL in Settings > Plugins. The DLL runs in an emulator, so it is heavy; heavy plugins are bypassed automatically during playback. Experimental; some plugins do not work",
   "settings.playbackOffsetMs": "Playback position offset",
   "settings.playbackOffsetMsHelp": "Delays the playhead display to match what you hear. Increase it when the playhead looks ahead of the sound, for example on iPad or Bluetooth speakers (the output latency is also subtracted automatically).",
 
@@ -829,7 +829,7 @@
   "plugins.upToDate": "Up to date",
   "plugins.noSource": "Cannot update because the source is unknown",
   "plugins.vst.pick": "Choose a VST (DLL)",
-  "plugins.vst.notice": "Experimental. Applied only when exporting; bypassed during playback",
+  "plugins.vst.notice": "Experimental. Heavy plugins are bypassed automatically during playback",
 
   "optimize.title": "Save Optimized",
   "optimize.help": "Saves a lighter copy of the project as a separate file. The current project is not changed",
