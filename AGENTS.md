@@ -12,4 +12,4 @@ AI のエージェント向けの決まり。[docs/CODING.md](docs/CODING.md) �
 - Synth の訳文を使うときは `node scripts/copy-i18n.mjs <key>...` で写す
 - 設定は `src/settings/items/` の分類のファイルに 1 行で定義し、設定画面は `SettingsPages.tsx` に `S('名前')` を置く（Synth と同じ）
 - ダイアログは `src/useDialogs.ts` の `DialogId` に名前を足し、描画は `src/AppDialogs.tsx` に置く。開くのは `dialogs.open('名前', 値)`
-- submodule はコミットの前に自動で隣の Synth にそろう（`.githooks/`）。push は Synth の中の pevenmui、wevocal-lib などを先にする（push の前に確かめる）
+- submodule はコミットの前に自動で隣の Synth にそろう（`.githooks/`）。submodule の変更は `../wevocalsynth/<名前>` で編集してコミットする（Studio の中ではコミットできない）。push は Synth の中の pevenmui、wevocal-lib などを先にする（push の前に確かめる）

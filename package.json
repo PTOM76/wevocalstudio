@@ -15,7 +15,7 @@
     "map": "node scripts/map.mjs",
     "docs:toc": "node scripts/manual-toc.mjs",
     "build:icons": "node scripts/build-icons.mjs",
-    "prepare": "git config core.hooksPath .githooks",
+    "prepare": "git config core.hooksPath .githooks && node scripts/sync-modules.mjs",
     "build:addons": "node scripts/build-addons.mjs"
   },
   "dependencies": {

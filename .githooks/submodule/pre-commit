@@ -1,0 +1,5 @@
+#!/bin/sh
+# Studio の中の submodule ではコミットしない（正は隣の WeVocalSynth の中。scripts/sync-modules.mjs が入れる）
+name=$(basename "$(pwd)")
+echo "ここ（Studio の中の $name）ではコミットできません。../wevocalsynth/$name で編集してコミットしてください" >&2
+exit 1
