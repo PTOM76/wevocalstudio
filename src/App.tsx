@@ -133,7 +133,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // ミニマップ（全体を縮めた波形。WeVocalSynth と同じ部品）
   // 作り直しは操作のあとに回す（ドラッグの途中で固まらないように）
   const deferredProject = useDeferredValue(project)
-  const overview = useMemo(() => buildOverview(deferredProject), [deferredProject])
+  // 出していないときは作らない（全ブロックを走査するため）
+  const overview = useMemo(() => (p.settings.showMinimap ? buildOverview(deferredProject) : null), [deferredProject, p.settings.showMinimap])
   const end = songEnd(project)
 
   const fail = (e: unknown) => setError(String(e))
@@ -531,7 +532,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           onEndMerge={doc.endMerge}
         />
       )}
-      {p.settings.showMinimap && project.blocks.length > 0 && (
+      {overview && project.blocks.length > 0 && (
         // 高さは Minimap の分だけ（伸ばさない）
         <Box sx={{ flexShrink: 0, flexGrow: 0, borderTop: 1, borderColor: 'divider' }}>
         <Minimap
