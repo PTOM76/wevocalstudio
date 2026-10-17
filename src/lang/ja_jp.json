@@ -800,8 +800,8 @@
   "fx.noMatch": "見つかりません",
   "fx.addCancel": "キャンセル",
 
-  "plugins.intro": "FX に使うプラグインを URL から追加します。追加したプラグインはこの端末に保存され、ネットがなくても使えます。",
-  "plugins.url": "プラグインのマニフェストの URL",
+  "plugins.intro": "FX に使うプラグインを URL から追加します。追加したプラグインはこの端末に保存され、ネットがなくても使えます（WebAudio Modules は読み込みのたびにネットから取得します）。",
+  "plugins.url": "プラグインのマニフェスト、または WebAudio Modules（.js）の URL",
   "plugins.add": "追加",
   "plugins.empty": "追加したプラグインはありません",
   "plugins.remove": "削除",
@@ -823,6 +823,7 @@
   "plugins.error.processor": "processor が指定されていません",
   "plugins.error.reserved": "標準のプラグインの id は使えません",
   "plugins.error.vst": "VST を読み込めませんでした（動かせない DLL、またはエミュレーターが対応していない命令があります）",
+  "plugins.error.wam": "WebAudio Modules を読み込めませんでした（WAM ではない、または共有メモリが使えない環境です）",
   "plugins.update": "更新",
   "plugins.updated": "更新しました",
   "plugins.upToDate": "最新です",
