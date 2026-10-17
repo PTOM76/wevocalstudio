@@ -2,6 +2,7 @@
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
 import { AHEAD, anticipated, CHUNK, PREROLL, signature } from './anticipate'
 import { createInstrument, findInstrument, preloadInstruments, type InstrumentInstance, type NoteEvent } from 'wevocal-lib'
+import { liveProcessors } from 'wevocal-lib'
 import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, limitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
@@ -256,6 +257,20 @@ class Graph {
   }
 
   /** トラックのレベルメーター */
+  /** デバッグ表示の行（トラックごとの FX の列と、先に作った音の数。読んだときだけ作る） */
+  debugLines(): string[] {
+    const name = (id: string) => this.proj?.tracks.find((t) => t.id === id)?.name ?? id
+    const lines = [`fx master: ${this.masterFx.describe().join(', ') || '-'}`]
+    for (const [id, n] of this.tracks) {
+      const fx = n.fx.describe()
+      const chunks = this.cacheSources.get(id)?.length ?? 0
+      if (!fx.length && !n.inst && !this.anticipated.has(id)) continue
+      const ant = this.anticipated.has(id) ? ` [anticipated ${chunks} chunks]` : ''
+      lines.push(`fx ${name(id)}: ${fx.join(', ') || '-'}${n.inst ? ` +${n.inst.key.split('|')[0]}` : ''}${ant}`)
+    }
+    return lines
+  }
+
   meter(trackId: string) {
     return this.tracks.get(trackId)?.meter ?? null
   }
@@ -578,6 +593,13 @@ export class Player {
   meter = (trackId: string) => (this.playing ? (this.graph?.meter(trackId) ?? null) : null)
   /** マスターの左右のレベルメーター */
   masterMeters = () => (this.playing ? (this.graph?.masterMeters ?? null) : null)
+
+  /** デバッグ表示の行（デバッグ表示を出しているときだけ呼ばれる。再生していなければ状態だけ） */
+  debugLines(): string[] {
+    const g = this.graph ?? this.monitor
+    const state = this.playing ? 'playing' : this.starting ? 'starting' : this.monitor ? 'monitor' : 'stopped'
+    return [`player ${state}${this.ant ? ` anticipating ${this.ant.next.size}` : ''} processors ${liveProcessors()}`, ...(g?.debugLines() ?? [])]
+  }
 
   /** 音を作る処理の負荷を測り始める（wevocal-lib の startRenderLoad。1 秒ごと） */
   private startLoadMeter() {

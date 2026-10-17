@@ -595,7 +595,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       {confirmDialog}
       {extract.dialog}
       {addonInstall.dialog}
-      {p.settings.showDebug && <DebugOverlay build={BUILD} />}
+      {p.settings.showDebug && <DebugOverlay build={BUILD} extra={() => player.current.debugLines()} />}
       <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
       <NoticeMessage message={notice ? { severity: 'info', message: notice } : null} onClose={() => setNotice(null)} vertical={touchLike ? 'top' : 'bottom'} horizontal={touchLike ? 'center' : 'left'} />
     </Box>
