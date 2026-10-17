@@ -165,11 +165,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     }
   }
   /** トラックのフリーズと解除（src/freeze.ts） */
-  const freeze = async (id: string) => {
+  const freeze = async (id: string, withFx = false) => {
     if (project.tracks.find((tr) => tr.id === id)?.frozen) return doc.apply((pr) => unfreezeTrack(pr, id))
     const job = startJob('freeze', t('freeze.job'))
     try {
-      const frozen = await freezeTrack(doc.project, id)
+      const frozen = await freezeTrack(doc.project, id, withFx)
       const f = frozen.tracks.find((tr) => tr.id === id)?.frozen
       const src = f && frozen.sources.find((s) => s.id === f.source)
       // 描画している間の変更は残し、書き出した音とトラックの印だけを足す

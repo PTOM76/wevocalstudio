@@ -356,6 +356,8 @@
   "track.pianoName": "{name} (piano)",
   "track.otherName": "{name} (other)",
   "track.freeze": "Freeze",
+  "track.freezeFx": "Freeze (including FX)",
+  "track.frozenFx": "Frozen (blocks and FX cannot be edited)",
   "track.unfreeze": "Unfreeze",
   "track.frozen": "Frozen (blocks can't be edited)",
   "track.voiceHigh": "{name} (higher)",

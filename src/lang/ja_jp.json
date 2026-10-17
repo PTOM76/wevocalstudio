@@ -356,6 +356,8 @@
   "track.pianoName": "{name}（ピアノ）",
   "track.otherName": "{name}（その他）",
   "track.freeze": "フリーズ",
+  "track.freezeFx": "フリーズ（FX を含める）",
+  "track.frozenFx": "フリーズ中（波形ブロックと FX は編集できません）",
   "track.unfreeze": "フリーズを解除",
   "track.frozen": "フリーズ中（波形ブロックは編集できません）",
   "track.voiceHigh": "{name}（高い方）",

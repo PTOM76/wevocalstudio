@@ -6,7 +6,7 @@ import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainO
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { piecesFor, preparePitch } from './dsp/pitch'
-import { ancestors, audible, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, type Project, type Track } from './project'
+import { ancestors, audible, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, liveSlots, type Project, type Track } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
@@ -110,7 +110,7 @@ class Graph {
 
   /** そのトラックで、今ノードとして動かす FX の列（先に作った音で鳴らすトラックは空） */
   private liveFx(t: Track) {
-    return this.anticipated.has(t.id) ? [] : (t.fx ?? [])
+    return this.anticipated.has(t.id) ? [] : liveSlots(t)
   }
 
   /** 先に作った音で鳴らすトラックを決める（sync の前に呼ぶ） */
@@ -242,7 +242,7 @@ class Graph {
     const p = this.proj
     if (!p) return
     if (hasAutomation(p.master.fx)) this.masterFx.update(automatedSlots(p.master.fx ?? [], t))
-    for (const tr of p.tracks) if (hasAutomation(tr.fx) && !this.anticipated.has(tr.id)) this.tracks.get(tr.id)?.fx.update(automatedSlots(tr.fx ?? [], t))
+    for (const tr of p.tracks) if (hasAutomation(liveSlots(tr)) && !this.anticipated.has(tr.id)) this.tracks.get(tr.id)?.fx.update(automatedSlots(liveSlots(tr), t))
   }
 
   /** プラグインに渡すホストの情報 */
@@ -390,7 +390,7 @@ class Graph {
       list.push(...voicesOf(b, pieces, this.zero, dbToGain(b.gain), env))
     }
     // FX の遅れ（秒）が違うトラックをそろえる: 波形ブロックから出口までの遅れが、どのトラックも同じになるように入口で遅らせる
-    const late = new Map(p.tracks.map((t) => [t.id, [t, ...ancestors(p, t)].reduce((s, x) => s + chainLatency(x.fx, this.ctx.sampleRate), 0)]))
+    const late = new Map(p.tracks.map((t) => [t.id, [t, ...ancestors(p, t)].reduce((s, x) => s + chainLatency(liveSlots(x), this.ctx.sampleRate), 0)]))
     const slowest = Math.max(0, ...late.values())
     for (const t of p.tracks) {
       const n = this.tracks.get(t.id)!

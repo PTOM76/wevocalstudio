@@ -78,8 +78,8 @@ export default function TrackHeader(p: {
   onEndMerge: () => void
   onFx: () => void
   onDuplicate: () => void
-  /** フリーズとその解除 */
-  onFreeze: () => void
+  /** フリーズとその解除（withFx なら FX の列まで含める） */
+  onFreeze: (withFx?: boolean) => void
   onSends: () => void
   onRemove: () => void
   /** レベルメーター（出さなければ省く） */
@@ -196,7 +196,7 @@ export default function TrackHeader(p: {
             <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => setEditing(true)} onPointerUp={(e) => e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY) && setEditing(true)}>
             {/* フリーズ中の印 */}
             {track.frozen && (
-              <Tooltip title={t('track.frozen')}>
+              <Tooltip title={t(track.frozen.fx ? 'track.frozenFx' : 'track.frozen')}>
                 <FontAwesomeIcon icon={faSnowflake} style={{ marginRight: 4, opacity: 0.7 }} />
               </Tooltip>
             )}
@@ -219,7 +219,7 @@ export default function TrackHeader(p: {
           <>
             <MixToggle label="Ø" title={t('track.invert')} on={!!track.invert} color="primary.main" onClick={() => p.onChange({ invert: !track.invert })} />
             {/* FX の列。何か掛けているときは色を付ける */}
-            <MixToggle label={fxLabel(track.fx)} wide title={t('track.fx')} on={!isNeutralChain(track.fx)} color="primary.main" onClick={p.onFx} />
+            <MixToggle label={fxLabel(track.fx)} wide title={t(track.frozen?.fx ? 'track.frozenFx' : 'track.fx')} on={!isNeutralChain(track.fx)} color="primary.main" onClick={() => !track.frozen?.fx && p.onFx()} />
           </>
         }
       />
@@ -229,7 +229,8 @@ export default function TrackHeader(p: {
         entries={[
           { label: t('track.rename'), onClick: () => setEditing(true) },
           { label: t('track.duplicate'), onClick: p.onDuplicate },
-          { label: t(track.frozen ? 'track.unfreeze' : 'track.freeze'), onClick: p.onFreeze },
+          { label: t(track.frozen ? 'track.unfreeze' : 'track.freeze'), onClick: () => p.onFreeze() },
+          ...(track.frozen ? [] : [{ label: t('track.freezeFx'), onClick: () => p.onFreeze(true) }]),
           { label: t('track.sends'), onClick: p.onSends },
           { divider: true },
           { label: t('track.addSubtrack'), onClick: p.onAddSubtrack },
