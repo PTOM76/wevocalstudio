@@ -9,6 +9,7 @@ import { MeterFader, PanBar } from './MeterFader'
 import { useT } from './i18n'
 import { isNeutralChain, type FxSlot } from 'wevocal-lib'
 import type { Master, Track } from './project'
+import { countRender } from 'pevenmui/debug'
 
 /** 入り切りの小さなボタン（WeVocalSynth の MixToggle と同じ見た目。入っているときだけ色で塗る） */
 function MixToggle(p: { label: string; title: string; on: boolean; color: string; onClick: () => void; wide?: boolean }) {
@@ -99,6 +100,7 @@ export default function TrackHeader(p: {
   /** ドラッグ中（半透明で表示） */
   dragging?: boolean
 }) {
+  countRender('TrackHeader')
   const t = useT()
   const { track } = p
   const [editing, setEditing] = useState(false)
@@ -256,6 +258,7 @@ export default function TrackHeader(p: {
 
 /** マスタートラックの欄（トラックの一番上。トラックと同じ形で波形ブロックは置かない） */
 export function MasterHeader(p: { master: Master; height: number; onFx: () => void; onChange: (patch: Partial<Master>, merge?: string) => void; onEndMerge: () => void; meter?: () => readonly AnalyserNode[] | null }) {
+  countRender('MasterHeader')
   const t = useT()
   const { master } = p
   return (

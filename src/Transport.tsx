@@ -8,6 +8,7 @@ import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 import type { Tempo } from './project'
 import { GRID_MAX, GRID_MIN, type GridDivision } from './grid'
+import { countRender } from 'pevenmui/debug'
 
 export { formatTime } from 'pevenmui'
 
@@ -51,6 +52,7 @@ export default function Transport(p: {
   onRepeat: () => void
   onToEnd: () => void
 }) {
+  countRender('Transport')
   const t = useT()
   // ツールチップは名前と今のキーの割り当て（WeVocalSynth の withKey と同じ）
   const tip = (label: MessageKey, action: Action) => (keyLabel(action) ? `${t(label)} (${keyLabel(action)})` : t(label))

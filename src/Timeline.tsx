@@ -4,7 +4,7 @@ import { Box } from '@mui/material'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint, type Range } from 'wevocal-lib'
 import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
-import { markActivity } from 'pevenmui/debug'
+import { markActivity, countRender } from 'pevenmui/debug'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { hitMidi, type MidiDragKind } from './midiBlocks'
 import { layoutRows } from './overlap'
@@ -127,6 +127,7 @@ export default function Timeline(p: {
   /** 作り直している波形ブロックに出す文字（「処理中」） */
   pendingLabel: string
 }) {
+  countRender('Timeline')
   // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
   const { dark, pal } = usePalette()
   const canvasRef = useRef<HTMLCanvasElement>(null)

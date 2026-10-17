@@ -30,6 +30,7 @@ import SendDialog from './SendDialog'
 import ToolDialog from './ToolDialog'
 import ShortcutsDialog from './ShortcutsDialog'
 import type { useProject } from './useProject'
+import { countRender } from 'pevenmui/debug'
 
 /** 今動いている版 */
 const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`
@@ -59,6 +60,7 @@ export default function AppDialogs(p: {
   /** 追加機能の導入を確かめる */
   ensure: (id: string) => Promise<boolean>
 }) {
+  countRender('AppDialogs')
   const t = useT()
   const { dialogs, doc } = p
   const { project } = doc

@@ -5,6 +5,7 @@ import { SmallButton, ToolbarDivider } from 'pevenmui'
 import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faWaveSquare, faScissors, faCopy, faPaste, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
+import { countRender } from 'pevenmui/debug'
 
 /** ツールバーのボタン（PevenMUI の SmallButton。ツールチップは名前とキー、help があればその説明） */
 export function ToolButton(p: { icon: IconDefinition; label: MessageKey; help?: MessageKey; action?: Action; pressed?: boolean; disabled?: boolean; onClick: () => void }) {
@@ -34,6 +35,7 @@ export default function Toolbar(p: {
   onPaste: () => void
   children?: ReactNode
 }) {
+  countRender('Toolbar')
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, height: 40, px: 1, flexShrink: 0, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
       <ToolButton icon={faScissors} label="menu.cut" action="cut" disabled={!p.canCut} onClick={p.onCut} />

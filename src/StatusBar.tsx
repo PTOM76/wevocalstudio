@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { JobGauge, RenameDialog, SelectionField, StatusBar as Bar, StatusButton, StatusItem, StatusSpacer } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
+import { countRender } from 'pevenmui/debug'
 
 export default function StatusBar(p: {
   fileName: string
@@ -20,6 +21,7 @@ export default function StatusBar(p: {
   /** BPM の表示と入力（PevenMUI の TempoField。WeVocalSynth と同じ） */
   tempo: ReactNode
 }) {
+  countRender('StatusBar')
   const t = useT()
   const [renaming, setRenaming] = useState<string | null>(null)
   return (

@@ -547,8 +547,18 @@ export class Player {
     if (id !== this.seq) return
     // 先に作って鳴らすトラックは、最初のかたまりができてから始める（作っている間は、ほかの音も待つ）
     const first = this.anticipative ? p.tracks.filter((t) => anticipated(p, t)) : []
+    this.antInfo = !this.anticipative ? 'off' : first.length ? `${first.length} tracks` : 'no target track'
     const k0 = Math.floor(from / CHUNK)
-    const primed = await Promise.all(first.map((t) => this.makeChunk(p, t.id, k0).catch(() => null)))
+    const primed = await Promise.all(
+      first.map((t) =>
+        this.makeChunk(p, t.id, k0).catch((e: unknown) => {
+          // 作れなかったトラックはノードで鳴らす。理由はデバッグ表示とコンソールに出す
+          this.antInfo = `failed: ${String(e)}`
+          console.warn('anticipate:', e)
+          return null
+        }),
+      ),
+    )
     if (id !== this.seq) return
     this.starting = false
     this.from = from
@@ -619,7 +629,7 @@ export class Player {
     const g = this.graph ?? this.monitor
     const state = this.playing ? 'playing' : this.starting ? 'starting' : this.monitor ? 'monitor' : 'stopped'
     const load = renderLoad()
-    return [`player ${state}${this.ant ? ` anticipating ${this.ant.next.size}` : ''} processors ${liveProcessors()}${load !== undefined ? ` load ${Math.round(load * 100)}%` : ''}`, `fx cache ${this.chunks.describe()}`, ...(g?.debugLines() ?? [])]
+    return [`player ${state}${this.ant ? ` anticipating ${this.ant.next.size}` : ''} processors ${liveProcessors()}${load !== undefined ? ` load ${Math.round(load * 100)}%` : ''}`, `fx cache ${this.chunks.describe()} (anticipate ${this.antInfo})`, ...(g?.debugLines() ?? [])]
   }
 
   /** 音を作る処理の負荷を測り始める（wevocal-lib の startRenderLoad。1 秒ごと） */
@@ -644,6 +654,8 @@ export class Player {
     })
   }
 
+  /** 先読みの状態（デバッグ表示。off、対象のトラックの数、作れなかった理由） */
+  private antInfo = '-'
   /** 先に作った音の置き場 */
   private readonly chunks = new ChunkCache()
   /** 置き場の上限（MB。設定。0 で取っておかない） */

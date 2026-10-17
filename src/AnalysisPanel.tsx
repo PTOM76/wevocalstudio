@@ -5,7 +5,7 @@ import { faEraser, faHand, faPen } from '@fortawesome/free-solid-svg-icons'
 import { Divider, ToolButton } from './Toolbar'
 import PitchToolBar from './PitchToolBar'
 import { localPoint, usePalette } from 'pevenmui'
-import { markActivity } from 'pevenmui/debug'
+import { markActivity, countRender } from 'pevenmui/debug'
 import type { Clip, Range } from 'wevocal-lib'
 import { analyzePitch, analyzeSpectrogram, renderSpectrogram, type Pitch, type Spectrogram } from 'wevocalanalyzer'
 import { blockReady, clipFor, needsProcess } from './dsp/pitch'
@@ -70,6 +70,7 @@ export default function AnalysisPanel(p: {
   onCurve: (curve: PitchCurve | undefined, merge: string) => void
   onEndMerge: () => void
 }) {
+  countRender('AnalysisPanel')
   const t = useT()
   const { pal } = usePalette()
   const canvasRef = useRef<HTMLCanvasElement>(null)

@@ -3,6 +3,7 @@ import { faArrowDown, faArrowUp, faArrowsRotate, faArrowsLeftRightToLine, faChec
 import { EDIT_BAR_DIVIDER, EditBar, type EditBarItem } from 'pevenmui'
 import { useT } from './i18n'
 import type { Action } from './keymap'
+import { countRender } from 'pevenmui/debug'
 
 /** 実行できるか、実行する（useActions の commands） */
 type Commands = Record<Action, { run: () => void; enabled?: boolean }>
@@ -39,6 +40,7 @@ const RANGE: ([Action, EditBarItem['icon']] | typeof EDIT_BAR_DIVIDER)[] = [
 ]
 
 export default function BlockEditBar({ commands, mode, top }: { commands: Commands; mode: 'block' | 'range'; top?: boolean }) {
+  countRender('BlockEditBar')
   const t = useT()
   const items = (mode === 'block' ? BLOCK : RANGE).map((x): EditBarItem | typeof EDIT_BAR_DIVIDER =>
     x === EDIT_BAR_DIVIDER ? x : { label: t(`editBar.${x[0]}` as 'editBar.cut'), icon: x[1], onClick: commands[x[0]].run, disabled: commands[x[0]].enabled === false },
