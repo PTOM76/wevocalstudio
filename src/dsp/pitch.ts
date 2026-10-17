@@ -42,14 +42,14 @@ function giveBack(w: Worker) {
   queue.shift()?.()
 }
 
-/** Worker に頼む（空いているものに配る。id はここで付ける） */
-async function request(r: Req, onProgress?: (p: number) => void) {
+/** Worker に頼む（空いているものに配る。id はここで付ける）。transfer は写さずに渡すもの（渡したあとは使えない） */
+async function request(r: Req, onProgress?: (p: number) => void, transfer: Transferable[] = []) {
   const w = await borrow()
   const id = nextId++
   try {
     return await new Promise<Float32Array[]>((resolve, reject) => {
       waiting.set(id, { done: (res) => ('error' in res ? reject(new Error(res.error)) : 'channels' in res ? resolve(res.channels) : undefined), progress: onProgress })
-      w.postMessage({ ...r, id } as DspRequest)
+      w.postMessage({ ...r, id } as DspRequest, transfer)
     })
   } finally {
     giveBack(w)
@@ -79,6 +79,20 @@ export interface Made {
 }
 
 const made = new Map<string, Made>()
+/** made の合計の大きさ（バイト。prune のたびに全部を数え直さない） */
+let madeBytes = 0
+const bytesOf = (m: Made) => m.clip.channels.reduce((n, c) => n + c.byteLength, 0)
+function remember(m: Made) {
+  forget(m.key)
+  made.set(m.key, m)
+  madeBytes += bytesOf(m)
+}
+function forget(key: string) {
+  const m = made.get(key)
+  if (!m) return
+  made.delete(key)
+  madeBytes -= bytesOf(m)
+}
 
 /** カーブの中身を短い文字にする（キャッシュのキー） */
 function curveKey(b: Block) {
@@ -256,6 +270,8 @@ async function processChunk(w: Want): Promise<Made> {
       inflight.set(w.key, p)
       notify()
     },
+    // 範囲の写しはここでしか使わないので、もう一度写さずに渡す
+    channels.map((c) => c.buffer),
   )
   return { key: w.key, params: paramsOf(b), from: a / sr, core, rate: b.rate, clip: { sampleRate: sr, channels: out }, used: performance.now() }
 }
@@ -268,9 +284,9 @@ function run() {
         inflight.set(w.key, 0)
         try {
           const m = await processChunk(w)
-          made.set(m.key, m)
+          remember(m)
           // 高品質のものができたら下見は要らない
-          if (!w.preview) made.delete(m.key + PREVIEW)
+          if (!w.preview) forget(m.key + PREVIEW)
           madeCount++
           doneCount++
         } finally {
@@ -287,12 +303,10 @@ function run() {
 
 /** 使われなくなったかたまりは、合わせて KEEP_BYTES を超えたら古い順に捨てる */
 function prune(used: Set<string>) {
-  const bytes = (m: Made) => m.clip.channels.reduce((n, c) => n + c.byteLength, 0)
-  let sum = [...made.values()].reduce((n, m) => n + bytes(m), 0)
+  if (madeBytes <= KEEP_BYTES) return
   for (const m of [...made.values()].filter((m) => !used.has(m.key)).sort((x, y) => x.used - y.used)) {
-    if (sum <= KEEP_BYTES) break
-    made.delete(m.key)
-    sum -= bytes(m)
+    if (madeBytes <= KEEP_BYTES) break
+    forget(m.key)
   }
 }
 
@@ -353,7 +367,8 @@ export async function preparePitch(p: Project, around = 0) {
 
 /** 和音を 2 つの声に分ける（試験的機能。WeVocalSynth と同じ）。a は高い声か大きい声、b は低い声か小さい声。a + b は元の音 */
 export async function splitVoices(channels: Float32Array[], sampleRate: number, by: 'pitch' | 'volume', onProgress?: (p: number) => void) {
-  const out = await request({ kind: 'voices', channels: channels.map((c) => c.slice()), sampleRate, by: by === 'volume' ? 1 : 0 }, onProgress)
+  const copies = channels.map((c) => c.slice())
+  const out = await request({ kind: 'voices', channels: copies, sampleRate, by: by === 'volume' ? 1 : 0 }, onProgress, copies.map((c) => c.buffer))
   const n = out.length / 2
   return { a: out.slice(0, n), b: out.slice(n) }
 }
