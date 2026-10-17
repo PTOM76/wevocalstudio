@@ -338,7 +338,7 @@ export default function Timeline(p: {
   /** 波形ブロックの画面の上の位置（重なって段に分けたときはその段。エンベロープの線を描く所と同じ） */
   const blockGeom = (b: Block) => {
     const row = p.project.tracks.findIndex((t) => t.id === b.track)
-    const slot = layoutRows(p.project.blocks.filter((x) => x.track === b.track)).get(b.id) ?? { row: 0, rows: 1 }
+    const slot = layoutRows(p.project.blocks).get(b.id) ?? { row: 0, rows: 1 }
     const H = trackHeight(p.project.tracks[row]) / slot.rows
     return { x: (b.start - view.scroll) * view.pps, top: trackTop(p.project, row) + slot.row * H + 2 - vs, h: H - 5 }
   }

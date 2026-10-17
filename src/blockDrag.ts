@@ -37,7 +37,7 @@ export function hitBlock(p: Project, x: number, y: number, toTime: (x: number) =
   const laneH = trackHeight(track)
   const t = toTime(x)
   // 重なって段に分けたものは、押した段のものだけを見る
-  const slots = layoutRows(p.blocks.filter((b) => b.track === track.id))
+  const slots = layoutRows(p.blocks)
   const inLane = y - trackTop(p, i)
   const inRow = (b: Block) => {
     const s = slots.get(b.id) ?? { row: 0, rows: 1 }

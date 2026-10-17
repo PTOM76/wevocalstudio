@@ -7,7 +7,7 @@ import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
-import { ownAudible, trackHeight, type Block, type Project } from './project'
+import { ownAudible, trackHeight, type Block, type Project, type Source } from './project'
 
 export const RULER = 24
 /** マスタートラックの行の高さ（目盛りのすぐ下。一番上） */
@@ -15,7 +15,17 @@ export const MASTER = 96
 /** トラックの行が始まる位置 */
 export const TOP = RULER + MASTER
 export const LANE = 96
-export const trackTop = (p: Project, index: number) => TOP + p.tracks.slice(0, index).reduce((sum, t) => sum + trackHeight(t), 0)
+/** トラックの並びごとの、各行の上端（tops[i] は i 番目の上端。トラックは書き換えずに作り直すので、並びの配列が同じなら同じ値） */
+const topsCache = new WeakMap<Project['tracks'], number[]>()
+export function trackTop(p: Project, index: number) {
+  let tops = topsCache.get(p.tracks)
+  if (!tops) {
+    tops = [TOP]
+    for (const t of p.tracks) tops.push(tops[tops.length - 1] + trackHeight(t))
+    topsCache.set(p.tracks, tops)
+  }
+  return tops[Math.max(0, Math.min(index, tops.length - 1))]
+}
 export const totalTrackHeight = (p: Project) => p.tracks.reduce((sum, t) => sum + trackHeight(t), 0)
 
 export interface TimelineView {
@@ -60,20 +70,21 @@ export interface TimelineColors {
 }
 
 /** 波形ブロックの中に元の音の波形を描く（1 列ごとの最小と最大） */
-function drawBlockWave(g: CanvasRenderingContext2D, b: Block, p: Project, x: number, y: number, w: number, h: number, width: number) {
-  const source = p.sources.find((s) => s.id === b.source)
+function drawBlockWave(g: CanvasRenderingContext2D, b: Block, source: Source | undefined, x: number, y: number, w: number, h: number, width: number) {
   if (!source) return
   const { clip } = source
   const mid = y + h / 2
   const perPx = (b.length * b.rate * clip.sampleRate) / w
   const amp = (h / 2) * Math.min(4, 10 ** (b.gain / 20))
-  // ピークは元の音ごとに前もって作ったものを使う（peaks.ts）
+  // ピークは元の音ごとに前もって作ったものを使う（peaks.ts）。列ごとの四角は 1 つのパスにまとめて 1 回で塗る
   const pk = { lo: 0, hi: 0 }
+  g.beginPath()
   for (let px = Math.max(0, Math.floor(x)); px < Math.min(width, Math.ceil(x + w)); px++) {
     const a = Math.floor(b.offset * clip.sampleRate + (px - x) * perPx)
     peakRange(clip, a, Math.floor(a + perPx) + 1, perPx, pk)
-    g.fillRect(px, mid - pk.hi * amp, 1, Math.max(1, (pk.hi - pk.lo) * amp))
+    g.rect(px, mid - pk.hi * amp, 1, Math.max(1, (pk.hi - pk.lo) * amp))
   }
+  g.fill()
 }
 
 export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: TimelineView, selected: string[], range: Range | null, o: DrawOptions, c: TimelineColors) {
@@ -113,14 +124,24 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
   g.rect(0, TOP, w, h - TOP)
   g.clip()
   const slots = layoutRows(p.blocks)
+  // 元の音とトラックごとの波形ブロックは、描く前に一度だけ引けるようにする（波形ブロックごとに全体を探さない）
+  const sources = new Map(p.sources.map((s) => [s.id, s]))
+  const byTrack = new Map<string, Block[]>()
+  for (const b of p.blocks) {
+    const list = byTrack.get(b.track)
+    if (list) list.push(b)
+    else byTrack.set(b.track, [b])
+  }
+  const selectedSet = new Set(selected)
   p.tracks.forEach((track, i) => {
     const laneH = trackHeight(track)
     const laneY = trackTop(p, i) - o.vscroll
     if (laneY > h || laneY + laneH < TOP) return
     g.fillStyle = c.lane
     g.fillRect(0, laneY + laneH - 1, w, 1)
-    for (const b of p.blocks) {
-      if (b.track !== track.id) continue
+    const audible = ownAudible(p, track)
+    for (const b of byTrack.get(track.id) ?? []) {
+      const source = sources.get(b.source)
       const slot = slots.get(b.id) ?? { row: 0, rows: 1 }
       const H = laneH / slot.rows
       const y = laneY + slot.row * H
@@ -128,13 +149,13 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       const bw = b.length * view.pps
       if (x > w || x + bw < 0) continue
       // 鳴らないトラック（ミュート、ほかのソロ）と、ミュートした波形ブロックは薄く出す（WeVocalSynth と同じ）。フリーズ中のトラックも少し薄くする（編集できない）
-      g.globalAlpha = b.mute || !ownAudible(p, track) ? 0.35 : track.frozen ? 0.6 : 1
-      g.fillStyle = selected.includes(b.id) ? c.blockSelected : c.block
+      g.globalAlpha = b.mute || !audible ? 0.35 : track.frozen ? 0.6 : 1
+      g.fillStyle = selectedSet.has(b.id) ? c.blockSelected : c.block
       g.fillRect(x, y + 2, bw, H - 5)
       g.fillStyle = c.wave
       // 低い段では名前の行を省いて波形だけにする
       const label = H >= 40
-      drawBlockWave(g, b, p, x, y + (label ? 16 : 3), bw, H - (label ? 20 : 6), w)
+      drawBlockWave(g, b, source, x, y + (label ? 16 : 3), bw, H - (label ? 20 : 6), w)
       // フェード
       g.strokeStyle = c.text
       g.beginPath()
@@ -148,7 +169,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       }
       g.stroke()
       // 名前とピッチ、音量
-      const name = p.sources.find((s) => s.id === b.source)?.name ?? ''
+      const name = source?.name ?? ''
       const sign = (v: number) => (v > 0 ? `+${v}` : `${v}`)
       const info = [b.pitch ? sign(b.pitch) : '', b.rate !== 1 ? `×${+b.rate.toFixed(3)}` : '', b.formant ? `F${sign(b.formant)}` : '', b.gain ? `${sign(b.gain)} dB` : ''].filter(Boolean).join('  ')
       if (label) {

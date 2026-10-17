@@ -11,10 +11,23 @@ export interface Slot {
  * トラックの中で、重なりがつながっている波形ブロックのまとまりごとに段を割り当てる。
  * 重なっていないものは 1 段（トラックの高さいっぱい）
  */
-export function layoutRows(blocks: Block[]): Map<string, Slot> {
+/** 波形ブロックの並びごとの結果（並びは書き換えずに作り直すので、同じ配列なら同じ結果。描くたびに全部を並べ直さない） */
+const cache = new WeakMap<Block[], Map<string, Slot>>()
+
+export function layoutRows(blocks: Block[]): ReadonlyMap<string, Slot> {
+  let out = cache.get(blocks)
+  if (!out) cache.set(blocks, (out = compute(blocks)))
+  return out
+}
+
+function compute(blocks: Block[]): Map<string, Slot> {
   const out = new Map<string, Slot>()
   const byTrack = new Map<string, Block[]>()
-  for (const b of blocks) byTrack.set(b.track, [...(byTrack.get(b.track) ?? []), b])
+  for (const b of blocks) {
+    const list = byTrack.get(b.track)
+    if (list) list.push(b)
+    else byTrack.set(b.track, [b])
+  }
   for (const list of byTrack.values()) {
     const sorted = [...list].sort((a, b) => a.start - b.start)
     let group: Block[] = []

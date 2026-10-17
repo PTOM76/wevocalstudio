@@ -90,8 +90,15 @@ function curveKey(b: Block) {
   return `${b.curve.from}:${b.curve.st.length}:${h}|${env}`
 }
 
+/** 波形ブロックごとの paramsOf（Block は書き換えずに作り直すので、同じオブジェクトなら同じ値。描画と同期のたびにカーブ全体をハッシュしないように） */
+const paramsCache = new WeakMap<Block, string>()
+
 /** 範囲のほかに、作る音を決める値 */
-const paramsOf = (b: Block) => `${b.source}|${b.pitch}|${b.rate}|${b.formant}|${b.algorithm}|${b.preserveFormant}|${curveKey(b)}`
+function paramsOf(b: Block) {
+  let v = paramsCache.get(b)
+  if (v === undefined) paramsCache.set(b, (v = `${b.source}|${b.pitch}|${b.rate}|${b.formant}|${b.algorithm}|${b.preserveFormant}|${curveKey(b)}`))
+  return v
+}
 
 /** 波形ブロックが使う、元の音の範囲（秒） */
 const spanOf = (b: Block): [number, number] => [b.offset, b.offset + b.length * b.rate]
