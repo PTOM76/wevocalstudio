@@ -65,6 +65,8 @@ export interface InstrumentSlot {
 export interface BaseBlock {
   id: string
   track: string
+  /** 既定名を上書きする表示名（空欄なら音源名などを使う） */
+  name?: string
   /** 時間軸での開始位置（秒） */
   start: number
   /** 長さ（秒。時間軸の上での長さ） */
@@ -88,6 +90,8 @@ export interface Note {
 
 /** MIDI ブロック。音符を MIDI のまま持ち、トラックの音源で鳴らす */
 export interface MidiBlock extends BaseBlock {
+  /** MIDI ファイルから読み込んだときの既定表示名 */
+  defaultName?: string
   notes: Note[]
 }
 

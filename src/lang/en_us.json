@@ -24,6 +24,8 @@
   "block.mixed": "(mixed)",
   "block.source": "Source",
   "block.sourceFile": "Load from file…",
+  "block.displayName": "Display name",
+  "block.nameHint": "Leave blank to use the source filename or default name.",
 
   "error.failed": "Failed: {error}",
   "error.noRecord": "Recording is not supported in this browser",
@@ -382,6 +384,7 @@
   "track.propertiesMany": "Properties for {n} tracks",
   "track.propertiesHelp": "Mixed values are blank. In a mixed field, prefix a number with + or - to adjust each track by that amount. Only edited fields are applied.",
   "track.mixed": "Mixed",
+  "track.displayName": "Display name",
 
   "export.title": "Export",
   "export.format": "Format",

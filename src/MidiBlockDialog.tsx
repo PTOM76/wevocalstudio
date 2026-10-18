@@ -1,5 +1,5 @@
 // MIDI ブロックのプロパティ（位置、長さ、ミュート）。音符はピアノロールで編集する
-import { Box, Button, DialogActions, DialogContent, FormControlLabel, Switch, Typography } from '@mui/material'
+import { Box, Button, DialogActions, DialogContent, FormControlLabel, Switch, TextField, Typography } from '@mui/material'
 import { NumberInput, WindowDialog, pevenFont } from 'pevenmui'
 import { useT } from './i18n'
 import type { MidiBlock } from './project'
@@ -14,10 +14,18 @@ export default function MidiBlockDialog(p: { open: boolean; block: MidiBlock | n
     </Box>
   )
   return (
-    <WindowDialog open={p.open} onClose={p.onClose} title={t('midiProps.title')} name="midiProps" width={380} height={300} dialogProps={{ fullWidth: true, maxWidth: 'xs' }}>
+    <WindowDialog open={p.open} onClose={p.onClose} title={t('midiProps.title')} name="midiProps" width={380} height={350} dialogProps={{ fullWidth: true, maxWidth: 'xs' }}>
       <DialogContent>
         {b && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <TextField
+              size="small"
+              label={t('block.displayName')}
+              value={b.name ?? ''}
+              placeholder={b.defaultName ?? 'MIDI'}
+              helperText={t('block.nameHint')}
+              onChange={(e) => p.onChange({ name: e.target.value.trim() || undefined }, 'midiprops:name')}
+            />
             {row(t('clip.start'), b.start, 'start', 0)}
             {row(t('midiProps.length'), b.length, 'length', 0.05)}
             <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{t('midiProps.notes', { n: b.notes.length })}</Typography>

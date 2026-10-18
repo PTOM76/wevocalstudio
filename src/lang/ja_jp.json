@@ -24,6 +24,8 @@
   "block.mixed": "（混在）",
   "block.source": "元の音",
   "block.sourceFile": "ファイルから読み込む…",
+  "block.displayName": "表示名",
+  "block.nameHint": "空欄なら音源ファイル名または既定名を表示します",
 
   "error.failed": "処理に失敗しました: {error}",
   "error.noRecord": "このブラウザでは録音できません",
@@ -382,6 +384,7 @@
   "track.propertiesMany": "{n} 個のトラックのプロパティ",
   "track.propertiesHelp": "値が混在する欄は空欄です。混在時に + または - を付けて入力すると各トラックの値から増減します。変更した欄だけ適用します。",
   "track.mixed": "混在",
+  "track.displayName": "表示名",
 
   "export.title": "書き出す",
   "export.format": "形式",

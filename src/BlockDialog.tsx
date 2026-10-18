@@ -29,7 +29,7 @@ const SECTIONS: { title: MessageKey; keys: NumberKey[] }[] = [
 ]
 
 /** 変えた値（触った欄だけ） */
-export type BlockEdit = Partial<Pick<Block, NumberKey | 'algorithm' | 'preserveFormant' | 'mute' | 'source'>>
+export type BlockEdit = Partial<Pick<Block, NumberKey | 'algorithm' | 'preserveFormant' | 'mute' | 'source'>> & { name?: string | undefined }
 
 /** 混在の欄に足し引きした値（+1、-1 のように入力した分。ブロックごとの今の値に足す） */
 export type BlockAdd = Partial<Record<NumberKey, number>>
@@ -60,11 +60,13 @@ export default function BlockDialog(p: {
   const [edit, setEdit] = useState<BlockEdit>({})
   const [add, setAdd] = useState<BlockAdd>({})
   const [text, setText] = useState<Partial<Record<NumberKey, string>>>({})
+  const [nameText, setNameText] = useState<string | null>(null)
   const open = p.blocks.length > 0
   useEffect(() => {
     setEdit({})
     setAdd({})
     setText({})
+    setNameText(null)
   }, [open])
   if (!open) return null
 
@@ -75,6 +77,8 @@ export default function BlockDialog(p: {
     p.onClose()
   }
   const source = value('source')
+  const name = value('name')
+  const inferredName = !many && p.blocks[0] ? p.sources.find((s) => s.id === p.blocks[0].source)?.name : undefined
   // 今の値（みんな違う項目は覚えない）と、プリセットを呼び出したときに欄へ入れる
   const current = Object.fromEntries(PRESET_KEYS.flatMap((k) => (value(k) === null ? [] : [[k, value(k)]]))) as BlockPreset
   const applyPreset = (pr: BlockPreset) => {
@@ -162,6 +166,18 @@ export default function BlockDialog(p: {
           </Typography>
         )}
         <Stack spacing={2.5} sx={{ pt: 1 }}>
+          <TextField
+            size="small"
+            label={t('block.displayName')}
+            value={nameText ?? (name || '')}
+            placeholder={name === null ? t('block.mixed') : inferredName}
+            helperText={t('block.nameHint')}
+            onChange={(e) => {
+              const raw = e.target.value
+              setNameText(raw)
+              setEdit((current) => ({ ...current, name: raw.trim() || undefined }))
+            }}
+          />
           <Stack spacing={1.5}>
             {heading('block.sectionSource')}
             <TextField

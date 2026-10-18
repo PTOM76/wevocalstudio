@@ -61,7 +61,7 @@ export function drawMidiBlocks(g: CanvasRenderingContext2D, p: Project, trackId:
     g.rect(r.x, r.y, r.w, r.h)
     g.clip()
     g.fillStyle = c.text
-    g.fillText(`MIDI  ${b.notes.length}`, r.x + 4, r.y + 9)
+    g.fillText(b.name?.trim() || b.defaultName || 'MIDI', r.x + 4, r.y + 9)
     const [lo, hi] = pitchSpan(b)
     const top = r.y + (r.h >= 40 ? 14 : 3)
     const h = r.h - (top - r.y) - 3

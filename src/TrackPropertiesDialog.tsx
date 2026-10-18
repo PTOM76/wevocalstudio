@@ -7,7 +7,7 @@ import type { Track } from './project'
 
 type NumberKey = 'volume' | 'pan'
 type BooleanKey = 'mute' | 'solo' | 'invert'
-export type TrackPropertyEdit = Partial<Pick<Track, NumberKey | BooleanKey>>
+export type TrackPropertyEdit = Partial<Pick<Track, NumberKey | BooleanKey | 'name'>>
 export type TrackPropertyAdd = Partial<Record<NumberKey, number>>
 
 const LIMITS: Record<NumberKey, [number, number, number]> = {
@@ -34,12 +34,14 @@ export default function TrackPropertiesDialog(p: {
   const [edit, setEdit] = useState<TrackPropertyEdit>({})
   const [add, setAdd] = useState<TrackPropertyAdd>({})
   const [text, setText] = useState<Partial<Record<NumberKey, string>>>({})
+  const [nameText, setNameText] = useState<string | null>(null)
   const ids = p.tracks.map((track) => track.id).join(',')
 
   useEffect(() => {
     setEdit({})
     setAdd({})
     setText({})
+    setNameText(null)
   }, [p.open, ids])
 
   if (!p.open || !p.tracks.length) return null
@@ -115,6 +117,22 @@ export default function TrackPropertiesDialog(p: {
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <Typography variant="body2" color="text.secondary">{t('track.propertiesHelp')}</Typography>
+          <TextField
+            size="small"
+            label={t('track.displayName')}
+            value={nameText ?? (edit.name ?? (p.tracks.every((track) => track.name === p.tracks[0].name) ? p.tracks[0].name : ''))}
+            placeholder={p.tracks.every((track) => track.name === p.tracks[0].name) ? undefined : t('track.mixed')}
+            onChange={(event) => {
+              const raw = event.target.value
+              setNameText(raw)
+              const name = raw.trim()
+              setEdit((state) => {
+                if (name) return { ...state, name }
+                const { name: _, ...rest } = state
+                return rest
+              })
+            }}
+          />
           <Stack direction="row" spacing={1.5}>
             {numberField('volume')}
             {numberField('pan')}

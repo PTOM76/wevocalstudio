@@ -9,7 +9,7 @@ export function defaultInstrument(): InstrumentSlot {
 }
 
 /** MIDI ファイルを、at 秒から始まるトラックと MIDI ブロックにして足したプロジェクト。音符が 1 つもなければ null */
-export async function importMidi(p: Project, file: Blob, at: number): Promise<Project | null> {
+export async function importMidi(p: Project, file: File, at: number): Promise<Project | null> {
   const midi = parseMidi(await file.arrayBuffer())
   if (!midi.tracks.length) return null
   const tracks: Track[] = []
@@ -25,6 +25,7 @@ export async function importMidi(p: Project, file: Blob, at: number): Promise<Pr
       start: at + start,
       length: Math.max(0.05, end - start),
       mute: false,
+      defaultName: file.name,
       notes: mt.notes.map((n) => ({ t: n.start - start, dur: Math.max(0.02, n.end - n.start), pitch: n.note, vel: 0.8 })),
     })
   }
