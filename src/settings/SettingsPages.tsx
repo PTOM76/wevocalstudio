@@ -15,6 +15,7 @@ import DataSection from './DataSection'
 import PluginsSection from './PluginsSection'
 import type { Category } from './settingsSearch'
 import type { Settings } from './settings'
+import ProjectSection, { type ProjectSettings } from './ProjectSection'
 
 /** 抽出のモデルの呼び名（WeVocalSynth と同じ） */
 const MODEL_LABELS: Record<VocalModel, MessageKey> = { fp16: 'addon.modelLight', int8: 'addon.modelStandard', fp32: 'addon.modelPrecise', 'voc-ft': 'addon.modelVocalHq', 'inst-hq4': 'addon.modelInstHq', kara2: 'addon.modelLead' }
@@ -34,11 +35,12 @@ function InputDeviceRow(p: { value: string; onChange: (v: string) => void; t: (k
 }
 
 /** 設定画面の分類ごとの中身。定義（items/）のある項目は S('名前') の 1 行で置け、検索の対象にも自動で入る */
-export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings; set: (patch: Partial<Settings>) => void; t: (key: MessageKey, vars?: Record<string, string | number>) => string; onClose: () => void; go: (category: Category) => void }): Record<Category, ReactNode> {
+export function settingsPages({ draft, set, t, onClose, go, project }: { draft: Settings; set: (patch: Partial<Settings>) => void; t: (key: MessageKey, vars?: Record<string, string | number>) => string; onClose: () => void; go: (category: Category) => void; project: ProjectSettings }): Record<Category, ReactNode> {
   const S = (name: keyof Settings) => <SettingRow name={name} draft={draft} set={set} t={t} />
   // 操作の名前はメニューと同じ（menu.<操作の名前>）
   const keyActions = ACTIONS.map((a) => ({ ...a, label: t(`menu.${a.id}` as MessageKey) }))
   return {
+    project: <ProjectSection project={project} />,
     general: (
       <>
         <Group title={t('settings.groupStartup')}>

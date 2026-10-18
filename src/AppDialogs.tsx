@@ -42,6 +42,7 @@ export default function AppDialogs(p: {
   onSettingsChange: (patch: Partial<Settings>) => void
   doc: ReturnType<typeof useProject>
   fileName: string
+  onRenameProject: (name: string) => void
   range: Range | null
   onExport: (s: ExportSettings, win?: Window | null) => void
   onOptimize: (o: OptimizeOptions) => void
@@ -107,7 +108,13 @@ export default function AppDialogs(p: {
         onFinishChange={(f) => p.onSettingsChange({ exportNormalize: f.normalize, exportFadeMs: f.fadeMs })}
       />
       <OptimizeDialog open={dialogs.isOpen('optimize')} selected={dialogs.arg<string[]>('optimize') ?? []} onClose={dialogs.closer('optimize')} onRun={p.onOptimize} />
-      <SettingsDialog open={dialogs.isOpen('settings')} onClose={dialogs.closer('settings')} settings={p.settings} onChange={p.onSettingsChange} />
+      <SettingsDialog
+        open={dialogs.isOpen('settings')}
+        onClose={dialogs.closer('settings')}
+        settings={p.settings}
+        onChange={p.onSettingsChange}
+        project={{ name: p.fileName, tempo: doc.project.tempo, onRename: p.onRenameProject, onTempoChange: doc.updateTempo }}
+      />
       <LicensesDialog
         open={dialogs.isOpen('licenses')}
         onClose={dialogs.closer('licenses')}

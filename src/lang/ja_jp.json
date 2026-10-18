@@ -282,6 +282,7 @@
   "settings.openAddons": "追加機能を開く",
   "settings.cat.process": "処理",
   "settings.cat.plugins": "プラグイン",
+  "settings.cat.project": "プロジェクト",
   "settings.groupDefaultAlgorithm": "処理方式",
   "settings.anticipativeFx": "重いプラグインを先に計算して鳴らす（試験的）",
   "settings.anticipativeFxHelp": "外から追加した重いプラグインを持つトラックの音を、再生位置より先に別のスレッドで作っておきます。音を出す処理の負担が減って途切れにくくなりますが、再生を始めるまで少し待ちます。再生中にそのトラックを編集すると、次に再生を始めるまでは通常の処理に戻ります。",
@@ -298,6 +299,10 @@
   "settings.defaultBlockFade": "新しいブロックにフェードを付ける",
   "settings.defaultBlockFadeMs": "フェードの長さ",
   "settings.groupFade": "フェード",
+  "settings.groupProject": "プロジェクト",
+  "settings.groupTempo": "テンポと拍子",
+  "settings.bpm": "テンポ",
+  "settings.beatOffset": "1拍目の位置",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
@@ -911,5 +916,7 @@
   "tool.analyze": "解析する",
   "tool.running": "処理中…",
   "tool.noSelection": "波形ブロックを選んでください",
-  "tool.help": "選んだ波形ブロック {n} 個の今の音に対して実行し、結果の音を新しい元の音にして置き換えます（元に戻せます）"
+  "tool.help": "選んだ波形ブロック {n} 個の今の音に対して実行し、結果の音を新しい元の音にして置き換えます（元に戻せます）",
+
+  "project.name": "プロジェクト名"
 }

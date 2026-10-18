@@ -83,6 +83,7 @@ src/mixer/
 src/settings/
   DataSection.tsx  設定の「データ」（使用量と、作業データ、キャッシュ、追加機能、設定の削除。部品と処理は PevenMUI。WeVocalSynth と同じ）
   PluginsSection.tsx  設定の「プラグイン」（導入と管理。部品は wevocal-lib の PluginManager。WeVocalSynth と共通）
+  ProjectSection.tsx  プロジェクト設定の名前とテンポを編集する
   settings.ts  設定の保存と読み込み、Context（PevenMUI の createSettingsStore。WeVocalSynth と同じ）。項目の定義は items/ にある
   SettingsDialog.tsx  設定のダイアログ（PevenMUI の設定画面に、分類と中身を渡す。WeVocalSynth と同じ）
   SettingsPages.tsx  設定画面の分類ごとの中身（定義のある項目は S(名前) の 1 行。WeVocalSynth と同じ形）

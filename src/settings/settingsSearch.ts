@@ -7,12 +7,13 @@ import { GROUPS } from './items'
 import { searchKeys, type AnyItem } from './items/define'
 
 /** 設定画面の分類 */
-export type Category = 'general' | 'edit' | 'keys' | 'file' | 'display' | 'process' | 'vocal' | 'addons' | 'plugins' | 'data' | 'debug'
+export type Category = 'project' | 'general' | 'edit' | 'keys' | 'file' | 'display' | 'process' | 'vocal' | 'addons' | 'plugins' | 'data' | 'debug'
 /** 並び順と親子（親のない分類と、その下のサブアイテム） */
-const TREE: [Category, Category?][] = [['general'], ['edit', 'general'], ['keys', 'general'], ['file', 'general'], ['display'], ['process'], ['vocal', 'process'], ['addons'], ['plugins'], ['data'], ['debug']]
+const TREE: [Category, Category?][] = [['project'], ['general'], ['edit', 'general'], ['keys', 'general'], ['file', 'general'], ['display'], ['process'], ['vocal', 'process'], ['addons'], ['plugins'], ['data'], ['debug']]
 
 /** 検索の対象のうち、定義（items/）にないもの: グループ名と、自前の画面の項目の訳文キー */
 const INDEX: Record<Category, MessageKey[]> = {
+  project: ['settings.groupProject', 'project.name', 'settings.groupTempo', 'settings.bpm', 'settings.beatsPerBar', 'settings.beatOffset'],
   general: ['settings.groupStartup', 'settings.groupWindows', 'settings.groupOutput', 'settings.outputDevice', 'settings.outputDeviceHelp', 'settings.groupRecord', 'settings.inputDevice', 'settings.groupUpdate', 'menu.checkUpdate'],
   edit: ['settings.groupHistory', 'settings.groupInput'],
   keys: ['settings.groupShortcuts', ...ACTIONS.map((a) => `menu.${a.id}` as MessageKey)],
