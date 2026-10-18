@@ -295,6 +295,9 @@
   "settings.anticipativeCacheMbHelp": "Keeps pre-computed audio after playback stops, so replaying the same part does not need to compute it again. Set to 0 to keep nothing.",
   "settings.addonFolder": "Save to a specified folder",
   "settings.addonFolderHelp": "Saves add-ons such as models to a specified folder instead of the browser's storage. Settings and autosaved work are also copied there, so you can restore them even after removing the PWA (Chrome, Edge). Installed add-ons can also be moved to this folder",
+  "settings.defaultBlockFade": "Apply fades to new blocks",
+  "settings.defaultBlockFadeMs": "Fade duration",
+  "settings.groupFade": "Fades",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
@@ -859,6 +862,7 @@
   "plugins.vst.warning": "The Windows VST runs in an emulator. Even if it loads, it may not work, for example it may be silent or sound wrong",
   "plugins.vst.load": "Estimated load: about {n}% of playback time (per instance)",
   "plugins.vst.loadHeavy": "Estimated load: about {n}% of playback time. It cannot keep up with playback, so it is bypassed during playback and applied when exporting",
+  "plugins.warning.folderOnly": "The plugin was saved to the selected folder but not browser storage. Keep access to the folder enabled to use it.",
 
   "optimize.title": "Save Optimized",
   "optimize.help": "Saves a lighter copy of the project as a separate file. The current project is not changed",
