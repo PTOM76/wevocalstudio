@@ -271,7 +271,7 @@
   "settings.showVoiceSplit": "「和音を分離」を表示する",
   "settings.showVoiceSplitHelp": "「ツール」と波形ブロックの右クリックの「ボーカル抽出」に、選択した波形ブロックを2つの声（高い方と低い方、または大きい方と小さい方）に分離する項目を表示する。分離した音は新しいトラックに配置される。単純な和音向け",
   "settings.showDevPlugins": "開発用のプラグインを表示する",
-  "settings.showDevPluginsHelp": "FX の「追加」に、作る人向けの雛形のプラグインを表示します",
+  "settings.showDevPluginsHelp": "FX の「追加」に、開発者向けの雛形のプラグインを表示します",
   "settings.cat.addons": "追加機能",
   "settings.groupAddonVocal": "ボーカル抽出のモデル",
   "settings.groupAddonVocalRuntime": "ボーカル抽出の実行環境",
