@@ -1,8 +1,8 @@
 // メニューの下の小さなツールバー（WeVocalSynth と同じ形）。再生位置に追従するか、スナップ、拡大と縮小
 import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
-import { SmallButton, ToolbarDivider } from 'pevenmui'
-import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faWaveSquare, faScissors, faCopy, faPaste, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { OverflowRow, SmallButton, ToolbarDivider } from 'pevenmui'
+import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faWaveSquare, faScissors, faCopy, faPaste, faClone, faSliders, faTrashCan, faCropSimple, faXmark, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 import { countRender } from 'pevenmui/debug'
@@ -27,6 +27,19 @@ export default function Toolbar(p: {
   onPitchEnvelope: () => void
   canCut: boolean
   canPaste: boolean
+  hasBlocks: boolean
+  hasRange: boolean
+  canSplit: boolean
+  canDuplicate: boolean
+  canDelete: boolean
+  canProperties: boolean
+  canTrimRange: boolean
+  onSplit: () => void
+  onDuplicate: () => void
+  onDelete: () => void
+  onProperties: () => void
+  onTrimRange: () => void
+  onClearSelection: () => void
   onFollow: () => void
   onSnap: () => void
   onZoom: (factor: number) => void
@@ -42,14 +55,33 @@ export default function Toolbar(p: {
       <ToolButton icon={faCopy} label="menu.copy" action="copy" disabled={!p.canCut} onClick={p.onCopy} />
       <ToolButton icon={faPaste} label="menu.paste" action="paste" disabled={!p.canPaste} onClick={p.onPaste} />
       <Divider />
-      <ToolButton icon={faArrowsLeftRightToLine} label="menu.follow" action="follow" pressed={p.follow} onClick={p.onFollow} />
-      <ToolButton icon={faMagnet} label="menu.snap" action="snap" pressed={p.snap} onClick={p.onSnap} />
-      <ToolButton icon={faChartLine} label="menu.envelope" action="envelope" pressed={p.envelope} onClick={p.onEnvelope} />
-      <ToolButton icon={faWaveSquare} label="menu.pitchEnvelope" action="pitchEnvelope" pressed={p.pitchEnvelope} onClick={p.onPitchEnvelope} />
-      <Divider />
-      <ToolButton icon={faMagnifyingGlassPlus} label="menu.zoomIn" action="zoomIn" onClick={() => p.onZoom(1.5)} />
-      <ToolButton icon={faMagnifyingGlassMinus} label="menu.zoomOut" action="zoomOut" onClick={() => p.onZoom(1 / 1.5)} />
-      {p.children}
+      <OverflowRow>
+        {p.hasBlocks && (
+          <>
+            <ToolButton icon={faClone} label="editBar.duplicate" action="duplicate" disabled={!p.canDuplicate} onClick={p.onDuplicate} />
+            <ToolButton icon={faArrowsLeftRightToLine} label="editBar.split" action="split" disabled={!p.canSplit} onClick={p.onSplit} />
+            <ToolButton icon={faTrashCan} label="editBar.delete" action="delete" disabled={!p.canDelete} onClick={p.onDelete} />
+            <ToolButton icon={faSliders} label="editBar.properties" action="properties" disabled={!p.canProperties} onClick={p.onProperties} />
+            <ToolButton icon={faXmark} label="editBar.clearRange" action="clearRange" onClick={p.onClearSelection} />
+            <Divider />
+          </>
+        )}
+        {p.hasRange && (
+          <>
+            <ToolButton icon={faCropSimple} label="editBar.trimRange" action="trimRange" disabled={!p.canTrimRange} onClick={p.onTrimRange} />
+            {!p.hasBlocks && <ToolButton icon={faXmark} label="editBar.clearRange" action="clearRange" onClick={p.onClearSelection} />}
+            <Divider />
+          </>
+        )}
+        <ToolButton icon={faArrowsLeftRightToLine} label="menu.follow" action="follow" pressed={p.follow} onClick={p.onFollow} />
+        <ToolButton icon={faMagnet} label="menu.snap" action="snap" pressed={p.snap} onClick={p.onSnap} />
+        <ToolButton icon={faChartLine} label="menu.envelope" action="envelope" pressed={p.envelope} onClick={p.onEnvelope} />
+        <ToolButton icon={faWaveSquare} label="menu.pitchEnvelope" action="pitchEnvelope" pressed={p.pitchEnvelope} onClick={p.onPitchEnvelope} />
+        <Divider />
+        <ToolButton icon={faMagnifyingGlassPlus} label="menu.zoomIn" action="zoomIn" onClick={() => p.onZoom(1.5)} />
+        <ToolButton icon={faMagnifyingGlassMinus} label="menu.zoomOut" action="zoomOut" onClick={() => p.onZoom(1 / 1.5)} />
+        {p.children}
+      </OverflowRow>
     </Box>
   )
 }

@@ -123,6 +123,7 @@ export function useActions(c: ActionContext) {
   const ids = chosen.map((b) => b.id)
   // 波形ブロックか MIDI ブロックを選んでいる
   const any = chosen.length > 0 || midiChosen.length > 0
+  const canSplit = [...chosen, ...midiChosen].some((b) => c.cursor > b.start + 0.001 && c.cursor < b.start + b.length - 0.001)
   const anyWave = chosen.length > 0
   const track = doc.project.tracks.find((tr) => tr.id === c.selectedTrack)
   // コピーした波形ブロック。元の音はプロジェクトにあるものを指す
@@ -204,7 +205,7 @@ export function useActions(c: ActionContext) {
     addMarker: { run: () => doc.addMarker(c.cursor) },
     nextMarker: { run: () => { const m = doc.project.markers.find((m) => m.time > c.cursor + 1e-3); if (m) c.seek(m.time) } },
     prevMarker: { run: () => { const m = doc.project.markers.findLast((m) => m.time < c.cursor - 1e-3); if (m) c.seek(m.time) } },
-    split: { run: () => doc.split(c.cursor, ids) },
+    split: { enabled: canSplit, run: () => doc.split(c.cursor, [...ids, ...midiChosen.map((b) => b.id)]) },
     splitSilence: { enabled: anyWave, run: () => doc.splitBySilence(ids) },
     selectAll: { run: () => c.select(doc.project.blocks.map((b) => b.id)) },
     // 範囲の両端で、かかっている波形ブロックを全部分ける

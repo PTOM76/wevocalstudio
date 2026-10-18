@@ -425,6 +425,19 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onPitchEnvelope={commands.pitchEnvelope.run}
         canCut={commands.cut.enabled !== false}
         canPaste={commands.paste.enabled !== false}
+        hasBlocks={selected.length > 0}
+        hasRange={!!range}
+        canSplit={commands.split.enabled !== false}
+        canDuplicate={commands.duplicate.enabled !== false}
+        canDelete={commands.delete.enabled !== false}
+        canProperties={commands.properties.enabled !== false}
+        canTrimRange={commands.trimRange.enabled !== false}
+        onSplit={commands.split.run}
+        onDuplicate={commands.duplicate.run}
+        onDelete={commands.delete.run}
+        onProperties={commands.properties.run}
+        onTrimRange={commands.trimRange.run}
+        onClearSelection={commands.clearRange.run}
         onFollow={commands.follow.run}
         onSnap={commands.snap.run}
         onZoom={(f) => setView((v) => ({ ...v, pps: Math.min(2000, Math.max(2, v.pps * f)) }))}
