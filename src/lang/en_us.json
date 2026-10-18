@@ -841,7 +841,7 @@
   "fx.paste": "Paste",
   "fx.duplicate": "Duplicate",
 
-  "plugins.intro": "Add plugins for FX from a URL. Added plugins are saved on this device and work offline (WebAudio Modules are fetched from the network each time).",
+  "plugins.intro": "Browse the catalog or enter a plugin URL from a trusted source. Installed plugins are saved on this device and work offline (WebAudio Modules are fetched each time they load).",
   "plugins.url": "URL of a plugin manifest or a WebAudio Module (.js)",
   "plugins.add": "Add",
   "plugins.empty": "No plugins added",
@@ -875,6 +875,14 @@
   "plugins.vst.load": "Estimated load: about {n}% of playback time (per instance)",
   "plugins.vst.loadHeavy": "Estimated load: about {n}% of playback time. It cannot keep up with playback, so it is bypassed during playback and applied when exporting",
   "plugins.warning.folderOnly": "The plugin was saved to the selected folder but not browser storage. Keep access to the folder enabled to use it.",
+  "plugins.catalog": "Plugin catalog",
+  "plugins.catalog.search": "Search by name, author, or category",
+  "plugins.catalog.loading": "Loading plugin catalog",
+  "plugins.catalog.error": "Could not load plugin catalog",
+  "plugins.catalog.empty": "No matching plugins",
+  "plugins.catalog.unsupported": "Not available in Studio",
+  "plugins.catalog.installed": "Installed",
+  "plugins.catalog.source": "Website",
 
   "optimize.title": "Save Optimized",
   "optimize.help": "Saves a lighter copy of the project as a separate file. The current project is not changed",

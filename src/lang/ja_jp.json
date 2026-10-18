@@ -841,7 +841,7 @@
   "fx.paste": "貼り付け",
   "fx.duplicate": "複製",
 
-  "plugins.intro": "FX に使うプラグインを URL から追加します。追加したプラグインはこの端末に保存され、ネットがなくても使えます（WebAudio Modules は読み込みのたびにネットから取得します）。",
+  "plugins.intro": "カタログから選ぶか、信頼できるプラグインの URL を入力します。追加したプラグインはこの端末に保存され、ネットがなくても使えます（WebAudio Modules は読み込みのたびにネットから取得します）。",
   "plugins.url": "プラグインのマニフェスト、または WebAudio Modules（.js）の URL",
   "plugins.add": "追加",
   "plugins.empty": "追加したプラグインはありません",
@@ -875,6 +875,14 @@
   "plugins.vst.load": "重さの目安: 再生の時間の約 {n}%（1 つ分）",
   "plugins.vst.loadHeavy": "重さの目安: 再生の時間の約 {n}%。再生には間に合わないため、再生中は素通しになり、書き出しで掛かります",
   "plugins.warning.folderOnly": "プラグインは指定フォルダーに保存しましたが、ブラウザー内キャッシュには保存できませんでした。フォルダーへのアクセスを許可したままご利用ください。",
+  "plugins.catalog": "プラグイン一覧",
+  "plugins.catalog.search": "名前、作者、カテゴリで検索",
+  "plugins.catalog.loading": "プラグイン一覧を読み込んでいます",
+  "plugins.catalog.error": "プラグイン一覧を読み込めませんでした",
+  "plugins.catalog.empty": "一致するプラグインはありません",
+  "plugins.catalog.unsupported": "Studioでは利用できません",
+  "plugins.catalog.installed": "インストール済み",
+  "plugins.catalog.source": "作者サイト",
 
   "optimize.title": "最適化して保存",
   "optimize.help": "プロジェクトを軽くして、別のファイルとして保存します。今のプロジェクトは変わりません",
