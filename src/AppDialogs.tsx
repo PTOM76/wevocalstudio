@@ -245,7 +245,7 @@ export default function AppDialogs(p: {
         bpm={project.tempo.bpm}
         onClose={dialogs.closer('synth')}
         onCreate={(clip, name) => {
-          doc.apply((q) => addClipTrack(q, clip, name, p.cursor))
+          doc.apply((q) => addClipTrack(q, clip, name, p.cursor, p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0))
           dialogs.close('synth')
         }}
       />

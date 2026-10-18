@@ -15,17 +15,20 @@ export function wvspTargets(p: Project, selected: string[]): string[] {
   return p.tracks.filter((t) => (!picked || picked.has(t.id)) && (p.blocks.some((b) => b.track === t.id) || (p.midi ?? []).some((b) => b.track === t.id))).map((t) => t.id)
 }
 
-export async function exportWvsp(p: Project, fileName: string, selected: string[], onProgress?: (v: number) => void): Promise<Blob> {
+export async function exportWvsp(p: Project, fileName: string, selected: string[], onProgress?: (v: number) => void, signal?: AbortSignal): Promise<Blob> {
   const ids = wvspTargets(p, selected)
   const length = projectEnd(p)
   const tracks = []
   for (const [i, id] of ids.entries()) {
+    signal?.throwIfAborted()
     const t = p.tracks.find((x) => x.id === id)!
-    const clip = await renderTrack(p, id, length)
+    const clip = await renderTrack(p, id, length, 48000, signal)
+    signal?.throwIfAborted()
     // 先祖がミュートなら、このトラックもミュートで渡す（描画では先祖のミュートを外している）
     const mute = t.mute || ancestors(p, t).some((a) => a.mute) || !ownAudible(p, t)
     tracks.push({ info: { name: t.name, volume: t.volume, pan: t.pan, invert: !!t.invert, mute, solo: t.solo, eq: firstEq(t.fx), fx: t.fx }, original: clip, edited: clip })
     onProgress?.((i + 1) / ids.length)
   }
+  signal?.throwIfAborted()
   return writeWvsp({ fileName, named: true, tempo: p.tempo, markers: p.markers, active: 0 }, tracks)
 }

@@ -34,6 +34,9 @@ export const edit = defineItems('edit', {
   historyLimit: number(200, { label: 'settings.historyLimit', min: 1, max: 1000, step: 1 }),
   // スライダー（音量、パン）をダブルクリックで既定の値に戻す
   sliderDoubleClickReset: check(true, { label: 'settings.sliderReset' }),
+  // 新しい波形ブロックと分割点に付けるフェード
+  defaultBlockFade: check(true, { label: 'settings.defaultBlockFade' }),
+  defaultBlockFadeMs: number(10, { label: 'settings.defaultBlockFadeMs', min: 1, max: 500, step: 1, unit: 'ms' }),
 })
 
 /** 「キーとマウス」 */

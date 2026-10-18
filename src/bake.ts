@@ -18,20 +18,23 @@ export interface Baked {
 }
 
 /** 波形ブロック 1 つだけを鳴らしたときの音をつくる（トラックの音量やパンは掛けない。ブロックの長さちょうど） */
-async function bakeOne(p: Project, b: Block, mode: BakeMode): Promise<Baked> {
+async function bakeOne(p: Project, b: Block, mode: BakeMode, signal?: AbortSignal): Promise<Baked> {
   const track = newTrack(1)
   const solo: Project = { ...newProject(), sources: p.sources, tracks: [track], blocks: [{ ...b, track: track.id, start: 0, mute: false, ...(mode === 'pitch' ? { gain: 0, fadeIn: 0, fadeOut: 0, envelope: undefined } : {}) }] }
-  const clip = await renderMix(solo, b.length)
+  const clip = await renderMix(solo, b.length, 48000, undefined, signal)
+  signal?.throwIfAborted()
   const name = p.sources.find((s) => s.id === b.source)?.name.replace(/\.[^.]+$/, '') ?? ''
   return { block: b.id, source: { id: newId(), name, clip, duration: clip.channels[0].length / clip.sampleRate } }
 }
 
 /** 選んだ波形ブロックを順に確定する（onProgress は 0〜1）。確定する範囲に加工がないものは、音が変わらないので飛ばす */
-export async function bakeBlocks(p: Project, ids: string[], onProgress: (v: number) => void, mode: BakeMode = 'all'): Promise<Baked[]> {
+export async function bakeBlocks(p: Project, ids: string[], onProgress: (v: number) => void, mode: BakeMode = 'all', signal?: AbortSignal): Promise<Baked[]> {
   const blocks = p.blocks.filter((b) => ids.includes(b.id) && (mode === 'all' || !isNeutral(b, mode)))
   const out: Baked[] = []
   for (const b of blocks) {
-    out.push(await bakeOne(p, b, mode))
+    signal?.throwIfAborted()
+    out.push(await bakeOne(p, b, mode, signal))
+    signal?.throwIfAborted()
     onProgress(out.length / blocks.length)
   }
   return out

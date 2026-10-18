@@ -5,7 +5,7 @@ import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip, type FxSlot } from 
 import { describeChange } from './history'
 import { defaultInstrument } from './midiImport'
 import type { MessageKey } from './i18n'
-import { BLOCK_LIMITS, DEFAULT_FADE, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, splitMidiBlock, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
+import { BLOCK_LIMITS, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, splitMidiBlock, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
 const PITCH_MAX = 256
@@ -38,7 +38,7 @@ async function decodeNamed(file: File): Promise<Clip> {
   }
 }
 
-export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
+export function useProject(defaults: PitchDefaults & { historyLimit: number; defaultFade: number }) {
   // 元に戻せる回数（設定）
   const limit = useRef(defaults.historyLimit)
   limit.current = defaults.historyLimit
@@ -130,7 +130,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
   const addClip = useCallback(
     (clip: Clip, name: string, track: string, start: number) => {
       const source: Source = { id: newId(), name, clip, duration: clip.channels[0].length / clip.sampleRate }
-      change((p) => ({ ...p, sources: [...p.sources, source], blocks: [...p.blocks, newBlock(track, source, start, defaultsRef.current)] }))
+      change((p) => ({ ...p, sources: [...p.sources, source], blocks: [...p.blocks, newBlock(track, source, start, defaultsRef.current, defaultsRef.current.defaultFade)] }))
     },
     [change],
   )
@@ -227,7 +227,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
             const named = track
             tracks = empty ? tracks.map((t) => (t.id === named.id ? named : t)) : [...tracks, named]
           }
-          return { ...p, sources: [...p.sources, source], tracks, blocks: [...p.blocks, newBlock(track.id, source, begin, defaultsRef.current)] }
+          return { ...p, sources: [...p.sources, source], tracks, blocks: [...p.blocks, newBlock(track.id, source, begin, defaultsRef.current, defaultsRef.current.defaultFade)] }
         })
         if (at) start += source.duration
       }
@@ -235,7 +235,18 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     [change],
   )
 
-  const addTrack = useCallback(() => change((p) => ({ ...p, tracks: [...p.tracks, newTrack(p.tracks.length + 1)] })), [change])
+  const addTrack = useCallback(
+    (after?: string | null) => {
+      const track = newTrack(0)
+      change((p) => {
+        const i = after ? p.tracks.findIndex((t) => t.id === after) : -1
+        const at = i < 0 ? p.tracks.length : subtreeEnd(p, i)
+        return { ...p, tracks: [...p.tracks.slice(0, at), { ...track, name: `Track ${p.tracks.length + 1}` }, ...p.tracks.slice(at)] }
+      })
+      return track.id
+    },
+    [change],
+  )
 
   /** トラックを波形ブロックごと写して、すぐ下に置く */
   const duplicateTrack = useCallback(
@@ -456,7 +467,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
           // 範囲は元の音の上の秒。時間軸の上では速度で割る
           return sounds.map((r, i) => {
             const length = (r.end - r.start) / b.rate
-            return { ...b, id: i ? newId() : b.id, start: b.start + r.start / b.rate, offset: b.offset + r.start, length, fadeIn: Math.min(DEFAULT_FADE, length / 2), fadeOut: Math.min(DEFAULT_FADE, length / 2) }
+            return { ...b, id: i ? newId() : b.id, start: b.start + r.start / b.rate, offset: b.offset + r.start, length, fadeIn: Math.min(defaultsRef.current.defaultFade, length / 2), fadeOut: Math.min(defaultsRef.current.defaultFade, length / 2) }
           })
         }),
       })),
@@ -468,7 +479,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number }) {
     (t: number, ids: string[] = []) =>
       change((p) => ({
         ...p,
-        blocks: p.blocks.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitBlock(b, t) ?? [b]))),
+        blocks: p.blocks.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitBlock(b, t, defaultsRef.current.defaultFade) ?? [b]))),
         ...(p.midi ? { midi: p.midi.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitMidiBlock(b, t) ?? [b]))) } : {}),
       })),
     [change],

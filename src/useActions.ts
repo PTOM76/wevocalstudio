@@ -19,6 +19,8 @@ export interface ActionContext {
   /** 選んでいる波形ブロック（複数） */
   selected: string[]
   selectedTrack: string | null
+  selectedTracks: string[]
+  defaultFade: number
   /** 範囲選択 */
   range: Range | null
   setRange: (r: Range | null) => void
@@ -189,6 +191,7 @@ export function useActions(c: ActionContext) {
     nudgeLeft: { enabled: any, run: () => nudge(-1) },
     nudgeRight: { enabled: any, run: () => nudge(1) },
     newProject: { run: c.newProject },
+    addTrack: { run: () => c.selectTrack(doc.addTrack(c.selectedTrack)) },
     toEnd: { run: () => c.seek(doc.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)) },
     snap: { run: c.toggleSnap },
     follow: { run: c.toggleFollow },
@@ -215,10 +218,10 @@ export function useActions(c: ActionContext) {
     },
     // 選択の解除（範囲と波形ブロック）
     clearRange: { enabled: !!c.range || any, run: () => (c.setRange(null), c.select([])) },
-    trimRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => cropToRange(p, c.range!)) },
-    deleteRange: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => deleteRange(p, c.range!)), c.setRange(null)) },
-    insertSilence: { enabled: !!c.range, run: () => c.range && doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start)) },
-    repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId)) },
+    trimRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => cropToRange(p, c.range!, c.defaultFade)) },
+    deleteRange: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => deleteRange(p, c.range!, c.defaultFade)), c.setRange(null)) },
+    insertSilence: { enabled: !!c.range, run: () => c.range && doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start, c.defaultFade)) },
+    repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId, c.defaultFade)) },
     normalize: { enabled: anyWave, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
     bake: { enabled: anyWave, run: () => c.bake(ids) },
     // 分けるのは 1 つずつ（選んでいる最後のもの）
@@ -246,8 +249,8 @@ export function useActions(c: ActionContext) {
     playRange: { enabled: !!c.range, run: () => c.range && c.playAt(c.range.start) },
     renameTrack: { enabled: !!c.selectedTrack, run: () => c.selectedTrack && c.openDialog('renameTrack', c.selectedTrack) },
     duplicateTrack: { enabled: !!c.selectedTrack, run: () => c.selectedTrack && doc.duplicateTrack(c.selectedTrack) },
-    muteTrack: { enabled: !!track, run: () => track && doc.updateTrack(track.id, { mute: !track.mute }) },
-    soloTrack: { enabled: !!track, run: () => track && doc.updateTrack(track.id, { solo: !track.solo }) },
+    muteTrack: { enabled: !!track, run: () => track && doc.updateTracks(Object.fromEntries((c.selectedTracks.includes(track.id) ? c.selectedTracks : [track.id]).map((id) => [id, { mute: !track.mute }]))) },
+    soloTrack: { enabled: !!track, run: () => track && doc.updateTracks(Object.fromEntries((c.selectedTracks.includes(track.id) ? c.selectedTracks : [track.id]).map((id) => [id, { solo: !track.solo }]))) },
     clearMarkers: { enabled: doc.project.markers.length > 0, run: () => doc.apply((p) => ({ ...p, markers: [] })) },
     // 波形ブロックか MIDI ブロックを選んでいればそれを、選んでいなければ選んでいるトラックを（元に戻せる）
     delete: {
@@ -367,7 +370,7 @@ export function useActions(c: ActionContext) {
       label: t('menu.track'),
       accessKey: 'T',
       entries: [
-        { label: t('menu.addTrack'), onClick: doc.addTrack },
+        item('addTrack'),
         item('duplicateTrack'),
         item('renameTrack'),
         { label: t('track.addSubtrack'), disabled: !c.selectedTrack, onClick: () => c.selectedTrack && c.selectTrack(doc.addSubtrack(c.selectedTrack)) },
@@ -479,7 +482,7 @@ export function useActions(c: ActionContext) {
           { label: t('menu.setEndHere'), onClick: () => doc.setEnd(time) },
           { label: t('menu.autoEnd'), disabled: doc.project.end === undefined, onClick: () => doc.setEnd(null) },
           divider,
-          { label: t('menu.addTrack'), onClick: doc.addTrack },
+          item('addTrack'),
         ]
 
   return { menus, blockMenu, emptyMenu, commands }

@@ -54,6 +54,7 @@ export type Action =
   | 'showAll'
   | 'zoomRange'
   | 'playRange'
+  | 'addTrack'
   | 'duplicateTrack'
   | 'renameTrack'
   | 'muteTrack'
@@ -162,6 +163,7 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   showAll: ['Ctrl+Digit9'],
   zoomRange: ['Ctrl+Digit8'],
   playRange: [],
+  addTrack: ['Ctrl+KeyT'],
   // 選んでいるトラック
   duplicateTrack: [],
   renameTrack: [],

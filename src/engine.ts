@@ -41,6 +41,11 @@ interface TrackNodes {
 /** 音源のプラグインの準備に使う、プロジェクトの音源の id */
 const instrumentIds = (p: Project) => p.tracks.flatMap((t) => (t.instrument ? [t.instrument.plugin] : []))
 
+/** トラックの波形ブロックから出口までの遅れの最大（秒） */
+const trackLatency = (p: Project, t: Track, sampleRate: number) =>
+  [t, ...ancestors(p, t)].reduce((sum, x) => sum + chainLatency(liveSlots(x), sampleRate), 0)
+const maxTrackLatency = (p: Project, sampleRate: number) => Math.max(0, ...p.tracks.map((t) => trackLatency(p, t, sampleRate)))
+
 /** トラックの MIDI ブロックの識別（変わったら、送った音符を取り消して送り直す） */
 const midiSig = (p: Project, track: string) => {
   const t = p.tracks.find((x) => x.id === track)
@@ -416,7 +421,7 @@ class Graph {
       list.push(...voicesOf(b, pieces, this.zero, dbToGain(b.gain), env))
     }
     // FX の遅れ（秒）が違うトラックをそろえる: 波形ブロックから出口までの遅れが、どのトラックも同じになるように入口で遅らせる
-    const late = new Map(p.tracks.map((t) => [t.id, [t, ...ancestors(p, t)].reduce((s, x) => s + chainLatency(liveSlots(x), this.ctx.sampleRate), 0)]))
+    const late = new Map(p.tracks.map((t) => [t.id, trackLatency(p, t, this.ctx.sampleRate)]))
     const slowest = Math.max(0, ...late.values())
     for (const t of p.tracks) {
       const n = this.tracks.get(t.id)!
@@ -502,6 +507,7 @@ export class Player {
   private graph: Graph | null = null
   private startedAt = 0
   private from = 0
+  private fxLatency = 0
   playing = false
   // play の呼び出しの通し番号（続けて呼ばれたら、待っている途中の古い呼び出しは捨てる）
   private seq = 0
@@ -532,6 +538,7 @@ export class Player {
     if (this.playing && this.graph && this.ctx && !this.ant) {
       this.from = from
       this.startedAt = this.ctx.currentTime + 0.01
+      this.fxLatency = maxTrackLatency(p, this.ctx.sampleRate)
       this.graph.reposition(p, this.startedAt - from)
       preparePitch(p, from).catch(() => {})
       return
@@ -543,6 +550,7 @@ export class Player {
     const id = ++this.seq
     this.starting = true
     this.ctx ??= new AudioContext()
+    this.fxLatency = maxTrackLatency(p, this.ctx.sampleRate)
     // iPhone、iPad はマナーモードでも鳴るように、再生の音声セッションにしてから起こす（wevocal-lib。WeVocalSynth と同じ）
     // ミキサー（AudioWorklet）の読み込みも待つ（AudioContext ごとに 1 回だけ）
     await Promise.all([startContext(this.ctx, 'player'), loadMixer(this.ctx), preloadFx(this.ctx, ...fxLists(p)), preloadInstruments(this.ctx, instrumentIds(p))])
@@ -586,6 +594,7 @@ export class Player {
       this.ant = { sigs: new Map(ok.map((t) => [t.id, signature(p, t)])), next: new Map(ok.map((t) => [t.id, k0 + 1])), busy: false, timer: setInterval(() => void this.tick(), 250) }
       for (const [i, t] of first.entries()) if (primed[i]) this.graph.playChunk(t.id, primed[i]!, k0 * CHUNK)
       this.project = p
+      this.fxLatency = maxTrackLatency(p, this.ctx!.sampleRate)
     }
     // ピッチを変えた波形ブロックは、ここから近い所（これから鳴る所）から作り直す。できたかたまりから鳴る（update）
     preparePitch(p, from).catch(() => {})
@@ -730,7 +739,7 @@ export class Player {
 
   /** 今の位置（秒） */
   position() {
-    return this.ctx && this.playing ? this.from + Math.max(0, this.ctx.currentTime - this.startedAt - this.outputLatency()) : this.from
+    return this.ctx && this.playing ? this.from + Math.max(0, this.ctx.currentTime - this.startedAt - this.outputLatency() - this.fxLatency) : this.from
   }
 
   /**
@@ -769,17 +778,21 @@ function scheduleAutomation(ctx: OfflineAudioContext, graph: Graph, length: numb
 
 /** 全トラックをマスターまで混ぜた音（ステレオ）。書き出しの形式にするのは wevocal-lib の exportAudio */
 /** until を渡すと、そこまでの長さにする（範囲選択が曲の終わりより後ろまであるとき） */
-export async function renderMix(p: Project, until = 0, sampleRate = 48000, onProgress?: (p: number) => void): Promise<Clip> {
+export async function renderMix(p: Project, until = 0, sampleRate = 48000, onProgress?: (p: number) => void, signal?: AbortSignal): Promise<Clip> {
+  signal?.throwIfAborted()
   await preparePitch(p)
+  signal?.throwIfAborted()
   const length = Math.max(1, Math.ceil(Math.max(songEnd(p), until) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
   // 再生と同じミキサーで作る（再生と書き出しの音が一致する）。送ったものを受け取ってから始める
   await Promise.all([loadMixer(ctx), preloadFx(ctx, ...fxLists(p)), preloadInstruments(ctx, instrumentIds(p))])
+  signal?.throwIfAborted()
   const graph = new Graph(ctx, 0)
   graph.sync(p, false)
   await graph.flush()
+  signal?.throwIfAborted()
   scheduleAutomation(ctx, graph, length, sampleRate, 0)
-  const out = await renderWithProgress(ctx, onProgress)
+  const out = await renderWithProgress(ctx, onProgress, signal)
   return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
 }
 
@@ -818,11 +831,11 @@ export async function renderTrackChunk(p: Project, trackId: string, start: numbe
  * 波形ブロックの加工、トラックの FX の列、先祖のトラックのフェーダーと FX は音に含める。
  * 自分の音量、パン、位相の反転、ミュート、ソロは含めない（書き出し先のトラックの状態として渡す）
  */
-export async function renderTrack(p: Project, trackId: string, length: number, sampleRate = 48000): Promise<Clip> {
+export async function renderTrack(p: Project, trackId: string, length: number, sampleRate = 48000, signal?: AbortSignal): Promise<Clip> {
   const track = p.tracks.find((t) => t.id === trackId)
   if (!track) throw new Error('track not found')
   const chain = [...ancestors(p, track).reverse(), track]
   const tracks = chain.map((t) => (t === track ? { ...t, volume: 0, pan: 0, invert: false, mute: false, solo: false } : { ...t, mute: false, solo: false }))
   const q: Project = { ...p, master: { volume: 0, pan: 0, mute: false }, tracks, blocks: p.blocks.filter((b) => b.track === trackId), midi: (p.midi ?? []).filter((b) => b.track === trackId) }
-  return renderMix(q, length, sampleRate)
+  return renderMix(q, length, sampleRate, undefined, signal)
 }

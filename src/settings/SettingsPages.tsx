@@ -74,6 +74,10 @@ export function settingsPages({ draft, set, t, onClose, go }: { draft: Settings;
           {S('sliderDoubleClickReset')}
           {S('grid')}
         </Group>
+        <Group title={t('settings.groupFade')}>
+          {S('defaultBlockFade')}
+          {draft.defaultBlockFade && S('defaultBlockFadeMs')}
+        </Group>
       </>
     ),
     keys: (

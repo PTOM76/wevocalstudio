@@ -66,15 +66,19 @@ function trimSources(p: Project): Project {
 }
 
 /** 最適化したプロジェクトを作る（onProgress は 0〜1。確定が重いので、その進み具合を主にする） */
-export async function optimizeProject(p: Project, o: OptimizeOptions, onProgress: (v: number) => void): Promise<Project> {
+export async function optimizeProject(p: Project, o: OptimizeOptions, onProgress: (v: number) => void, signal?: AbortSignal): Promise<Project> {
+  signal?.throwIfAborted()
   let q = p
   if (o.bake !== 'none') {
     const mode = o.bake
     const ids = q.blocks.filter((b) => (!o.scope || o.scope.includes(b.id)) && !isNeutral(b, mode)).map((b) => b.id)
-    const baked = await bakeBlocks(q, ids, (v) => onProgress(v * 0.9), mode)
+    const baked = await bakeBlocks(q, ids, (v) => onProgress(v * 0.9), mode, signal)
+    signal?.throwIfAborted()
     q = applyBaked(q, baked, mode)
   }
+  signal?.throwIfAborted()
   if (o.trim) q = trimSources(q)
+  signal?.throwIfAborted()
   if (o.dropUnused) {
     const used = usedSources(q)
     q = { ...q, sources: q.sources.filter((s) => used.has(s.id)) }

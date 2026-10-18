@@ -599,7 +599,7 @@ export default function Timeline(p: {
     p.onSelectTrack(hit.block.track)
     e.currentTarget.setPointerCapture(e.pointerId)
     const trackIndex = p.project.tracks.findIndex((t) => t.id === hit.block.track)
-    const others = hit.kind === 'move' ? p.project.blocks.filter((b) => group.includes(b.id) && b.id !== id) : []
+    const others = ['move', 'left', 'right'].includes(hit.kind) ? p.project.blocks.filter((b) => group.includes(b.id) && b.id !== id) : []
     dragScroll0.current = view.scroll
     lastMove.current = null
     drag.current = { kind: hit.kind, block: hit.block, others, x, y, trackIndex, merge: `drag${dragCount.current++}`, copy: ctrl && hit.kind === 'move' ? { wasSelected, done: false } : undefined }
@@ -624,6 +624,10 @@ export default function Timeline(p: {
     let dt = p.snap && !shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), snapping) : raw
     const di = rowDelta(d.y, y)
     // Alt を押しながら端をドラッグすると速度ごと伸び縮みする
+    if (d.kind === 'left' || d.kind === 'right') {
+      const all = [d.block, ...d.others]
+      return p.onBlocksChange(Object.fromEntries(all.map((b) => [b.id, dragPatch(p.project, { ...d, block: b, others: [] }, dt, 0, altKey)])), d.merge)
+    }
     if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di, altKey), d.merge)
     // まとめて動かす。一番前のものが 0 より前に出ない所、トラックの外に出ない所で止める
     const all = [d.block, ...d.others]

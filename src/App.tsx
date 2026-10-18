@@ -76,7 +76,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onSettingsChange])
-  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit })
+  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit, defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0 })
   const { project, selected } = doc
   const setSelected = doc.select
   const player = useRef(new Player())
@@ -156,13 +156,14 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // ボーカル抽出と楽器ごとの分離（extractor の host.ts。WeVocalSynth と共通）
   /** 選んだ波形ブロックを確定する（今の音にして、元の音を置き換える） */
   const bake = async (ids: string[]) => {
-    const job = startJob('bake', t('bake.job'))
+    const controller = new AbortController()
+    const job = startJob('bake', t('bake.job'), () => controller.abort())
     try {
-      const baked = await bakeBlocks(doc.project, ids, (v) => job.update(v))
+      const baked = await bakeBlocks(doc.project, ids, (v) => job.update(v), 'all', controller.signal)
       doc.apply((pr) => applyBaked(pr, baked))
       setNotice(t('toast.baked'))
     } catch (e) {
-      fail(e)
+      if (!(e instanceof DOMException && e.name === 'AbortError')) fail(e)
     } finally {
       job.end()
     }
@@ -170,15 +171,16 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   /** トラックのフリーズと解除（src/freeze.ts） */
   const freeze = async (id: string, withFx = false) => {
     if (project.tracks.find((tr) => tr.id === id)?.frozen) return doc.apply((pr) => unfreezeTrack(pr, id))
-    const job = startJob('freeze', t('freeze.job'))
+    const controller = new AbortController()
+    const job = startJob('freeze', t('freeze.job'), () => controller.abort())
     try {
-      const frozen = await freezeTrack(doc.project, id, withFx)
+      const frozen = await freezeTrack(doc.project, id, withFx, controller.signal)
       const f = frozen.tracks.find((tr) => tr.id === id)?.frozen
       const src = f && frozen.sources.find((s) => s.id === f.source)
       // 描画している間の変更は残し、書き出した音とトラックの印だけを足す
       if (f && src) doc.apply((pr) => (pr.tracks.some((tr) => tr.id === id) ? { ...pr, sources: [...pr.sources, src], tracks: pr.tracks.map((tr) => (tr.id === id ? { ...tr, frozen: f } : tr)) } : pr))
     } catch (e) {
-      fail(e)
+      if (!(e instanceof DOMException && e.name === 'AbortError')) fail(e)
     } finally {
       job.end()
     }
@@ -270,6 +272,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     playing,
     selected,
     selectedTrack,
+    selectedTracks,
+    defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0,
     range,
     setRange,
     select: setSelected,

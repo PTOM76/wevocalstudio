@@ -6,7 +6,7 @@ import { renderMix } from './engine'
 import { ancestors, descendants, liveSlots, newId, newProject, type Project, type Track } from './project'
 
 /** トラックとサブトラックの音を、自分のフェーダーの前の音にする（withFx なら自分の FX の列の後の音）。頭は最初のブロックの位置から */
-export async function freezeTrack(p: Project, trackId: string, withFx = false): Promise<Project> {
+export async function freezeTrack(p: Project, trackId: string, withFx = false, signal?: AbortSignal): Promise<Project> {
   const track = p.tracks.find((t) => t.id === trackId)
   if (!track) return p
   const subs = descendants(p, track)
@@ -25,7 +25,8 @@ export async function freezeTrack(p: Project, trackId: string, withFx = false): 
   const tracks = [root, ...subs.map((t): Track => ({ ...t, solo: false, sends: (t.sends ?? []).filter((s) => ids.has(s.to)) }))]
   // 時刻はずらさずに描く（オートメーションとテンポのマーカーを曲の時刻のまま使う）。頭の何もない所はあとで削る
   const q: Project = { ...newProject(), tempo: p.tempo, markers: p.markers, sources: p.sources, tracks, blocks, ...(midi.length ? { midi } : {}), end }
-  const rendered = await renderMix(q, end)
+  const rendered = await renderMix(q, end, 48000, undefined, signal)
+  signal?.throwIfAborted()
   // 最初のブロックより前と、FX の遅れの分は頭を削る（フリーズ中は FX の遅れがないものとして鳴らす）
   // 遅れは、描画で一番遅い道（サブトラックの FX から自分の FX まで）にそろえてある
   const sr = rendered.sampleRate

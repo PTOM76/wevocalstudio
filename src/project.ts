@@ -247,7 +247,7 @@ export const TRACK_HEIGHT_MAX = 220
 export const TRACK_HEIGHT_DEFAULT = 96
 export const trackHeight = (track: Track) => Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, track.height ?? TRACK_HEIGHT_DEFAULT))
 
-export const newBlock = (track: string, source: Source, start: number, defaults: PitchDefaults): Block => ({
+export const newBlock = (track: string, source: Source, start: number, defaults: PitchDefaults, defaultFade = DEFAULT_FADE): Block => ({
   id: newId(),
   track,
   source: source.id,
@@ -259,8 +259,8 @@ export const newBlock = (track: string, source: Source, start: number, defaults:
   pitch: 0,
   formant: 0,
   ...defaults,
-  fadeIn: Math.min(DEFAULT_FADE, source.duration / 2),
-  fadeOut: Math.min(DEFAULT_FADE, source.duration / 2),
+  fadeIn: Math.min(defaultFade, source.duration / 2),
+  fadeOut: Math.min(defaultFade, source.duration / 2),
   mute: false,
 })
 
@@ -411,20 +411,20 @@ export function splitMidiBlock(b: MidiBlock, t: number): [MidiBlock, MidiBlock] 
   ]
 }
 
-export function splitBlock(b: Block, t: number): [Block, Block] | null {
+export function splitBlock(b: Block, t: number, defaultFade = DEFAULT_FADE): [Block, Block] | null {
   const at = t - b.start
   if (at <= 0.001 || at >= b.length - 0.001) return null
   return [
-    { ...b, length: at, fadeIn: Math.min(b.fadeIn, at), fadeOut: Math.min(DEFAULT_FADE, at / 2) },
-    { ...b, id: newId(), start: t, offset: b.offset + at * b.rate, length: b.length - at, fadeIn: Math.min(DEFAULT_FADE, (b.length - at) / 2), fadeOut: Math.min(b.fadeOut, b.length - at) },
+    { ...b, length: at, fadeIn: Math.min(b.fadeIn, at), fadeOut: Math.min(defaultFade, at / 2) },
+    { ...b, id: newId(), start: t, offset: b.offset + at * b.rate, length: b.length - at, fadeIn: Math.min(defaultFade, (b.length - at) / 2), fadeOut: Math.min(b.fadeOut, b.length - at) },
   ]
 }
 
 /** 音（作った音など）を、新しいトラックの波形ブロックとして位置 `start` に置く（トラックは一番下） */
-export function addClipTrack(p: Project, clip: Clip, name: string, start: number): Project {
+export function addClipTrack(p: Project, clip: Clip, name: string, start: number, defaultFade = DEFAULT_FADE): Project {
   const source: Source = { id: newId(), name, clip, duration: clip.channels[0].length / clip.sampleRate }
   const track = { ...newTrack(0), name }
-  return { ...p, sources: [...p.sources, source], tracks: [...p.tracks, track], blocks: [...p.blocks, fillBlock({ id: newId(), track: track.id, source: source.id, start, offset: 0, length: source.duration })] }
+  return { ...p, sources: [...p.sources, source], tracks: [...p.tracks, track], blocks: [...p.blocks, fillBlock({ id: newId(), track: track.id, source: source.id, start, offset: 0, length: source.duration, fadeIn: Math.min(defaultFade, source.duration / 2), fadeOut: Math.min(defaultFade, source.duration / 2) })] }
 }
 
 /** WeVocalSynth のプロジェクト（.wvsp）のトラックを取り込む。名前を付けた親トラックを作り、各トラックの加工後の音を波形ブロックとしてサブトラックに置く */

@@ -96,8 +96,8 @@ export function useProjectFile(o: {
   }
 
   /** 書き出す音（全トラックを混ぜ、範囲があれば切り出してから仕上げを掛ける。音声、動画、フォルダーへの保存で共通。WeVocalSynth と同じ） */
-  const renderFinished = async (p: Project, range: Range | null, onProgress?: (p: number) => void) => {
-    let mix = await renderMix(p, range ? range.end : 0, 48000, onProgress)
+  const renderFinished = async (p: Project, range: Range | null, onProgress?: (p: number) => void, signal?: AbortSignal) => {
+    let mix = await renderMix(p, range ? range.end : 0, 48000, onProgress, signal)
     if (range) {
       const [s, e] = toFrames(mix, range)
       mix = { sampleRate: mix.sampleRate, channels: mix.channels.map((ch) => ch.slice(s, e)) }
@@ -111,15 +111,19 @@ export function useProjectFile(o: {
     const target = await pickSaveTarget(`${c.fileName.trim()}${ext}`, 'audio', { description: t('file.audioType'), mime: EXPORT_MIME[c.format], ext }, win ?? window)
     if (!target) return
     // 進み具合はステータスバーのゲージに出す（WeVocalSynth と同じ startJob）
-    const job = startJob('export', t('job.export'))
+    const controller = new AbortController()
+    const job = startJob('export', t('job.export'), () => controller.abort())
     job.update(-1)
     try {
       // 描画を 0〜0.8、符号化を 0.8〜1 として、ゲージに出す
-      const mix = await renderFinished(o.project, c.selectionOnly ? o.range : null, (v) => job.update(v * 0.8))
-      await target.write(await exportAudio(mix, { ...c, sampleRate: c.sampleRate || mix.sampleRate, range: null }, (v) => job.update(0.8 + v * 0.2)))
+      const mix = await renderFinished(o.project, c.selectionOnly ? o.range : null, (v) => job.update(v * 0.8), controller.signal)
+      const data = await exportAudio(mix, { ...c, sampleRate: c.sampleRate || mix.sampleRate, range: null }, (v) => job.update(0.8 + v * 0.2))
+      controller.signal.throwIfAborted()
+      await target.write(data)
       o.onExported()
+      o.notify(t('toast.exported'))
     } catch (e) {
-      o.fail(e)
+      if (!(e instanceof DOMException && e.name === 'AbortError')) o.fail(e)
     } finally {
       job.end()
     }
@@ -129,16 +133,18 @@ export function useProjectFile(o: {
   const runOptimizedSave = async (opt: OptimizeOptions) => {
     const target = await pickSaveTarget(`${o.fileName}-optimized${PROJECT_EXT}`, 'project', { description: t('file.projectType'), mime: 'application/octet-stream', ext: PROJECT_EXT }, window, true)
     if (!target) return
-    const job = startJob('export', t('optimize.job'))
+    const controller = new AbortController()
+    const job = startJob('export', t('optimize.job'), () => controller.abort())
     job.update(-1)
     try {
       const before = sourcesBytes(o.project)
-      const q = await optimizeProject(o.project, opt, (v) => job.update(v))
+      const q = await optimizeProject(o.project, opt, (v) => job.update(v), controller.signal)
+      controller.signal.throwIfAborted()
       await target.write(writeProject(q))
       const mb = (n: number) => `${(n / 1048576).toFixed(1)} MB`
       o.notify(t('toast.optimized', { before: mb(before), after: mb(sourcesBytes(q)) }))
     } catch (e) {
-      o.fail(e)
+      if (!(e instanceof DOMException && e.name === 'AbortError')) o.fail(e)
     } finally {
       job.end()
     }
@@ -148,12 +154,17 @@ export function useProjectFile(o: {
   const runWvspExport = async (selected: string[]) => {
     const target = await pickSaveTarget(`${o.fileName}${WVSP_EXT}`, 'wvsp', { description: t('file.wvspType'), mime: 'application/octet-stream', ext: WVSP_EXT })
     if (!target) return
-    const job = startJob('export', t('job.export'))
+    const controller = new AbortController()
+    const job = startJob('export', t('job.export'), () => controller.abort())
     job.update(-1)
     try {
-      await target.write(await exportWvsp(o.project, o.fileName, selected, (v) => job.update(v)))
+      const data = await exportWvsp(o.project, o.fileName, selected, (v) => job.update(v), controller.signal)
+      controller.signal.throwIfAborted()
+      await target.write(data)
+      o.onExported()
+      o.notify(t('toast.exported'))
     } catch (e) {
-      o.fail(e)
+      if (!(e instanceof DOMException && e.name === 'AbortError')) o.fail(e)
     } finally {
       job.end()
     }
@@ -167,15 +178,19 @@ export function useProjectFile(o: {
     const ext = VIDEO_EXT[v.container]
     const target = await pickSaveTarget(`${v.fileName.trim()}${ext}`, 'video', { description: t('video.fileType'), mime: VIDEO_MIME[v.container], ext }, win ?? window)
     if (!target) return
-    const job = startJob('export', t('job.export'))
+    const controller = new AbortController()
+    const job = startJob('export', t('job.export'), () => controller.abort())
     job.update(-1)
     try {
-      const clip = await renderFinished(o.project, v.selectionOnly ? o.range : null)
-      await target.write(await videoHost.renderVideo(clip, { ...look, container: v.container, fps: 30, kbps: 192, onProgress: (p) => job.update(p) }))
+      const clip = await renderFinished(o.project, v.selectionOnly ? o.range : null, undefined, controller.signal)
+      controller.signal.throwIfAborted()
+      const data = await videoHost.renderVideo(clip, { ...look, container: v.container, fps: 30, kbps: 192, onProgress: (p) => job.update(p), signal: controller.signal })
+      controller.signal.throwIfAborted()
+      await target.write(data)
       o.onExported()
       o.notify(t('toast.exported'))
     } catch (e) {
-      o.fail(e)
+      if (!(e instanceof DOMException && e.name === 'AbortError')) o.fail(e)
     } finally {
       job.end()
     }
