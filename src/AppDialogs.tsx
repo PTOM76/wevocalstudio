@@ -27,6 +27,7 @@ import InstrumentDialog from './InstrumentDialog'
 import MidiBlockDialog from './MidiBlockDialog'
 import PianoRollDialog from './PianoRollDialog'
 import SendDialog from './SendDialog'
+import TrackPropertiesDialog, { type TrackPropertyAdd, type TrackPropertyEdit } from './TrackPropertiesDialog'
 import ToolDialog from './ToolDialog'
 import ShortcutsDialog from './ShortcutsDialog'
 import type { useProject } from './useProject'
@@ -66,6 +67,8 @@ export default function AppDialogs(p: {
   const { project } = doc
   // プロパティを開いている波形ブロック（複数なら一括で変える）、編集しているマーカー、FX を開いているトラック
   const editing = dialogs.arg<string[]>('block') ?? []
+  const propertyTrackIds = dialogs.arg<string[]>('trackProperties') ?? []
+  const propertyTracks = project.tracks.filter((track) => propertyTrackIds.includes(track.id))
   const marker = project.markers.find((m) => m.id === dialogs.arg<string>('marker')) ?? null
   const tempoMarker = project.markers.find((m) => m.id === dialogs.arg<string>('markerTempo')) ?? null
   const fxId = dialogs.arg<string>('fx')
@@ -308,6 +311,22 @@ export default function AppDialogs(p: {
         onRename={(name) => {
           const id = dialogs.arg<string>('renameTrack')
           if (id) doc.updateTrack(id, { name: name.trim() })
+        }}
+      />
+      <TrackPropertiesDialog
+        open={dialogs.isOpen('trackProperties')}
+        tracks={propertyTracks}
+        onClose={dialogs.closer('trackProperties')}
+        onApply={(edit: TrackPropertyEdit, add: TrackPropertyAdd) => {
+          const patches = Object.fromEntries(
+            propertyTracks.map((track) => {
+              const patch = { ...edit }
+              if (add.volume !== undefined) patch.volume = Math.max(-60, Math.min(12, track.volume + add.volume))
+              if (add.pan !== undefined) patch.pan = Math.max(-1, Math.min(1, track.pan + add.pan))
+              return [track.id, patch]
+            }),
+          )
+          doc.updateTracks(patches)
         }}
       />
       {/* マーカーの名前の変更（PevenMUI の RenameDialog）と、ここからのテンポ（wevocal-lib の MarkerTempoDialog。WeVocalSynth と同じ） */}

@@ -373,6 +373,10 @@
   "track.voiceQuiet": "{name}（小さい方）",
   "track.fx": "FX",
   "track.sends": "センド…",
+  "track.properties": "プロパティ…",
+  "track.propertiesMany": "{n} 個のトラックのプロパティ",
+  "track.propertiesHelp": "値が混在する欄は空欄です。混在時に + または - を付けて入力すると各トラックの値から増減します。変更した欄だけ適用します。",
+  "track.mixed": "混在",
 
   "export.title": "書き出す",
   "export.format": "形式",

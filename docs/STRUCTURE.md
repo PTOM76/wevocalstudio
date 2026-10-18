@@ -56,6 +56,7 @@ src/
   Toolbar.tsx  メニューの下の小さなツールバー（WeVocalSynth と同じ形）。再生位置に追従するか、スナップ、拡大と縮小
   ToolDialog.tsx  プラグインの道具と解析（選んだ波形ブロックの音に対して実行する）。道具は加工した音を新しい元の音にして置き換え（確定と同じ。元に戻せる）、解析は結果の一覧を出す
   TrackHeader.tsx  トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
+  TrackPropertiesDialog.tsx  選択中のトラックの共通プロパティをまとめて編集する
   Transport.tsx  再生のボタン一式（先頭へ、停止、再生と一時停止、録音、リピート、末尾へ）、時間の表示、マスターのメーター、テンポとグリッド。部品は WeVocalSynth のツールバーと同じ
   useActions.ts  操作の表（キーとメニューから行うもの）と、メニューバーの並び
   useAddonFolder.tsx  追加機能の保存先のフォルダー（試験的）。許可の通知と、設定と自動保存した作業の写しは PevenMUI の useAddonFolderSync（WeVocalSynth と同じ）

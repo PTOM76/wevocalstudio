@@ -12,6 +12,8 @@ export type DialogId =
   | 'synth' | 'sampler'
   // トラックの名前の変更（トラックの id）
   | 'renameTrack'
+  // トラックのプロパティ（トラックの id の一覧）
+  | 'trackProperties'
   // ピアノロール（MIDI ブロックの id）、トラックの音源（トラックの id）
   | 'pianoRoll' | 'instrument' | 'midiProps'
   // プラグインの道具と解析

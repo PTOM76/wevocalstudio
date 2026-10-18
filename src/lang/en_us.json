@@ -373,6 +373,10 @@
   "track.voiceQuiet": "{name} (quieter)",
   "track.fx": "FX",
   "track.sends": "Sends…",
+  "track.properties": "Properties…",
+  "track.propertiesMany": "Properties for {n} tracks",
+  "track.propertiesHelp": "Mixed values are blank. In a mixed field, prefix a number with + or - to adjust each track by that amount. Only edited fields are applied.",
+  "track.mixed": "Mixed",
 
   "export.title": "Export",
   "export.format": "Format",

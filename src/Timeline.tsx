@@ -85,6 +85,8 @@ export default function Timeline(p: {
   masterMeter?: () => readonly AnalyserNode[] | null
   onDuplicateTrack: (id: string) => void
   onFreezeTrack: (id: string, withFx?: boolean) => void
+  /** 選択中のトラックのプロパティを開く */
+  onTrackProperties: (ids: string[]) => void
   /** トラックのセンドを開く */
   onSends: (id: string) => void
   /** サブトラックの操作 */
@@ -894,6 +896,7 @@ export default function Timeline(p: {
                   onDuplicate={() => p.onDuplicateTrack(track.id)}
                   onFreeze={(withFx) => p.onFreezeTrack(track.id, withFx)}
                   onSends={() => p.onSends(track.id)}
+                  onProperties={() => p.onTrackProperties(p.selectedTracks.includes(track.id) ? p.selectedTracks : [track.id])}
                   onRemove={() => p.onRemoveTrack(track.id)}
                 />
               )})}

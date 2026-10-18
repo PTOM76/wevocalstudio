@@ -82,6 +82,7 @@ export default function TrackHeader(p: {
   /** フリーズとその解除（withFx なら FX の列まで含める） */
   onFreeze: (withFx?: boolean) => void
   onSends: () => void
+  onProperties: () => void
   onRemove: () => void
   /** レベルメーター（出さなければ省く） */
   meter?: () => readonly AnalyserNode[] | null
@@ -229,6 +230,7 @@ export default function TrackHeader(p: {
         position={menu}
         onClose={() => setMenu(null)}
         entries={[
+          { label: t('track.properties'), onClick: p.onProperties },
           { label: t('track.rename'), onClick: () => setEditing(true) },
           { label: t('track.duplicate'), onClick: p.onDuplicate },
           { label: t(track.frozen ? 'track.unfreeze' : 'track.freeze'), onClick: () => p.onFreeze() },
