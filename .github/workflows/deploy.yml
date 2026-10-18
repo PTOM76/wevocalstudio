@@ -19,9 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        # pevenmui/、wevocal-lib/、analyzer/、extractor/ は submodule（手元では隣の WeVocalSynth の中のものを使う）
         with:
-          submodules: true
+          submodules: recursive
       - uses: actions/setup-node@v4
         with:
           node-version: 22
