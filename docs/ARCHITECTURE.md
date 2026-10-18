@@ -45,7 +45,7 @@ DAW と同じく、毎フレーム変わるもの（再生位置）と、変え�
 | 対象 | 保存先 | 形式 |
 | --- | --- | --- |
 | プロジェクト | ダウンロード（.wvst） | "WVST"＋ヘッダ JSON＋元の音の f32（`src/projectFile.ts`） |
-| 自動保存 | IndexedDB（`wevocalstudio` / `kv` / `autosave:meta`、`autosave:source:<id>`） | 元の音は書き換えないので 1 回だけ書き、メタ（トラック、波形ブロック）は 0.5 秒待って書く。書き込みと読み出しは Worker で、元の音は 4 MB ずつ空いている間に渡す（`src/storage/`） |
+| 自動保存 | IndexedDB（`wevocalstudio` / `kv` / `autosave:meta`、`autosave:source:<id>`） | 元の音は書き換えないので 1 回だけ書き、メタ（トラック、波形ブロック）は 0.5 秒待って書く。書き込みと読み出しは Worker で、元の音は 4 MB ずつ空いている間に渡す。指定フォルダーへの写しは別の列で行い、復元読み込みを待たせない（`src/storage/`） |
 | 設定 | localStorage（`wevocalstudio.settings`） | JSON |
 
 ## 登録する表

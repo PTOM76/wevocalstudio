@@ -46,15 +46,14 @@ function getWorker() {
 const send = (m: AutosaveMessage, transfer: Transferable[] = []) => getWorker().postMessage(m, transfer)
 
 /** 自動保存を、指定したフォルダーにも写すか（設定の「指定したフォルダーに保存する」。dataFolder.ts） */
-export function setAutosaveFolder(on: boolean) {
+export function setAutosaveFolder(on: boolean, resync = false) {
   folderOn = on
-  send({ type: 'folder', on })
-}
-/** フォルダーを選び直したときや、許可したときに、今ある作業をまとめて写し直す */
-export function resyncAutosaveFolder() {
-  if (!folderOn) return
-  send({ type: 'folder', on: false })
-  send({ type: 'folder', on: true })
+  if (on && resync) {
+    send({ type: 'folder', on: false })
+    send({ type: 'folder', on: true })
+  } else {
+    send({ type: 'folder', on })
+  }
 }
 
 function get<T>(key: string): Promise<T | undefined> {

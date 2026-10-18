@@ -31,16 +31,6 @@ const building = new Map<string, Float32Array[]>()
 /** 指定したフォルダーにも写すか */
 let mirror = false
 const mirrorFailed = (err: unknown) => console.warn('mirror failed', err)
-/** IndexedDB に書いたあとで、フォルダーにも写す（失敗しても自動保存は止めない） */
-const put = async (key: string, value: unknown) => {
-  await idbPut(key, value)
-  if (mirror && dataFolder.isMirroredKey(key)) await dataFolder.mirrorPut(key, value).catch(mirrorFailed)
-}
-const remove = async (keys: string[]) => {
-  await idbDelete(keys)
-  if (mirror) await dataFolder.mirrorDelete(keys.filter(dataFolder.isMirroredKey)).catch(mirrorFailed)
-}
-
 // 書き込みは届いた順に 1 つずつ行う（同じキーへの書き込みが追い越さないように）
 let queue = Promise.resolve()
 const write = (op: () => Promise<unknown>) => {
@@ -50,6 +40,26 @@ const write = (op: () => Promise<unknown>) => {
   )
 }
 
+// フォルダーへの複製は別の列で行い、自動保存の読み書きを待たせない
+let mirrorQueue = Promise.resolve()
+const mirrorWrite = (op: () => Promise<unknown>) => {
+  mirrorQueue = mirrorQueue.then(op).then(
+    () => {},
+    mirrorFailed,
+  )
+}
+
+const put = (key: string, value: unknown) =>
+  write(async () => {
+    await idbPut(key, value)
+    if (mirror && dataFolder.isMirroredKey(key)) mirrorWrite(() => dataFolder.mirrorPut(key, value))
+  })
+const remove = (keys: string[]) =>
+  write(async () => {
+    await idbDelete(keys)
+    if (mirror) mirrorWrite(() => dataFolder.mirrorDelete(keys.filter(dataFolder.isMirroredKey)))
+  })
+
 const transferables = (values: unknown[]) =>
   values.flatMap((value) => (Array.isArray(value) ? value.filter((v) => v instanceof Float32Array).map((v: Float32Array) => v.buffer) : []))
 
@@ -57,9 +67,9 @@ scope.onmessage = (e: MessageEvent<AutosaveMessage>) => {
   const m = e.data
   switch (m.type) {
     case 'put':
-      return write(() => put(m.key, m.value))
+      return put(m.key, m.value)
     case 'delete':
-      return write(() => remove(m.keys))
+      return remove(m.keys)
     case 'clear':
       building.clear()
       return write(idbClear)
@@ -72,17 +82,23 @@ scope.onmessage = (e: MessageEvent<AutosaveMessage>) => {
     case 'end': {
       const channels = building.get(m.key)
       building.delete(m.key)
-      if (channels) write(() => put(m.key, channels))
+      if (channels) put(m.key, channels)
       return
     }
     case 'folder': {
       const was = mirror
       mirror = m.on
       // オンにしたら、今ある作業をまとめて写す（このあと変わったものは、書くたびに写す）
-      if (m.on && !was)
-        write(async () => {
-          for (const key of await idbKeys('autosave')) await dataFolder.mirrorPut(key, await idbGet(key)).catch(mirrorFailed)
+      if (m.on && !was) {
+        const pendingWrites = queue
+        mirrorWrite(async () => {
+          await pendingWrites
+          for (const key of await idbKeys('autosave')) {
+            const value = await idbGet(key)
+            await dataFolder.mirrorPut(key, value).catch(mirrorFailed)
+          }
         })
+      }
       return
     }
     case 'get':
