@@ -42,8 +42,11 @@ WeVocal Studioは、Webブラウザ上でトラックにブロックとして音
 | [wevocalextractor](https://github.com/PTOM76/wevocalextractor) | WeVocalExtractor（ボーカル抽出） |
 | [wevocalanalyzer](https://github.com/PTOM76/wevocalanalyzer) | WeVocalAnalyzer（スペクトログラム、文字起こし） |
 | [wevocalconverter](https://github.com/PTOM76/wevocalconverter) | WeVocalConverter（動画出力） |
-| [wevocal-lib](https://github.com/PTOM76/wevocal-lib) | WeVocalLib (ライブラリ) |
+| [wevocal-lib](https://github.com/PTOM76/wevocal-lib) | WeVocal Lib (ライブラリ) |
 | [pevenmui](https://github.com/PTOM76/pevenmui) | PevenMUI (UIコンポーネント) |
+| [wevocal-vstbridge](https://github.com/PTOM76/wevocal-vstbridge) | WeVocal VST-Bridge (VSTプラグインエミュレータ) |
+| [wevocal-plugin-sdk](https://github.com/PTOM76/wevocal-plugin-sdk) | WeVocal Plugin SDK (プラグイン開発キット) |
+| [wevocal-webpage](https://github.com/PTOM76/wevocal-webpage) | WeVocalシリーズの公式サイト |
 
 ## 技術スタック
 | 項目 | 内容 |
