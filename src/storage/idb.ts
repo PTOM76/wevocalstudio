@@ -7,7 +7,9 @@ const db = createIdb(APP_INFO.id)
 export const idb = db
 
 export const idbGet = db.get
+export const idbGetMany = db.getMany
 export const idbPut = db.put
+export const idbPutMany = db.putMany
 export const idbKeys = db.keys
 /** いくつかのキーを消す */
 export const idbDelete = async (keys: string[]) => {

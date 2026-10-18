@@ -1,5 +1,5 @@
 // 自動保存の書き込みと読み出しをする Worker。数十〜百 MB の元の音の複製と保存を画面のスレッドから外す（WeVocalSynth と同じ）
-import { idbClear, idbDelete, idbGet, idbKeys, idbPut } from './idb'
+import { idbClear, idbDelete, idbGet, idbGetMany, idbKeys, idbPut } from './idb'
 import { dataFolder } from './dataFolder'
 
 /**
@@ -14,12 +14,14 @@ export type AutosaveMessage =
   | { type: 'end'; key: string }
   /** 読み出し（起動時の復元）。元の音は所有権ごと返す */
   | { type: 'get'; key: string; id: number }
+  | { type: 'getMany'; keys: string[]; id: number }
   /** 指定したフォルダーにも写すか（設定の「指定したフォルダーに保存する」。dataFolder.ts） */
   | { type: 'folder'; on: boolean }
 
 export interface AutosaveReply {
   id: number
   value?: unknown
+  values?: unknown[]
   error?: string
 }
 
@@ -47,6 +49,9 @@ const write = (op: () => Promise<unknown>) => {
     (err) => console.warn('autosave failed', err),
   )
 }
+
+const transferables = (values: unknown[]) =>
+  values.flatMap((value) => (Array.isArray(value) ? value.filter((v) => v instanceof Float32Array).map((v: Float32Array) => v.buffer) : []))
 
 scope.onmessage = (e: MessageEvent<AutosaveMessage>) => {
   const m = e.data
@@ -89,6 +94,15 @@ scope.onmessage = (e: MessageEvent<AutosaveMessage>) => {
             const transfer = Array.isArray(value) ? value.filter((v) => v instanceof Float32Array).map((v: Float32Array) => v.buffer) : []
             scope.postMessage({ id: m.id, value } satisfies AutosaveReply, transfer)
           },
+          (err) => scope.postMessage({ id: m.id, error: String(err) } satisfies AutosaveReply),
+        )
+      return
+    case 'getMany':
+      // 全件を別々に開かず、1 回の読み取りトランザクションでまとめて取得する
+      queue
+        .then(() => idbGetMany(m.keys))
+        .then(
+          (values) => scope.postMessage({ id: m.id, values } satisfies AutosaveReply, transferables(values)),
           (err) => scope.postMessage({ id: m.id, error: String(err) } satisfies AutosaveReply),
         )
   }

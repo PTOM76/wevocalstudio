@@ -2,8 +2,8 @@
 import { createDataFolder } from 'pevenmui/web'
 import { APP_INFO } from '../appInfo'
 import { app } from '../appConfig'
-import { idbGet, idbPut } from './idb'
+import { idbGet, idbPut, idbPutMany } from './idb'
 
 export const dataFolder = createDataFolder({ appId: APP_INFO.id, idbGet, localPrefix: app.key('') })
 /** 写した設定と作業をブラウザに戻す。何か戻したら true（そのあと再読み込みする） */
-export const restoreFromFolder = () => dataFolder.restore(idbPut)
+export const restoreFromFolder = () => dataFolder.restore(idbPut, idbPutMany)

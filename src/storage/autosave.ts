@@ -65,6 +65,18 @@ function get<T>(key: string): Promise<T | undefined> {
   })
 }
 
+function getMany<T>(keys: string[]): Promise<(T | undefined)[]> {
+  const id = nextId++
+  return new Promise((resolve, reject) => {
+    waiting.set(id, (r) => {
+      if (r.error) reject(new Error(r.error))
+      else if (r.values) resolve(r.values as (T | undefined)[])
+      else reject(new Error('Autosave worker returned no values'))
+    })
+    send({ type: 'getMany', keys, id })
+  })
+}
+
 /** ブラウザが空くまで待つ（画面の操作を先にする） */
 const idle = () => new Promise<void>((r) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(() => r(), { timeout: 500 }) : setTimeout(r, 0)))
 
@@ -123,12 +135,17 @@ export async function loadAutosave(): Promise<{ project: Project; fileName: stri
   const meta = await get<Meta>(metaKey())
   if (!meta || !(meta.blocks?.length || meta.midi?.length)) return null
   const sources: Source[] = []
-  for (const s of meta.sources) {
-    const channels = await get<Float32Array[]>(sourceKey(s.id))
-    if (!channels?.length) continue
-    const clip: Clip = { sampleRate: s.sampleRate, channels }
-    sources.push({ id: s.id, name: s.name, clip, duration: channels[0].length / s.sampleRate })
-    written.add(s.id)
+  // IDB 接続と Worker 往復を音声ソースごとに繰り返さず、少数ずつ同じ読み取りトランザクションで取る
+  for (let i = 0; i < meta.sources.length; i += 4) {
+    const batch = meta.sources.slice(i, i + 4)
+    const values = await getMany<Float32Array[]>(batch.map((s) => sourceKey(s.id)))
+    batch.forEach((s, index) => {
+      const channels = values[index]
+      if (!channels?.length) return
+      const clip: Clip = { sampleRate: s.sampleRate, channels }
+      sources.push({ id: s.id, name: s.name, clip, duration: channels[0].length / s.sampleRate })
+      written.add(s.id)
+    })
   }
   // 元の音が読めなかった波形ブロックは除く
   const blocks = meta.blocks.filter((b) => sources.some((s) => s.id === b.source)).map(fillBlock)
