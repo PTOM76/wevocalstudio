@@ -180,7 +180,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
         g.rect(x, y, bw, H)
         g.clip()
         g.fillStyle = c.text
-        g.fillText(`${name}  ${info}`, x + 4, y + 9)
+        g.fillText(`${name}  ${info}`, Math.max(x + 4, 4), y + 9)
         g.restore()
       }
       // エンベロープ（音量は橙、ピッチは水色の線と点。無ければ 0 の線）
