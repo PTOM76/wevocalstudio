@@ -89,7 +89,7 @@ export async function openApp(base, { settings, addons, open = true, ...view } =
   await b.call('Page.addScriptToEvaluateOnNewDocument', { source: fakeManifests })
   // 起動時の案内や更新の通知が写らないよう、設定を先に入れる
   const s = { language: 'ja_jp', dialogWindow: 'dialog', ...settings }
-  await b.call('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('wevocalsynth.settings', JSON.stringify(Object.assign(JSON.parse(localStorage.getItem('wevocalsynth.settings') || '{}'), ${JSON.stringify(s)})))` })
+  await b.call('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('wevocalstudio.settings', JSON.stringify(Object.assign(JSON.parse(localStorage.getItem('wevocalstudio.settings') || '{}'), ${JSON.stringify(s)})))` })
   await b.call('Page.navigate', { url: base })
   await b.waitFor(`!!document.querySelector('header, [role=menubar]')`)
   await sleep(1500)

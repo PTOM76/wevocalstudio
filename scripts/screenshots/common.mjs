@@ -13,11 +13,9 @@ export const toolbarButtons = (b) =>
 export const textRect = (b, text, where = 'true') =>
   b.rect(`[...document.querySelectorAll('body *')].filter((e) => e.textContent.trim() === ${JSON.stringify(text)} && (() => { const r = e.getBoundingClientRect(); return r.width > 0 && (${where}) })()).pop()`)
 
-/** ピッチパネルを表示し、範囲を選択した、パソコンの基本の画面 */
+/** 範囲を選択した、パソコンの基本の画面 */
 export async function desktopMain(base, opts = {}) {
   const b = await openApp(base, opts)
-  await b.clickLabel('ピッチ表示')
-  await sleep(2500)
   await b.drag(383, 300, 703, 300)
   await sleep(800)
   await b.park()
