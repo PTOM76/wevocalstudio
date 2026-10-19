@@ -130,6 +130,8 @@ export interface Block extends BaseBlock {
   curve?: PitchCurve
   /** 音量のエンベロープ。無ければ平ら。gain とフェードに重ねて掛ける */
   envelope?: EnvPoint[]
+  /** 音量エンベロープの表示範囲（下限 dB。未指定なら設定の既定値） */
+  envelopeRange?: VolumeEnvelopeRange
   /** ピッチのエンベロープ（半音。pitch とピッチカーブに足す）。元の音の時刻で持つ（ピッチカーブと同じく、分割や端の調整をしてもずれない） */
   pitchEnvelope?: PitchPoint[]
   /** ピッチエンベロープの表示範囲（半音。未指定なら設定の既定値） */
@@ -181,6 +183,8 @@ export interface EnvPoint {
 /** エンベロープの範囲（dB） */
 export const ENV_MIN = -60
 export const ENV_MAX = 12
+export const VOLUME_ENV_RANGES = [6, 12, 24, 36, 48, 60] as const
+export type VolumeEnvelopeRange = (typeof VOLUME_ENV_RANGES)[number]
 
 /** 波形ブロックの頭から t 秒のエンベロープの値（dB）。点の間は dB でまっすぐ、外は端の点の値 */
 export function envAt(env: EnvPoint[] | undefined, t: number): number {

@@ -99,6 +99,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('theme')}
         {S('uiScale')}
         {S('showMeters')}
+        {S('envelopeRange')}
         {S('pitchEnvelopeRange')}
         {S('editBar')}
         <Row label={t('settings.language')}>

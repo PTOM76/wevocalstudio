@@ -7,7 +7,7 @@ import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
-import { bakedTracks, ownAudible, trackHeight, type Block, type PitchEnvelopeRange, type Project, type Source } from './project'
+import { bakedTracks, ENV_MAX, ownAudible, trackHeight, type Block, type PitchEnvelopeRange, type Project, type Source, type VolumeEnvelopeRange } from './project'
 
 export const RULER = 24
 /** マスタートラックの行の高さ（目盛りのすぐ下。一番上） */
@@ -44,6 +44,7 @@ export interface DrawOptions {
   /** 音量のエンベロープを描く */
   /** 出すエンベロープ（音量かピッチ。出さなければ null） */
   envKind: EnvKind | null
+  envelopeRange: VolumeEnvelopeRange
   pitchEnvelopeRange: PitchEnvelopeRange
   /** オートメーションを編集している（レーンの点を出す） */
   autoEdit: boolean
@@ -191,7 +192,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
         const spec = ENVELOPES[o.envKind]
         const pts = spec.points(b)
         const env = pts.length ? pts : [{ t: 0, v: spec.zero }]
-        const range = b.pitchEnvelopeRange ?? o.pitchEnvelopeRange
+        const range = spec.defaultRange(b, o.envKind === 'pitch' ? o.pitchEnvelopeRange : o.envelopeRange)
         const color = o.envKind === 'pitch' ? '#29b6f6' : '#ff9800'
         if (o.envKind === 'pitch') {
           const step = range <= 6 ? 1 : 3
@@ -211,6 +212,26 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
             g.stroke()
             g.fillStyle = alpha(color, 0.8)
             g.fillText(st > 0 ? `+${st}` : `${st}`, x + 3, gy - 5)
+          }
+          g.restore()
+        } else {
+          const volumeMarks = [-range, -range / 2, 0, ENV_MAX]
+          g.save()
+          g.beginPath()
+          g.rect(x, top, bw, eh)
+          g.clip()
+          g.font = '9px sans-serif'
+          g.textBaseline = 'middle'
+          for (const db of volumeMarks) {
+            const gy = top + spec.y(db, range) * eh
+            g.strokeStyle = db === 0 ? alpha(color, 0.55) : alpha(color, 0.2)
+            g.lineWidth = db === 0 ? 1 : 0.5
+            g.beginPath()
+            g.moveTo(x, gy)
+            g.lineTo(x + bw, gy)
+            g.stroke()
+            g.fillStyle = alpha(color, 0.8)
+            g.fillText(`${db > 0 ? '+' : ''}${db}`, x + 3, gy - 5)
           }
           g.restore()
         }

@@ -6,7 +6,8 @@ import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { actionOf, keyLabel, type Action } from './keymap'
-import { newId, PITCH_ENV_RANGES, type Block, type PitchEnvelopeRange, type Track } from './project'
+import { newId, type Block, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange } from './project'
+import { ENVELOPES, type EnvKind } from './envelopes'
 import { cropToRange, deleteRange, insertSilence, normalizeBlocks, repeatRange } from './rangeEdit'
 import type { useProject } from './useProject'
 
@@ -90,6 +91,7 @@ export interface ActionContext {
   /** ピッチのエンベロープを出して編集する */
   pitchEnvelope: boolean
   pitchEnvelopeRange: PitchEnvelopeRange
+  envelopeRange: VolumeEnvelopeRange
   togglePitchEnvelope: () => void
   autoEdit: boolean
   toggleAutoEdit: () => void
@@ -434,24 +436,34 @@ export function useActions(c: ActionContext) {
   ]
 
   /** 波形ブロックの右クリックのメニュー */
-  const blockMenu: MenuEntry[] = [
-    item('properties'),
-    {
-      label: t('block.pitchEnvelopeRange'),
+  const envelopeRangeMenu = (kind: EnvKind): MenuEntry => {
+    const spec = ENVELOPES[kind]
+    const field = kind === 'pitch' ? 'pitchEnvelopeRange' : 'envelopeRange'
+    const defaultRange = kind === 'pitch' ? c.pitchEnvelopeRange : c.envelopeRange
+    const valueLabel = kind === 'pitch' ? 'block.pitchEnvelopeRangeValue' : 'block.envelopeRangeValue'
+    const defaultLabel = kind === 'pitch' ? 'block.pitchEnvelopeRangeDefault' : 'block.envelopeRangeDefault'
+    return {
+      label: t(kind === 'pitch' ? 'block.pitchEnvelopeRange' : 'block.envelopeRange'),
       onClick: () => {},
       submenu: [
         {
-          label: t('block.pitchEnvelopeRangeDefault', { n: c.pitchEnvelopeRange }),
-          checked: chosen.length > 0 && chosen.every((b) => b.pitchEnvelopeRange === undefined),
-          onClick: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { pitchEnvelopeRange: undefined }]))),
+          label: t(defaultLabel, { n: defaultRange }),
+          checked: chosen.length > 0 && chosen.every((b) => b[field] === undefined),
+          onClick: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { [field]: undefined }]))),
         },
-        ...PITCH_ENV_RANGES.map((range): MenuEntry => ({
-          label: t('block.pitchEnvelopeRangeValue', { n: range }),
-          checked: chosen.length > 0 && chosen.every((b) => b.pitchEnvelopeRange === range),
-          onClick: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { pitchEnvelopeRange: range }]))),
+        ...spec.ranges.map((range): MenuEntry => ({
+          label: t(valueLabel, { n: range }),
+          checked: chosen.length > 0 && chosen.every((b) => b[field] === range),
+          onClick: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { [field]: range }]))),
         })),
       ],
-    },
+    }
+  }
+
+  const blockMenu: MenuEntry[] = [
+    item('properties'),
+    envelopeRangeMenu('volume'),
+    envelopeRangeMenu('pitch'),
     divider,
     item('pitchUp'),
     item('pitchDown'),

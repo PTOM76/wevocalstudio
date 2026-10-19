@@ -29,6 +29,9 @@
   "block.pitchEnvelopeRangeDefault": "既定値（±{n} 半音）",
   "block.pitchEnvelopeRangeValue": "±{n} 半音",
   "block.pitchEnvelopeRange": "ピッチエンベロープの範囲",
+  "block.envelopeRange": "音量エンベロープの範囲",
+  "block.envelopeRangeDefault": "既定値（−{n} ～ +12 dB）",
+  "block.envelopeRangeValue": "−{n} ～ +12 dB",
 
   "error.failed": "処理に失敗しました: {error}",
   "error.noRecord": "このブラウザでは録音できません",
@@ -310,6 +313,8 @@
   "settings.beatOffset": "1拍目の位置",
   "settings.pitchEnvelopeRangeHelp": "ピッチエンベロープの新しい点と、ドラッグで動かした点を収める上下の範囲です。既存の点の値は変わりません",
   "settings.pitchEnvelopeRange": "ピッチエンベロープの表示範囲",
+  "settings.envelopeRange": "音量エンベロープの表示範囲",
+  "settings.envelopeRangeHelp": "音量エンベロープの下限です。新しい点と、ドラッグで動かした点は範囲内に収めます。既存の点の値は変わりません",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

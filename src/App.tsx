@@ -368,6 +368,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     toggleEnvelope: () => p.onSettingsChange({ envelope: !p.settings.envelope, pitchEnvelope: false, autoEdit: false }),
     pitchEnvelope: p.settings.pitchEnvelope,
     pitchEnvelopeRange: p.settings.pitchEnvelopeRange,
+    envelopeRange: p.settings.envelopeRange,
     togglePitchEnvelope: () => p.onSettingsChange({ pitchEnvelope: !p.settings.pitchEnvelope, envelope: false, autoEdit: false }),
     autoEdit: p.settings.autoEdit,
     toggleAutoEdit: () => p.onSettingsChange({ autoEdit: !p.settings.autoEdit, envelope: false, pitchEnvelope: false }),
@@ -532,6 +533,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         grid={p.settings.grid}
         division={p.settings.gridDivision}
         envKind={p.settings.envelope ? 'volume' : p.settings.pitchEnvelope ? 'pitch' : null}
+        envelopeRange={p.settings.envelopeRange}
         pitchEnvelopeRange={p.settings.pitchEnvelopeRange}
         autoEdit={p.settings.autoEdit}
         onMidiChange={doc.updateMidiBlock}

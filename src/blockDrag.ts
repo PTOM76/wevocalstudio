@@ -61,11 +61,12 @@ export function hitBlock(p: Project, x: number, y: number, toTime: (x: number) =
 export const CURSOR: Record<DragKind, string> = { move: 'grab', left: 'ew-resize', right: 'ew-resize', fadeIn: 'nesw-resize', fadeOut: 'nwse-resize' }
 
 /** エンベロープの線を描く高さの割合（dB → 0〜1。0 dB が 3/4 の高さ） */
-export function envY(db: number) {
-  return db >= 0 ? 0.25 - (db / ENV_MAX) * 0.25 : 0.25 + (db / ENV_MIN) * 0.75
+export function envY(db: number, range = -ENV_MIN) {
+  const value = Math.max(-range, Math.min(ENV_MAX, db))
+  return value >= 0 ? 0.25 - (value / ENV_MAX) * 0.25 : 0.25 + (value / -range) * 0.75
 }
-export function envDb(frac: number) {
-  return frac <= 0.25 ? ((0.25 - frac) / 0.25) * ENV_MAX : ((frac - 0.25) / 0.75) * ENV_MIN
+export function envDb(frac: number, range = -ENV_MIN) {
+  return frac <= 0.25 ? ((0.25 - frac) / 0.25) * ENV_MAX : ((frac - 0.25) / 0.75) * -range
 }
 
 /** 押した所の近くにあるエンベロープの点（番号）。なければ -1 */

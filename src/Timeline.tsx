@@ -8,8 +8,8 @@ import { markActivity, countRender } from 'pevenmui/debug'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { hitMidi, type MidiDragKind } from './midiBlocks'
 import { layoutRows } from './overlap'
-import { depthOf, projectEnd, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange } from './project'
-import { ENVELOPES, hitEnvPoint, pitchEnvelopeRange, type EnvKind } from './envelopes'
+import { depthOf, projectEnd, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange } from './project'
+import { ENVELOPES, envelopeRange, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { MASTER, RULER, TOP, drawCursors, drawTimeline, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
@@ -115,6 +115,7 @@ export default function Timeline(p: {
   /** 音量のエンベロープを描いて編集する */
   /** 編集するエンベロープ（音量かピッチ。出さなければ null） */
   envKind: EnvKind | null
+  envelopeRange: VolumeEnvelopeRange
   pitchEnvelopeRange: PitchEnvelopeRange
   /** オートメーションを編集する（FX のダイアログで選んだつまみのレーンの点を、足す、動かす、消す） */
   autoEdit: boolean
@@ -252,7 +253,7 @@ export default function Timeline(p: {
       view,
       p.selected,
       p.range,
-      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, pitchEnvelopeRange: p.pitchEnvelopeRange, autoEdit: p.autoEdit, vscroll: vs },
+      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, envelopeRange: p.envelopeRange, pitchEnvelopeRange: p.pitchEnvelopeRange, autoEdit: p.autoEdit, vscroll: vs },
       {
         bg: pal.background.default,
         lane: pal.divider,
@@ -268,7 +269,7 @@ export default function Timeline(p: {
         range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
       },
     )
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.pitchEnvelopeRange, p.autoEdit, vs])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.envelopeRange, p.pitchEnvelopeRange, p.autoEdit, vs])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -407,7 +408,7 @@ export default function Timeline(p: {
       if (p.envKind) {
         const g = blockGeom(hit.block)
         const spec = ENVELOPES[p.envKind]
-        const range = p.envKind === 'pitch' ? pitchEnvelopeRange(hit.block, p.pitchEnvelopeRange) : undefined
+        const range = envelopeRange(p.envKind, hit.block, p.envKind === 'pitch' ? p.pitchEnvelopeRange : p.envelopeRange)
         const i = hitEnvPoint(p.envKind, hit.block, x, y, g.x, g.top, g.h, view.pps, range)
         if (i >= 0) return p.onBlockChange(hit.block.id, spec.patch(hit.block, spec.points(hit.block).filter((_, k) => k !== i)))
       }
@@ -585,7 +586,7 @@ export default function Timeline(p: {
       const g = blockGeom(b)
       const spec = ENVELOPES[p.envKind]
       const env = spec.points(b)
-      const range = p.envKind === 'pitch' ? pitchEnvelopeRange(b, p.pitchEnvelopeRange) : undefined
+      const range = envelopeRange(p.envKind, b, p.envKind === 'pitch' ? p.pitchEnvelopeRange : p.envelopeRange)
       let index = hitEnvPoint(p.envKind, b, x, y, g.x, g.top, g.h, view.pps, range)
       if (index < 0) {
         const t = Math.max(0, Math.min(b.length, (x - g.x) / view.pps))
@@ -726,7 +727,7 @@ export default function Timeline(p: {
       // 前後の点は越えない
       const lo = env[ed.index - 1]?.t ?? 0
       const hi = env[ed.index + 1]?.t ?? b.length
-      const range = p.envKind === 'pitch' ? pitchEnvelopeRange(b, p.pitchEnvelopeRange) : undefined
+      const range = envelopeRange(p.envKind, b, p.envKind === 'pitch' ? p.pitchEnvelopeRange : p.envelopeRange)
       env[ed.index] = { t: Math.max(lo, Math.min(hi, (x - g.x) / view.pps)), v: spec.value((y - g.top) / g.h, range) }
       return p.onBlockChange(b.id, spec.patch(b, env), ed.merge)
     }

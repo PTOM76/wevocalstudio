@@ -29,6 +29,9 @@
   "block.pitchEnvelopeRangeDefault": "Default (±{n} semitones)",
   "block.pitchEnvelopeRangeValue": "±{n} semitones",
   "block.pitchEnvelopeRange": "Pitch envelope range",
+  "block.envelopeRange": "Volume envelope range",
+  "block.envelopeRangeDefault": "Default (−{n} to +12 dB)",
+  "block.envelopeRangeValue": "−{n} to +12 dB",
 
   "error.failed": "Failed: {error}",
   "error.noRecord": "Recording is not supported in this browser",
@@ -310,6 +313,8 @@
   "settings.beatOffset": "First beat at",
   "settings.pitchEnvelopeRangeHelp": "Sets the vertical range for new or moved pitch-envelope points. Existing point values are preserved",
   "settings.pitchEnvelopeRange": "Pitch envelope display range",
+  "settings.envelopeRange": "Volume envelope display range",
+  "settings.envelopeRangeHelp": "Sets the lower dB limit for new or moved volume-envelope points. Existing point values are preserved",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
