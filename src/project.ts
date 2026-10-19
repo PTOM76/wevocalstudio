@@ -132,6 +132,8 @@ export interface Block extends BaseBlock {
   envelope?: EnvPoint[]
   /** ピッチのエンベロープ（半音。pitch とピッチカーブに足す）。元の音の時刻で持つ（ピッチカーブと同じく、分割や端の調整をしてもずれない） */
   pitchEnvelope?: PitchPoint[]
+  /** ピッチエンベロープの表示範囲（半音。未指定なら設定の既定値） */
+  pitchEnvelopeRange?: PitchEnvelopeRange
   /** フェードイン、フェードアウト（秒） */
   fadeIn: number
   fadeOut: number
@@ -200,6 +202,8 @@ export interface PitchPoint {
 
 /** ピッチのエンベロープの範囲（半音。上下とも） */
 export const PITCH_ENV_MAX = 12
+export const PITCH_ENV_RANGES = [1, 2, 3, 6, 12] as const
+export type PitchEnvelopeRange = (typeof PITCH_ENV_RANGES)[number]
 
 /** 元の音の時刻 s 秒のピッチのエンベロープの値（半音）。点の間はまっすぐ、外は端の点の値 */
 export function pitchEnvAt(env: PitchPoint[] | undefined, s: number): number {

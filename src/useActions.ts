@@ -6,7 +6,7 @@ import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { actionOf, keyLabel, type Action } from './keymap'
-import { newId, type Block, type Track } from './project'
+import { newId, PITCH_ENV_RANGES, type Block, type PitchEnvelopeRange, type Track } from './project'
 import { cropToRange, deleteRange, insertSilence, normalizeBlocks, repeatRange } from './rangeEdit'
 import type { useProject } from './useProject'
 
@@ -89,6 +89,7 @@ export interface ActionContext {
   toggleEnvelope: () => void
   /** ピッチのエンベロープを出して編集する */
   pitchEnvelope: boolean
+  pitchEnvelopeRange: PitchEnvelopeRange
   togglePitchEnvelope: () => void
   autoEdit: boolean
   toggleAutoEdit: () => void
@@ -435,6 +436,22 @@ export function useActions(c: ActionContext) {
   /** 波形ブロックの右クリックのメニュー */
   const blockMenu: MenuEntry[] = [
     item('properties'),
+    {
+      label: t('block.pitchEnvelopeRange'),
+      onClick: () => {},
+      submenu: [
+        {
+          label: t('block.pitchEnvelopeRangeDefault', { n: c.pitchEnvelopeRange }),
+          checked: chosen.length > 0 && chosen.every((b) => b.pitchEnvelopeRange === undefined),
+          onClick: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { pitchEnvelopeRange: undefined }]))),
+        },
+        ...PITCH_ENV_RANGES.map((range): MenuEntry => ({
+          label: t('block.pitchEnvelopeRangeValue', { n: range }),
+          checked: chosen.length > 0 && chosen.every((b) => b.pitchEnvelopeRange === range),
+          onClick: () => doc.updateBlocks(Object.fromEntries(chosen.map((b) => [b.id, { pitchEnvelopeRange: range }]))),
+        })),
+      ],
+    },
     divider,
     item('pitchUp'),
     item('pitchDown'),

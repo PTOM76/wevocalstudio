@@ -26,6 +26,9 @@
   "block.sourceFile": "ファイルから読み込む…",
   "block.displayName": "表示名",
   "block.nameHint": "空欄なら音源ファイル名または既定名を表示します",
+  "block.pitchEnvelopeRangeDefault": "既定値（±{n} 半音）",
+  "block.pitchEnvelopeRangeValue": "±{n} 半音",
+  "block.pitchEnvelopeRange": "ピッチエンベロープの範囲",
 
   "error.failed": "処理に失敗しました: {error}",
   "error.noRecord": "このブラウザでは録音できません",
@@ -305,6 +308,8 @@
   "settings.groupTempo": "テンポと拍子",
   "settings.bpm": "テンポ",
   "settings.beatOffset": "1拍目の位置",
+  "settings.pitchEnvelopeRangeHelp": "ピッチエンベロープの新しい点と、ドラッグで動かした点を収める上下の範囲です。既存の点の値は変わりません",
+  "settings.pitchEnvelopeRange": "ピッチエンベロープの表示範囲",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

@@ -8,8 +8,8 @@ import { markActivity, countRender } from 'pevenmui/debug'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { hitMidi, type MidiDragKind } from './midiBlocks'
 import { layoutRows } from './overlap'
-import { depthOf, projectEnd, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN } from './project'
-import { ENVELOPES, hitEnvPoint, type EnvKind } from './envelopes'
+import { depthOf, projectEnd, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange } from './project'
+import { ENVELOPES, hitEnvPoint, pitchEnvelopeRange, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { MASTER, RULER, TOP, drawCursors, drawTimeline, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
@@ -115,6 +115,7 @@ export default function Timeline(p: {
   /** 音量のエンベロープを描いて編集する */
   /** 編集するエンベロープ（音量かピッチ。出さなければ null） */
   envKind: EnvKind | null
+  pitchEnvelopeRange: PitchEnvelopeRange
   /** オートメーションを編集する（FX のダイアログで選んだつまみのレーンの点を、足す、動かす、消す） */
   autoEdit: boolean
   /** オートメーションの点を変えた（トラックの id か 'master'、FX の項目、つまみ、点。merge はドラッグ中にまとめる履歴のキー） */
@@ -251,7 +252,7 @@ export default function Timeline(p: {
       view,
       p.selected,
       p.range,
-      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, autoEdit: p.autoEdit, vscroll: vs },
+      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, pitchEnvelopeRange: p.pitchEnvelopeRange, autoEdit: p.autoEdit, vscroll: vs },
       {
         bg: pal.background.default,
         lane: pal.divider,
@@ -267,7 +268,7 @@ export default function Timeline(p: {
         range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
       },
     )
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.autoEdit, vs])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.pitchEnvelopeRange, p.autoEdit, vs])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -347,7 +348,7 @@ export default function Timeline(p: {
     const row = p.project.tracks.findIndex((t) => t.id === b.track)
     const slot = layoutRows(p.project.blocks).get(b.id) ?? { row: 0, rows: 1 }
     const H = trackHeight(p.project.tracks[row]) / slot.rows
-    return { x: (b.start - view.scroll) * view.pps, top: trackTop(p.project, row) + slot.row * H + 2 - vs, h: H - 5 }
+    return { x: (b.start - view.scroll) * view.pps, top: trackTop(p.project, row) + slot.row * H + 2, h: H - 5 }
   }
   // 目盛りのドラッグで端に来たら表示を流す（WeVocalSynth と同じ wevocal-lib の部品）。流せる先は曲の終わりの少し先まで
   const visible = width / view.pps
@@ -406,7 +407,8 @@ export default function Timeline(p: {
       if (p.envKind) {
         const g = blockGeom(hit.block)
         const spec = ENVELOPES[p.envKind]
-        const i = hitEnvPoint(p.envKind, hit.block, x, y, g.x, g.top, g.h, view.pps)
+        const range = p.envKind === 'pitch' ? pitchEnvelopeRange(hit.block, p.pitchEnvelopeRange) : undefined
+        const i = hitEnvPoint(p.envKind, hit.block, x, y, g.x, g.top, g.h, view.pps, range)
         if (i >= 0) return p.onBlockChange(hit.block.id, spec.patch(hit.block, spec.points(hit.block).filter((_, k) => k !== i)))
       }
       p.onProperties(hit.block.id)
@@ -583,11 +585,12 @@ export default function Timeline(p: {
       const g = blockGeom(b)
       const spec = ENVELOPES[p.envKind]
       const env = spec.points(b)
-      let index = hitEnvPoint(p.envKind, b, x, y, g.x, g.top, g.h, view.pps)
+      const range = p.envKind === 'pitch' ? pitchEnvelopeRange(b, p.pitchEnvelopeRange) : undefined
+      let index = hitEnvPoint(p.envKind, b, x, y, g.x, g.top, g.h, view.pps, range)
       if (index < 0) {
         const t = Math.max(0, Math.min(b.length, (x - g.x) / view.pps))
         index = env.filter((pt) => pt.t <= t).length
-        env.splice(index, 0, { t, v: spec.value((y - g.top) / g.h) })
+        env.splice(index, 0, { t, v: spec.value((y - g.top) / g.h, range) })
         p.onBlockChange(b.id, spec.patch(b, env), `env${dragCount.current}`)
       }
       p.onSelect([b.id])
@@ -723,7 +726,8 @@ export default function Timeline(p: {
       // 前後の点は越えない
       const lo = env[ed.index - 1]?.t ?? 0
       const hi = env[ed.index + 1]?.t ?? b.length
-      env[ed.index] = { t: Math.max(lo, Math.min(hi, (x - g.x) / view.pps)), v: spec.value((y - g.top) / g.h) }
+      const range = p.envKind === 'pitch' ? pitchEnvelopeRange(b, p.pitchEnvelopeRange) : undefined
+      env[ed.index] = { t: Math.max(lo, Math.min(hi, (x - g.x) / view.pps)), v: spec.value((y - g.top) / g.h, range) }
       return p.onBlockChange(b.id, spec.patch(b, env), ed.merge)
     }
     const mq = marquee.current

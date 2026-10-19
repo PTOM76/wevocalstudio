@@ -7,7 +7,7 @@ import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
-import { bakedTracks, ownAudible, trackHeight, type Block, type Project, type Source } from './project'
+import { bakedTracks, ownAudible, trackHeight, type Block, type PitchEnvelopeRange, type Project, type Source } from './project'
 
 export const RULER = 24
 /** マスタートラックの行の高さ（目盛りのすぐ下。一番上） */
@@ -44,6 +44,7 @@ export interface DrawOptions {
   /** 音量のエンベロープを描く */
   /** 出すエンベロープ（音量かピッチ。出さなければ null） */
   envKind: EnvKind | null
+  pitchEnvelopeRange: PitchEnvelopeRange
   /** オートメーションを編集している（レーンの点を出す） */
   autoEdit: boolean
   /** 縦のスクロール量（px。トラックの行だけをずらす。目盛りとマスターは固定） */
@@ -190,7 +191,29 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
         const spec = ENVELOPES[o.envKind]
         const pts = spec.points(b)
         const env = pts.length ? pts : [{ t: 0, v: spec.zero }]
+        const range = b.pitchEnvelopeRange ?? o.pitchEnvelopeRange
         const color = o.envKind === 'pitch' ? '#29b6f6' : '#ff9800'
+        if (o.envKind === 'pitch') {
+          const step = range <= 6 ? 1 : 3
+          g.save()
+          g.beginPath()
+          g.rect(x, top, bw, eh)
+          g.clip()
+          g.font = '9px sans-serif'
+          g.textBaseline = 'middle'
+          for (let st = -range; st <= range; st += step) {
+            const gy = top + spec.y(st, range) * eh
+            g.strokeStyle = st === 0 ? alpha(color, 0.55) : alpha(color, 0.2)
+            g.lineWidth = st === 0 ? 1 : 0.5
+            g.beginPath()
+            g.moveTo(x, gy)
+            g.lineTo(x + bw, gy)
+            g.stroke()
+            g.fillStyle = alpha(color, 0.8)
+            g.fillText(st > 0 ? `+${st}` : `${st}`, x + 3, gy - 5)
+          }
+          g.restore()
+        }
         g.save()
         g.beginPath()
         g.rect(x, top, bw, eh)
@@ -198,12 +221,12 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
         g.strokeStyle = color
         g.lineWidth = 1.5
         g.beginPath()
-        g.moveTo(x, top + spec.y(env[0].v) * eh)
-        for (const pt of env) g.lineTo(x + pt.t * view.pps, top + spec.y(pt.v) * eh)
-        g.lineTo(x + bw, top + spec.y(env[env.length - 1].v) * eh)
+        g.moveTo(x, top + spec.y(env[0].v, range) * eh)
+        for (const pt of env) g.lineTo(x + pt.t * view.pps, top + spec.y(pt.v, range) * eh)
+        g.lineTo(x + bw, top + spec.y(env[env.length - 1].v, range) * eh)
         g.stroke()
         g.fillStyle = color
-        for (const pt of pts) g.fillRect(x + pt.t * view.pps - 3, top + spec.y(pt.v) * eh - 3, 6, 6)
+        for (const pt of pts) g.fillRect(x + pt.t * view.pps - 3, top + spec.y(pt.v, range) * eh - 3, 6, 6)
         g.restore()
       }
       // 作り直している波形ブロックは斜線と「処理中 n%」（できた所から鳴る）

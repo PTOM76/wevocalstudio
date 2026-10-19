@@ -3,6 +3,7 @@ import type { LangSetting } from '../../i18n'
 import type { EditBarSetting, Preset } from 'pevenmui'
 import { DEFAULT_VIDEO_PREFS, type VideoExportPrefs } from 'wevocalconverter/host'
 import type { BlockPreset } from '../../BlockDialog'
+import { PITCH_ENV_RANGES } from '../../project'
 import { check, choice, defineItems, value } from './define'
 
 export type ThemeSetting = 'system' | 'light' | 'dark'
@@ -28,6 +29,7 @@ export const display = defineItems('display', {
     ],
   }),
   showMeters: check(true, { label: 'settings.showMeters', help: 'settings.showMetersHelp' }),
+  pitchEnvelopeRange: choice<(typeof PITCH_ENV_RANGES)[number]>(3, { label: 'settings.pitchEnvelopeRange', help: 'settings.pitchEnvelopeRangeHelp', values: [...PITCH_ENV_RANGES], format: (n) => `±${n} st` }),
   language: value<LangSetting>('auto', { label: 'settings.language' }),
 })
 

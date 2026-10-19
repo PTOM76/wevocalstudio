@@ -1,6 +1,6 @@
 // エンベロープの種類（音量とピッチ）。点の読み書きと、波形ブロックの中の縦の位置と値の換算をまとめる（時間軸の編集と描画で共通）
 import { envY, envDb } from './blockDrag'
-import { ENV_MAX, ENV_MIN, PITCH_ENV_MAX, type Block } from './project'
+import { ENV_MAX, ENV_MIN, PITCH_ENV_MAX, type Block, type PitchEnvelopeRange } from './project'
 
 export type EnvKind = 'volume' | 'pitch'
 
@@ -16,9 +16,9 @@ interface EnvSpec {
   /** 点の一覧を、波形ブロックに書く値にする */
   patch: (b: Block, pts: EnvPt[]) => Partial<Block>
   /** 値から、波形ブロックの中の縦の位置（0 が上、1 が下） */
-  y: (v: number) => number
+  y: (v: number, range?: number) => number
   /** 縦の位置から値（範囲に収めて丸める） */
-  value: (frac: number) => number
+  value: (frac: number, range?: number) => number
   /** 点がないときの値 */
   zero: number
 }
@@ -38,14 +38,18 @@ export const ENVELOPES: Record<EnvKind, EnvSpec> = {
   pitch: {
     points: (b) => (b.pitchEnvelope ?? []).map((p) => ({ t: (p.s - b.offset) / b.rate, v: p.st })),
     patch: (b, pts) => ({ pitchEnvelope: pts.map((p) => ({ s: b.offset + p.t * b.rate, st: p.v })) }),
-    y: (v) => 0.5 - v / (2 * PITCH_ENV_MAX),
-    value: (f) => Math.round(clamp((0.5 - f) * 2 * PITCH_ENV_MAX, -PITCH_ENV_MAX, PITCH_ENV_MAX) * 10) / 10,
+    y: (v, range = PITCH_ENV_MAX) => 0.5 - clamp(v, -range, range) / (2 * range),
+    value: (f, range = PITCH_ENV_MAX) => Math.round(clamp((0.5 - f) * 2 * range, -range, range) * 10) / 10,
     zero: 0,
   },
 }
 
+export function pitchEnvelopeRange(b: Block, defaultRange: PitchEnvelopeRange): PitchEnvelopeRange {
+  return b.pitchEnvelopeRange ?? defaultRange
+}
+
 /** 押した所にある点の番号（なければ -1） */
-export function hitEnvPoint(kind: EnvKind, b: Block, x: number, y: number, blockX: number, top: number, h: number, pps: number) {
+export function hitEnvPoint(kind: EnvKind, b: Block, x: number, y: number, blockX: number, top: number, h: number, pps: number, range?: number) {
   const s = ENVELOPES[kind]
-  return s.points(b).findIndex((pt) => Math.hypot(blockX + pt.t * pps - x, top + s.y(pt.v) * h - y) < 7)
+  return s.points(b).findIndex((pt) => Math.hypot(blockX + pt.t * pps - x, top + s.y(pt.v, range) * h - y) < 7)
 }

@@ -26,6 +26,9 @@
   "block.sourceFile": "Load from file…",
   "block.displayName": "Display name",
   "block.nameHint": "Leave blank to use the source filename or default name.",
+  "block.pitchEnvelopeRangeDefault": "Default (±{n} semitones)",
+  "block.pitchEnvelopeRangeValue": "±{n} semitones",
+  "block.pitchEnvelopeRange": "Pitch envelope range",
 
   "error.failed": "Failed: {error}",
   "error.noRecord": "Recording is not supported in this browser",
@@ -305,6 +308,8 @@
   "settings.groupTempo": "Tempo and meter",
   "settings.bpm": "Tempo",
   "settings.beatOffset": "First beat at",
+  "settings.pitchEnvelopeRangeHelp": "Sets the vertical range for new or moved pitch-envelope points. Existing point values are preserved",
+  "settings.pitchEnvelopeRange": "Pitch envelope display range",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",

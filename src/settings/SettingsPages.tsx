@@ -99,6 +99,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('theme')}
         {S('uiScale')}
         {S('showMeters')}
+        {S('pitchEnvelopeRange')}
         {S('editBar')}
         <Row label={t('settings.language')}>
           <Choice<LangSetting> value={draft.language} onChange={(language) => set({ language })} options={[['auto', t('settings.languageAuto')], ...i18n.options()]} />
