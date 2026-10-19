@@ -949,8 +949,12 @@
   "glide.durationHelp": "The duration is limited to half of each block's length",
   "glide.shape": "Shape",
   "glide.shapeLinear": "Linear",
-  "glide.shapeSmooth": "Smooth",
-  "glide.shapeEaseIn": "Ease in",
-  "glide.shapeEaseOut": "Ease out",
-  "glide.apply": "Apply glide"
+  "glide.apply": "Apply glide",
+  "glide.shapeSquare": "Square",
+  "glide.shapeSlowStartEnd": "Slow start/end",
+  "glide.shapeFastStart": "Fast start",
+  "glide.shapeFastEnd": "Fast end",
+  "glide.shapeBezier": "Bezier",
+  "glide.tension": "Bezier tension: {n}",
+  "glide.tensionHelp": "Negative values start slowly; positive values start quickly"
 }

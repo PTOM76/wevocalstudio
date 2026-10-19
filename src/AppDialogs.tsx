@@ -113,7 +113,7 @@ export default function AppDialogs(p: {
       <GlideDialog
         open={dialogs.isOpen('glidePitch')}
         onClose={dialogs.closer('glidePitch')}
-        onApply={({ seconds, shape }) => doc.apply((current) => glideBlocks(current, dialogs.arg<string[]>('glidePitch') ?? [], seconds, shape))}
+        onApply={({ seconds, shape, tension }) => doc.apply((current) => glideBlocks(current, dialogs.arg<string[]>('glidePitch') ?? [], seconds, shape, tension))}
       />
       <SettingsDialog
         open={dialogs.isOpen('settings')}

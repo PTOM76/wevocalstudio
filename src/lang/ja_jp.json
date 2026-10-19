@@ -949,8 +949,12 @@
   "glide.durationHelp": "各波形ブロックの長さの半分まで適用します",
   "glide.shape": "形状",
   "glide.shapeLinear": "直線",
-  "glide.shapeSmooth": "滑らか",
-  "glide.shapeEaseIn": "ゆっくり開始",
-  "glide.shapeEaseOut": "ゆっくり終了",
-  "glide.apply": "つなぐ"
+  "glide.apply": "つなぐ",
+  "glide.shapeSquare": "矩形",
+  "glide.shapeSlowStartEnd": "ゆっくり開始/終了",
+  "glide.shapeFastStart": "速く開始",
+  "glide.shapeFastEnd": "速く終了",
+  "glide.shapeBezier": "ベジェ",
+  "glide.tension": "ベジェの張り具合: {n}",
+  "glide.tensionHelp": "負の値はゆっくり開始、正の値は速く開始します"
 }
