@@ -74,6 +74,7 @@ export default function TrackHeader(p: {
   track: Track
   height: number
   selected: boolean
+  selectMode: boolean
   onSelect: (e: React.PointerEvent) => void
   onChange: (patch: Partial<Track>, merge?: string) => void
   onEndMerge: () => void
@@ -115,9 +116,10 @@ export default function TrackHeader(p: {
   return (
     <Box
       onPointerDown={(e) => {
+        if (p.selectMode && e.button !== 0) return
         p.onSelect(e)
-        grab.current = e.button === 0 && !(e.target as HTMLElement).closest('button, input, [role="slider"], .MuiSlider-root') ? { x: e.clientX, y: e.clientY } : null
-        if (e.pointerType === 'touch') {
+        grab.current = !p.selectMode && e.button === 0 && !(e.target as HTMLElement).closest('button, input, [role="slider"], .MuiSlider-root') ? { x: e.clientX, y: e.clientY } : null
+        if (e.pointerType === 'touch' && !p.selectMode) {
           const { clientX: x, clientY: y } = e
           longPress.start(x, y, () => setMenu({ x, y }))
         }
@@ -141,6 +143,7 @@ export default function TrackHeader(p: {
       }}
       onContextMenu={(e) => {
         e.preventDefault()
+        if (p.selectMode) return
         p.onSelect(e as unknown as React.PointerEvent)
         setMenu({ x: e.clientX, y: e.clientY })
       }}
@@ -196,7 +199,7 @@ export default function TrackHeader(p: {
           />
         ) : (
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => setEditing(true)} onPointerUp={(e) => e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY) && setEditing(true)}>
+            <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: p.selected ? 600 : 400 }} title={track.name} onDoubleClick={() => !p.selectMode && setEditing(true)} onPointerUp={(e) => e.pointerType === 'touch' && !p.selectMode && doubleTap.tap(e.clientX, e.clientY) && setEditing(true)}>
             {/* フリーズ中の印 */}
             {track.frozen && (
               <Tooltip title={t(track.frozen.fx ? 'track.frozenFx' : 'track.frozen')}>
@@ -250,7 +253,7 @@ export default function TrackHeader(p: {
       <Box
         onPointerDown={(e) => {
           e.stopPropagation()
-          p.onResizeStart(e)
+          if (!p.selectMode) p.onResizeStart(e)
         }}
         sx={{ position: 'absolute', left: 0, right: 0, bottom: -3, height: 6, cursor: 'ns-resize', touchAction: 'none', zIndex: 2 }}
       />

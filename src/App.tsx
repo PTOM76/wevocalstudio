@@ -101,6 +101,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const livePos = useCallback(() => (player.current.playing ? player.current.position() : playPos), [playPos])
   // 選んでいるトラック（複数。最後に選んだものが「選んでいるトラック」で、貼り付けや録音の先）
   const [selectedTracks, setSelectedTracks] = useState<string[]>([])
+  const [selectMode, setSelectMode] = useState(false)
   const selectedTrack = selectedTracks[selectedTracks.length - 1] ?? null
   const setSelectedTrack = (id: string | null) => setSelectedTracks(id ? [id] : [])
   const [range, setRange] = useState<Range | null>(null)
@@ -444,6 +445,14 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onCut={commands.cut.run}
         onCopy={commands.copy.run}
         onPaste={commands.paste.run}
+        selectMode={selectMode}
+        selectionCount={selectedTracks.length || selected.length}
+        showSelectMode={touchLike}
+        onToggleSelectMode={() => {
+          if (!selectMode && selected.length > 0) setSelectedTracks([])
+          setSelectMode(!selectMode)
+          setRange(null)
+        }}
       />
       {!touchLike && editBar}
       <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load(Array.from(e.target.files ?? []), importTarget.current).finally(() => (e.target.value = ''))} />
@@ -471,6 +480,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onSelectTrack={setSelectedTrack}
         selectedTracks={selectedTracks}
         onSelectTracks={setSelectedTracks}
+        selectMode={selectMode}
         onSeek={seek}
         range={range}
         onRange={setRange}

@@ -58,6 +58,8 @@ export default function Timeline(p: {
   /** 選んでいるトラック（複数） */
   selectedTracks: string[]
   onSelectTracks: (ids: string[]) => void
+  /** タッチ端末でタップによる追加選択をする */
+  selectMode: boolean
   onSeek: (t: number) => void
   range: Range | null
   onRange: (r: Range | null) => void
@@ -469,6 +471,24 @@ export default function Timeline(p: {
       pan.current = null
       return
     }
+    if (p.selectMode && y >= RULER) {
+      if (e.button !== 0) return
+      e.currentTarget.setPointerCapture(e.pointerId)
+      const block = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps)?.block ?? hitMidi(p.project, x, y, toTime, view.pps)?.block : undefined
+      if (block) {
+        p.onRange(null)
+        p.onSelectTracks([])
+        p.onSelect(p.selected.includes(block.id) ? p.selected.filter((id) => id !== block.id) : [...p.selected, block.id])
+      } else {
+        const track = trackAt(y)
+        if (track) {
+          p.onRange(null)
+          p.onSelect([])
+          p.onSelectTracks(p.selectedTracks.includes(track.id) ? p.selectedTracks.filter((id) => id !== track.id) : [...p.selectedTracks, track.id])
+        }
+      }
+      return
+    }
     if (e.pointerType === 'touch' && y < RULER) {
       e.currentTarget.setPointerCapture(e.pointerId)
       return touch.rulerDown(e)
@@ -662,14 +682,15 @@ export default function Timeline(p: {
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     longPress.move(e.clientX, e.clientY)
     if (touch.move(e)) return
+    const { x, y: ry } = local(e)
+    const y = cy(ry)
+    if (p.selectMode && y >= RULER) return
     const pn = pan.current
     if (pn) {
       setView((v) => ({ ...v, scroll: Math.max(0, pn.scroll0 - (e.clientX - pn.x0) / v.pps) }))
       setVscroll(Math.max(0, Math.min(maxRef.current, pn.v0 - (e.clientY - pn.y0))))
       return
     }
-    const { x, y: ry } = local(e)
-    const y = cy(ry)
     const md = midiDrag.current
     if (md) {
       // 端に来たら表示を流し、上下の端では縦にスクロールする（波形ブロックと同じ）
@@ -758,6 +779,7 @@ export default function Timeline(p: {
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     longPress.cancel()
     if (touch.up(e)) return
+    if (p.selectMode && cy(local(e).y) >= RULER) return
     // なぞらずに離したら、押した所へ再生位置を移す
     const pn = pan.current
     pan.current = null
@@ -854,6 +876,7 @@ export default function Timeline(p: {
                   track={track}
                   height={trackHeight(track)}
                   selected={p.selectedTracks.includes(track.id)}
+                  selectMode={p.selectMode}
                   dragging={draggingTrackId === track.id}
                   onReorderStart={(e) => {
                     const el = headerContainerRef.current
@@ -876,7 +899,10 @@ export default function Timeline(p: {
                     p.onSelect([])
                     const ids = p.project.tracks.map((tr) => tr.id)
                     const sel = p.selectedTracks
-                    if (e.ctrlKey || e.metaKey) p.onSelectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
+                    if (p.selectMode) {
+                      p.onRange(null)
+                      p.onSelectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
+                    } else if (e.ctrlKey || e.metaKey) p.onSelectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
                     else if (e.shiftKey && p.selectedTrack) {
                       const [i0, i1] = [ids.indexOf(p.selectedTrack), ids.indexOf(track.id)].sort((x, y) => x - y)
                       p.onSelectTracks([...ids.slice(i0, i1 + 1).filter((x) => x !== p.selectedTrack), p.selectedTrack])

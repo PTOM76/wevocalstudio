@@ -772,6 +772,9 @@
   "selection.beats": "{n} beats",
   "selection.saveOrDrag": "Click to save to folder, drag to a folder to export (WAV)",
   "selection.dragOut": "Drag to a folder to export (WAV)",
+  "selection.mode": "Multi-select",
+  "selection.count": "{n} selected",
+  "selection.help": "Tap tracks or blocks to add or remove them. Tap again to finish",
 
   "clip.start": "Start",
   "clip.end": "End",

@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { OverflowRow, SmallButton, ToolbarDivider } from 'pevenmui'
-import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faWaveSquare, faScissors, faCopy, faPaste, faClone, faSliders, faTrashCan, faCropSimple, faXmark, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faWaveSquare, faScissors, faCopy, faPaste, faClone, faSliders, faTrashCan, faCropSimple, faXmark, faCheck, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 import { countRender } from 'pevenmui/debug'
@@ -46,9 +46,14 @@ export default function Toolbar(p: {
   onCut: () => void
   onCopy: () => void
   onPaste: () => void
+  selectMode: boolean
+  selectionCount: number
+  showSelectMode: boolean
+  onToggleSelectMode: () => void
   children?: ReactNode
 }) {
   countRender('Toolbar')
+  const t = useT()
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, height: 40, px: 1, flexShrink: 0, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
       <ToolButton icon={faScissors} label="menu.cut" action="cut" disabled={!p.canCut} onClick={p.onCut} />
@@ -56,6 +61,13 @@ export default function Toolbar(p: {
       <ToolButton icon={faPaste} label="menu.paste" action="paste" disabled={!p.canPaste} onClick={p.onPaste} />
       <Divider />
       <OverflowRow>
+        {p.showSelectMode && (
+          <>
+            <ToolButton icon={faCheck} label="selection.mode" help="selection.help" pressed={p.selectMode} onClick={p.onToggleSelectMode} />
+            {p.selectMode && p.selectionCount > 0 && <Box component="span" sx={{ px: 0.5, color: 'text.secondary', fontSize: 12, whiteSpace: 'nowrap' }}>{t('selection.count', { n: p.selectionCount })}</Box>}
+            <Divider />
+          </>
+        )}
         {p.hasBlocks && (
           <>
             <ToolButton icon={faClone} label="editBar.duplicate" action="duplicate" disabled={!p.canDuplicate} onClick={p.onDuplicate} />

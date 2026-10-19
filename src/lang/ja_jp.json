@@ -772,6 +772,9 @@
   "selection.beats": "{n}拍",
   "selection.saveOrDrag": "クリックでフォルダーへ保存、ドラッグでフォルダーへ書き出し（WAV）",
   "selection.dragOut": "ドラッグしてフォルダーへ書き出す（WAV）",
+  "selection.mode": "複数選択",
+  "selection.count": "{n} 個選択中",
+  "selection.help": "タップでトラックやブロックを選択し、もう一度押すと終了します",
 
   "clip.start": "開始",
   "clip.end": "終了",
