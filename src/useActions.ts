@@ -1,5 +1,4 @@
 // 操作の表（キーとメニューから行うもの）と、メニューバーの並び
-import { glideBlocks } from './glide'
 import type { MidiBlock } from './project'
 import { useEffect, useRef, useState } from 'react'
 import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
@@ -60,7 +59,7 @@ export interface ActionContext {
   exportWvsp: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
-  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument' | 'midiProps' | 'tool' | 'analyze', arg?: string) => void
+  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument' | 'midiProps' | 'tool' | 'analyze' | 'glidePitch', arg?: string | string[]) => void
   /** MIDI ファイルを選んで、トラックと MIDI ブロックにする */
   importMidi: () => void
   /** 選んだ波形ブロックを確定する（音にして元の音を置き換える） */
@@ -313,7 +312,7 @@ export function useActions(c: ActionContext) {
     pitchUpFine: { enabled: anyWave, run: () => doc.nudgePitch(ids, 0.1) },
     pitchDownFine: { enabled: anyWave, run: () => doc.nudgePitch(ids, -0.1) },
     pitchReset: { enabled: anyWave, run: () => doc.nudgePitch(ids, null) },
-    glidePitch: { enabled: ids.length >= 2, run: () => doc.apply((p) => glideBlocks(p, ids)) },
+    glidePitch: { enabled: ids.length >= 2, run: () => c.openDialog('glidePitch', ids) },
   }
 
   // キーの割り当ては keymap.ts の表。文字の入力中は奪わない

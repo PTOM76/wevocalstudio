@@ -4,8 +4,8 @@ import { useDialogs as usePevenDialogs, type Dialogs as PevenDialogs } from 'pev
 /** App が開くダイアログ。足すときはここに名前を足し、AppDialogs.tsx に描画を置く */
 export type DialogId =
   | 'settings' | 'about' | 'licenses' | 'export' | 'history' | 'shortcuts'
-  // 最適化して保存（選んでいる波形ブロックの id の一覧を渡す）
-  | 'optimize'
+  // 最適化とピッチ接続（選んでいる波形ブロックの id の一覧を渡す）
+  | 'optimize' | 'glidePitch'
   // 値を渡して開くもの: 波形ブロックのプロパティ（id の一覧）、マーカー（id）、トラックの FX の列（トラックの id か 'master'）
   | 'block' | 'marker' | 'markerTempo' | 'fx'
   // 音を 0 から作る、選んだ波形ブロックを MIDI の音符に並べる（波形ブロックの id）

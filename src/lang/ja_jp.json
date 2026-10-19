@@ -942,5 +942,15 @@
   "tool.noSelection": "波形ブロックを選んでください",
   "tool.help": "選んだ波形ブロック {n} 個の今の音に対して実行し、結果の音を新しい元の音にして置き換えます（元に戻せます）",
 
-  "project.name": "プロジェクト名"
+  "project.name": "プロジェクト名",
+
+  "glide.title": "ピッチをなめらかにつなぐ",
+  "glide.duration": "つなぐ長さ (ms)",
+  "glide.durationHelp": "各波形ブロックの長さの半分まで適用します",
+  "glide.shape": "形状",
+  "glide.shapeLinear": "直線",
+  "glide.shapeSmooth": "滑らか",
+  "glide.shapeEaseIn": "ゆっくり開始",
+  "glide.shapeEaseOut": "ゆっくり終了",
+  "glide.apply": "つなぐ"
 }

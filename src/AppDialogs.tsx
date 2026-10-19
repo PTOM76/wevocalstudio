@@ -22,6 +22,8 @@ import { i18n, useT } from './i18n'
 import SettingsDialog from './settings/SettingsDialog'
 import type { Settings } from './settings/settings'
 import OptimizeDialog from './OptimizeDialog'
+import GlideDialog from './GlideDialog'
+import { glideBlocks } from './glide'
 import type { OptimizeOptions } from './optimize'
 import InstrumentDialog from './InstrumentDialog'
 import MidiBlockDialog from './MidiBlockDialog'
@@ -108,6 +110,11 @@ export default function AppDialogs(p: {
         onFinishChange={(f) => p.onSettingsChange({ exportNormalize: f.normalize, exportFadeMs: f.fadeMs })}
       />
       <OptimizeDialog open={dialogs.isOpen('optimize')} selected={dialogs.arg<string[]>('optimize') ?? []} onClose={dialogs.closer('optimize')} onRun={p.onOptimize} />
+      <GlideDialog
+        open={dialogs.isOpen('glidePitch')}
+        onClose={dialogs.closer('glidePitch')}
+        onApply={({ seconds, shape }) => doc.apply((current) => glideBlocks(current, dialogs.arg<string[]>('glidePitch') ?? [], seconds, shape))}
+      />
       <SettingsDialog
         open={dialogs.isOpen('settings')}
         onClose={dialogs.closer('settings')}
