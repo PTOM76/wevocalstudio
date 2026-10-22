@@ -6,11 +6,22 @@
     <!-- % で囲んだ所は、ビルド時に src/appInfo.ts の値へ置き換える（PevenMUI の pevenApp） -->
     <title>%APP_NAME%</title>
     <meta name="description" content="%APP_DESCRIPTION%" />
+    <!-- OGP（Discord などのリンクプレビュー） -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="%APP_NAME%" />
     <meta property="og:title" content="%APP_NAME%" />
     <meta property="og:description" content="%APP_DESCRIPTION%" />
     <meta property="og:url" content="%SITE_URL%" />
+    <meta property="og:image" content="%SITE_URL%icon-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
     <meta property="og:locale" content="%APP_LOCALE%" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <!-- X（Twitter）のカード -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="%APP_NAME%" />
+    <meta name="twitter:description" content="%APP_DESCRIPTION%" />
+    <meta name="twitter:image" content="%SITE_URL%icon-512.png" />
     <link rel="icon" href="%BASE_URL%icon.svg" type="image/svg+xml" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#202124" />
