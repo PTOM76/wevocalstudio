@@ -3,16 +3,14 @@
 // Shift を押しながらクリックで選択の足し引き、Shift を押しながら空いている所をドラッグで枠で選ぶ、Ctrl+A で全部。選んだものは一緒に動く。
 // 左の鍵盤を押すと、その高さの音が鳴る。道具（選択、ペン、消しゴム）、ズーム、再生はこの中のツールバーにある（別のウィンドウに出しても使えるよう）。操作の説明は右上の ? のツールチップ（roll.help）。下の帯は音の強さ（ベロシティ）。Ctrl+ホイールで横の拡大、Shift+ホイールで横のスクロール、Alt+ホイールで行の高さ、ホイールで音の高さをずらす。Alt を押している間はグリッドに合わせない
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Box, IconButton, Tooltip, Typography } from '@mui/material'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faAngleDown, faAngleUp, faAnglesDown, faAnglesUp, faArrowPointer, faArrowsLeftRightToLine, faCircleQuestion, faClone, faCopy, faEraser, faGripLinesVertical, faLink, faRulerHorizontal, faVolumeXmark, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faPaste, faPause, faPencil, faPlay, faScissors, faTableCells, faTrashCan, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
-import { NumberInput, ScrollBar, SmallButton, ToolbarDivider, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
-import { LabeledSelect as Choice } from 'wevocal-lib/react'
+import { Box, Typography } from '@mui/material'
+import { NumberInput, ScrollBar, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
 import { blockBeats, projectBeatMap } from '../beats'
 import { useT } from '../i18n'
 import { newId, type MidiBlock, type Note, type Project } from '../project'
 import { drawRoll } from './draw'
-import { copyNotes, glue, legato, pasteNotes, quantize, resize, selectionEnd, setDuration, setMute, shift, slice, velocity, type NoteClip } from './edit'
+import RollToolbar, { type HumanizeForm, type QuantizeForm, type Tool } from './Toolbar'
+import { copyNotes, glue, humanize, legato, pasteNotes, quantize, resize, selectionEnd, setDuration, setMute, shift, slice, velocity, type NoteClip } from './edit'
 import { hitNote, hitVel } from './hit'
 import { GAP, KEYS, NAMES, ROW_MAX, ROW_MIN, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
 
@@ -25,8 +23,6 @@ type Drag =
   | { kind: 'erase'; merge: string }
   | { kind: 'mute'; value: boolean; merge: string }
 
-/** 道具: 選択（空いている所のドラッグで枠、ダブルクリックで音符を足す）、ペン（クリックで音符を足す）、消しゴム（なぞった音符を消す）、分割（押した位置で切る）、ミュート（なぞった音符のミュートを切り替える） */
-type Tool = 'select' | 'pen' | 'erase' | 'slice' | 'mute'
 
 /** キーでの道具の切り替え（FL Studio にならう） */
 const TOOL_KEYS: Record<string, Tool> = { e: 'select', p: 'pen', d: 'erase', c: 'slice', t: 'mute' }
@@ -335,7 +331,8 @@ export default function PianoRoll(p: PianoRollProps) {
     setLeft(Math.max(0, mid - visibleBeats({ ...view, ppb }) / 2))
   }
   /** グリッドに寄せる（始まりと長さを 100%） */
-  const doQuantize = () => sel.length && p.onChange(quantize(block.notes, sel, { step, start: true, length: true, strength: 1, swing: 0 }, len))
+  const doQuantize = (f: QuantizeForm = { start: true, length: true, strength: 100, swing: 0 }) => sel.length && p.onChange(quantize(block.notes, sel, { step, start: f.start, length: f.length, strength: f.strength / 100, swing: f.swing / 100 }, len))
+  const doHumanize = (f: HumanizeForm) => sel.length && p.onChange(humanize(block.notes, sel, { time: f.time / 100, vel: f.vel / 100 }, len))
   const doGlue = () => sel.length > 1 && p.onChange(glue(block.notes, sel))
   const doLegato = () => sel.length && p.onChange(legato(block.notes, sel))
   const doTranspose = (semis: number) => sel.length && p.onChange(shift(block.notes, sel, 0, semis, len))
@@ -375,7 +372,6 @@ export default function PianoRoll(p: PianoRollProps) {
   }
   const options: [number, string][] = (DIVISIONS.includes(p.division) ? DIVISIONS : [...DIVISIONS, p.division]).map((d) => [d, `1/${d}`])
   const top = NAMES[view.low % 12] + (Math.floor(view.low / 12) - 1)
-  const none = !sel.length
   // 情報行: 選んだ音符の値（複数のときは先頭の値）を数値で見て直す。入れた値は選んだ全部に反映する
   const lead = block.notes.find((n) => sel.includes(n.id))
   const field = (label: string, value: number, min: number, max: number, step: number, unit: string, apply: (v: number) => Note[]) => (
@@ -393,50 +389,34 @@ export default function PianoRoll(p: PianoRollProps) {
       {lead && <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{`${NAMES[lead.pitch % 12]}${Math.floor(lead.pitch / 12) - 1}`}</Typography>}
     </Box>
   )
-  const btn = (title: string, icon: IconDefinition, onClick: () => void, o: { disabled?: boolean; pressed?: boolean } = {}) => <SmallButton title={title} label={title} icon={icon} onClick={onClick} {...o} />
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }} onKeyDown={onKey}>
       {p.toolbar !== false && (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', pt: 1 }}>
-        <Box sx={{ width: 110, mr: 0.5 }}>
-          <Choice label={t('roll.grid')} value={p.division} options={options} onChange={p.onDivision} />
-        </Box>
-        {btn(t('menu.snap'), faMagnet, () => setSnapOn((v) => !v), { pressed: snapOn })}
-        <ToolbarDivider gap />
-        {btn(t('roll.toolSelect'), faArrowPointer, () => setTool('select'), { pressed: tool === 'select' })}
-        {btn(t('roll.toolPen'), faPencil, () => setTool('pen'), { pressed: tool === 'pen' })}
-        {btn(t('roll.toolErase'), faEraser, () => setTool('erase'), { pressed: tool === 'erase' })}
-        {btn(t('roll.toolSlice'), faGripLinesVertical, () => setTool('slice'), { pressed: tool === 'slice' })}
-        {btn(t('roll.toolMute'), faVolumeXmark, () => setTool('mute'), { pressed: tool === 'mute' })}
-        <ToolbarDivider gap />
-        {btn(t('menu.cut'), faScissors, () => doCopy(true), { disabled: none })}
-        {btn(t('menu.copy'), faCopy, () => doCopy(false), { disabled: none })}
-        {btn(t('menu.paste'), faPaste, doPaste, { disabled: !clipboard })}
-        {btn(t('menu.duplicate'), faClone, doDuplicate, { disabled: none })}
-        {btn(t('roll.remove'), faTrashCan, () => remove(sel), { disabled: none })}
-        <ToolbarDivider gap />
-        {btn(t('roll.up'), faAngleUp, () => doTranspose(1), { disabled: none })}
-        {btn(t('roll.down'), faAngleDown, () => doTranspose(-1), { disabled: none })}
-        {btn(t('roll.octaveUp'), faAnglesUp, () => doTranspose(12), { disabled: none })}
-        {btn(t('roll.octaveDown'), faAnglesDown, () => doTranspose(-12), { disabled: none })}
-        <ToolbarDivider gap />
-        {btn(t('roll.quantize'), faTableCells, doQuantize, { disabled: none })}
-        {btn(t('roll.legato'), faRulerHorizontal, doLegato, { disabled: none })}
-        {btn(t('roll.glue'), faLink, doGlue, { disabled: sel.length < 2 })}
-        <ToolbarDivider gap />
-        {btn(t('roll.zoomIn'), faMagnifyingGlassPlus, () => zoomBy(1.4))}
-        {btn(t('roll.zoomOut'), faMagnifyingGlassMinus, () => zoomBy(1 / 1.4))}
-        {btn(t('roll.zoomFit'), faArrowsLeftRightToLine, () => (setZoom(null), setLeft(0)))}
-        <ToolbarDivider gap />
-        {btn(t(p.playing ? 'roll.pause' : 'roll.play'), p.playing ? faPause : faPlay, p.onTogglePlay)}
-        <Box sx={{ flex: 1 }} />
-        <Tooltip title={<Box sx={{ whiteSpace: 'pre-line', fontSize: pevenFont('sm') }}>{t('roll.help')}</Box>} placement="bottom-end">
-          <IconButton size="small" aria-label={t('roll.helpButton')}>
-            <FontAwesomeIcon icon={faCircleQuestion} />
-          </IconButton>
-        </Tooltip>
-      </Box>
+        <RollToolbar
+          division={p.division}
+          divisions={options}
+          onDivision={p.onDivision}
+          snapOn={snapOn}
+          onSnap={() => setSnapOn((v) => !v)}
+          tool={tool}
+          onTool={setTool}
+          selected={sel.length}
+          canPaste={!!clipboard}
+          playing={p.playing}
+          onTogglePlay={p.onTogglePlay}
+          onCut={() => doCopy(true)}
+          onCopy={() => doCopy(false)}
+          onPaste={doPaste}
+          onDuplicate={doDuplicate}
+          onRemove={() => remove(sel)}
+          onTranspose={doTranspose}
+          onQuantize={doQuantize}
+          onLegato={doLegato}
+          onGlue={doGlue}
+          onHumanize={doHumanize}
+          onZoom={zoomBy}
+          onFit={() => (setZoom(null), setLeft(0))}
+        />
       )}
       {info}
       <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 260, position: 'relative' }}>

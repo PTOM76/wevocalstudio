@@ -123,3 +123,9 @@ export function pasteNotes(notes: Note[], clip: NoteClip, at: number, len: numbe
 
 /** 選んだ音符の終わり（拍）。選んでいなければ 0 */
 export const selectionEnd = (notes: Note[], ids: string[]) => Math.max(0, ...notes.filter((n) => ids.includes(n.id)).map((n) => n.t + n.dur))
+
+/** 選んだ音符の始まり（拍）と強さを、最大で time 拍、vel（0〜1）だけランダムにずらす */
+export function humanize(notes: Note[], ids: string[], o: { time: number; vel: number }, len: number, rand: () => number = Math.random): Note[] {
+  const jitter = (max: number) => (rand() * 2 - 1) * max
+  return only(notes, ids, (n) => ({ ...n, t: Math.max(0, Math.min(len - n.dur, n.t + jitter(o.time))), vel: Math.max(0.02, Math.min(1, n.vel + jitter(o.vel))) }))
+}
