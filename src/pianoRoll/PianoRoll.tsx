@@ -15,11 +15,12 @@ import { useStepInput } from './useStepInput'
 import RollToolbar, { type Tool } from './Toolbar'
 import { selectionEnd, setMute, slice } from './edit'
 import { hasClipboard, useRollEdit } from './useRollEdit'
+import { usePinch } from './usePinch'
 import { useRollWheel } from './useRollWheel'
 import { hitNote, hitVel } from './hit'
 import { curveOf, hitPoint, lanePoints, valueAt, withPoints, type Lane } from './laneEdit'
 import { curveRange } from '../midiCurves'
-import { EDGE, GAP, KEYS, NAMES, SCALES, type ScaleKind, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
+import { EDGE, GAP, KEYS, NAMES, ROW_MIN, SCALES, type ScaleKind, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
 
 type Drag =
   | { kind: 'move'; start: Note[]; beat0: number; pitch0: number; merge: string }
@@ -82,6 +83,8 @@ export default function PianoRoll(p: PianoRollProps) {
   // 画面の鍵盤（指で操作する端末では最初から出す）と、その一番左の C
   const [kb, setKb] = useState(() => !!window.matchMedia?.('(pointer: coarse)').matches)
   const [kbBase, setKbBase] = useState(48)
+  const [fold, setFold] = useState(false)
+  const foldRef = useRef<number[]>([])
   const [scale, setScale] = useState<{ root: number; kind: ScaleKind }>({ root: 0, kind: 'none' })
   const [frame, setFrame] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const [play, setPlay] = useState<number | null>(null)
@@ -90,8 +93,7 @@ export default function PianoRoll(p: PianoRollProps) {
   const drag = useRef<Drag | null>(null)
   // 指の操作: 今の指か（右端をつかめる幅を広げる）、触れている指の位置、2 本指のつまみ
   const touch = useRef(false)
-  const pointers = useRef(new Map<number, { x: number; y: number }>())
-  const pinch = useRef<{ dist0: number; ppb0: number; beat: number; y0: number; low0: number } | null>(null)
+  const pinch = usePinch(canvas, { zoom: setZoom, left: setLeft, low: setLow })
   const [noteMenu, setNoteMenu] = useState<{ x: number; y: number } | null>(null)
   const edgePx = () => (touch.current ? 18 : EDGE)
   const count = useRef(0)
@@ -102,7 +104,12 @@ export default function PianoRoll(p: PianoRollProps) {
   const map = projectBeatMap(p.project)
   const len = blockBeats(map, block)
   const fit = Math.max(1, (width - KEYS) / Math.max(len, step * 4))
-  const view = clampView({ left, ppb: zoom ?? fit, low, row, w: width, h: height }, len)
+  // 折りたたみ: 音符のある高さの行だけを見せる（ドラッグの間は、行がずれないよう、始めたときの並びのまま）
+  if (!drag.current || !foldRef.current.length) foldRef.current = [...new Set(block.notes.map((n) => n.pitch))].sort((a, b) => b - a)
+  const folded = fold && foldRef.current.length ? foldRef.current : null
+  // 行を高くして、画面を使う（高くしすぎない）
+  const rowPx = folded ? Math.max(ROW_MIN, Math.min(Math.max(row, 36), Math.floor((height - GAP - VEL) / folded.length))) : row
+  const view = clampView({ left, ppb: zoom ?? fit, low, row: rowPx, fold: folded, w: width, h: height }, len)
   const viewRef = useRef(view)
   viewRef.current = view
   const snap = (beat: number, free: boolean) => (free || !snapOn ? beat : Math.round(beat / step) * step)
@@ -178,16 +185,12 @@ export default function PianoRoll(p: PianoRollProps) {
     e.currentTarget.setPointerCapture(e.pointerId)
     e.currentTarget.focus()
     touch.current = e.pointerType === 'touch'
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     // 2 本目の指: つまみ（拡大と縮小、縦横のスクロール）に切り替える
-    if (pointers.current.size === 2) {
-      const [a, b2] = [...pointers.current.values()]
-      const mid = localPoint(canvas.current!, (a.x + b2.x) / 2, (a.y + b2.y) / 2)
+    if (pinch.down(e, view)) {
       if (drag.current?.kind === 'pan') clearTimeout(drag.current.timer)
       drag.current = null
       setFrame(null)
       sound(null)
-      pinch.current = { dist0: Math.hypot(a.x - b2.x, a.y - b2.y) || 1, ppb0: view.ppb, beat: xBeat(view, mid.x), y0: mid.y, low0: view.low }
       return
     }
     // 鍵盤: 押している間鳴らし、なぞると続けて鳴らす
@@ -282,17 +285,7 @@ export default function PianoRoll(p: PianoRollProps) {
   const newNote = (x: number, y: number, free: boolean): Note => ({ id: newId(), t: Math.max(0, Math.min(len - step, free || !snapOn ? xBeat(view, x) : Math.floor(xBeat(view, x) / step + 1e-6) * step)), dur: lastDur.current || step, pitch: rowPitch(view, y), vel: 0.8 })
 
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    const pc = pinch.current
-    if (pc && pointers.current.size === 2) {
-      const [a, b2] = [...pointers.current.values()]
-      const mid = localPoint(canvas.current!, (a.x + b2.x) / 2, (a.y + b2.y) / 2)
-      const ppb = Math.max(2, Math.min(2000, (pc.ppb0 * (Math.hypot(a.x - b2.x, a.y - b2.y) || 1)) / pc.dist0))
-      setZoom(ppb)
-      setLeft(Math.max(0, pc.beat - (mid.x - KEYS) / ppb))
-      setLow(pc.low0 + Math.round((mid.y - pc.y0) / view.row))
-      return
-    }
+    if (pinch.move(e, view)) return
     const d = drag.current
     if (!d) return
     const { x, y } = pos(e)
@@ -327,11 +320,10 @@ export default function PianoRoll(p: PianoRollProps) {
       setFrame({ x0: d.x0, y0: d.y0, x1: x, y1: y })
       const [xa, xb] = [Math.min(d.x0, x), Math.max(d.x0, x)]
       const [ya, yb] = [Math.min(d.y0, y), Math.max(d.y0, y)]
-      const rows = rowsOf(view)
       setSel(
         block.notes.flatMap((n) => {
-          if (n.pitch < view.low || n.pitch >= view.low + rows) return []
           const ny = pitchY(view, n.pitch)
+          if (ny === -Infinity) return []
           const nx0 = KEYS + (n.t - view.left) * view.ppb
           const nx1 = nx0 + Math.max(3, n.dur * view.ppb)
           return nx1 >= xa && nx0 <= xb && ny + view.row >= ya && ny <= yb ? [n.id] : []
@@ -376,8 +368,7 @@ export default function PianoRoll(p: PianoRollProps) {
   }
 
   const onUp = (e?: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e) pointers.current.delete(e.pointerId)
-    if (pointers.current.size < 2) pinch.current = null
+    pinch.up(e)
     const d = drag.current
     // 動かさずに離した指: 音符を足す
     if (d?.kind === 'pan') {
@@ -458,6 +449,8 @@ export default function PianoRoll(p: PianoRollProps) {
           onScale={(root, kind) => setScale({ root, kind })}
           keyboard={kb}
           onKeyboard={() => setKb((v) => !v)}
+          fold={fold}
+          onFold={() => setFold((v) => !v)}
           stepInput={step2.on}
           onStepInput={() => step2.toggle(stepStart())}
         />

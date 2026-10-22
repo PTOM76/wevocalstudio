@@ -986,6 +986,7 @@
   "roll.screenKeyboard": "画面の鍵盤",
   "roll.stepInput": "ステップ入力",
   "roll.rest": "休符",
+  "roll.fold": "鍵盤の折りたたみ（音符のある高さだけ）",
 
   "instrument.title": "音源（{name}）",
   "instrument.help": "MIDI ブロックの音符を鳴らす音源です。音源を選ぶと、音量、FX、パンはトラックのものを使います",

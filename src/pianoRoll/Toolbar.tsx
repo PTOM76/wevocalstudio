@@ -55,6 +55,9 @@ export interface RollToolbarProps {
   /** 画面の鍵盤を出すか */
   keyboard: boolean
   onKeyboard: () => void
+  /** 鍵盤の折りたたみ（音符のある高さの行だけを見せる） */
+  fold: boolean
+  onFold: () => void
   /** ステップ入力 */
   stepInput: boolean
   onStepInput: () => void
@@ -110,6 +113,7 @@ export default function RollToolbar(p: RollToolbarProps) {
         { divider: true },
         { label: t('roll.preview'), checked: p.preview, onClick: p.onPreview },
         { label: t('roll.screenKeyboard'), checked: p.keyboard, onClick: p.onKeyboard },
+        { label: t('roll.fold'), checked: p.fold, onClick: p.onFold },
         { label: t('roll.stepInput'), checked: p.stepInput, onClick: p.onStepInput },
         { label: t('roll.scaleKind'), submenu: SCALE_KINDS.map((k) => ({ label: t(`roll.scale.${k}`), checked: p.scale.kind === k, onClick: () => p.onScale(p.scale.root, k) })) },
         { label: t('roll.scaleRoot'), disabled: p.scale.kind === 'none', submenu: NAMES.map((n, i) => ({ label: n, checked: p.scale.root === i, onClick: () => p.onScale(i, p.scale.kind) })) },

@@ -21,19 +21,31 @@ export interface View {
   low: number
   /** 1 行の高さ（px） */
   row: number
+  /** 折りたたみ: 見せる音の高さ（上から下へ）。なければ、low から続けて見せる */
+  fold?: number[] | null
   /** 全体の大きさ（px） */
   w: number
   h: number
 }
 
 /** 音の高さを書く行の数 */
-export const rowsOf = (v: View) => Math.max(1, Math.floor((v.h - GAP - VEL) / v.row))
+export const rowsOf = (v: View) => (v.fold?.length ? v.fold.length : Math.max(1, Math.floor((v.h - GAP - VEL) / v.row)))
 /** 音符を置く部分の高さ（px） */
 export const rollHeight = (v: View) => rowsOf(v) * v.row
 export const beatX = (v: View, beat: number) => KEYS + (beat - v.left) * v.ppb
 export const xBeat = (v: View, x: number) => (x - KEYS) / v.ppb + v.left
-export const rowPitch = (v: View, y: number) => v.low + rowsOf(v) - 1 - Math.floor(y / v.row)
-export const pitchY = (v: View, pitch: number) => (rowsOf(v) - 1 - (pitch - v.low)) * v.row
+/** 上から r 番めの行の音の高さ（折りたたみで行がなければ -1） */
+export const pitchOfRow = (v: View, r: number) => (v.fold?.length ? (v.fold[r] ?? -1) : v.low + rowsOf(v) - 1 - r)
+export const rowPitch = (v: View, y: number) => pitchOfRow(v, Math.floor(y / v.row))
+/** 音の高さの行の上端（px）。見えていなければ -Infinity */
+export const pitchY = (v: View, pitch: number) => {
+  if (v.fold?.length) {
+    const i = v.fold.indexOf(pitch)
+    return i < 0 ? -Infinity : i * v.row
+  }
+  const r = rowsOf(v) - 1 - (pitch - v.low)
+  return r < 0 || r >= rowsOf(v) ? -Infinity : r * v.row
+}
 /** 見えている幅（拍） */
 export const visibleBeats = (v: View) => Math.max(0, (v.w - KEYS) / v.ppb)
 

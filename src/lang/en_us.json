@@ -986,6 +986,7 @@
   "roll.screenKeyboard": "On-screen keyboard",
   "roll.stepInput": "Step input",
   "roll.rest": "Rest",
+  "roll.fold": "Fold keys (only notes' pitches)",
 
   "instrument.title": "Instrument ({name})",
   "instrument.help": "The instrument that plays the notes of MIDI blocks. Volume, FX, and pan use the track's.",

@@ -1,6 +1,6 @@
 // ピアノロールを描く（鍵盤、グリッド、音符、再生位置、強さの帯）。画面の部品は持たない
 import type { Note } from '../project'
-import { BLACK, GAP, KEYS, NAMES, VEL, beatX, pitchY, rollHeight, rowsOf, type View } from './view'
+import { BLACK, GAP, KEYS, NAMES, VEL, beatX, pitchOfRow, pitchY, rollHeight, rowsOf, type View } from './view'
 
 /** 描くときの色（MUI のパレットから） */
 export interface RollColors {
@@ -53,7 +53,7 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
   g.textBaseline = 'middle'
   // 行の色（黒鍵の行は少し暗く）
   for (let r = 0; r < rows; r++) {
-    const pitch = v.low + rows - 1 - r
+    const pitch = pitchOfRow(v, r)
     if (BLACK.has(pitch % 12)) {
       g.fillStyle = c.hover
       g.fillRect(KEYS, r * v.row, v.w - KEYS, v.row)
@@ -62,14 +62,14 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
   // スケールの外の行を暗くする
   if (o.scale) {
     g.fillStyle = 'rgba(0, 0, 0, 0.3)'
-    for (let r = 0; r < rows; r++) if (!o.scale.has((v.low + rows - 1 - r) % 12)) g.fillRect(KEYS, r * v.row, v.w - KEYS, v.row)
+    for (let r = 0; r < rows; r++) if (!o.scale.has(pitchOfRow(v, r) % 12)) g.fillRect(KEYS, r * v.row, v.w - KEYS, v.row)
   }
   // 鍵盤: 白鍵を敷いて、黒鍵を短く重ねる。黒鍵のない境目（E と F、B と C）と、黒鍵の真ん中に区切りの線
   const blackW = KEYS * 0.6
   g.fillStyle = c.whiteKey
   g.fillRect(0, 0, KEYS - 1, rollHeight(v))
   for (let r = 0; r < rows; r++) {
-    const pitch = v.low + rows - 1 - r
+    const pitch = pitchOfRow(v, r)
     const y = r * v.row
     const black = BLACK.has(pitch % 12)
     const down = o.pressed === pitch
@@ -120,11 +120,11 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
   g.rect(KEYS, 0, v.w - KEYS, roll)
   g.clip()
   for (const n of o.notes) {
-    if (n.pitch < v.low || n.pitch >= v.low + rows) continue
     const x = beatX(v, n.t)
     const w = Math.max(3, n.dur * v.ppb)
     if (x + w < KEYS || x > v.w) continue
     const y = pitchY(v, n.pitch)
+    if (y === -Infinity) continue
     g.globalAlpha = (0.4 + 0.6 * n.vel) * (n.mute ? 0.3 : 1)
     g.fillStyle = o.selected.includes(n.id) ? c.noteSelected : c.note
     g.fillRect(x, y + 1, w, v.row - 2)
