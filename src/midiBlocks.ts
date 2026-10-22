@@ -47,14 +47,14 @@ export function midiRect(p: Project, b: MidiBlock, scroll: number, pps: number, 
 }
 
 /** 押した所の MIDI ブロック（x、y は時間軸の座標で、y は縦のスクロールを足した内容の座標）。端なら長さを変える */
-export function hitMidi(p: Project, x: number, y: number, toTime: (x: number) => number, pps: number): { block: MidiBlock; kind: MidiDragKind } | null {
+export function hitMidi(p: Project, x: number, y: number, toTime: (x: number) => number, pps: number, edge = EDGE): { block: MidiBlock; kind: MidiDragKind } | null {
   const i = p.tracks.findIndex((_, k) => y >= trackTop(p, k) && y < trackTop(p, k) + trackHeight(p.tracks[k]))
   const track = p.tracks[i]
   if (!track) return null
   const t = toTime(x)
-  const block = (p.midi ?? []).findLast((b) => b.track === track.id && t >= b.start - EDGE / pps && t < b.start + b.length + EDGE / pps)
+  const block = (p.midi ?? []).findLast((b) => b.track === track.id && t >= b.start - edge / pps && t < b.start + b.length + edge / pps)
   if (!block) return null
-  const kind: MidiDragKind = (block.start + block.length - t) * pps < EDGE ? 'right' : (t - block.start) * pps < EDGE ? 'left' : 'move'
+  const kind: MidiDragKind = (block.start + block.length - t) * pps < edge ? 'right' : (t - block.start) * pps < edge ? 'left' : 'move'
   return { block, kind }
 }
 

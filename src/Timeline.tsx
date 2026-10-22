@@ -439,6 +439,12 @@ export default function Timeline(p: {
     marquee.current = null
     const y = cy(oy)
     const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
+    const mh = !hit && y > TOP ? hitMidi(p.project, x, y, toTime, view.pps) : null
+    if (mh) {
+      if (!p.selected.includes(mh.block.id)) p.onSelect([mh.block.id])
+      p.onSelectTrack(mh.block.track)
+      return p.onBlockMenu(mh.block.id, cx, cyClient)
+    }
     if (!hit) {
       const track = y > TOP ? (trackAt(y)?.id ?? null) : null
       if (track) p.onSelectTrack(track)
@@ -516,6 +522,7 @@ export default function Timeline(p: {
         // 長押しになったら、始めたドラッグはやめる。離したときに再生位置も移さない
         longPressed.current = true
         drag.current = null
+        midiDrag.current = null
         // 空いている所の長押し: そのままなぞると範囲選択、動かさずに離すとメニュー（波形ブロックの上は、すぐメニュー）
         if (y > TOP && !hitBlock(p.project, x, y, toTime, view.pps) && !hitMidi(p.project, x, y, toTime, view.pps)) {
           pan.current = null
@@ -561,8 +568,8 @@ export default function Timeline(p: {
       return
     }
     // MIDI ブロック（波形ブロックがない所）: 選んで、動かす、端で長さを変える
-    if (!hit && y > TOP && !p.envKind && !p.autoEdit && e.pointerType !== 'touch') {
-      const mh = hitMidi(p.project, x, y, toTime, view.pps)
+    if (!hit && y > TOP && !p.envKind && !p.autoEdit) {
+      const mh = hitMidi(p.project, x, y, toTime, view.pps, e.pointerType === 'touch' ? 18 : undefined)
       if (mh) {
         p.onSelect([mh.block.id])
         p.onSelectTrack(mh.block.track)

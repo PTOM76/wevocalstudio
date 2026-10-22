@@ -155,6 +155,7 @@
   "menu.pluginAnalyze": "Analyze with plugin…",
   "menu.exportMidi": "Export MIDI file…",
   "menu.glueMidi": "Glue MIDI blocks",
+  "menu.deleteBlock": "Delete block",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -347,6 +348,9 @@
   "editBar.delete": "Delete",
   "editBar.properties": "Properties",
   "editBar.bake": "Commit",
+  "editBar.editMidi": "Piano roll",
+  "editBar.trackInstrument": "Instrument",
+  "editBar.glueMidi": "Glue",
 
   "status.ready": "Ready",
   "status.playing": "Playing",

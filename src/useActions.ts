@@ -464,7 +464,7 @@ export function useActions(c: ActionContext) {
     }
   }
 
-  const blockMenu: MenuEntry[] = [
+  const waveMenu: MenuEntry[] = [
     item('properties'),
     envelopeRangeMenu('volume'),
     envelopeRangeMenu('pitch'),
@@ -483,6 +483,23 @@ export function useActions(c: ActionContext) {
     { label: t('menu.extract'), onClick: () => {}, submenu: [item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems] },
     ...(c.folder ? [divider, item('saveBlocksToFolder')] : []),
   ]
+
+  /** MIDI ブロックだけを選んでいるときの、ブロックのメニュー（右クリックと、指の長押し） */
+  const midiMenu: MenuEntry[] = [
+    item('properties'),
+    item('editMidi'),
+    item('trackInstrument'),
+    divider,
+    item('cut'),
+    item('copy'),
+    item('duplicate'),
+    item('split'),
+    item('delete', t('menu.deleteBlock')),
+    divider,
+    item('glueMidi'),
+    item('exportMidi'),
+  ]
+  const blockMenu = chosen.length === 0 && midiChosen.length > 0 ? midiMenu : waveMenu
 
   /** 何もない所の右クリックのメニュー。time と track は押した所 */
   const emptyMenu = (kind: 'lane' | 'ruler', time: number, track: string | null, marker?: string): MenuEntry[] =>

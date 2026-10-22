@@ -155,6 +155,7 @@
   "menu.pluginAnalyze": "プラグインで解析…",
   "menu.exportMidi": "MIDI ファイルとして書き出す…",
   "menu.glueMidi": "MIDI ブロックを 1 つにつなぐ",
+  "menu.deleteBlock": "ブロックを削除",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -347,6 +348,9 @@
   "editBar.delete": "削除",
   "editBar.properties": "プロパティ",
   "editBar.bake": "確定",
+  "editBar.editMidi": "ピアノロール",
+  "editBar.trackInstrument": "音源",
+  "editBar.glueMidi": "つなぐ",
 
   "status.ready": "準備完了",
   "status.playing": "再生中",
