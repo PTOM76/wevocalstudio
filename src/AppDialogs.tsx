@@ -59,6 +59,9 @@ export default function AppDialogs(p: {
   onTogglePlay: () => void
   /** start〜end 秒だけを再生する（loop なら繰り返す） */
   onPlayRange: (start: number, end: number, loop: boolean) => void
+  /** 編集位置と範囲選択を変える（メインの時間軸と同じもの） */
+  onSeek: (time: number) => void
+  onRange: (r: Range | null) => void
   /** 再生位置（秒。ピアノロールの再生位置の線） */
   position: () => number
   /** 音を作る処理の負荷（0〜1。測れなければ null） */
@@ -187,6 +190,10 @@ export default function AppDialogs(p: {
               position={p.position}
               onTogglePlay={p.onTogglePlay}
               onPlayBlock={(loop) => p.onPlayRange(block.start, block.start + block.length, loop)}
+              cursor={p.cursor}
+              onCursor={p.onSeek}
+              range={p.range}
+              onRange={p.onRange}
               onLength={(beats, merge) => {
                 const map = projectBeatMap(doc.project)
                 const b0 = map.toBeat(block.start)

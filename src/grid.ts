@@ -32,6 +32,9 @@ function formatTime(t: number, step: number) {
 }
 
 /** グリッドの細かさ（音符。4 なら 4 分音符、16 なら 16 分音符、3 や 6 なら 3 連符。BPM は 4 分音符の速さ） */
+/** 値を、origin から step ごとの線のうち、いちばん近いものに寄せる（編集カーソルと範囲の端。メインの時間軸とピアノロールで共通） */
+export const snapToStep = (value: number, origin: number, step: number) => origin + Math.round((value - origin) / step) * step
+
 export type GridDivision = number
 export const GRID_MIN = 1
 export const GRID_MAX = 256

@@ -1,7 +1,10 @@
-// ピアノロールの目盛り（小節と拍の数字）と、ブロックの終わりの旗。旗をドラッグすると、ブロックの範囲を広げたり狭めたりできる。再生位置の線も出す
+// ピアノロールの目盛り（小節と拍の数字）と、ブロックの終わりの旗。旗をドラッグすると、ブロックの範囲を広げたり狭めたりできる。再生位置と編集位置の線、範囲選択も出す。
+// 押すと編集位置、なぞると範囲選択（スナップが入っていれば線に合わせ、Shift で外す。メインの時間軸と同じ）
 import { useLayoutEffect, useRef } from 'react'
 import { Box } from '@mui/material'
 import { localPoint, useBoxSize, usePalette } from 'pevenmui'
+import { SELECTION_DARK, SELECTION_LIGHT, alpha } from 'wevocal-lib'
+import { snapToStep } from '../grid'
 import { KEYS, beatX, xBeat, type View } from './view'
 
 /** 目盛りの高さ（px） */
@@ -19,16 +22,25 @@ export default function RollRuler(p: {
   origin: number
   /** グリッドの間隔（拍） */
   step: number
+  /** グリッドに合わせるか（Shift で外す） */
+  snapOn: boolean
   /** 再生位置（拍。なければ null） */
   play: number | null
+  /** 編集位置と範囲選択（拍。なければ null）。押すと編集位置、なぞると範囲を変える */
+  cursor: number | null
+  range: { a: number; b: number } | null
+  onCursor: (beat: number) => void
+  onRange: (range: { a: number; b: number } | null) => void
   /** 旗をドラッグして、ブロックの長さ（拍）を変える。merge は 1 回のドラッグで同じ値 */
   onLength: (beats: number, merge: string) => void
 }) {
-  const { pal } = usePalette()
+  const { pal, dark } = usePalette()
   const box = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const { width } = useBoxSize(box)
   const drag = useRef<string | null>(null)
+  /** 旗以外を押したとき: 押した所（拍）と、なぞったか */
+  const press = useRef<{ x: number; beat: number; moved: boolean } | null>(null)
   const v = { ...p.view, w: width }
 
   useLayoutEffect(() => {
@@ -71,6 +83,18 @@ export default function RollRuler(p: {
     g.lineTo(end - 9, 0)
     g.lineTo(end, 9)
     g.fill()
+    if (p.range) {
+      const x0 = Math.max(KEYS, beatX(v, p.range.a))
+      const x1 = Math.min(width, beatX(v, p.range.b))
+      if (x1 > x0) {
+        g.fillStyle = alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.35)
+        g.fillRect(x0, 0, x1 - x0, RULER)
+      }
+    }
+    if (p.cursor !== null) {
+      g.fillStyle = '#e53935'
+      g.fillRect(beatX(v, p.cursor) - 0.5, 0, 1.5, RULER)
+    }
     if (p.play !== null) {
       g.fillStyle = pal.error.main
       g.fillRect(beatX(v, p.play), 0, 1, RULER)
@@ -81,20 +105,47 @@ export default function RollRuler(p: {
 
   const pos = (e: React.PointerEvent) => localPoint(canvas.current!, e.clientX, e.clientY).x
   const snapped = (x: number) => Math.max(p.step, Math.round(xBeat(v, x) / p.step) * p.step)
+  /** 編集位置と範囲の端（ブロックの中に収める。スナップが入っていれば線に合わせ、Shift で外す） */
+  const beatAt = (x: number, shift: boolean) => {
+    const b = Math.max(0, Math.min(p.len, xBeat(v, x)))
+    return p.snapOn && !shift ? Math.max(0, Math.min(p.len, snapToStep(b, 0, p.step))) : b
+  }
   return (
     <Box ref={box} sx={{ height: RULER, flexShrink: 0 }}>
       <canvas
         ref={canvas}
-        style={{ display: 'block', width: '100%', height: RULER, touchAction: 'none', cursor: 'ew-resize' }}
+        style={{ display: 'block', width: '100%', height: RULER, touchAction: 'none', cursor: 'pointer' }}
         onPointerDown={(e) => {
-          // 旗の近くを押したときだけ、つかむ
-          if (Math.abs(pos(e) - beatX(v, p.len)) > FLAG) return
           e.currentTarget.setPointerCapture(e.pointerId)
-          drag.current = `len${Date.now()}`
+          // 旗の近くを押したときは、つかむ。ほかは、編集位置（なぞれば範囲選択）
+          if (Math.abs(pos(e) - beatX(v, p.len)) <= FLAG) {
+            drag.current = `len${Date.now()}`
+            return
+          }
+          press.current = { x: pos(e), beat: beatAt(pos(e), e.shiftKey), moved: false }
         }}
-        onPointerMove={(e) => drag.current && p.onLength(snapped(pos(e)), drag.current)}
-        onPointerUp={() => (drag.current = null)}
-        onPointerCancel={() => (drag.current = null)}
+        onPointerMove={(e) => {
+          if (drag.current) return p.onLength(snapped(pos(e)), drag.current)
+          const s = press.current
+          if (!s || (!s.moved && Math.abs(pos(e) - s.x) < 3)) return
+          s.moved = true
+          const b = beatAt(pos(e), e.shiftKey)
+          p.onRange({ a: Math.min(s.beat, b), b: Math.max(s.beat, b) })
+        }}
+        onPointerUp={() => {
+          // なぞらずに離したら、範囲を消して、押した所を編集位置にする（メインの時間軸と同じ）
+          const s = press.current
+          if (s && !s.moved) {
+            p.onRange(null)
+            p.onCursor(s.beat)
+          }
+          drag.current = null
+          press.current = null
+        }}
+        onPointerCancel={() => {
+          drag.current = null
+          press.current = null
+        }}
       />
     </Box>
   )

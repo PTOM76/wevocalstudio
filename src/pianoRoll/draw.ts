@@ -13,6 +13,9 @@ export interface RollColors {
   note: string
   noteSelected: string
   play: string
+  /** 編集位置の線と、範囲選択の色（メインの時間軸と同じ） */
+  cursor: string
+  range: string
   /** 鍵盤の白鍵と黒鍵（テーマによらず白と黒） */
   whiteKey: string
   blackKey: string
@@ -38,6 +41,9 @@ export interface RollDraw {
   stepAt: number | null
   /** 再生位置（拍。再生していなければ null） */
   play: number | null
+  /** 編集位置（拍。ブロックの外なら null）と、範囲選択（拍。なければ null）。メインの時間軸と同じもの */
+  cursor: number | null
+  range: { a: number; b: number } | null
   box: { x0: number; y0: number; x1: number; y1: number } | null
   velLabel: string
   /** 曲線のレーン（CC、ピッチベンド）を描くとき。なければ強さの帯。lo、hi は値の範囲 */
@@ -185,6 +191,21 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
     if (x >= KEYS && x <= v.w) {
       g.fillStyle = c.noteSelected
       for (let y = 0; y < v.h; y += 6) g.fillRect(x, y, 1.5, 3)
+    }
+  }
+  if (o.range) {
+    const x0 = Math.max(KEYS, beatX(v, o.range.a))
+    const x1 = Math.min(v.w, beatX(v, o.range.b))
+    if (x1 > x0) {
+      g.fillStyle = c.range
+      g.fillRect(x0, 0, x1 - x0, v.h)
+    }
+  }
+  if (o.cursor !== null) {
+    const x = beatX(v, o.cursor)
+    if (x >= KEYS && x <= v.w) {
+      g.fillStyle = c.cursor
+      g.fillRect(x - 0.5, 0, 1.5, v.h)
     }
   }
   if (o.play !== null) {

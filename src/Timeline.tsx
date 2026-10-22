@@ -14,7 +14,7 @@ import { blockBeats, projectBeatMap } from './beats'
 import { layoutRows } from './overlap'
 import { depthOf, projectEnd, songEnd, masterHeight, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange } from './project'
 import { ENVELOPES, envelopeRange, hitEnvLine, hitEnvPoint, type EnvKind } from './envelopes'
-import { snapGrid, type GridDivision, type GridMode } from './grid'
+import { snapGrid, snapToStep, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { RULER, drawCursors, drawTimeline, topOf, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
 import type { Block, Master, MidiBlock, Project, Track } from './project'
@@ -425,7 +425,7 @@ export default function Timeline(p: {
     const t = Math.max(0, toTime(x))
     if (!p.snap || shift) return t
     const { origin, step } = snapGrid(p.grid, p.project.tempo, view.pps, p.division, p.project.markers, t)
-    return Math.max(0, origin + Math.round((t - origin) / step) * step)
+    return Math.max(0, snapToStep(t, origin, step))
   }
 
   /** 目盛りの上で、x にあるマーカー（旗の幅の中か、線の近く） */

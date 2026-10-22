@@ -178,6 +178,16 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     setPlayPos(start)
     void player.current.play(project, start).then(() => player.current.playing && setPlaying(true)).catch(fail)
   }
+  /**
+   * ピアノロールの再生。メインの再生と同じく、範囲選択か編集位置がそのブロックの中にあれば、そこから鳴らす（範囲があれば範囲の中だけ）。
+   * なければ、ブロックの範囲を鳴らす。loop なら繰り返す
+   */
+  const playRoll = (start: number, end: number, loop: boolean) => {
+    const inRange = !!range && range.end > start && range.start < end
+    if (!inRange && !(cursor >= start && cursor < end)) return playRange(start, end, loop)
+    setRepeat(loop)
+    play()
+  }
   // 追加機能の導入の確かめ（動画の書き出し。PevenMUI）
   const addonInstall = useAddonInstall()
   // ボーカル抽出と楽器ごとの分離（extractor の host.ts。WeVocalSynth と共通）
@@ -699,7 +709,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
       <ContextMenu position={envAt} entries={envAt ? envelopeMenu(envAt.block, envAt.index) : []} onClose={() => setEnvAt(null)} />
       <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track, emptyAt.marker) : []} onClose={() => setEmptyAt(null)} />
-      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} onRenameProject={setFileName} range={range} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} position={() => player.current.position()} onTogglePlay={() => (playing ? pause() : play())} onPlayRange={playRange} load={renderLoad} onPreview={(track, pitch, vel, on) => void player.current.monitorNote(project, track, pitch, vel, on)} />
+      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} onRenameProject={setFileName} range={range} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} position={() => player.current.position()} onTogglePlay={() => (playing ? pause() : play())} onPlayRange={playRoll} onSeek={seek} onRange={setRange} load={renderLoad} onPreview={(track, pitch, vel, on) => void player.current.monitorNote(project, track, pitch, vel, on)} />
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar

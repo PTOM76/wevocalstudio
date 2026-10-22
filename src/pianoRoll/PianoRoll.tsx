@@ -5,6 +5,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box } from '@mui/material'
 import { ScrollBar, localPoint, useBoxSize, usePalette } from 'pevenmui'
+import { SELECTION_DARK, SELECTION_LIGHT, alpha } from 'wevocal-lib'
 import { blockBeats, projectBeatMap } from '../beats'
 import { useT } from '../i18n'
 import { newId, type MidiBlock, type MidiCurve, type Note, type Project } from '../project'
@@ -54,8 +55,13 @@ export interface PianoRollProps {
   position: () => number
   /** 再生と一時停止の切り替え（別のウィンドウでも、ピアノロールの中で操作できるように） */
   onTogglePlay: () => void
-  /** ピアノロールのブロックの範囲だけを再生する（loop ならその範囲を繰り返す） */
+  /** 再生する（メインの再生と同じ。編集位置か範囲がブロックの中にあればそこから、なければブロックを。loop なら繰り返す） */
   onPlayBlock: (loop: boolean) => void
+  /** 編集位置（秒。メインの時間軸と同じもの）と、範囲選択（秒）。ここで変えると、メインにも反映される */
+  cursor: number
+  onCursor: (sec: number) => void
+  range: { start: number; end: number } | null
+  onRange: (r: { start: number; end: number } | null) => void
   /** ブロックの長さ（拍）を変える（目盛りの旗のドラッグ）。merge は 1 回のドラッグで同じ値 */
   onLength: (beats: number, merge: string) => void
   /** メニューバーとツールバーを出すか（既定は出す） */
@@ -66,7 +72,7 @@ export interface PianoRollProps {
 
 export default function PianoRoll(p: PianoRollProps) {
   const t = useT()
-  const { pal } = usePalette()
+  const { pal, dark } = usePalette()
   const laneLabel = (l: Lane) => laneLabelOf(t, l)
   const canvas = useRef<HTMLCanvasElement>(null)
   const box = useRef<HTMLDivElement>(null)
@@ -121,6 +127,11 @@ export default function PianoRoll(p: PianoRollProps) {
   const view = clampView({ left, ppb: zoom ?? fit, low, row: rowPx, fold: folded, w: width, h: height }, len)
   const viewRef = useRef(view)
   viewRef.current = view
+  // 編集位置と範囲選択は、メインの時間軸と同じもの（秒）を、このブロックの頭からの拍にして使う
+  const origin = map.toBeat(block.start)
+  const cursorBeat = p.cursor >= block.start - 1e-6 && map.toBeat(p.cursor) - origin <= len + 1e-6 ? map.toBeat(p.cursor) - origin : null
+  const rangeBeats = p.range && p.range.end > block.start && map.toBeat(p.range.start) - origin < len ? { a: map.toBeat(p.range.start) - origin, b: map.toBeat(p.range.end) - origin } : null
+  const beatToSec = (b: number) => map.toSec(origin + b)
   const snap = (beat: number, free: boolean) => (free || !snapOn ? beat : Math.round(beat / step) * step)
 
   const sound = (pitch: number | null, vel = 0.8) => {
@@ -146,6 +157,8 @@ export default function PianoRoll(p: PianoRollProps) {
       step,
       beatsPerBar: p.project.tempo.beatsPerBar,
       play,
+      cursor: cursorBeat,
+      range: rangeBeats,
       pressed: held,
       stepAt: step2.on ? step2.at : null,
       loopAt: block.loop,
@@ -153,7 +166,7 @@ export default function PianoRoll(p: PianoRollProps) {
       box: frame,
       velLabel: t('roll.velocity'),
       curve: laneInfo ? { points, lo: curveRange({ kind: laneInfo.kind })[0], hi: curveRange({ kind: laneInfo.kind })[1], label: laneLabel(lane) } : null,
-      colors: { background: pal.background.default, paper: pal.background.paper, hover: pal.action.hover, divider: pal.divider, text: pal.text.primary, textSecondary: pal.text.secondary, note: pal.primary.main, noteSelected: pal.primary.light, play: pal.error.main, whiteKey: '#e9e9e9', blackKey: '#2b2b2b', keyLine: '#9a9a9a' },
+      colors: { background: pal.background.default, paper: pal.background.paper, hover: pal.action.hover, divider: pal.divider, text: pal.text.primary, textSecondary: pal.text.secondary, note: pal.primary.main, noteSelected: pal.primary.light, play: pal.error.main, cursor: '#e53935', range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18), whiteKey: '#e9e9e9', blackKey: '#2b2b2b', keyLine: '#9a9a9a' },
     })
   })
   // 開いたとき、音符のある高さが見えるように縦の位置を決める（音符がなければ C4 の辺り）
@@ -438,7 +451,7 @@ export default function PianoRoll(p: PianoRollProps) {
   /** ステップ入力を始める位置: 選んでいる音符の終わり（なければ頭） */
   const stepStart = () => (sel.length ? selectionEnd(block.notes, sel) : 0)
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={onKey}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={(e) => (e.key === 'Escape' && p.range ? p.onRange(null) : onKey(e))}>
       {p.toolbar !== false && (
         <RollToolbar
           host={p.chromeHost}
@@ -473,7 +486,20 @@ export default function PianoRoll(p: PianoRollProps) {
       <NoteMenu position={noteMenu} onClose={() => setNoteMenu(null)} edit={edit} selected={sel} />
       <InfoLine notes={block.notes} selected={sel} len={len} step={step} onChange={p.onChange} lane={lane} laneLabel={laneLabel} onLane={setLane} />
       <Box sx={{ mx: 1.5 }}>
-        <RollRuler view={view} len={len} beatsPerBar={p.project.tempo.beatsPerBar} origin={map.toBeat(block.start)} step={step} play={play} onLength={p.onLength} />
+        <RollRuler
+          view={view}
+          len={len}
+          beatsPerBar={p.project.tempo.beatsPerBar}
+          origin={origin}
+          step={step}
+          snapOn={snapOn}
+          play={play}
+          cursor={cursorBeat}
+          range={rangeBeats}
+          onCursor={(b) => p.onCursor(beatToSec(b))}
+          onRange={(r) => p.onRange(r && { start: beatToSec(r.a), end: beatToSec(r.b) })}
+          onLength={p.onLength}
+        />
       </Box>
       <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 120, position: 'relative', mx: 1.5 }}>
         <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => onUp()} onDoubleClick={onDouble} onContextMenu={onContext} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
