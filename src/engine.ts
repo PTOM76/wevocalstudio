@@ -81,6 +81,8 @@ class Graph {
   private anticipated = new Set<string>()
   /** 先に作った音の再生（トラックごと。止めるときに使う） */
   private cacheSources = new Map<string, AudioBufferSourceNode[]>()
+  /** 先に作った音ごとの音量（やめるとき、ぷつっと切れないよう、短く下げてから止める） */
+  private cacheGains = new WeakMap<AudioBufferSourceNode, GainNode>()
   /** 最後に同期したプロジェクト（サイドチェーンの輪を作らないかの確認に使う） */
   private proj: Project | null = null
   /** 再生の出口のリミッター（書き出しは通さない） */
@@ -143,7 +145,10 @@ class Graph {
     if (!n) return
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
-    src.connect(n.cache)
+    const gain = this.ctx.createGain()
+    src.connect(gain)
+    gain.connect(n.cache)
+    this.cacheGains.set(src, gain)
     const when = this.zero + start
     const now = this.ctx.currentTime
     if (when >= now) src.start(when)
@@ -155,14 +160,24 @@ class Graph {
   }
 
   /** 先に作った音をやめ、ノードの FX の列と波形ブロックの声で鳴らす（編集したときと、先読みが間に合わなかったとき） */
-  release(trackId: string) {
+  release(trackId: string, fade = true) {
+    const now = this.ctx.currentTime
     for (const s of this.cacheSources.get(trackId) ?? []) {
-      try {
-        s.stop()
-      } catch {
-        // まだ始まっていないものは止められる。終わったものは無視
+      const gain = this.cacheGains.get(s)
+      const stop = () => {
+        try {
+          s.stop()
+        } catch {
+          // まだ始まっていないものは止められる。終わったものは無視
+        }
+        s.disconnect()
+        gain?.disconnect()
       }
-      s.disconnect()
+      // 鳴っている途中で切ると、ぷつっと音がする。短く下げてから止める（ノードの列の音とは重なるが、一瞬）
+      if (fade && gain && this.ctx.state === 'running') {
+        gain.gain.setTargetAtTime(0, now, FADE / 3)
+        setTimeout(stop, FADE * 4 * 1000)
+      } else stop()
     }
     this.cacheSources.delete(trackId)
     this.anticipated.delete(trackId)
@@ -512,7 +527,7 @@ class Graph {
 
   /** ノードを全部外す（オフラインの描画が終わったあとも呼ぶ。FX のプロセッサーと音源を残さない） */
   dispose() {
-    for (const id of [...this.cacheSources.keys()]) this.release(id)
+    for (const id of [...this.cacheSources.keys()]) this.release(id, false)
     this.mixers.disconnect()
     for (const n of this.tracks.values()) {
       n.inst?.instance.dispose()
