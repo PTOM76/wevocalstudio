@@ -18,7 +18,12 @@ export function buildMidi(p: Project, ids?: string[]): Uint8Array | null {
       const b0 = map.toBeat(b.start) - origin
       return b.notes.filter((n) => !n.mute).map((n) => ({ startBeat: b0 + n.t, endBeat: b0 + n.t + n.dur, note: n.pitch, vel: n.vel }))
     })
-    if (notes.length) tracks.push({ name: track.name, notes })
+    // コントロール（CC、ピッチベンド）の点
+    const controls = mine.flatMap((b) => {
+      const b0 = map.toBeat(b.start) - origin
+      return (b.curves ?? []).flatMap((c) => c.points.map((pt) => ({ kind: c.kind, ...(c.kind === 'cc' ? { cc: c.cc ?? 0 } : {}), beat: b0 + pt.t, value: pt.v })))
+    })
+    if (notes.length) tracks.push({ name: track.name, notes, ...(controls.length ? { controls } : {}) })
   }
   if (!tracks.length) return null
   const tempos = [{ beat: 0, bpm: p.tempo.bpm }, ...p.markers.filter((m) => m.tempo && m.time > 0).map((m) => ({ beat: map.toBeat(m.time) - origin, bpm: m.tempo!.bpm }))]

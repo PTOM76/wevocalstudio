@@ -170,6 +170,7 @@ export default function AppDialogs(p: {
               position={p.position}
               onTogglePlay={p.onTogglePlay}
               onChange={(notes, merge) => doc.updateMidiBlock(block.id, { notes }, merge && `${block.id}:${merge}`)}
+              onCurves={(curves, merge) => doc.updateMidiBlock(block.id, { curves }, merge && `${block.id}:${merge}`)}
               onPreview={(pitch, vel, on) => p.onPreview(block.track, pitch, vel, on)}
               onClose={() => {
                 doc.endMerge()

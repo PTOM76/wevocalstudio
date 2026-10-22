@@ -974,6 +974,13 @@
   "roll.scale.minorPenta": "マイナーペンタトニック",
   "roll.menuEdit": "編集",
   "roll.selectAll": "すべて選択",
+  "roll.lane": "レーン: {name}",
+  "roll.laneBend": "ピッチベンド",
+  "roll.cc1": "モジュレーション（CC1）",
+  "roll.cc7": "音量（CC7）",
+  "roll.cc10": "パン（CC10）",
+  "roll.cc11": "エクスプレッション（CC11）",
+  "roll.cc64": "サステイン（CC64）",
 
   "instrument.title": "音源（{name}）",
   "instrument.help": "MIDI ブロックの音符を鳴らす音源です。音源を選ぶと、音量、FX、パンはトラックのものを使います",

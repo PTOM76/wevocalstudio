@@ -3,7 +3,8 @@
 import { AHEAD, anticipated, CHUNK, PREROLL, signature } from './anticipate'
 import { ChunkCache, chunkKey } from './fxCache'
 import { blockBeats, projectBeatMap } from './beats'
-import { createInstrument, findInstrument, preloadInstruments, type InstrumentInstance, type NoteEvent } from 'wevocal-lib'
+import { createInstrument, findInstrument, preloadInstruments, type ControlEvent, type InstrumentInstance, type NoteEvent } from 'wevocal-lib'
+import { curveSteps } from './midiCurves'
 import { liveProcessors, renderLoad } from 'wevocal-lib'
 import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, createLimitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
@@ -184,6 +185,26 @@ class Graph {
     return out.sort((a, b) => a.time - b.time)
   }
 
+  /** そのトラックのコントロール（CC、ピッチベンド）を、AudioContext の時刻にして並べる（noteEvents と同じ範囲） */
+  private controlEvents(p: Project, track: string, from: number, to: number): ControlEvent[] {
+    const out: ControlEvent[] = []
+    const tr = p.tracks.find((t) => t.id === track)
+    if (!tr || !ownAudible(p, tr)) return out
+    const map = projectBeatMap(p)
+    for (const b of p.midi ?? []) {
+      if (b.track !== track || b.mute || !b.curves?.length) continue
+      const b0 = map.toBeat(b.start)
+      const len = blockBeats(map, b)
+      for (const c of b.curves) {
+        for (const pt of curveSteps(c.points, len)) {
+          const t = map.toSec(b0 + pt.t)
+          if (t >= from && t < to) out.push({ time: this.zero + t, kind: c.kind, cc: c.cc ?? 0, value: pt.v })
+        }
+      }
+    }
+    return out.sort((a, b) => a.time - b.time)
+  }
+
   /** サンプラーのフォルマント保持: 音符の高さに合わせて作り終えた音（高さごと）。作っている途中の高さは含めない（速度を変えて鳴らす） */
   private pitchedSamples(p: Project, t: Track) {
     const out: Record<number, { channels: Float32Array[]; sampleRate: number }> = {}
@@ -211,7 +232,7 @@ class Graph {
       const src = spec.sample ? p.sources.find((s) => s.id === spec.sample) : undefined
       const sample = src ? { channels: src.clip.channels, sampleRate: src.clip.sampleRate } : null
       const samples = this.pitchedSamples(p, t)
-      const instance = createInstrument(this.ctx, plugin, spec.values, { events: live ? [] : this.noteEvents(p, t.id, -Infinity, Infinity), sample, samples })
+      const instance = createInstrument(this.ctx, plugin, spec.values, { events: live ? [] : this.noteEvents(p, t.id, -Infinity, Infinity), controls: live ? [] : this.controlEvents(p, t.id, -Infinity, Infinity), sample, samples })
       instance.output.connect(n.comp)
       n.inst = { key, instance, sig: midiSig(p, t.id), sentUntil: this.timeNow(), fsig: Object.keys(samples).join(',') }
     }
@@ -252,6 +273,7 @@ class Graph {
       const n = this.tracks.get(t.id)
       if (!n?.inst) continue
       n.inst.instance.schedule(this.noteEvents(p, t.id, n.inst.sentUntil, to))
+      n.inst.instance.scheduleControls(this.controlEvents(p, t.id, n.inst.sentUntil, to))
       n.inst.sentUntil = to
     }
   }

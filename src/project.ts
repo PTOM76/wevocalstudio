@@ -1,5 +1,6 @@
 // プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
 import { beatMap, type BeatMap } from './beats'
+import { splitCurves } from './midiCurves'
 import { chainTail, eqToSlot, missingPlugins, whenPluginsLoaded, isFlatEq, type Algorithm, type Clip, type FxSlot, type TrackEq } from 'wevocal-lib'
 
 /** 読み込んだ音声ファイル（元の音）。波形ブロックはこれを参照するだけで、中身を書き換えない */
@@ -108,6 +109,15 @@ export function fillMidi(b: Omit<MidiBlock, 'unit'> & { unit?: 'beat' }, tempo: 
   return { ...b, unit: 'beat', notes }
 }
 
+/** コントロールの曲線（CC かピッチベンド）。点（ブロックの頭からの拍と値）を直線でつなぐ。値は cc が 0〜1、ピッチベンドが -1〜1（±2 半音） */
+export interface MidiCurve {
+  kind: 'cc' | 'bend'
+  /** CC の番号（ピッチベンドでは省く）。64 はサステイン、1 はモジュレーション、11 はエクスプレッション */
+  cc?: number
+  /** t の順に並べる */
+  points: { t: number; v: number }[]
+}
+
 /** MIDI ブロック。音符を MIDI のまま持ち、トラックの音源で鳴らす */
 export interface MidiBlock extends BaseBlock {
   /** MIDI ファイルから読み込んだときの既定表示名 */
@@ -115,6 +125,8 @@ export interface MidiBlock extends BaseBlock {
   /** 音符を拍で持つ印（無いものは古いプロジェクトで、秒。読み込み時に直す: fillMidi） */
   unit: 'beat'
   notes: Note[]
+  /** コントロールの曲線（CC、ピッチベンド） */
+  curves?: MidiCurve[]
 }
 
 /** 時間軸に出しているオートメーション */
@@ -444,9 +456,11 @@ export function splitMidiBlock(b: MidiBlock, t: number, map: BeatMap): [MidiBloc
   const right = b.notes
     .filter((n) => n.t + n.dur > at)
     .map((n) => ({ ...n, id: newId(), t: Math.max(0, n.t - at), dur: Math.min(n.dur, n.t + n.dur - at) }))
+  const [lc, rc] = splitCurves(b.curves, at)
+  const { curves: _, ...rest } = b
   return [
-    { ...b, length: sec, notes: left },
-    { ...b, id: newId(), start: t, length: b.length - sec, notes: right },
+    { ...rest, length: sec, notes: left, ...(lc ? { curves: lc } : {}) },
+    { ...rest, id: newId(), start: t, length: b.length - sec, notes: right, ...(rc ? { curves: rc } : {}) },
   ]
 }
 

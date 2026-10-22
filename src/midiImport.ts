@@ -1,7 +1,7 @@
 // MIDI ファイルの読み込み。選んだトラック（チャンネルで分けることもできる）ごとに、新しいトラックと MIDI ブロックを作る（音源は標準のシンセ）。画面を知らない
 import { defaultValues, findInstrument, parseMidi, type MidiFile } from 'wevocal-lib'
 import { projectBeatMap } from './beats'
-import { newId, newTrack, type InstrumentSlot, type Marker, type MidiBlock, type Note, type Project, type Track } from './project'
+import { newId, newTrack, type InstrumentSlot, type Marker, type MidiBlock, type MidiCurve, type Note, type Project, type Track } from './project'
 
 /** 標準のシンセの音源（新しい MIDI ブロックの既定） */
 export function defaultInstrument(): InstrumentSlot {
@@ -28,6 +28,22 @@ export interface MidiImportOptions {
 export async function readMidi(file: File): Promise<MidiPending | null> {
   const midi = parseMidi(await file.arrayBuffer())
   return midi.tracks.length ? { name: file.name, midi } : null
+}
+
+/** MIDI のコントロール（CC、ピッチベンド）を、ブロックの曲線にする。頭（first 拍）より前の値は、頭の値にする */
+function curvesOf(controls: MidiFile['tracks'][number]['controls'], first: number): MidiCurve[] {
+  const groups = new Map<string, { kind: 'cc' | 'bend'; cc: number; list: { t: number; v: number }[] }>()
+  for (const c of controls) {
+    const g = groups.get(`${c.kind}:${c.cc}`) ?? { kind: c.kind, cc: c.cc, list: [] }
+    g.list.push({ t: c.beat - first, v: c.value })
+    groups.set(`${c.kind}:${c.cc}`, g)
+  }
+  return [...groups.values()].flatMap((g) => {
+    const sorted = g.list.sort((a, b) => a.t - b.t)
+    const before = sorted.filter((p) => p.t < 0).pop()
+    const points = [...(before ? [{ t: 0, v: before.v }] : []), ...sorted.filter((p) => p.t >= 0)]
+    return points.length ? [{ kind: g.kind, ...(g.kind === 'cc' ? { cc: g.cc } : {}), points }] : []
+  })
 }
 
 /** MIDI のテンポと拍子を、at 秒を 1 拍目としてプロジェクトに入れる（途中の変化はマーカーのテンポにする） */
@@ -62,6 +78,7 @@ export function importMidi(p: Project, pending: MidiPending, at: number, o: Midi
       const label = o.splitChannels && groups.size > 1 ? `${mt.name} ch${ch + 1}` : mt.name
       const track = { ...newTrack(q.tracks.length + tracks.length + 1), name: label || `MIDI ${tracks.length + 1}`, instrument: defaultInstrument() }
       const first = Math.min(...notes.map((n) => n.startBeat))
+      const controls = mt.controls.filter((c) => !o.splitChannels || c.ch === ch)
       const last = Math.max(...notes.map((n) => n.endBeat))
       const start = map.toSec(origin + first)
       tracks.push(track)
@@ -73,6 +90,7 @@ export function importMidi(p: Project, pending: MidiPending, at: number, o: Midi
         mute: false,
         defaultName: pending.name,
         unit: 'beat',
+        ...(controls.length ? { curves: curvesOf(controls, first) } : {}),
         notes: notes.map((n): Note => ({ id: newId(), t: n.startBeat - first, dur: Math.max(1 / 32, n.endBeat - n.startBeat), pitch: n.note, vel: n.vel })),
       })
     }

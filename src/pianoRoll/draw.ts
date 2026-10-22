@@ -36,6 +36,8 @@ export interface RollDraw {
   play: number | null
   box: { x0: number; y0: number; x1: number; y1: number } | null
   velLabel: string
+  /** 曲線のレーン（CC、ピッチベンド）を描くとき。なければ強さの帯。lo、hi は値の範囲 */
+  curve: { points: { t: number; v: number }[]; lo: number; hi: number; label: string } | null
   colors: RollColors
 }
 
@@ -135,13 +137,36 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
   g.fillStyle = c.hover
   g.fillRect(KEYS, top, v.w - KEYS, VEL)
   g.fillStyle = c.textSecondary
-  g.fillText(o.velLabel, 4, top + 10)
-  for (const n of o.notes) {
-    const x = beatX(v, n.t)
-    if (x < KEYS || x > v.w) continue
-    g.fillStyle = o.selected.includes(n.id) ? c.noteSelected : c.note
-    g.fillRect(x, top + VEL * (1 - n.vel), 3, VEL * n.vel)
-  }
+  g.fillText(o.curve?.label ?? o.velLabel, 4, top + 10)
+  if (o.curve) {
+    const { points, lo, hi } = o.curve
+    const yOf = (val: number) => top + VEL * (1 - (val - lo) / (hi - lo))
+    // ピッチベンドは、真ん中（0）に線を引く
+    if (lo < 0) {
+      g.fillStyle = c.divider
+      g.fillRect(KEYS, yOf(0), v.w - KEYS, 1)
+    }
+    g.save()
+    g.beginPath()
+    g.rect(KEYS, top, v.w - KEYS, VEL)
+    g.clip()
+    g.strokeStyle = c.note
+    g.lineWidth = 1.5
+    g.beginPath()
+    points.forEach((pt, i) => (i ? g.lineTo(beatX(v, pt.t), yOf(pt.v)) : g.moveTo(beatX(v, pt.t), yOf(pt.v))))
+    // 最後の点から先は、同じ値で続く
+    if (points.length) g.lineTo(beatX(v, o.len), yOf(points[points.length - 1].v))
+    g.stroke()
+    g.fillStyle = c.noteSelected
+    for (const pt of points) g.fillRect(beatX(v, pt.t) - 3, yOf(pt.v) - 3, 6, 6)
+    g.restore()
+  } else
+    for (const n of o.notes) {
+      const x = beatX(v, n.t)
+      if (x < KEYS || x > v.w) continue
+      g.fillStyle = o.selected.includes(n.id) ? c.noteSelected : c.note
+      g.fillRect(x, top + VEL * (1 - n.vel), 3, VEL * n.vel)
+    }
   if (o.play !== null) {
     const x = beatX(v, o.play)
     if (x >= KEYS && x <= v.w) {
