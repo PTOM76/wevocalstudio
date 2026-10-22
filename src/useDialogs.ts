@@ -16,6 +16,8 @@ export type DialogId =
   | 'trackProperties'
   // ピアノロール（MIDI ブロックの id）、トラックの音源（トラックの id）
   | 'pianoRoll' | 'instrument' | 'midiProps'
+  // MIDI ファイルの読み込みの選択（読んだ MIDI ファイル）
+  | 'midiImport'
   // プラグインの道具と解析
   | 'tool' | 'analyze'
   // トラックのセンド（トラックの id）

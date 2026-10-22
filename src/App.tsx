@@ -23,7 +23,7 @@ import type { Settings } from './settings/settings'
 import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
-import { importMidi } from './midiImport'
+import { readMidi } from './midiImport'
 import { addWvspTracks, newProject, songEnd, trackHeight, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, visibleTracks, type Track } from './project'
 import Timeline, { useHeaderWidth } from './Timeline'
 import Toolbar from './Toolbar'
@@ -345,7 +345,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       input.accept = '.mid,.midi,audio/midi'
       input.onchange = () => {
         const file = input.files?.[0]
-        if (file) void importMidi(project, file, cursor).then((q) => (q ? doc.apply(() => q) : setNotice(t('midi.empty')))).catch(fail)
+        if (file) void readMidi(file).then((m) => (m ? dialogs.open('midiImport', m) : setNotice(t('midi.empty')))).catch(fail)
       }
       input.click()
     },

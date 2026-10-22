@@ -956,5 +956,13 @@
   "glide.shapeFastEnd": "速く終了",
   "glide.shapeBezier": "ベジェ",
   "glide.tension": "ベジェの張り具合: {n}",
-  "glide.tensionHelp": "負の値はゆっくり開始、正の値は速く開始します"
+  "glide.tensionHelp": "負の値はゆっくり開始、正の値は速く開始します",
+
+  "midiImport.title": "MIDI ファイルを読み込む",
+  "midiImport.splitChannels": "チャンネルごとにトラックを分ける",
+  "midiImport.tempo": "テンポ",
+  "midiImport.tempoProject": "プロジェクトのテンポに乗せる",
+  "midiImport.atCursor": "編集カーソルの位置",
+  "midiImport.atStart": "先頭",
+  "midiImport.run": "読み込む"
 }

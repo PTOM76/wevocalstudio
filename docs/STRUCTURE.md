@@ -38,7 +38,8 @@ src/
   MeterFader.tsx  音量のつまみとレベルメーターを一つにした部品と、パンの棒（wevocal-lib の MeterFader。WeVocalSynth と共通）
   MidiBlockDialog.tsx  MIDI ブロックのプロパティ（位置、長さ、ミュート）。音符はピアノロールで編集する
   midiBlocks.ts  MIDI ブロックの時間軸での描画と、押した所の判定（音符は小さな帯で見せる）。画面を知らない
-  midiImport.ts  MIDI ファイルの読み込み。音符のあるトラックごとに、新しいトラックと MIDI ブロックを作る（音源は標準のシンセ）。画面を知らない
+  midiImport.ts  MIDI ファイルの読み込み。選んだトラック（チャンネルで分けることもできる）ごとに、新しいトラックと MIDI ブロックを作る（音源は標準のシンセ）。画面を知らない
+  MidiImportDialog.tsx  MIDI ファイルの読み込みの選択（トラック、チャンネルで分けるか、テンポをどうするか、置く位置）
   optimize.ts  最適化して保存するためのプロジェクトの整理（波形ブロックの確定、使っていない元の音の部分を切る、使っていない元の音を消す）。元のプロジェクトは書き換えない
   OptimizeDialog.tsx  最適化して保存のダイアログ（何を確定し、何を捨てるかを選ぶ。実行は useProjectFile の saveOptimized）
   overlap.ts  重なった波形ブロックの段の割り当て（重なっている所だけトラックの高さを段に分ける）。画面を知らない

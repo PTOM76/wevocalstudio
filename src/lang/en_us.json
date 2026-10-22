@@ -956,5 +956,13 @@
   "glide.shapeFastEnd": "Fast end",
   "glide.shapeBezier": "Bezier",
   "glide.tension": "Bezier tension: {n}",
-  "glide.tensionHelp": "Negative values start slowly; positive values start quickly"
+  "glide.tensionHelp": "Negative values start slowly; positive values start quickly",
+
+  "midiImport.title": "Import MIDI file",
+  "midiImport.splitChannels": "Split tracks by channel",
+  "midiImport.tempo": "Tempo",
+  "midiImport.tempoProject": "Follow project tempo",
+  "midiImport.atCursor": "Edit cursor",
+  "midiImport.atStart": "Start of project",
+  "midiImport.run": "Import"
 }

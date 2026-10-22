@@ -27,6 +27,8 @@ import { glideBlocks } from './glide'
 import type { OptimizeOptions } from './optimize'
 import InstrumentDialog from './InstrumentDialog'
 import MidiBlockDialog from './MidiBlockDialog'
+import MidiImportDialog from './MidiImportDialog'
+import { importMidi, type MidiPending } from './midiImport'
 import PianoRollDialog from './PianoRollDialog'
 import SendDialog from './SendDialog'
 import TrackPropertiesDialog, { type TrackPropertyAdd, type TrackPropertyEdit } from './TrackPropertiesDialog'
@@ -166,6 +168,22 @@ export default function AppDialogs(p: {
                 doc.endMerge()
                 dialogs.close('pianoRoll')
               }}
+            />
+          )
+        )
+      })()}
+      {(() => {
+        const pending = dialogs.arg<MidiPending>('midiImport')
+        return (
+          pending && (
+            <MidiImportDialog
+              pending={pending}
+              onImport={(o, at) => {
+                const q = importMidi(doc.project, pending, at === 'cursor' ? p.cursor : 0, o)
+                dialogs.close('midiImport')
+                if (q) doc.apply(() => q)
+              }}
+              onClose={dialogs.closer('midiImport')}
             />
           )
         )
