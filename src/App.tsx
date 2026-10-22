@@ -415,7 +415,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     showStatusBar: p.settings.showStatusBar,
     toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
     help: {
-      guide: () => openExternal(app.repository),
+      guide: () => openExternal(`${app.repository}/blob/main/docs/MANUAL.md`),
       shortcuts: () => dialogs.open('shortcuts'),
       // 新しい版があれば右下の通知から更新できる。ここでは結果だけを知らせる（WeVocalSynth と同じ）
       checkUpdate: () =>
