@@ -8,7 +8,8 @@ import { liveProcessors, renderLoad } from 'wevocal-lib'
 import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, createLimitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
-import { piecesFor, preparePitch } from './dsp/pitch'
+import { clipFor, piecesFor, preparePitch } from './dsp/pitch'
+import { samplerShifts } from './dsp/samplerPitch'
 import { ancestors, audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, liveSlots, type Project, type Track } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
@@ -36,7 +37,7 @@ interface TrackNodes {
   /** FX の列（WeVocal プラグイン。鳴らしたまま値を変える。wevocal-lib） */
   fx: FxChain
   /** 音源（MIDI ブロックの音符を鳴らす）。キーは作り直すかの判断（プラグインと音色の元の音） */
-  inst: { key: string; instance: InstrumentInstance; sig: string; sentUntil: number } | null
+  inst: { key: string; instance: InstrumentInstance; sig: string; sentUntil: number; /** 高さごとの音（フォルマント保持）の、できている高さの印 */ fsig: string } | null
 }
 
 /** 音源のプラグインの準備に使う、プロジェクトの音源の id */
@@ -183,6 +184,17 @@ class Graph {
     return out.sort((a, b) => a.time - b.time)
   }
 
+  /** サンプラーのフォルマント保持: 音符の高さに合わせて作り終えた音（高さごと）。作っている途中の高さは含めない（速度を変えて鳴らす） */
+  private pitchedSamples(p: Project, t: Track) {
+    const out: Record<number, { channels: Float32Array[]; sampleRate: number }> = {}
+    for (const s of samplerShifts(p)) {
+      const source = s.track === t.id ? p.sources.find((x) => x.id === s.block.source) : undefined
+      const made = source && clipFor(s.block, source)
+      if (made) out[s.pitch] = { channels: made.clip.channels, sampleRate: made.clip.sampleRate }
+    }
+    return out
+  }
+
   /** 音源の組み立て: トラックに音源があれば作り、変わっていれば作り直し、なければ外す。書き出しは音符を全部、作るときに渡す */
   private syncInstrument(p: Project, t: Track, n: TrackNodes) {
     const spec = t.instrument
@@ -198,11 +210,19 @@ class Graph {
     if (!n.inst) {
       const src = spec.sample ? p.sources.find((s) => s.id === spec.sample) : undefined
       const sample = src ? { channels: src.clip.channels, sampleRate: src.clip.sampleRate } : null
-      const instance = createInstrument(this.ctx, plugin, spec.values, { events: live ? [] : this.noteEvents(p, t.id, -Infinity, Infinity), sample })
+      const samples = this.pitchedSamples(p, t)
+      const instance = createInstrument(this.ctx, plugin, spec.values, { events: live ? [] : this.noteEvents(p, t.id, -Infinity, Infinity), sample, samples })
       instance.output.connect(n.comp)
-      n.inst = { key, instance, sig: midiSig(p, t.id), sentUntil: this.timeNow() }
+      n.inst = { key, instance, sig: midiSig(p, t.id), sentUntil: this.timeNow(), fsig: Object.keys(samples).join(',') }
     }
     n.inst.instance.update(spec.values)
+    // フォルマント保持の音ができたら差し替える
+    const samples = this.pitchedSamples(p, t)
+    const fsig = Object.keys(samples).join(',')
+    if (fsig !== n.inst.fsig) {
+      n.inst.instance.setSamples(samples)
+      n.inst.fsig = fsig
+    }
     const sig = midiSig(p, t.id)
     if (live && sig !== n.inst.sig) {
       // 音符が変わったら、送った音符を取り消して、今から送り直す

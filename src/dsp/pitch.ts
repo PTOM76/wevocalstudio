@@ -7,6 +7,7 @@ import { ALGORITHM_ID, type Clip } from 'wevocal-lib'
 import { markActivity } from 'pevenmui/debug'
 import { bakedTracks, ownAudible, CURVE_HOP, pitchEnvAt, type Block, type Project, type Source } from '../project'
 import type { DspRequest, PitchResponse } from './worker'
+import { samplerBlocks } from './samplerPitch'
 
 type Req = DspRequest extends infer T ? (T extends { id: number } ? Omit<T, 'id'> : never) : never
 
@@ -196,7 +197,7 @@ export function clipFor(b: Block, source: Source): { clip: Clip; from: number } 
 
 /** まだできていない音があるか */
 export function pitchPending(p: Project) {
-  return p.blocks.some((b) => blockReady(b) < 1)
+  return [...p.blocks, ...samplerBlocks(p)].some((b) => blockReady(b) < 1)
 }
 
 interface Want {
@@ -322,7 +323,8 @@ export async function preparePitch(p: Project, around = 0) {
   markActivity('prepare pitch')
   const used = new Set<string>()
   const next = new Map<string, Want>()
-  for (const b of p.blocks) {
+  // サンプラーのフォルマント保持で作る音も、波形ブロックと同じように作る
+  for (const b of [...p.blocks, ...samplerBlocks(p)]) {
     const source = p.sources.find((s) => s.id === b.source)
     if (!needsProcess(b) || !source) continue
     const params = paramsOf(b)
