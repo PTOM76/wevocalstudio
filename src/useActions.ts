@@ -133,6 +133,7 @@ export function useActions(c: ActionContext) {
   const canSplit = [...chosen, ...midiChosen].some((b) => c.cursor > b.start + 0.001 && c.cursor < b.start + b.length - 0.001)
   const anyWave = chosen.length > 0
   const track = doc.project.tracks.find((tr) => tr.id === c.selectedTrack)
+  const blockTrack = doc.project.tracks.find((tr) => tr.id === (midiChosen[0] ?? chosen[0])?.track)
   // コピーした波形ブロック。元の音はプロジェクトにあるものを指す
   const clipboard = useRef<Block[]>([])
   const midiClipboard = useRef<MidiBlock[]>([])
@@ -248,7 +249,8 @@ export function useActions(c: ActionContext) {
     pluginTool: { run: () => c.openDialog('tool') },
     pluginAnalyze: { run: () => c.openDialog('analyze') },
     editMidi: { enabled: !!midiSel, run: () => midiSel && c.openDialog('pianoRoll', midiSel.id) },
-    trackInstrument: { enabled: !!track, run: () => track && c.openDialog('instrument', track.id) },
+    // 選んでいるトラック。なければ選んでいるブロックのトラック（ブロックを Ctrl や複数選択すると、トラックの選択が外れるため）
+    trackInstrument: { enabled: !!(track ?? blockTrack), run: () => (track ?? blockTrack) && c.openDialog('instrument', (track ?? blockTrack)!.id) },
     splitVocals: { enabled: anyWave, run: () => any && c.extract.vocals(ids[ids.length - 1]) },
     splitLead: { enabled: anyWave, run: () => any && c.extract.lead(ids[ids.length - 1]) },
     splitInstruments: { enabled: anyWave, run: () => any && c.extract.instruments(ids[ids.length - 1]) },
