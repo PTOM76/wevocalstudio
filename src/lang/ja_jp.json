@@ -153,6 +153,7 @@
   "menu.glidePitch": "ピッチをなめらかにつなぐ",
   "menu.pluginTool": "プラグインで処理…",
   "menu.pluginAnalyze": "プラグインで解析…",
+  "menu.exportMidi": "MIDI ファイルとして書き出す…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -656,6 +657,7 @@
   "midi.transpose": "移調",
   "midi.title": "MIDIの音程を当てはめる",
   "midi.empty": "音符のある MIDI のトラックがありません",
+  "midi.exportEmpty": "書き出す音符がありません",
 
   "play.preview": "試聴",
 

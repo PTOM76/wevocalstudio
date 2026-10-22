@@ -10,7 +10,7 @@ import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web'
 import { configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
-import { AUDIO_ACCEPT, readWvsp, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
+import { AUDIO_ACCEPT, downloadBlob, readWvsp, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
 import { app } from './appConfig'
 import AppDialogs from './AppDialogs'
 import { useDialogs } from './useDialogs'
@@ -23,6 +23,7 @@ import type { Settings } from './settings/settings'
 import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
+import { buildMidi } from './midiExport'
 import { readMidi } from './midiImport'
 import { addWvspTracks, newProject, songEnd, trackHeight, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, visibleTracks, type Track } from './project'
 import Timeline, { useHeaderWidth } from './Timeline'
@@ -337,6 +338,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     importFiles: () => {
       importTarget.current = undefined
       audioInput.current?.click()
+    },
+    // MIDI ブロックを MIDI ファイルに書き出す（選んだもの。なければ全部）
+    exportMidi: (ids) => {
+      const data = buildMidi(project, ids)
+      if (!data) return setNotice(t('midi.exportEmpty'))
+      downloadBlob(new Blob([data as BlobPart], { type: 'audio/midi' }), `${fileName.replace(/\.[^.]+$/, '')}.mid`)
     },
     // MIDI ファイルを選んで、トラックと MIDI ブロックにする（編集カーソルの位置から）
     importMidi: () => {

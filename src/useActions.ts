@@ -62,6 +62,8 @@ export interface ActionContext {
   openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument' | 'midiProps' | 'tool' | 'analyze' | 'glidePitch', arg?: string | string[]) => void
   /** MIDI ファイルを選んで、トラックと MIDI ブロックにする */
   importMidi: () => void
+  /** 選んだ MIDI ブロック（なければ全部）を MIDI ファイルに書き出す */
+  exportMidi: (ids: string[]) => void
   /** 選んだ波形ブロックを確定する（音にして元の音を置き換える） */
   bake: (ids: string[]) => void
   extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void; voices: (id: string, by: 'pitch' | 'volume') => void }
@@ -238,6 +240,7 @@ export function useActions(c: ActionContext) {
       },
     },
     importMidi: { run: c.importMidi },
+    exportMidi: { enabled: (doc.project.midi ?? []).length > 0, run: () => c.exportMidi(midiChosen.map((b) => b.id)) },
     pluginTool: { run: () => c.openDialog('tool') },
     pluginAnalyze: { run: () => c.openDialog('analyze') },
     editMidi: { enabled: !!midiSel, run: () => midiSel && c.openDialog('pianoRoll', midiSel.id) },
@@ -367,7 +370,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), item('glidePitch'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
+      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('exportMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), item('glidePitch'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
     },
     {
       label: t('menu.track'),

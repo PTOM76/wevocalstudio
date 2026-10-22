@@ -153,6 +153,7 @@
   "menu.glidePitch": "Glide pitch between blocks",
   "menu.pluginTool": "Process with plugin…",
   "menu.pluginAnalyze": "Analyze with plugin…",
+  "menu.exportMidi": "Export MIDI file…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -656,6 +657,7 @@
   "midi.transpose": "Transpose",
   "midi.title": "Fit pitch to MIDI",
   "midi.empty": "The MIDI file has no tracks with notes",
+  "midi.exportEmpty": "No notes to export",
 
   "play.preview": "Preview",
 

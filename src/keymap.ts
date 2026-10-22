@@ -43,6 +43,7 @@ export type Action =
   | 'pluginTool'
   | 'pluginAnalyze'
   | 'importMidi'
+  | 'exportMidi'
   | 'editMidi'
   | 'trackInstrument'
   | 'sampler'
@@ -150,6 +151,7 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   pluginTool: [],
   pluginAnalyze: [],
   importMidi: [],
+  exportMidi: [],
   editMidi: [],
   trackInstrument: [],
   sampler: [],
