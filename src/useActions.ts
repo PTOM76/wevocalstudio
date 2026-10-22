@@ -6,7 +6,7 @@ import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { actionOf, keyLabel, type Action } from './keymap'
-import { newId, type Block, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange } from './project'
+import { newId, type Block, type EnvShape, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange } from './project'
 import { ENVELOPES, type EnvKind } from './envelopes'
 import { reverseBlocks } from './reverse'
 import { cropToRange, deleteRange, insertSilence, normalizeBlocks, rangeToNewTrack, repeatRange } from './rangeEdit'
@@ -529,6 +529,27 @@ export function useActions(c: ActionContext) {
   ]
   const blockMenu = chosen.length === 0 && midiChosen.length > 0 ? midiMenu : waveMenu
 
+  /** 押した点が持つ、次の点までの形状の選択肢（今の形状にチェック） */
+  const shapeEntries = (kind: EnvKind, b: Block, index: number): MenuEntry[] => {
+    const spec = ENVELOPES[kind]
+    const pts = spec.points(b)
+    const cur = pts[index]?.shape ?? 'linear'
+    const choices: [EnvShape, Parameters<typeof t>[0], number?][] = [
+      ['linear', 'glide.shapeLinear'],
+      ['square', 'glide.shapeSquare'],
+      ['slowStartEnd', 'glide.shapeSlowStartEnd'],
+      ['fastStart', 'glide.shapeFastStart'],
+      ['fastEnd', 'glide.shapeFastEnd'],
+      ['bezier', 'glide.shapeBezier', 0.6],
+    ]
+    return choices.map(([shape, label, tension]) => ({
+      label: t(label),
+      checked: cur === shape,
+      disabled: index >= pts.length - 1,
+      onClick: () => doc.updateBlock(b.id, spec.patch(b, pts.map((p, i) => (i === index ? { ...p, shape, tension } : p)))),
+    }))
+  }
+
   /** エンベロープの線か点の右クリックのメニュー。index は押した点の番号（点でなければ -1） */
   const envelopeMenu = (blockId: string, index: number): MenuEntry[] => {
     const kind = c.envKind
@@ -536,6 +557,8 @@ export function useActions(c: ActionContext) {
     if (!kind || !b) return []
     const spec = ENVELOPES[kind]
     return [
+      // 押した点から次の点までの形状（点が覚える。REAPER と同じ）
+      ...(index >= 0 ? [{ label: t('menu.envelopeShape'), onClick: () => {}, submenu: shapeEntries(kind, b, index) }, divider] : []),
       ...(index >= 0 ? [{ label: t('menu.envelopeDeletePoint'), onClick: () => doc.updateBlock(b.id, spec.patch(b, spec.points(b).filter((_, i) => i !== index))) }, divider] : []),
       { label: t('menu.envelopeSelect'), checked: !c.envPen, onClick: () => c.setEnvPen(false) },
       { label: t('menu.envelopePen'), checked: c.envPen, onClick: () => c.setEnvPen(true) },

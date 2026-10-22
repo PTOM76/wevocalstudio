@@ -1,5 +1,15 @@
 // 選んだ波形ブロックの逆再生。元の音は書き換えず、ブロックが使っている部分を逆にした新しい元の音を足して、ブロックをそちらに向ける。画面を知らない
-import { CURVE_HOP, newId, type Block, type Project, type Source } from './project'
+import { CURVE_HOP, mirrorShape, newId, type Block, type Project, type Shaped, type Source } from './project'
+
+/** 点の並びを裏返す。区間の形状は点が持つので、並びを逆にしたあとは、区間の向きに合わせて持たせ直す */
+function flipPoints<T extends Shaped>(pts: T[] | undefined, flip: (pt: T) => T): T[] | undefined {
+  if (!pts) return undefined
+  const rev = pts.map(flip).reverse()
+  return rev.map((pt, i) => {
+    const { shape: _s, tension: _t, ...rest } = pt
+    return { ...rest, ...(i < rev.length - 1 ? mirrorShape(pts[pts.length - 2 - i]) : {}) } as T
+  })
+}
 
 /** 逆にしたブロックの値（新しい元の音は頭からブロックの使う分だけ。ピッチと音量の曲線は時間を裏返す。フェードの頭と終わりは入れ替える） */
 function reversedBlock(b: Block, source: Source): Block {
@@ -12,8 +22,8 @@ function reversedBlock(b: Block, source: Source): Block {
     offset: 0,
     fadeIn: b.fadeOut,
     fadeOut: b.fadeIn,
-    envelope: b.envelope?.map((pt) => ({ ...pt, t: b.length - pt.t })).reverse(),
-    pitchEnvelope: b.pitchEnvelope?.map((pt) => ({ ...pt, s: flip(pt.s) })).reverse(),
+    envelope: flipPoints(b.envelope, (pt) => ({ ...pt, t: b.length - pt.t })),
+    pitchEnvelope: flipPoints(b.pitchEnvelope, (pt) => ({ ...pt, s: flip(pt.s) })),
     curve: b.curve && { from: flip(b.curve.from + b.curve.st.length * CURVE_HOP), st: [...b.curve.st].reverse() },
   }
 }

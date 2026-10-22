@@ -799,7 +799,7 @@ export default function Timeline(p: {
       const lo = env[ed.index - 1]?.t ?? 0
       const hi = env[ed.index + 1]?.t ?? b.length
       const range = envelopeRange(p.envKind, b, p.envKind === 'pitch' ? p.pitchEnvelopeRange : p.envelopeRange)
-      env[ed.index] = { t: Math.max(lo, Math.min(hi, (x - g.x) / view.pps)), v: spec.value((y - g.top) / g.h, range) }
+      env[ed.index] = { ...env[ed.index], t: Math.max(lo, Math.min(hi, (x - g.x) / view.pps)), v: spec.value((y - g.top) / g.h, range) }
       return p.onBlockChange(b.id, spec.patch(b, env), ed.merge)
     }
     const mq = marquee.current

@@ -170,6 +170,7 @@
   "menu.reverse": "逆再生",
   "menu.copyRangeToTrack": "選択範囲を新しいトラックへコピー",
   "menu.moveRangeToTrack": "選択範囲を新しいトラックへ移動",
+  "menu.envelopeShape": "形状",
 
   "settings.title": "設定",
   "settings.general": "全般",

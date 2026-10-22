@@ -12,7 +12,7 @@ import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { clipFor, piecesFor, preparePitch } from './dsp/pitch'
 import { samplerShifts, wantSamplerPitch } from './dsp/samplerPitch'
-import { ancestors, audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, liveSlots, type Project, type Track } from './project'
+import { ancestors, audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, liveSlots, shapeProgress, type EnvPoint, type Project, type Track } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
@@ -497,7 +497,7 @@ class Graph {
       if (!pieces.length) continue
       for (const pc of pieces) used.set(clipId(pc.clip), pc.clip)
       const t0 = this.zero + b.start
-      const env = (b.envelope ?? []).flatMap((pt) => [t0 + pt.t, dbToGain(pt.db)])
+      const env = volumeSteps(b.envelope ?? []).flatMap((pt) => [t0 + pt.t, dbToGain(pt.db)])
       list.push(...voicesOf(b, pieces, this.zero, dbToGain(b.gain), env))
     }
     // FX の遅れ（秒）が違うトラックをそろえる: 波形ブロックから出口までの遅れが、どのトラックも同じになるように入口で遅らせる
@@ -549,6 +549,19 @@ class Graph {
     this.masterSplit.disconnect()
   }
 
+}
+
+/** 音量エンベロープの形状のある区間を、ミキサーに渡す折れ線の点に展開する（ミキサーは点の間を直線でつなぐ。段は、ごく短い傾きにする） */
+function volumeSteps(env: EnvPoint[]): EnvPoint[] {
+  const out: EnvPoint[] = []
+  env.forEach((a, i) => {
+    out.push(a)
+    const b = env[i + 1]
+    if (!b || !a.shape || a.shape === 'linear') return
+    if (a.shape === 'square') return void out.push({ t: Math.max(a.t, b.t - 0.001), db: a.db })
+    for (let j = 1; j < 16; j++) out.push({ t: a.t + ((b.t - a.t) * j) / 16, db: a.db + (b.db - a.db) * shapeProgress(a.shape, j / 16, a.tension) })
+  })
+  return out
 }
 
 /** つまみに最後に入れた値 */

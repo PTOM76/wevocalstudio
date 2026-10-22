@@ -1,24 +1,13 @@
 // 選んだ波形ブロックの、前のピッチからなめらかにつなぐ（ポルタメント）。各波形ブロックの頭に、前の波形ブロックの終わりのピッチから自分のピッチへ戻るピッチのエンベロープを足す。画面を知らない
-import { PITCH_ENV_MAX, pitchEnvAt, type Block, type PitchPoint, type Project } from './project'
+import { PITCH_ENV_MAX, pitchEnvAt, type Block, type EnvShape, type PitchPoint, type Project } from './project'
 
 /** つなぐ長さの既定（秒。時間軸の上での長さ） */
 export const GLIDE_SECONDS = 0.12
 
-export type GlideShape = 'linear' | 'square' | 'slowStartEnd' | 'fastStart' | 'fastEnd' | 'bezier'
+export type GlideShape = EnvShape
 
 /** 波形ブロックの終わりのピッチ（半音。基本のピッチに、ピッチのエンベロープの終わりの値を足したもの） */
 const endPitch = (b: Block) => b.pitch + pitchEnvAt(b.pitchEnvelope, b.offset + b.length * b.rate)
-
-const progressOf = (shape: GlideShape, x: number, tension: number) => {
-  switch (shape) {
-    case 'square': return x < 1 ? 0 : 1
-    case 'slowStartEnd': return (1 - Math.cos(Math.PI * x)) / 2
-    case 'fastStart': return 1 - (1 - x) ** 2
-    case 'fastEnd': return x * x
-    case 'bezier': return x + tension * x * (1 - x)
-    case 'linear': return x
-  }
-}
 
 /**
  * 選んだ波形ブロックを、トラックごとに時間の順に並べ、2 つ目からは頭の `seconds` 秒をかけて、前の波形ブロックの終わりのピッチから自分のピッチへ動かす。形状とベジェの張り具合を指定する。
@@ -40,13 +29,8 @@ export function glideBlocks(p: Project, ids: string[], seconds = GLIDE_SECONDS, 
       // 前につないだ長さがあれば、その区間の点も置き換える（形状や長さを後から変えられる）
       const clearTo = Math.max(end, b.glide ? b.offset + b.glide * b.rate : -Infinity)
       const rest = (b.pitchEnvelope ?? []).filter((pt) => pt.s > clearTo)
-      const divisions = shape === 'linear' || shape === 'square' ? 1 : 16
-      const points: PitchPoint[] = shape === 'square'
-        ? [{ s: b.offset, st: offset }, { s: end, st: offset }, { s: end, st: 0 }]
-        : Array.from({ length: divisions + 1 }, (_, j) => {
-            const x = j / divisions
-            return { s: b.offset + (end - b.offset) * x, st: offset * (1 - progressOf(shape, x, tension)) }
-          })
+      // 2 つの点と、最初の点が持つ形状で表す（点を増やして形を作らない）
+      const points: PitchPoint[] = [{ s: b.offset, st: offset, ...(shape !== 'linear' ? { shape } : {}), ...(shape === 'bezier' ? { tension } : {}) }, { s: end, st: 0 }]
       points.push(...rest)
       patched.set(b.id, { ...b, pitchEnvelope: points, glide: Math.min(seconds, b.length / 2) })
     }

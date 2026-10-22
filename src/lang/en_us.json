@@ -170,6 +170,7 @@
   "menu.reverse": "Reverse",
   "menu.copyRangeToTrack": "Copy selection to new track",
   "menu.moveRangeToTrack": "Move selection to new track",
+  "menu.envelopeShape": "Shape",
 
   "settings.title": "Settings",
   "settings.general": "General",

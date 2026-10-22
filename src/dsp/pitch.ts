@@ -99,7 +99,7 @@ function forget(key: string) {
 /** カーブの中身を短い文字にする（キャッシュのキー） */
 function curveKey(b: Block) {
   // ピッチのエンベロープも、音を作り直す条件に入れる
-  const env = (b.pitchEnvelope ?? []).map((p) => `${Math.round(p.s * 1000)}:${Math.round(p.st * 100)}`).join(',')
+  const env = (b.pitchEnvelope ?? []).map((p) => `${Math.round(p.s * 1000)}:${Math.round(p.st * 100)}${p.shape ? `:${p.shape}${Math.round((p.tension ?? 0) * 100)}` : ''}`).join(',')
   if (!b.curve) return env
   let h = 0
   for (const v of b.curve.st) h = (Math.imul(h, 31) + Math.round(v * 100)) | 0

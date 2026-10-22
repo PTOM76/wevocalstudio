@@ -3,7 +3,7 @@ import { alpha, type Range } from 'wevocal-lib'
 import { gridLines, type GridDivision, type GridMode } from './grid'
 import { drawLanes } from './autoLane'
 import { drawMidiBlocks } from './midiBlocks'
-import { ENVELOPES, type EnvKind } from './envelopes'
+import { ENVELOPES, denseEnv, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
@@ -250,7 +250,7 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
         g.lineWidth = 1.5
         g.beginPath()
         g.moveTo(x, top + spec.y(env[0].v, range) * eh)
-        for (const pt of env) g.lineTo(x + pt.t * view.pps, top + spec.y(pt.v, range) * eh)
+        for (const pt of denseEnv(env)) g.lineTo(x + pt.t * view.pps, top + spec.y(pt.v, range) * eh)
         g.lineTo(x + bw, top + spec.y(env[env.length - 1].v, range) * eh)
         g.stroke()
         g.fillStyle = color
