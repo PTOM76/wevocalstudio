@@ -612,6 +612,7 @@ export class Player {
     }
     // 待っている間に次の play や stop が来たら、この呼び出しは何もしない（古いグラフが残って鳴り続けたり、新しいグラフを壊したりしない）
     const again = this.playing || this.starting
+    this.warmSeq++
     this.halt()
     this.stopMonitor()
     const id = ++this.seq
@@ -737,6 +738,24 @@ export class Player {
       ch.forEach((c, i) => buf.copyToChannel(c as Float32Array<ArrayBuffer>, i))
       return buf
     })
+  }
+
+  private warmSeq = 0
+  /**
+   * 止めている間に、from 秒から AHEAD 秒先まで、先に計算するトラックのかたまりを作って取っておく（memo/fx-cache.md の 3）。
+   * 再生を始めたら、次のかたまりから作らない（作っている途中のものは、再生が同じかたまりを待って使う）
+   */
+  async warm(p: Project, from: number) {
+    const id = ++this.warmSeq
+    if (!this.anticipative || !this.ctx || this.playing || this.starting || this.chunks.limit <= 0) return
+    const targets = p.tracks.filter((t) => anticipated(p, t))
+    const end = Math.min(songEnd(p), from + AHEAD)
+    for (let k = Math.floor(from / CHUNK); k * CHUNK < end; k++) {
+      for (const t of targets) {
+        if (id !== this.warmSeq || this.playing || this.starting) return
+        await this.makeChunk(p, t.id, k).catch(() => {})
+      }
+    }
   }
 
   /** 先読みの状態（デバッグ表示。off、対象のトラックの数、作れなかった理由） */

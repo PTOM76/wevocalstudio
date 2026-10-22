@@ -105,6 +105,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [playPos, setPlayPos] = useState<number | null>(null)
   // 一時停止した位置（編集カーソルを動かしたら消す）
   const [paused, setPaused] = useState<number | null>(null)
+  // 止めている間に、鳴らし始める位置から先の FX の音を先に作っておく（最後の操作から少し待つ。memo/fx-cache.md）
+  useEffect(() => {
+    if (playing) return
+    const h = setTimeout(() => void player.current.warm(project, paused ?? cursor), 1500)
+    return () => clearTimeout(h)
+  }, [project, cursor, paused, playing, p.settings.anticipativeFx])
   // 再生中の位置は状態に入れず、描く所が毎フレーム読む（画面全体を毎フレーム描き直さないように。WeVocalSynth と同じ）
   const livePos = useCallback(() => (player.current.playing ? player.current.position() : playPos), [playPos])
   // 選んでいるトラック（複数。最後に選んだものが「選んでいるトラック」で、貼り付けや録音の先）
