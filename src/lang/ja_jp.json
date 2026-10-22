@@ -972,6 +972,8 @@
   "roll.scale.minor": "マイナー",
   "roll.scale.majorPenta": "メジャーペンタトニック",
   "roll.scale.minorPenta": "マイナーペンタトニック",
+  "roll.menuEdit": "編集",
+  "roll.selectAll": "すべて選択",
 
   "instrument.title": "音源（{name}）",
   "instrument.help": "MIDI ブロックの音符を鳴らす音源です。音源を選ぶと、音量、FX、パンはトラックのものを使います",

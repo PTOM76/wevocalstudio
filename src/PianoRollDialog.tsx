@@ -9,7 +9,7 @@ export default function PianoRollDialog(p: PianoRollProps & { open: boolean; onC
   const { open, onClose, ...roll } = p
   return (
     <WindowDialog open={open} onClose={onClose} title={t('roll.title')} name="pianoRoll" width={960} height={720} dialogProps={{ fullWidth: true, maxWidth: 'lg' }}>
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column' }}>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', p: 0, overflow: 'hidden' }}>
         <PianoRoll {...roll} />
       </DialogContent>
       <DialogActions>

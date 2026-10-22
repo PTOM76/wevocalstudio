@@ -972,6 +972,8 @@
   "roll.scale.minor": "Minor",
   "roll.scale.majorPenta": "Major pentatonic",
   "roll.scale.minorPenta": "Minor pentatonic",
+  "roll.menuEdit": "Edit",
+  "roll.selectAll": "Select all",
 
   "instrument.title": "Instrument ({name})",
   "instrument.help": "The instrument that plays the notes of MIDI blocks. Volume, FX, and pan use the track's.",

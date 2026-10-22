@@ -386,7 +386,7 @@ export default function PianoRoll(p: PianoRollProps) {
     </Box>
   )
   const info = (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', px: 1.5, py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
       {field(t('roll.start'), lead?.t ?? 0, 0, len, step, t('roll.beatUnit'), (v) => shift(block.notes, sel, v - (lead?.t ?? 0), 0, len))}
       {field(t('roll.length'), lead?.dur ?? 0, 1 / 64, len, step, t('roll.beatUnit'), (v) => setDuration(block.notes, sel, v, len))}
       {field(t('roll.pitch'), lead?.pitch ?? 60, 0, 127, 1, '', (v) => shift(block.notes, sel, 0, v - (lead?.pitch ?? 60), len))}
@@ -395,7 +395,7 @@ export default function PianoRoll(p: PianoRollProps) {
     </Box>
   )
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }} onKeyDown={onKey}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={onKey}>
       {p.toolbar !== false && (
         <RollToolbar
           division={p.division}
@@ -414,6 +414,7 @@ export default function PianoRoll(p: PianoRollProps) {
           onPaste={doPaste}
           onDuplicate={doDuplicate}
           onRemove={() => remove(sel)}
+          onSelectAll={() => setSel(block.notes.map((n) => n.id))}
           onTranspose={doTranspose}
           onQuantize={doQuantize}
           onLegato={doLegato}
@@ -428,11 +429,13 @@ export default function PianoRoll(p: PianoRollProps) {
         />
       )}
       {info}
-      <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 260, position: 'relative' }}>
+      <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 260, position: 'relative', mx: 1.5 }}>
         <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onDoubleClick={onDouble} onContextMenu={onContext} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
       </Box>
+      <Box sx={{ mx: 1.5, mt: 0.5 }}>
       <ScrollBar orientation="horizontal" total={Math.max(len, visibleBeats(view))} start={view.left} size={visibleBeats(view)} onChange={(v) => setLeft(Math.max(0, v))} />
-      <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>
+      </Box>
+      <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary', px: 1.5, py: 0.75 }}>
         {top} 〜　{sel.length ? t('roll.selected', { n: sel.length }) : ''}
       </Typography>
     </Box>
