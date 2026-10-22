@@ -5,6 +5,7 @@ import { ChunkCache, chunkKey } from './fxCache'
 import { blockBeats, projectBeatMap } from './beats'
 import { createInstrument, findInstrument, preloadInstruments, type ControlEvent, type InstrumentInstance, type NoteEvent } from 'wevocal-lib'
 import { curveSteps } from './midiCurves'
+import { playedNotes, playedPoints } from './midiLoop'
 import { liveProcessors, renderLoad } from 'wevocal-lib'
 import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, createLimitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
@@ -174,12 +175,12 @@ class Graph {
       if (b.track !== track || b.mute || !own) continue
       const b0 = map.toBeat(b.start)
       const len = blockBeats(map, b)
-      for (const n of b.notes) {
-        if (n.mute) continue
-        const t = map.toSec(b0 + n.t)
-        // ブロックの外にはみ出した音符は、ブロックの終わりで切る
-        const dur = map.toSec(b0 + n.t + Math.min(n.dur, len - n.t)) - t
-        if (t >= from && t < to && dur > 0) out.push({ time: this.zero + t, dur, pitch: n.pitch, vel: n.vel })
+      // ループがあれば繰り返し、ブロックの外にはみ出した音符は、ブロックの終わり（とループの終わり）で切る
+      for (const pn of playedNotes(b, len)) {
+        if (pn.note.mute) continue
+        const t = map.toSec(b0 + pn.t)
+        const dur = map.toSec(b0 + pn.t + pn.dur) - t
+        if (t >= from && t < to && dur > 0) out.push({ time: this.zero + t, dur, pitch: pn.note.pitch, vel: pn.note.vel })
       }
     }
     return out.sort((a, b) => a.time - b.time)
@@ -196,7 +197,7 @@ class Graph {
       const b0 = map.toBeat(b.start)
       const len = blockBeats(map, b)
       for (const c of b.curves) {
-        for (const pt of curveSteps(c.points, len)) {
+        for (const pt of curveSteps(playedPoints(c.points, b.loop, len), len)) {
           const t = map.toSec(b0 + pt.t)
           if (t >= from && t < to) out.push({ time: this.zero + t, kind: c.kind, cc: c.cc ?? 0, value: pt.v })
         }

@@ -154,6 +154,7 @@
   "menu.pluginTool": "プラグインで処理…",
   "menu.pluginAnalyze": "プラグインで解析…",
   "menu.exportMidi": "MIDI ファイルとして書き出す…",
+  "menu.glueMidi": "MIDI ブロックを 1 つにつなぐ",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -999,6 +1000,7 @@
   "midiProps.length": "長さ",
   "midiProps.notes": "音符 {n} 個",
   "midiProps.mute": "ミュート",
+  "midiProps.loop": "ループの長さ",
 
   "tool.title": "プラグインで処理",
   "tool.analyzeTitle": "プラグインで解析",

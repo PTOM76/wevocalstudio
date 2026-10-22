@@ -127,6 +127,8 @@ export interface MidiBlock extends BaseBlock {
   notes: Note[]
   /** コントロールの曲線（CC、ピッチベンド） */
   curves?: MidiCurve[]
+  /** ループの長さ（拍）。あれば、頭からこの長さまでの中身を繰り返して、ブロックの終わりまで鳴らす（これより後ろの音符は鳴らさない） */
+  loop?: number
 }
 
 /** 時間軸に出しているオートメーション */

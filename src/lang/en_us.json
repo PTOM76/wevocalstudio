@@ -154,6 +154,7 @@
   "menu.pluginTool": "Process with plugin…",
   "menu.pluginAnalyze": "Analyze with plugin…",
   "menu.exportMidi": "Export MIDI file…",
+  "menu.glueMidi": "Glue MIDI blocks",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -999,6 +1000,7 @@
   "midiProps.length": "Length",
   "midiProps.notes": "{n} notes",
   "midiProps.mute": "Mute",
+  "midiProps.loop": "Loop length",
 
   "tool.title": "Process with plugin",
   "tool.analyzeTitle": "Analyze with plugin",

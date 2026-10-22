@@ -2,6 +2,7 @@
 import { ownAudible, trackHeight, type MidiBlock, type Project } from './project'
 import { blockBeats, projectBeatMap } from './beats'
 import { trackTop } from './drawTimeline'
+import { playedNotes } from './midiLoop'
 import type { BeatMap } from './beats'
 
 /** 端をつかめる幅（px） */
@@ -90,11 +91,17 @@ export function drawMidiBlocks(g: CanvasRenderingContext2D, p: Project, trackId:
     // 音符は拍なので、秒に直して描く
     const b0 = map.toBeat(b.start)
     const len = blockBeats(map, b)
-    for (const n of b.notes) {
-      const y = top + (1 - (n.pitch - lo) / (hi - lo + 1)) * (h - nh)
-      const t0 = map.toSec(b0 + n.t) - b.start
-      const t1 = map.toSec(b0 + n.t + Math.min(n.dur, len - n.t)) - b.start
+    // ループがあれば繰り返す。繰り返しの境目に縦線を引く
+    for (const pn of playedNotes(b, len)) {
+      const y = top + (1 - (pn.note.pitch - lo) / (hi - lo + 1)) * (h - nh)
+      const t0 = map.toSec(b0 + pn.t) - b.start
+      const t1 = map.toSec(b0 + pn.t + pn.dur) - b.start
       g.fillRect(r.x + t0 * pps, y, Math.max(2, (t1 - t0) * pps), nh)
+    }
+    if (b.loop && b.loop > 0) {
+      g.fillStyle = c.text
+      g.globalAlpha = 0.5
+      for (let k = b.loop; k < len - 1e-9; k += b.loop) g.fillRect(r.x + (map.toSec(b0 + k) - b.start) * pps, r.y, 1, r.h)
     }
     g.restore()
   }

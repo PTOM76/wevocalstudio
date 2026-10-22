@@ -7,7 +7,7 @@ import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, use
 import { markActivity, countRender } from 'pevenmui/debug'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { hitMidi, trimLeft, type MidiDragKind } from './midiBlocks'
-import { projectBeatMap } from './beats'
+import { blockBeats, projectBeatMap } from './beats'
 import { layoutRows } from './overlap'
 import { depthOf, projectEnd, songEnd, masterHeight, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange } from './project'
 import { ENVELOPES, envelopeRange, hitEnvPoint, type EnvKind } from './envelopes'
@@ -160,7 +160,7 @@ export default function Timeline(p: {
   // ドラッグしているオートメーションの点（レーンの target と点の番号）
   const autoDrag = useRef<{ target: string; index: number; merge: string } | null>(null)
   // ドラッグしている MIDI ブロック（つかんだ所の、ブロックの左端からの px）
-  const midiDrag = useRef<{ id: string; kind: MidiDragKind; grabPx: number; merge: string; orig: MidiBlock } | null>(null)
+  const midiDrag = useRef<{ id: string; kind: MidiDragKind; grabPx: number; merge: string; orig: MidiBlock; alt: boolean } | null>(null)
   // Shift+クリックの起点（前に押した波形ブロック）
   const anchor = useRef<string | null>(null)
   // 右ドラッグの枠で選ぶ。moved なら右クリックのメニューは出さない
@@ -567,7 +567,7 @@ export default function Timeline(p: {
         p.onSelect([mh.block.id])
         p.onSelectTrack(mh.block.track)
         e.currentTarget.setPointerCapture(e.pointerId)
-        midiDrag.current = { id: mh.block.id, kind: mh.kind, grabPx: x - (mh.block.start - view.scroll) * view.pps, merge: `midi${dragCount.current++}`, orig: mh.block }
+        midiDrag.current = { id: mh.block.id, kind: mh.kind, grabPx: x - (mh.block.start - view.scroll) * view.pps, merge: `midi${dragCount.current++}`, orig: mh.block, alt: e.altKey }
         return
       }
     }
@@ -682,7 +682,9 @@ export default function Timeline(p: {
     }
     // 左端: 左端より前の音符を切る（元のブロックから計算するので、ドラッグの途中で戻せる）
     if (md.kind === 'left') return p.onMidiChange(b.id, trimLeft(md.orig, gridAt(x, shiftKey), projectBeatMap(p.project)), md.merge)
-    p.onMidiChange(b.id, { length: Math.max(0.05, gridAt(x, shiftKey) - b.start) }, md.merge)
+    // Alt を押して右端をドラッグすると、今の中身を 1 回分のループにして、長さを変える（繰り返しで伸ばす）
+    const loop = md.alt && !md.orig.loop ? { loop: blockBeats(projectBeatMap(p.project), md.orig) } : {}
+    p.onMidiChange(b.id, { length: Math.max(0.05, gridAt(x, shiftKey) - b.start), ...loop }, md.merge)
   }
 
   // 端で表示が流れている間は、指が動かなくても波形ブロックと MIDI ブロックを付いてこさせる

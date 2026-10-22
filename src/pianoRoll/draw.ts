@@ -32,6 +32,8 @@ export interface RollDraw {
   scale: Set<number> | null
   /** 鳴っている音（その鍵盤を色付けする。なければ null） */
   pressed: number | null
+  /** ループの長さ（拍）。あれば、その位置に線を引き、それより後ろの音符（鳴らない）は薄く描く */
+  loopAt?: number
   /** ステップ入力の位置（拍。ステップ入力でなければ null。点線で描く） */
   stepAt: number | null
   /** 再生位置（拍。再生していなければ null） */
@@ -125,7 +127,7 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
     if (x + w < KEYS || x > v.w) continue
     const y = pitchY(v, n.pitch)
     if (y === -Infinity) continue
-    g.globalAlpha = (0.4 + 0.6 * n.vel) * (n.mute ? 0.3 : 1)
+    g.globalAlpha = (0.4 + 0.6 * n.vel) * (n.mute || (o.loopAt && n.t >= o.loopAt) ? 0.3 : 1)
     g.fillStyle = o.selected.includes(n.id) ? c.noteSelected : c.note
     g.fillRect(x, y + 1, w, v.row - 2)
     g.globalAlpha = 0.5
@@ -169,6 +171,15 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
       g.fillStyle = o.selected.includes(n.id) ? c.noteSelected : c.note
       g.fillRect(x, top + VEL * (1 - n.vel), 3, VEL * n.vel)
     }
+  if (o.loopAt) {
+    const x = beatX(v, o.loopAt)
+    if (x >= KEYS && x <= v.w) {
+      g.fillStyle = c.text
+      g.globalAlpha = 0.6
+      g.fillRect(x, 0, 2, v.h)
+      g.globalAlpha = 1
+    }
+  }
   if (o.stepAt !== null) {
     const x = beatX(v, o.stepAt)
     if (x >= KEYS && x <= v.w) {

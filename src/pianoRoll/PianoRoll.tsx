@@ -139,6 +139,7 @@ export default function PianoRoll(p: PianoRollProps) {
       play,
       pressed: held,
       stepAt: step2.on ? step2.at : null,
+      loopAt: block.loop,
       scale: scale.kind === 'none' ? null : new Set(SCALES[scale.kind].map((s) => (s + scale.root) % 12)),
       box: frame,
       velLabel: t('roll.velocity'),

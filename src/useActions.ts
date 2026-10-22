@@ -1,4 +1,5 @@
 // 操作の表（キーとメニューから行うもの）と、メニューバーの並び
+import { glueMidi } from './midiLoop'
 import type { MidiBlock } from './project'
 import { useEffect, useRef, useState } from 'react'
 import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
@@ -240,6 +241,7 @@ export function useActions(c: ActionContext) {
       },
     },
     importMidi: { run: c.importMidi },
+    glueMidi: { enabled: midiChosen.length > 1, run: () => doc.apply((q) => glueMidi(q, midiChosen.map((b) => b.id))) },
     exportMidi: { enabled: (doc.project.midi ?? []).length > 0, run: () => c.exportMidi(midiChosen.map((b) => b.id)) },
     pluginTool: { run: () => c.openDialog('tool') },
     pluginAnalyze: { run: () => c.openDialog('analyze') },
@@ -370,7 +372,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('exportMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), item('glidePitch'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
+      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('exportMidi'), item('glueMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), item('glidePitch'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
     },
     {
       label: t('menu.track'),

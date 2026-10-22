@@ -28,6 +28,10 @@ export default function MidiBlockDialog(p: { open: boolean; block: MidiBlock | n
             />
             {row(t('clip.start'), b.start, 'start', 0)}
             {row(t('midiProps.length'), b.length, 'length', 0.05)}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Typography sx={{ fontSize: pevenFont('base'), width: 90 }}>{t('midiProps.loop')}</Typography>
+              <NumberInput value={b.loop ?? 0} onChange={(v) => p.onChange({ loop: v > 0 ? v : undefined }, 'midiprops:loop')} min={0} max={1024} step={0.25} unit={t('roll.beatUnit')} width={110} ariaLabel={t('midiProps.loop')} />
+            </Box>
             <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{t('midiProps.notes', { n: b.notes.length })}</Typography>
             <FormControlLabel control={<Switch size="small" checked={b.mute} onChange={(e) => p.onChange({ mute: e.target.checked })} />} label={<Typography sx={{ fontSize: pevenFont('base') }}>{t('midiProps.mute')}</Typography>} />
           </Box>
