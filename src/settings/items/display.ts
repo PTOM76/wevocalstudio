@@ -37,7 +37,7 @@ export const display = defineItems('display', {
 /** 表示メニューとツールバーで切り替えるもの（設定画面には出さない） */
 export const view = defineItems(null, {
   showStatusBar: value(true, { label: 'menu.statusBar' }),
-  showMinimap: value(true, { label: 'menu.minimap' }),
+  showMinimap: value(false, { label: 'menu.minimap' }),
   // 解析の欄（WeVocalAnalyzer のスペクトログラムと F0）
   showAnalysis: value(false, { label: 'menu.analysis' }),
   // ドラッグを目盛りの線や波形ブロックの端に吸い付ける

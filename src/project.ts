@@ -152,6 +152,8 @@ export interface Master {
   /** FX の列（マスターに掛ける） */
   fx?: FxSlot[]
   autoLane?: AutoLane
+  /** 行の高さ（なければ既定。トラックと同じ範囲） */
+  height?: number
 }
 
 /** テンポ（WeVocalSynth の ProjectTempo と同じ形） */
@@ -258,6 +260,8 @@ export const TRACK_HEIGHT_MIN = 56
 export const TRACK_HEIGHT_MAX = 220
 export const TRACK_HEIGHT_DEFAULT = 96
 export const trackHeight = (track: Track) => Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, track.height ?? TRACK_HEIGHT_DEFAULT))
+
+export const masterHeight = (master: Master) => Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, master.height ?? TRACK_HEIGHT_DEFAULT))
 
 export const newBlock = (track: string, source: Source, start: number, defaults: PitchDefaults, defaultFade = DEFAULT_FADE): Block => ({
   id: newId(),

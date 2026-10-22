@@ -7,20 +7,18 @@ import { ENVELOPES, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
-import { bakedTracks, ENV_MAX, ownAudible, trackHeight, type Block, type PitchEnvelopeRange, type Project, type Source, type VolumeEnvelopeRange } from './project'
+import { bakedTracks, ENV_MAX, masterHeight, ownAudible, trackHeight, type Block, type PitchEnvelopeRange, type Project, type Source, type VolumeEnvelopeRange } from './project'
 
 export const RULER = 24
-/** マスタートラックの行の高さ（目盛りのすぐ下。一番上） */
-export const MASTER = 96
-/** トラックの行が始まる位置 */
-export const TOP = RULER + MASTER
+/** トラックの行が始まる位置（目盛りとマスタートラックの行の下） */
+export const topOf = (p: Project) => RULER + masterHeight(p.master)
 export const LANE = 96
 /** トラックの並びごとの、各行の上端（tops[i] は i 番目の上端。トラックは書き換えずに作り直すので、並びの配列が同じなら同じ値） */
 const topsCache = new WeakMap<Project['tracks'], number[]>()
 export function trackTop(p: Project, index: number) {
   let tops = topsCache.get(p.tracks)
-  if (!tops) {
-    tops = [TOP]
+  if (!tops || tops[0] !== topOf(p)) {
+    tops = [topOf(p)]
     for (const t of p.tracks) tops.push(tops[tops.length - 1] + trackHeight(t))
     topsCache.set(p.tracks, tops)
   }
@@ -116,7 +114,8 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
 
   // マスタートラックの帯（波形ブロックは置かない）
   g.fillStyle = c.master
-  g.fillRect(0, RULER, w, MASTER)
+  const TOP = topOf(p)
+  g.fillRect(0, RULER, w, TOP - RULER)
   g.fillStyle = c.lane
   g.fillRect(0, TOP - 1, w, 1)
 
@@ -324,7 +323,7 @@ export interface LiveBlock {
 }
 
 /** 上に重ねた canvas に、編集カーソル（上に小さな三角）と再生カーソルだけを描く（再生中は毎フレームこれだけを描き直す。WeVocalSynth と同じ） */
-export function drawCursors(canvas: HTMLCanvasElement, view: TimelineView, cursor: number, playPos: number | null, c: { editCursor: string; playhead: string }, live?: LiveBlock | null) {
+export function drawCursors(canvas: HTMLCanvasElement, TOP: number, view: TimelineView, cursor: number, playPos: number | null, c: { editCursor: string; playhead: string }, live?: LiveBlock | null) {
   const g = canvas.getContext('2d')!
   const w = canvas.width / devicePixelRatio
   const h = canvas.height / devicePixelRatio

@@ -8,7 +8,7 @@ import { ContextMenu } from 'pevenmui'
 import { MeterFader, PanBar } from './MeterFader'
 import { useT } from './i18n'
 import { isNeutralChain, type FxSlot } from 'wevocal-lib'
-import type { Master, Track } from './project'
+import { TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type Master, type Track } from './project'
 import { countRender } from 'pevenmui/debug'
 
 /** 入り切りの小さなボタン（WeVocalSynth の MixToggle と同じ見た目。入っているときだけ色で塗る） */
@@ -266,9 +266,11 @@ export function MasterHeader(p: { master: Master; height: number; onFx: () => vo
   countRender('MasterHeader')
   const t = useT()
   const { master } = p
+  const resize = useRef<{ y: number; h: number } | null>(null)
   return (
     <Box
       sx={{
+        position: 'relative',
         height: p.height,
         boxSizing: 'border-box',
         px: 1,
@@ -291,6 +293,18 @@ export function MasterHeader(p: { master: Master; height: number; onFx: () => vo
         <MixToggle label="M" title={t('track.mute')} on={master.mute} color="warning.main" onClick={() => p.onChange({ mute: !master.mute })} />
       </Box>
       <Faders value={master} merge="master" onChange={p.onChange} onEndMerge={p.onEndMerge} meter={p.meter} rows={2} />
+      <Box
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId)
+          resize.current = { y: e.clientY, h: p.height }
+        }}
+        onPointerMove={(e) => resize.current && p.onChange({ height: Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, resize.current.h + e.clientY - resize.current.y)) }, 'master:height')}
+        onPointerUp={() => {
+          if (resize.current) p.onEndMerge()
+          resize.current = null
+        }}
+        sx={{ position: 'absolute', left: 0, right: 0, bottom: -3, height: 6, cursor: 'ns-resize', touchAction: 'none', zIndex: 2 }}
+      />
     </Box>
   )
 }

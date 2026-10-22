@@ -1,25 +1,29 @@
 // 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint, type Range } from 'wevocal-lib'
-import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette } from 'pevenmui'
+import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette, usePanelWidth } from 'pevenmui'
 import { markActivity, countRender } from 'pevenmui/debug'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { hitMidi, type MidiDragKind } from './midiBlocks'
 import { layoutRows } from './overlap'
-import { depthOf, projectEnd, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange } from './project'
+import { depthOf, projectEnd, songEnd, masterHeight, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange } from './project'
 import { ENVELOPES, envelopeRange, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
-import { MASTER, RULER, TOP, drawCursors, drawTimeline, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
+import { RULER, drawCursors, drawTimeline, topOf, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
 import type { Block, Master, MidiBlock, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
 
 /** 左のトラックの欄の幅（解析の欄もそろえる） */
 /** トラックの欄の幅（スマホは時間軸を広く取るため狭くする） */
-export const useHeaderWidth = () => (useMobileLayout() ? 136 : 200)
+/** トラック一覧の幅（境目の分割バーで変えられる。幅は次回も引き継ぐ） */
+export const useHeaderWidth = () => {
+  const mobile = useMobileLayout()
+  return usePanelWidth('studio.headerWidth', mobile ? 136 : 200, 120, 480, 'left')
+}
 
 /**
  * 時間軸（canvas）の中の座標。clientX、clientY から求める（offsetX、offsetY は、画面の拡大（CSS の zoom）や、iPad のタッチで、描いている座標とずれることがある）。
@@ -63,6 +67,9 @@ export default function Timeline(p: {
   onSeek: (t: number) => void
   range: Range | null
   onRange: (r: Range | null) => void
+  /** トラック一覧の幅と、その境目の分割バー（App で持つ。解析の欄の左の幅にもそろえる） */
+  headerWidth: number
+  headerBar: ReactNode
   onMasterChange: (patch: Partial<Master>, merge?: string) => void
   onTrackChange: (id: string, patch: Partial<Track>, merge?: string) => void
   /** 続けての変更（ドラッグ、スライダー）の履歴のまとまりを切る */
@@ -162,6 +169,7 @@ export default function Timeline(p: {
   const [cursor, setCursor] = useState('default')
   // 縦のスクロール。canvas は見える高さに固定し、トラックの行だけをずらす（目盛りとマスターは上に固定）
   const [vscroll, setVscroll] = useState(0)
+  const TOP = topOf(p.project)
   const content = TOP + Math.max(TRACK_HEIGHT_DEFAULT, totalTrackHeight(p.project))
   const maxV = Math.max(0, content - vh)
   const vs = Math.min(vscroll, maxV)
@@ -289,7 +297,7 @@ export default function Timeline(p: {
       if (!l || i < 0) return null
       return { ...l, y: trackTop(p.project, i) - vs, h: trackHeight(p.project.tracks[i]), fill: alpha(pal.primary.main, dark ? 0.36 : 0.26), wave: pal.primary.main }
     }
-    const draw = () => drawCursors(canvas, view, p.cursor, p.livePos(), colors, liveBlock())
+    const draw = () => drawCursors(canvas, TOP, view, p.cursor, p.livePos(), colors, liveBlock())
     draw()
     if (!p.playing && !p.recording) return
     let id = 0
@@ -443,7 +451,7 @@ export default function Timeline(p: {
   }
 
   // タッチの長押しとダブルタップ（iPhone、iPad は contextmenu と dblclick が来ない。PevenMUI。WeVocalSynth と同じ）
-  const header = useHeaderWidth()
+  const header = p.headerWidth
   const longPress = useLongPress()
   const doubleTap = useDoubleTap()
   // 2 本指のピンチで拡大縮小、目盛りはタップで移動、ドラッグで再生位置、長押しで横移動（wevocal-lib。WeVocalSynth の波形と同じ）
@@ -837,9 +845,10 @@ export default function Timeline(p: {
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
-        <Box sx={{ width: header, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ width: header, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          {p.headerBar}
           <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0 }} />
-          <MasterHeader master={p.project.master} height={MASTER} onFx={() => p.onFx('master')} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
+          <MasterHeader master={p.project.master} height={masterHeight(p.project.master)} onFx={() => p.onFx('master')} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
           {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
           <Box
             ref={headerContainerRef as React.RefObject<HTMLDivElement>}

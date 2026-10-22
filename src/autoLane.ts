@@ -1,6 +1,6 @@
 // 時間軸に出すオートメーションのレーン（トラックとマスターに重ねて描く折れ線）。位置の計算、描画、点を押したかの判定。画面を知らない
 import { findPlugin, migrateValues, paramToFrac, type AutoPoint, type ParamDef } from 'wevocal-lib'
-import { MASTER, RULER, TOP, trackTop } from './drawTimeline'
+import { RULER, topOf, trackTop } from './drawTimeline'
 import { trackHeight, type AutoLane, type Project } from './project'
 
 /** 出しているレーン 1 本の、位置と中身 */
@@ -34,14 +34,14 @@ function describe(p: Project, target: string, lane: AutoLane | undefined, top: n
 
 /** 内容の座標 y（トラックの行は縦のスクロールを足したもの）の位置に出ているレーン */
 export function laneAt(p: Project, y: number): LaneGeom | null {
-  if (y >= RULER && y < TOP) return describe(p, 'master', p.master.autoLane, RULER, MASTER)
+  if (y >= RULER && y < topOf(p)) return describe(p, 'master', p.master.autoLane, RULER, topOf(p) - RULER)
   const i = p.tracks.findIndex((_, k) => y >= trackTop(p, k) && y < trackTop(p, k) + trackHeight(p.tracks[k]))
   return i < 0 ? null : describe(p, p.tracks[i].id, p.tracks[i].autoLane, trackTop(p, i), trackHeight(p.tracks[i]))
 }
 
 /** 出しているレーンすべて（描画用） */
 export function allLanes(p: Project): LaneGeom[] {
-  const list = [describe(p, 'master', p.master.autoLane, RULER, MASTER), ...p.tracks.map((t, i) => describe(p, t.id, t.autoLane, trackTop(p, i), trackHeight(t)))]
+  const list = [describe(p, 'master', p.master.autoLane, RULER, topOf(p) - RULER), ...p.tracks.map((t, i) => describe(p, t.id, t.autoLane, trackTop(p, i), trackHeight(t)))]
   return list.filter((x): x is LaneGeom => !!x)
 }
 
@@ -63,7 +63,7 @@ export function drawLanes(g: CanvasRenderingContext2D, p: Project, scroll: numbe
     g.save()
     g.beginPath()
     // トラックの行は、目盛りとマスターの下にだけ描く
-    const y0 = l.target === 'master' ? l.top : Math.max(l.top + dy, TOP)
+    const y0 = l.target === 'master' ? l.top : Math.max(l.top + dy, topOf(p))
     const h = l.top + dy + l.h - y0
     if (h <= 0) {
       g.restore()

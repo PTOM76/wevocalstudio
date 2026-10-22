@@ -57,7 +57,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
   setKeyOverrides(p.settings.keys)
   const mobile = useMobileLayout()
-  const header = useHeaderWidth()
+  const { width: header, bar: headerBar } = useHeaderWidth()
   // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
   useEffect(() => setOutputDevice(p.settings.outputDevice), [p.settings.outputDevice])
   useEffect(() => setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null), [p.settings.outputLimit, p.settings.outputLimitDb])
@@ -486,6 +486,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onSeek={seek}
         range={range}
         onRange={setRange}
+        headerWidth={header}
+        headerBar={headerBar}
         onMasterChange={doc.updateMaster}
         onTrackChange={(id, patch, merge) => {
           // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量、パン、高さは差分で）
