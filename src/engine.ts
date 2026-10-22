@@ -494,8 +494,8 @@ class Graph {
     setTimeout(() => this.dispose(), FADE * 4 * 1000)
   }
 
-  /** ノードを全部外す */
-  private dispose() {
+  /** ノードを全部外す（オフラインの描画が終わったあとも呼ぶ。FX のプロセッサーと音源を残さない） */
+  dispose() {
     for (const id of [...this.cacheSources.keys()]) this.release(id)
     this.mixers.disconnect()
     for (const n of this.tracks.values()) {
@@ -845,12 +845,16 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000, onPro
   await Promise.all([loadMixer(ctx), preloadFx(ctx, ...fxLists(p)), preloadInstruments(ctx, instrumentIds(p))])
   signal?.throwIfAborted()
   const graph = new Graph(ctx, 0)
-  graph.sync(p, false)
-  await graph.flush()
-  signal?.throwIfAborted()
-  scheduleAutomation(ctx, graph, length, sampleRate, 0)
-  const out = await renderWithProgress(ctx, onProgress, signal)
-  return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
+  try {
+    graph.sync(p, false)
+    await graph.flush()
+    signal?.throwIfAborted()
+    scheduleAutomation(ctx, graph, length, sampleRate, 0)
+    const out = await renderWithProgress(ctx, onProgress, signal)
+    return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
+  } finally {
+    graph.dispose()
+  }
 }
 
 
@@ -875,12 +879,16 @@ export async function renderTrackChunk(p: Project, trackId: string, start: numbe
   const ctx = new OfflineAudioContext(2, length, sampleRate)
   await Promise.all([loadMixer(ctx), preloadFx(ctx, ...fxLists(q)), preloadInstruments(ctx, instrumentIds(q))])
   const graph = new Graph(ctx, -t0)
-  graph.sync(q, false)
-  await graph.flush()
-  scheduleAutomation(ctx, graph, length, sampleRate, t0)
-  const out = await ctx.startRendering()
-  const from = Math.round(lead * sampleRate)
-  return [out.getChannelData(0).slice(from), out.getChannelData(1).slice(from)]
+  try {
+    graph.sync(q, false)
+    await graph.flush()
+    scheduleAutomation(ctx, graph, length, sampleRate, t0)
+    const out = await ctx.startRendering()
+    const from = Math.round(lead * sampleRate)
+    return [out.getChannelData(0).slice(from), out.getChannelData(1).slice(from)]
+  } finally {
+    graph.dispose()
+  }
 }
 
 /**
