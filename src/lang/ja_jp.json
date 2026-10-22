@@ -167,6 +167,7 @@
   "menu.pitchGroup": "ピッチ",
   "menu.midiGroup": "MIDI",
   "menu.experimental": "試験的機能",
+  "menu.reverse": "逆再生",
 
   "settings.title": "設定",
   "settings.general": "全般",

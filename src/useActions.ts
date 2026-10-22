@@ -8,6 +8,7 @@ import { useT } from './i18n'
 import { actionOf, keyLabel, type Action } from './keymap'
 import { newId, type Block, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange } from './project'
 import { ENVELOPES, type EnvKind } from './envelopes'
+import { reverseBlocks } from './reverse'
 import { cropToRange, deleteRange, insertSilence, normalizeBlocks, repeatRange } from './rangeEdit'
 import type { useProject } from './useProject'
 
@@ -246,6 +247,7 @@ export function useActions(c: ActionContext) {
     insertSilence: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start, c.defaultFade)), c.seekAfterInsert && c.moveCursor(c.range.end)) },
     repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId, c.defaultFade)) },
     normalize: { enabled: anyWave, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
+    reverse: { enabled: anyWave, run: () => doc.apply((p) => reverseBlocks(p, ids)) },
     bake: { enabled: anyWave, run: () => c.bake(ids) },
     // 分けるのは 1 つずつ（選んでいる最後のもの）
     synth: { run: () => c.openDialog('synth') },
@@ -393,7 +395,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, sub('menu.pitchGroup', [item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('glidePitch'), item('vibratoEnvelope')]), sub('menu.midiGroup', [item('addMidiBlock'), item('importMidi'), item('exportMidi'), divider, item('glueMidi'), item('editMidi'), item('trackInstrument')]), divider, item('normalize'), item('bake')],
+      entries: [item('properties'), divider, sub('menu.pitchGroup', [item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('glidePitch'), item('vibratoEnvelope')]), sub('menu.midiGroup', [item('addMidiBlock'), item('importMidi'), item('exportMidi'), divider, item('glueMidi'), item('editMidi'), item('trackInstrument')]), divider, item('normalize'), item('reverse'), item('bake')],
     },
     {
       label: t('menu.track'),
@@ -495,6 +497,7 @@ export function useActions(c: ActionContext) {
     item('pitchDown'),
     item('pitchReset'),
     item('vibratoEnvelope'),
+    item('reverse'),
     item('bake'),
     divider,
     item('cut'),

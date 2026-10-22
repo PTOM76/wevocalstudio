@@ -637,7 +637,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
       {/* 何も置いていないときの案内（開く、音を作る、録音、最近使用したファイル。部品は PevenMUI の EmptyState。WeVocalSynth と同じ）。時間軸の操作は妨げない */}
       {project.blocks.length === 0 && !project.midi?.length && project.tracks.length <= 1 && !recording && (
-        <Box sx={{ position: 'absolute', inset: 0, pl: `${header}px`, pointerEvents: 'none', '& button': { pointerEvents: 'auto' } }}>
+        <Box sx={{ position: 'absolute', inset: 0, boxSizing: 'border-box', pl: `${header + 16}px`, pr: 2, pointerEvents: 'none', '& button': { pointerEvents: 'auto' } }}>
           <EmptyState
             message={t('empty.formats')}
             primary={{ label: t('empty.choose'), icon: faFolderOpen, onClick: commands.import.run }}

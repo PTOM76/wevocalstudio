@@ -89,6 +89,7 @@ export type Action =
   | 'pitchReset'
   | 'glidePitch'
   | 'vibratoEnvelope'
+  | 'reverse'
   | 'envelopeReset'
   | 'envelopeTool'
 
@@ -214,6 +215,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   glidePitch: [],
   // 選んだ波形ブロック（範囲があればその中）に、ビブラートをピッチのエンベロープとして足す
   vibratoEnvelope: [],
+  // 選んだ波形ブロックを逆再生にする（もう一度で元に戻る）
+  reverse: [],
   // 表示しているエンベロープを、選んだ波形ブロックで初期化する（点を全部消す）
   envelopeReset: [],
   // エンベロープの道具を、選択とペンで切り替える（選択は線と点だけを触る。ペンはブロックのどこを押しても点を足す）

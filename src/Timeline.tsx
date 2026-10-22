@@ -27,13 +27,15 @@ import type { DropAt } from './useProject'
 export const useHeaderWidth = () => {
   const mobile = useMobileLayout()
   const panel = usePanelWidth('studio.headerWidth', mobile ? 136 : 200, 120, 480, 'left')
-  // 欄を閉じて、時間軸を広く使える（スマホの縦持ちなど。閉じたかどうかは次回も引き継ぐ）
+  // 欄を閉じて、時間軸を広く使える（閉じたかどうかは次回も引き継ぐ。まだ選んでいないときは、スマホの縦持ちなら閉じる）
   const [collapsed, setCollapsed] = useState(() => {
     try {
-      return localStorage.getItem(COLLAPSED_KEY) === '1'
+      const saved = localStorage.getItem(COLLAPSED_KEY)
+      if (saved !== null) return saved === '1'
     } catch {
-      return false
+      // 読めなければ、画面の向きで決める
     }
+    return mobile && !!window.matchMedia?.('(orientation: portrait)').matches
   })
   const toggle = () => {
     try {

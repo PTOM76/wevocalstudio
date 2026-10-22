@@ -167,6 +167,7 @@
   "menu.pitchGroup": "Pitch",
   "menu.midiGroup": "MIDI",
   "menu.experimental": "Experimental",
+  "menu.reverse": "Reverse",
 
   "settings.title": "Settings",
   "settings.general": "General",
