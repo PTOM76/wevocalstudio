@@ -1,6 +1,7 @@
 // ピアノロールの上の部分（メニューバーとツールバー）。ダイアログと別のウィンドウに出したときに使う（PevenMUI の MenuBar を embedded で置く）。
 // メイン画面のドックでは、メインのメニューバーとツールバーを使う（PianoRoll の toolbar）
 import { useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Box, Button, IconButton, Popover, Switch, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowPointer, faCaretDown, faCircleQuestion, faClone, faCopy, faEraser, faGripLinesVertical, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faPaste, faPause, faPencil, faPlay, faScissors, faTrashCan, faVolumeXmark, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
@@ -61,6 +62,8 @@ export interface RollToolbarProps {
   /** ステップ入力 */
   stepInput: boolean
   onStepInput: () => void
+  /** 欄（ドック）に置いているとき、メインのツールバーの中の場所。あれば、メニューバーとボタンをそこに出す */
+  host?: HTMLElement | null
 }
 
 export default function RollToolbar(p: RollToolbarProps) {
@@ -133,12 +136,8 @@ export default function RollToolbar(p: RollToolbarProps) {
     return r ? { top: r.bottom, left: r.left + 80 } : undefined
   }
 
-  return (
-    <Box ref={root} sx={{ flexShrink: 0 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', px: 0.5, py: 0.25, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
-        <MenuBar menus={menus} embedded />
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.25, minHeight: 40, px: 1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+  const buttons = (
+    <>
         {tool('select', t('roll.toolSelect'), faArrowPointer)}
         {tool('pen', t('roll.toolPen'), faPencil)}
         {tool('erase', t('roll.toolErase'), faEraser)}
@@ -169,7 +168,10 @@ export default function RollToolbar(p: RollToolbarProps) {
             <FontAwesomeIcon icon={faCircleQuestion} />
           </IconButton>
         </Tooltip>
-      </Box>
+    </>
+  )
+  const popover = (
+    <>
       <Popover open={!!form} onClose={() => setForm(null)} anchorReference="anchorPosition" anchorPosition={formAt()}>
         <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 260 }}>
           {form === 'quantize' && (
@@ -199,6 +201,29 @@ export default function RollToolbar(p: RollToolbarProps) {
           </Button>
         </Box>
       </Popover>
+    </>
+  )
+  // 欄（ドック）に置いているときは、メインのツールバーに、メニューとボタンを並べる
+  if (p.host)
+    return createPortal(
+      <Box ref={root} sx={{ display: 'flex', alignItems: 'center', gap: 0.25, minWidth: 0, flex: 1 }}>
+        <Box sx={{ mx: 0.5, width: '1px', alignSelf: 'stretch', bgcolor: 'divider' }} />
+        <MenuBar menus={menus} embedded />
+        <ToolbarDivider gap />
+        {buttons}
+        {popover}
+      </Box>,
+      p.host,
+    )
+  return (
+    <Box ref={root} sx={{ flexShrink: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', px: 0.5, py: 0.25, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+        <MenuBar menus={menus} embedded />
+      </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.25, minHeight: 40, px: 1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+        {buttons}
+      </Box>
+      {popover}
     </Box>
   )
 }

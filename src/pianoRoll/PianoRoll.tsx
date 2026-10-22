@@ -52,8 +52,10 @@ export interface PianoRollProps {
   position: () => number
   /** 再生と一時停止の切り替え（別のウィンドウでも、ピアノロールの中で操作できるように） */
   onTogglePlay: () => void
-  /** 専用のツールバーを出すか（既定は出す）。メイン画面のドックに置くときは、既存のツールバーを使うので出さない */
+  /** メニューバーとツールバーを出すか（既定は出す） */
   toolbar?: boolean
+  /** 画面の下の欄（ドック）に置いているとき、メインのツールバーの中の場所。あれば、そこにメニューバーとボタンを出す */
+  chromeHost?: HTMLElement | null
 }
 
 export default function PianoRoll(p: PianoRollProps) {
@@ -430,6 +432,7 @@ export default function PianoRoll(p: PianoRollProps) {
     <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={onKey}>
       {p.toolbar !== false && (
         <RollToolbar
+          host={p.chromeHost}
           division={p.division}
           onDivision={p.onDivision}
           snapOn={snapOn}

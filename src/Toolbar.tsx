@@ -1,7 +1,7 @@
 // メニューの下の小さなツールバー（WeVocalSynth と同じ形）。再生位置に追従するか、スナップ、拡大と縮小
 import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
-import { OverflowRow, SmallButton, ToolbarDivider } from 'pevenmui'
+import { DockToolHost, OverflowRow, SmallButton, ToolbarDivider } from 'pevenmui'
 import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faWaveSquare, faScissors, faCopy, faPaste, faClone, faSliders, faTrashCan, faCropSimple, faXmark, faCheck, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
@@ -94,6 +94,8 @@ export default function Toolbar(p: {
         <ToolButton icon={faMagnifyingGlassMinus} label="menu.zoomOut" action="zoomOut" onClick={() => p.onZoom(1 / 1.5)} />
         {p.children}
       </OverflowRow>
+      {/* 画面の下の欄（ドック）に置いたピアノロールなどが、自分のメニューとボタンを出す場所 */}
+      <DockToolHost />
     </Box>
   )
 }
