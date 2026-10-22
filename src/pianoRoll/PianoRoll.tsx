@@ -3,13 +3,15 @@
 // Shift を押しながらクリックで選択の足し引き、Shift を押しながら空いている所をドラッグで枠で選ぶ、Ctrl+A で全部。選んだものは一緒に動く。
 // 左の鍵盤を押すと、その高さの音が鳴る。道具（選択、ペン、消しゴム）、ズーム、再生はこの中のツールバーにある（別のウィンドウに出しても使えるよう）。操作の説明は右上の ? のツールチップ（roll.help）。下の帯は音の強さ（ベロシティ）。Ctrl+ホイールで横の拡大、Shift+ホイールで横のスクロール、Alt+ホイールで行の高さ、ホイールで音の高さをずらす。Alt を押している間はグリッドに合わせない
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Box, Typography } from '@mui/material'
-import { ContextMenu, ScrollBar, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
+import { Box } from '@mui/material'
+import { ScrollBar, localPoint, useBoxSize, usePalette } from 'pevenmui'
 import { blockBeats, projectBeatMap } from '../beats'
 import { useT } from '../i18n'
 import { newId, type MidiBlock, type MidiCurve, type Note, type Project } from '../project'
 import { drawRoll } from './draw'
+import NoteMenu from './NoteMenu'
 import InfoLine, { laneLabelOf } from './InfoLine'
+import RollRuler from './RollRuler'
 import ScreenKeyboard from './ScreenKeyboard'
 import { useStepInput } from './useStepInput'
 import RollToolbar, { type Tool } from './Toolbar'
@@ -20,7 +22,7 @@ import { useRollWheel } from './useRollWheel'
 import { hitNote, hitVel } from './hit'
 import { curveOf, hitPoint, lanePoints, valueAt, withPoints, type Lane } from './laneEdit'
 import { curveRange } from '../midiCurves'
-import { EDGE, GAP, KEYS, NAMES, ROW_MIN, SCALES, type ScaleKind, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
+import { EDGE, GAP, KEYS, ROW_MIN, SCALES, type ScaleKind, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
 
 type Drag =
   | { kind: 'move'; start: Note[]; beat0: number; pitch0: number; merge: string }
@@ -52,6 +54,10 @@ export interface PianoRollProps {
   position: () => number
   /** 再生と一時停止の切り替え（別のウィンドウでも、ピアノロールの中で操作できるように） */
   onTogglePlay: () => void
+  /** ピアノロールのブロックの範囲だけを再生する（loop ならその範囲を繰り返す） */
+  onPlayBlock: (loop: boolean) => void
+  /** ブロックの長さ（拍）を変える（目盛りの旗のドラッグ）。merge は 1 回のドラッグで同じ値 */
+  onLength: (beats: number, merge: string) => void
   /** メニューバーとツールバーを出すか（既定は出す） */
   toolbar?: boolean
   /** 画面の下の欄（ドック）に置いているとき、メインのツールバーの中の場所。あれば、そこにメニューバーとボタンを出す */
@@ -86,6 +92,7 @@ export default function PianoRoll(p: PianoRollProps) {
   const [kb, setKb] = useState(() => !!window.matchMedia?.('(pointer: coarse)').matches)
   const [kbBase, setKbBase] = useState(48)
   const [fold, setFold] = useState(false)
+  const [loopPlay, setLoopPlay] = useState(false)
   const foldRef = useRef<number[]>([])
   const [scale, setScale] = useState<{ root: number; kind: ScaleKind }>({ root: 0, kind: 'none' })
   const [frame, setFrame] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
@@ -427,7 +434,6 @@ export default function PianoRoll(p: PianoRollProps) {
   }
   /** ステップ入力を始める位置: 選んでいる音符の終わり（なければ頭） */
   const stepStart = () => (sel.length ? selectionEnd(block.notes, sel) : 0)
-  const top = NAMES[view.low % 12] + (Math.floor(view.low / 12) - 1)
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={onKey}>
       {p.toolbar !== false && (
@@ -443,7 +449,9 @@ export default function PianoRoll(p: PianoRollProps) {
           edit={edit}
           canPaste={hasClipboard()}
           playing={p.playing}
-          onTogglePlay={p.onTogglePlay}
+          onTogglePlay={() => (p.playing ? p.onTogglePlay() : p.onPlayBlock(loopPlay))}
+          loopPlay={loopPlay}
+          onLoopPlay={() => setLoopPlay((v) => !v)}
           onSelectAll={() => setSel(block.notes.map((n) => n.id))}
           onZoom={zoomBy}
           onFit={() => (setZoom(null), setLeft(0))}
@@ -459,16 +467,11 @@ export default function PianoRoll(p: PianoRollProps) {
           onStepInput={() => step2.toggle(stepStart())}
         />
       )}
-      <ContextMenu
-        position={noteMenu}
-        entries={[
-          { label: t('roll.remove'), onClick: () => remove(sel) },
-          { label: t('menu.copy'), onClick: () => edit.copy(false) },
-          { label: t('menu.duplicate'), onClick: edit.duplicate },
-        ]}
-        onClose={() => setNoteMenu(null)}
-      />
+      <NoteMenu position={noteMenu} onClose={() => setNoteMenu(null)} edit={edit} selected={sel} />
       <InfoLine notes={block.notes} selected={sel} len={len} step={step} onChange={p.onChange} lane={lane} laneLabel={laneLabel} onLane={setLane} />
+      <Box sx={{ mx: 1.5 }}>
+        <RollRuler view={view} len={len} beatsPerBar={p.project.tempo.beatsPerBar} origin={map.toBeat(block.start)} step={step} play={play} onLength={p.onLength} />
+      </Box>
       <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 120, position: 'relative', mx: 1.5 }}>
         <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => onUp()} onDoubleClick={onDouble} onContextMenu={onContext} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
       </Box>
@@ -488,9 +491,6 @@ export default function PianoRoll(p: PianoRollProps) {
           onRest={step2.rest}
         />
       )}
-      <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary', px: 1.5, py: 0.75 }}>
-        {top} 〜　{sel.length ? t('roll.selected', { n: sel.length }) : ''}
-      </Typography>
     </Box>
   )
 }

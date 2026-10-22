@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Box, Button, IconButton, Popover, Switch, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faArrowPointer, faCaretDown, faCircleQuestion, faClone, faCopy, faEraser, faGripLinesVertical, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faPaste, faPause, faPencil, faPlay, faScissors, faTrashCan, faVolumeXmark, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { faEllipsis, faEye, faPenToSquare, faWandMagicSparkles, faArrowPointer, faCaretDown, faCircleQuestion, faClone, faCopy, faEraser, faGripLinesVertical, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faPaste, faPause, faPencil, faPlay, faRepeat, faScissors, faTrashCan, faVolumeXmark, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { ContextMenu, MenuBar, NumberInput, SmallButton, ToolbarDivider, pevenFont, type MenuEntry, type MenuGroup } from 'pevenmui'
 import { useT } from '../i18n'
 import type { useRollEdit } from './useRollEdit'
@@ -12,6 +12,9 @@ import { NAMES, SCALE_KINDS, type ScaleKind } from './view'
 
 /** グリッドの選択肢（時間軸の細かさと同じ値。ここにない値のときは足す） */
 const DIVISIONS = [1, 2, 4, 8, 16, 32, 64, 128, 256, 3, 6, 12, 24]
+
+/** ツールバーに出すときの、メニュー（編集、変換、表示）のアイコン */
+const MENU_ICONS = [faPenToSquare, faWandMagicSparkles, faEye]
 
 export type RollEdit = ReturnType<typeof useRollEdit>
 export type Tool = 'select' | 'pen' | 'erase' | 'slice' | 'mute'
@@ -44,6 +47,9 @@ export interface RollToolbarProps {
   canPaste: boolean
   playing: boolean
   onTogglePlay: () => void
+  /** 再生で、ブロックの範囲を繰り返すか */
+  loopPlay: boolean
+  onLoopPlay: () => void
   onSelectAll: () => void
   onZoom: (factor: number) => void
   onFit: () => void
@@ -72,6 +78,7 @@ export default function RollToolbar(p: RollToolbarProps) {
   const divisions: [number, string][] = (DIVISIONS.includes(p.division) ? DIVISIONS : [...DIVISIONS, p.division]).map((d) => [d, `1/${d}`])
   const root = useRef<HTMLDivElement>(null)
   const [gridMenu, setGridMenu] = useState<{ x: number; y: number } | null>(null)
+  const [hostMenu, setHostMenu] = useState<{ i: number; x: number; y: number } | null>(null)
   // 設定の入力（変換のメニューから開く。値は覚えておく）
   const [form, setForm] = useState<'quantize' | 'humanize' | null>(null)
   const [q, setQ] = useState<QuantizeForm>({ start: true, length: true, strength: 100, swing: 0 })
@@ -162,6 +169,7 @@ export default function RollToolbar(p: RollToolbarProps) {
         {btn(t('roll.zoomOut'), faMagnifyingGlassMinus, () => p.onZoom(1 / 1.4))}
         <ToolbarDivider gap />
         {btn(t(p.playing ? 'roll.pause' : 'roll.play'), p.playing ? faPause : faPlay, p.onTogglePlay)}
+        {btn(t('roll.loopPlay'), faRepeat, p.onLoopPlay, { pressed: p.loopPlay })}
         <Box sx={{ flex: 1 }} />
         <Tooltip title={<Box sx={{ whiteSpace: 'pre-line', fontSize: pevenFont('sm') }}>{t('roll.help')}</Box>} placement="bottom-end">
           <IconButton size="small" aria-label={t('roll.helpButton')}>
@@ -208,7 +216,16 @@ export default function RollToolbar(p: RollToolbarProps) {
     return createPortal(
       <Box ref={root} sx={{ display: 'flex', alignItems: 'center', gap: 0.25, minWidth: 0, flex: 1 }}>
         <Box sx={{ mx: 0.5, width: '1px', alignSelf: 'stretch', bgcolor: 'divider' }} />
-        <MenuBar menus={menus} embedded />
+        {/* ツールバーの中では、メニューは文字ではなく、押すとメニューが開くアイコンのボタンにする */}
+        {menus.map((m, i) => (
+          <Tooltip key={m.label} title={m.label}>
+            <IconButton size="small" aria-label={m.label} onClick={(e) => setHostMenu({ i, x: e.currentTarget.getBoundingClientRect().left, y: e.currentTarget.getBoundingClientRect().bottom })}>
+              <FontAwesomeIcon icon={MENU_ICONS[i] ?? faEllipsis} />
+              <FontAwesomeIcon icon={faCaretDown} style={{ marginLeft: 3, fontSize: '0.7em' }} />
+            </IconButton>
+          </Tooltip>
+        ))}
+        <ContextMenu position={hostMenu} entries={hostMenu ? menus[hostMenu.i].entries : []} onClose={() => setHostMenu(null)} />
         <ToolbarDivider gap />
         {buttons}
         {popover}

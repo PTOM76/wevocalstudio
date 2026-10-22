@@ -282,6 +282,9 @@ export default function AnalysisPanel(p: {
       </Box>
       <Box sx={{ display: 'flex', height: HEIGHT }}>
         <Box sx={{ width: p.headerWidth, flexShrink: 0, borderRight: 1, borderColor: 'divider', p: 1, boxSizing: 'border-box', overflow: 'hidden' }}>
+          {/* 欄を閉じて狭いときは文字を出さない */}
+          {p.headerWidth >= 80 && (
+            <>
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             {t('analysis.title')}
           </Typography>
@@ -297,6 +300,8 @@ export default function AnalysisPanel(p: {
             <Typography variant="caption" sx={{ color: pal.text.primary, display: 'block', mt: 1, fontFamily: 'monospace' }}>
               {hoverText}
             </Typography>
+          )}
+            </>
           )}
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>

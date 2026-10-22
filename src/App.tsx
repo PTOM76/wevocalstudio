@@ -59,7 +59,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
   setKeyOverrides(p.settings.keys)
   const mobile = useMobileLayout()
-  const { width: header, bar: headerBar } = useHeaderWidth()
+  const { width: header, bar: headerBar, collapsed: headerCollapsed, toggle: toggleHeader } = useHeaderWidth()
   // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
   useEffect(() => setOutputDevice(p.settings.outputDevice), [p.settings.outputDevice])
   useEffect(() => setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null), [p.settings.outputLimit, p.settings.outputLimitDb])
@@ -153,6 +153,14 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     setPaused(null)
     setPlayPos(from)
     void player.current.play(project, from).then(() => player.current.playing && setPlaying(true)).catch(fail)
+  }
+  /** start〜end 秒だけを再生する（ピアノロールの再生）。範囲として選び、loop なら繰り返す */
+  const playRange = (start: number, end: number, loop: boolean) => {
+    setRange({ start, end })
+    setRepeat(loop)
+    setPaused(null)
+    setPlayPos(start)
+    void player.current.play(project, start).then(() => player.current.playing && setPlaying(true)).catch(fail)
   }
   // 追加機能の導入の確かめ（動画の書き出し。PevenMUI）
   const addonInstall = useAddonInstall()
@@ -501,6 +509,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onRange={setRange}
         headerWidth={header}
         headerBar={headerBar}
+        headerCollapsed={headerCollapsed}
+        onToggleHeader={toggleHeader}
         onMasterChange={doc.updateMaster}
         onTrackChange={(id, patch, merge) => {
           // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量、パン、高さは差分で）
@@ -624,7 +634,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
       <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track, emptyAt.marker) : []} onClose={() => setEmptyAt(null)} />
-      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} onRenameProject={setFileName} range={range} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} position={() => player.current.position()} onTogglePlay={() => (playing ? pause() : play())} load={renderLoad} onPreview={(track, pitch, vel, on) => void player.current.monitorNote(project, track, pitch, vel, on)} />
+      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} onRenameProject={setFileName} range={range} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} position={() => player.current.position()} onTogglePlay={() => (playing ? pause() : play())} onPlayRange={playRange} load={renderLoad} onPreview={(track, pitch, vel, on) => void player.current.monitorNote(project, track, pitch, vel, on)} />
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar

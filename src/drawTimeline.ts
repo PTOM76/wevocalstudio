@@ -107,10 +107,16 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
     g.fillRect(x, line.label ? RULER - 8 : RULER - 4, 1, h)
     g.globalAlpha = 1
     if (line.label) {
+      // 数字は Synth の目盛りと同じく、少し控えめな色で、線の上に置く
       g.fillStyle = c.text
-      g.fillText(line.label, x + 3, RULER / 2)
+      g.globalAlpha = 0.8
+      g.fillText(line.label, x + 3, RULER / 2 - 2)
+      g.globalAlpha = 1
     }
   }
+  // 目盛りの下の線（Synth の目盛りと同じ）
+  g.fillStyle = c.line
+  g.fillRect(0, RULER - 1, w, 1)
 
   // マスタートラックの帯（波形ブロックは置かない）
   g.fillStyle = c.master

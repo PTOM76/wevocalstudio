@@ -1,4 +1,5 @@
 // アプリ全体のダイアログ（ショートカット、履歴、書き出し、設定、ライセンス、バージョン情報。WeVocalSynth の AppDialogs と同じ役目）
+import { projectBeatMap } from './beats'
 import { useMemo, useRef, type ComponentProps } from 'react'
 import KanaCutDialog from 'wevocalanalyzer/KanaCutDialog'
 import { placeMorae } from './sampler'
@@ -55,6 +56,8 @@ export default function AppDialogs(p: {
   /** 再生中か、再生と一時停止の切り替え（FX を開いたまま聞く） */
   playing: boolean
   onTogglePlay: () => void
+  /** start〜end 秒だけを再生する（loop なら繰り返す） */
+  onPlayRange: (start: number, end: number, loop: boolean) => void
   /** 再生位置（秒。ピアノロールの再生位置の線） */
   position: () => number
   /** 音を作る処理の負荷（0〜1。測れなければ null） */
@@ -169,6 +172,12 @@ export default function AppDialogs(p: {
               playing={p.playing}
               position={p.position}
               onTogglePlay={p.onTogglePlay}
+              onPlayBlock={(loop) => p.onPlayRange(block.start, block.start + block.length, loop)}
+              onLength={(beats, merge) => {
+                const map = projectBeatMap(doc.project)
+                const b0 = map.toBeat(block.start)
+                doc.updateMidiBlock(block.id, { length: Math.max(0.05, map.toSec(b0 + beats) - block.start) }, `${block.id}:${merge}`)
+              }}
               onChange={(notes, merge) => doc.updateMidiBlock(block.id, { notes }, merge && `${block.id}:${merge}`)}
               onCurves={(curves, merge) => doc.updateMidiBlock(block.id, { curves }, merge && `${block.id}:${merge}`)}
               onPreview={(pitch, vel, on) => p.onPreview(block.track, pitch, vel, on)}

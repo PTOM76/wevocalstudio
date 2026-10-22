@@ -386,6 +386,8 @@
   "track.moveDown": "Move Down",
   "track.collapse": "Collapse Subtracks",
   "track.expand": "Expand Subtracks",
+  "track.closeHeader": "Close Track List",
+  "track.openHeader": "Open Track List",
   "track.vocalsName": "{name} (vocals)",
   "track.accompanimentName": "{name} (accompaniment)",
   "track.leadName": "{name} (lead)",
@@ -992,6 +994,7 @@
   "roll.stepInput": "Step input",
   "roll.rest": "Rest",
   "roll.fold": "Fold keys (only notes' pitches)",
+  "roll.loopPlay": "Loop playback of the block",
 
   "instrument.title": "Instrument ({name})",
   "instrument.help": "The instrument that plays the notes of MIDI blocks. Volume, FX, and pan use the track's.",

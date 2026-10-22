@@ -1,6 +1,9 @@
 // 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Box } from '@mui/material'
+import { Box, IconButton } from '@mui/material'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faAnglesLeft, faAnglesRight } from '@fortawesome/free-solid-svg-icons'
+import { useT } from './i18n'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint, type Range } from 'wevocal-lib'
 import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette, usePanelWidth } from 'pevenmui'
@@ -23,8 +26,28 @@ import type { DropAt } from './useProject'
 /** トラック一覧の幅（境目の分割バーで変えられる。幅は次回も引き継ぐ） */
 export const useHeaderWidth = () => {
   const mobile = useMobileLayout()
-  return usePanelWidth('studio.headerWidth', mobile ? 136 : 200, 120, 480, 'left')
+  const panel = usePanelWidth('studio.headerWidth', mobile ? 136 : 200, 120, 480, 'left')
+  // 欄を閉じて、時間軸を広く使える（スマホの縦持ちなど。閉じたかどうかは次回も引き継ぐ）
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(COLLAPSED_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const toggle = () => {
+    try {
+      localStorage.setItem(COLLAPSED_KEY, collapsed ? '0' : '1')
+    } catch {
+      // 保存できなくても、このセッション中は使う
+    }
+    setCollapsed(!collapsed)
+  }
+  return { width: collapsed ? COLLAPSED_WIDTH : panel.width, bar: collapsed ? null : panel.bar, collapsed, toggle }
 }
+const COLLAPSED_KEY = 'studio.headerCollapsed'
+/** 閉じたときの欄の幅（開くボタンだけ） */
+const COLLAPSED_WIDTH = 32
 
 /**
  * 時間軸（canvas）の中の座標。clientX、clientY から求める（offsetX、offsetY は、画面の拡大（CSS の zoom）や、iPad のタッチで、描いている座標とずれることがある）。
@@ -71,6 +94,9 @@ export default function Timeline(p: {
   /** トラック一覧の幅と、その境目の分割バー（App で持つ。解析の欄の左の幅にもそろえる） */
   headerWidth: number
   headerBar: ReactNode
+  /** トラックの欄を閉じているか、開閉する */
+  headerCollapsed: boolean
+  onToggleHeader: () => void
   onMasterChange: (patch: Partial<Master>, merge?: string) => void
   onTrackChange: (id: string, patch: Partial<Track>, merge?: string) => void
   /** 続けての変更（ドラッグ、スライダー）の履歴のまとまりを切る */
@@ -142,6 +168,7 @@ export default function Timeline(p: {
   pendingLabel: string
 }) {
   countRender('Timeline')
+  const t = useT()
   // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
   const { dark, pal } = usePalette()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -859,10 +886,15 @@ export default function Timeline(p: {
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
         <Box sx={{ width: header, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column', position: 'relative' }}>
           {p.headerBar}
-          <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0 }} />
-          <MasterHeader master={p.project.master} height={masterHeight(p.project.master)} onFx={() => p.onFx('master')} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />
+          <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: p.headerCollapsed ? 'center' : 'flex-end', pr: p.headerCollapsed ? 0 : 0.5 }}>
+            <IconButton size="small" aria-label={t(p.headerCollapsed ? 'track.openHeader' : 'track.closeHeader')} title={t(p.headerCollapsed ? 'track.openHeader' : 'track.closeHeader')} onClick={p.onToggleHeader} sx={{ p: 0.25 }}>
+              <FontAwesomeIcon icon={p.headerCollapsed ? faAnglesRight : faAnglesLeft} size="xs" />
+            </IconButton>
+          </Box>
+          {!p.headerCollapsed && <MasterHeader master={p.project.master} height={masterHeight(p.project.master)} onFx={() => p.onFx('master')} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />}
           {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
           <Box
+            hidden={p.headerCollapsed}
             ref={headerContainerRef as React.RefObject<HTMLDivElement>}
             sx={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
             onWheel={(e) => setVscroll((v) => Math.max(0, Math.min(maxV, v + e.deltaY)))}
