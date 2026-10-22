@@ -180,7 +180,7 @@ export default function PianoRoll(p: PianoRollProps) {
     p.onChange(notes, merge)
     setSel([note.id])
     sound(pitch, note.vel)
-    drag.current = { kind: 'size', start: notes.map((q) => ({ ...q })), beat0: xBeat(view, x) - dur, merge }
+    drag.current = { kind: 'size', start: notes.map((q) => ({ ...q })), beat0: xBeat(view, x), merge }
   }
 
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -281,7 +281,7 @@ export default function PianoRoll(p: PianoRollProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }} onKeyDown={onKey}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, pt: 1 }}>
         <Box sx={{ width: 140 }}>
           <Choice label={t('roll.grid')} value={p.division} options={options} onChange={p.onDivision} />
         </Box>
