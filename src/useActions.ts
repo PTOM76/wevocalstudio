@@ -94,6 +94,10 @@ export interface ActionContext {
   toggleEnvelope: () => void
   /** ピッチのエンベロープを出して編集する */
   pitchEnvelope: boolean
+  /** 表示しているエンベロープの種類（なければ null）と、道具がペンか（false なら選択） */
+  envKind: EnvKind | null
+  envPen: boolean
+  setEnvPen: (pen: boolean) => void
   pitchEnvelopeRange: PitchEnvelopeRange
   envelopeRange: VolumeEnvelopeRange
   togglePitchEnvelope: () => void
@@ -134,6 +138,14 @@ export function useActions(c: ActionContext) {
   const anyWave = chosen.length > 0
   const track = doc.project.tracks.find((tr) => tr.id === c.selectedTrack)
   const blockTrack = doc.project.tracks.find((tr) => tr.id === (midiChosen[0] ?? chosen[0])?.track)
+  // 表示しているエンベロープに点がある、選んだ波形ブロック（初期化の対象）
+  const envBlocks = c.envKind ? chosen.filter((b) => ENVELOPES[c.envKind!].points(b).length > 0) : []
+  /** 波形ブロックのエンベロープ（音量かピッチ）の点を全部消す */
+  const resetEnvelope = (kind: EnvKind, ids: string[]) => {
+    const patches: Record<string, Partial<Block>> = {}
+    for (const b of doc.project.blocks) if (ids.includes(b.id)) patches[b.id] = ENVELOPES[kind].patch(b, [])
+    doc.updateBlocks(patches)
+  }
   // コピーした波形ブロック。元の音はプロジェクトにあるものを指す
   const clipboard = useRef<Block[]>([])
   const midiClipboard = useRef<MidiBlock[]>([])
@@ -206,6 +218,8 @@ export function useActions(c: ActionContext) {
     follow: { run: c.toggleFollow },
     envelope: { run: c.toggleEnvelope },
     pitchEnvelope: { run: c.togglePitchEnvelope },
+    envelopeReset: { enabled: !!c.envKind && envBlocks.length > 0, run: () => c.envKind && resetEnvelope(c.envKind, envBlocks.map((b) => b.id)) },
+    envelopeTool: { enabled: !!c.envKind, run: () => c.setEnvPen(!c.envPen) },
     autoEdit: { run: c.toggleAutoEdit },
     zoomIn: { run: () => c.zoom(1.5) },
     zoomOut: { run: () => c.zoom(1 / 1.5) },
@@ -507,6 +521,22 @@ export function useActions(c: ActionContext) {
   ]
   const blockMenu = chosen.length === 0 && midiChosen.length > 0 ? midiMenu : waveMenu
 
+  /** エンベロープの線か点の右クリックのメニュー。index は押した点の番号（点でなければ -1） */
+  const envelopeMenu = (blockId: string, index: number): MenuEntry[] => {
+    const kind = c.envKind
+    const b = doc.project.blocks.find((x) => x.id === blockId)
+    if (!kind || !b) return []
+    const spec = ENVELOPES[kind]
+    return [
+      ...(index >= 0 ? [{ label: t('menu.envelopeDeletePoint'), onClick: () => doc.updateBlock(b.id, spec.patch(b, spec.points(b).filter((_, i) => i !== index))) }, divider] : []),
+      { label: t('menu.envelopeSelect'), checked: !c.envPen, onClick: () => c.setEnvPen(false) },
+      { label: t('menu.envelopePen'), checked: c.envPen, onClick: () => c.setEnvPen(true) },
+      divider,
+      { label: t('menu.envelopeReset'), disabled: spec.points(b).length === 0, onClick: () => resetEnvelope(kind, chosen.some((x) => x.id === b.id) ? chosen.map((x) => x.id) : [b.id]) },
+      ...(kind === 'pitch' ? [item('vibratoEnvelope'), item('glidePitch')] : []),
+    ]
+  }
+
   /** 何もない所の右クリックのメニュー。time と track は押した所 */
   const emptyMenu = (kind: 'lane' | 'ruler', time: number, track: string | null, marker?: string): MenuEntry[] =>
     kind === 'ruler'
@@ -542,5 +572,5 @@ export function useActions(c: ActionContext) {
           item('addTrack'),
         ]
 
-  return { menus, blockMenu, emptyMenu, commands }
+  return { menus, blockMenu, emptyMenu, envelopeMenu, commands }
 }

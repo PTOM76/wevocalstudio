@@ -89,6 +89,8 @@ export type Action =
   | 'pitchReset'
   | 'glidePitch'
   | 'vibratoEnvelope'
+  | 'envelopeReset'
+  | 'envelopeTool'
 
 /**
  * キーの書き方は `Ctrl+Shift+キー`（キーは KeyboardEvent の code）。1 つの操作に複数のキーを割り当てられる。
@@ -212,6 +214,10 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   glidePitch: [],
   // 選んだ波形ブロック（範囲があればその中）に、ビブラートをピッチのエンベロープとして足す
   vibratoEnvelope: [],
+  // 表示しているエンベロープを、選んだ波形ブロックで初期化する（点を全部消す）
+  envelopeReset: [],
+  // エンベロープの道具を、選択とペンで切り替える（選択は線と点だけを触る。ペンはブロックのどこを押しても点を足す）
+  envelopeTool: [],
 }
 
 /** 操作の一覧（並びは設定の画面の並び） */

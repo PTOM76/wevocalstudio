@@ -124,6 +124,10 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [timelineWidth, setTimelineWidth] = useState(0)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
   // 何もない所の右クリックのメニュー（押した所の時刻とトラック）
+  // エンベロープの道具（ペンなら、波形ブロックのどこを押しても点を足す。既定は選択で、線と点だけを触る）と、線や点の右クリックのメニュー
+  const [envPen, setEnvPen] = useState(false)
+  const [envAt, setEnvAt] = useState<{ block: string; index: number; x: number; y: number } | null>(null)
+  const envKind = p.settings.envelope ? 'volume' : p.settings.pitchEnvelope ? 'pitch' : null
   const [emptyAt, setEmptyAt] = useState<{ kind: 'lane' | 'ruler'; time: number; track: string | null; x: number; y: number; marker?: string } | null>(null)
   // 「ここに読み込む」の行き先（ファイルを選んだら使う）
   const importTarget = useRef<DropAt | undefined>(undefined)
@@ -304,7 +308,10 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   })
 
 
-  const { menus, blockMenu, emptyMenu, commands } = useActions({
+  const { menus, blockMenu, emptyMenu, envelopeMenu, commands } = useActions({
+    envKind,
+    envPen,
+    setEnvPen,
     seekAfterInsert: p.settings.seekAfterInsert,
     doc,
     cursor,
@@ -482,6 +489,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onEnvelope={commands.envelope.run}
         pitchEnvelope={p.settings.pitchEnvelope}
         onPitchEnvelope={commands.pitchEnvelope.run}
+        envKind={envKind}
+        envPen={envPen}
+        onEnvPen={setEnvPen}
+        canEnvReset={commands.envelopeReset.enabled !== false}
+        onEnvReset={commands.envelopeReset.run}
         canCut={commands.cut.enabled !== false}
         canPaste={commands.paste.enabled !== false}
         hasBlocks={selected.length > 0}
@@ -593,7 +605,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         playing={playing}
         grid={p.settings.grid}
         division={p.settings.gridDivision}
-        envKind={p.settings.envelope ? 'volume' : p.settings.pitchEnvelope ? 'pitch' : null}
+        envKind={envKind}
+        envPen={envPen}
+        onEnvMenu={(block, index, x, y) => setEnvAt({ block, index, x, y })}
         envelopeRange={p.settings.envelopeRange}
         pitchEnvelopeRange={p.settings.pitchEnvelopeRange}
         autoEdit={p.settings.autoEdit}
@@ -683,6 +697,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onToEnd={() => seek(end)}
       />
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
+      <ContextMenu position={envAt} entries={envAt ? envelopeMenu(envAt.block, envAt.index) : []} onClose={() => setEnvAt(null)} />
       <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track, emptyAt.marker) : []} onClose={() => setEmptyAt(null)} />
       <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} onRenameProject={setFileName} range={range} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} fail={fail} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} position={() => player.current.position()} onTogglePlay={() => (playing ? pause() : play())} onPlayRange={playRange} load={renderLoad} onPreview={(track, pitch, vel, on) => void player.current.monitorNote(project, track, pitch, vel, on)} />
 

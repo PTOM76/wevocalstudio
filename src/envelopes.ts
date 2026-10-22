@@ -61,3 +61,25 @@ export function hitEnvPoint(kind: EnvKind, b: Block, x: number, y: number, block
   const actualRange = range ?? s.defaultRange(b, kind === 'pitch' ? PITCH_ENV_MAX : -ENV_MIN)
   return s.points(b).findIndex((pt) => Math.hypot(blockX + pt.t * pps - x, top + s.y(pt.v, actualRange) * h - y) < 7)
 }
+
+/**
+ * 押した所がエンベロープの線の上か（点がなければ 0 の線。線は波形ブロックの両端まで続く）。blockX は波形ブロックの左端、top と h は線を描く高さの範囲
+ */
+export function hitEnvLine(kind: EnvKind, b: Block, x: number, y: number, blockX: number, top: number, h: number, pps: number, range: number, tol = 6) {
+  const s = ENVELOPES[kind]
+  const pts = s.points(b)
+  const at = (pt: EnvPt) => [blockX + pt.t * pps, top + s.y(pt.v, range) * h] as const
+  const first = pts[0] ?? { t: 0, v: s.zero }
+  const last = pts[pts.length - 1] ?? first
+  const path = [[blockX, at(first)[1]] as const, ...(pts.length ? pts : [first]).map(at), [blockX + b.length * pps, at(last)[1]] as const]
+  for (let i = 0; i + 1 < path.length; i++) {
+    const [x0, y0] = path[i]
+    const [x1, y1] = path[i + 1]
+    const dx = x1 - x0
+    const dy = y1 - y0
+    const len2 = dx * dx + dy * dy
+    const u = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / len2))
+    if (Math.hypot(x0 + u * dx - x, y0 + u * dy - y) <= tol) return true
+  }
+  return false
+}

@@ -158,6 +158,11 @@
   "menu.deleteBlock": "ブロックを削除",
   "menu.minimapPlayhead": "ミニマップの再生位置",
   "menu.vibratoEnvelope": "ビブラートを付ける…",
+  "menu.envelopeReset": "エンベロープを初期化",
+  "menu.envelopeDeletePoint": "点を削除",
+  "menu.envelopeSelect": "エンベロープ: 選択",
+  "menu.envelopePen": "エンベロープ: ペン",
+  "menu.envelopeTool": "エンベロープのペンと選択を切り替え",
 
   "settings.title": "設定",
   "settings.general": "全般",

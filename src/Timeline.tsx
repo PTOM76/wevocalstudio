@@ -13,7 +13,7 @@ import { hitMidi, trimLeft, type MidiDragKind } from './midiBlocks'
 import { blockBeats, projectBeatMap } from './beats'
 import { layoutRows } from './overlap'
 import { depthOf, projectEnd, songEnd, masterHeight, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange } from './project'
-import { ENVELOPES, envelopeRange, hitEnvPoint, type EnvKind } from './envelopes'
+import { ENVELOPES, envelopeRange, hitEnvLine, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { RULER, drawCursors, drawTimeline, topOf, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
@@ -151,6 +151,10 @@ export default function Timeline(p: {
   /** 音量のエンベロープを描いて編集する */
   /** 編集するエンベロープ（音量かピッチ。出さなければ null） */
   envKind: EnvKind | null
+  /** エンベロープの道具がペンか（false は選択。選択のときは、線と点だけを触る） */
+  envPen: boolean
+  /** エンベロープの線か点の右クリックのメニューを開く（波形ブロックの id、押した点の番号。点でなければ -1） */
+  onEnvMenu: (block: string, index: number, x: number, y: number) => void
   envelopeRange: VolumeEnvelopeRange
   pitchEnvelopeRange: PitchEnvelopeRange
   /** オートメーションを編集する（FX のダイアログで選んだつまみのレーンの点を、足す、動かす、消す） */
@@ -487,6 +491,13 @@ export default function Timeline(p: {
     }
     if (!p.selected.includes(hit.block.id)) p.onSelect([hit.block.id])
     p.onSelectTrack(hit.block.track)
+    // エンベロープの線か点の上なら、エンベロープのメニュー
+    if (p.envKind) {
+      const g = blockGeom(hit.block)
+      const range = envelopeRange(p.envKind, hit.block, p.envKind === 'pitch' ? p.pitchEnvelopeRange : p.envelopeRange)
+      const index = hitEnvPoint(p.envKind, hit.block, x, y, g.x, g.top, g.h, view.pps, range)
+      if (index >= 0 || hitEnvLine(p.envKind, hit.block, x, y, g.x, g.top, g.h, view.pps, range)) return p.onEnvMenu(hit.block.id, index, cx, cyClient)
+    }
     p.onBlockMenu(hit.block.id, cx, cyClient)
   }
 
@@ -630,12 +641,17 @@ export default function Timeline(p: {
     }
     const id = hit.block.id
     // エンベロープを出しているときは、点を足すか動かす
-    if (p.envKind && !e.altKey) {
+    // 選択の道具のときは、線か点を押したときだけ（それ以外は波形ブロックの操作）
+    const envB = hit.block
+    const envG = blockGeom(envB)
+    const envRange = p.envKind ? envelopeRange(p.envKind, envB, p.envKind === 'pitch' ? p.pitchEnvelopeRange : p.envelopeRange) : 0
+    const onEnv = !!p.envKind && (p.envPen || hitEnvPoint(p.envKind, envB, x, y, envG.x, envG.top, envG.h, view.pps, envRange) >= 0 || hitEnvLine(p.envKind, envB, x, y, envG.x, envG.top, envG.h, view.pps, envRange))
+    if (p.envKind && onEnv && !e.altKey) {
       const b = hit.block
       const g = blockGeom(b)
       const spec = ENVELOPES[p.envKind]
       const env = spec.points(b)
-      const range = envelopeRange(p.envKind, b, p.envKind === 'pitch' ? p.pitchEnvelopeRange : p.envelopeRange)
+      const range = envRange
       let index = hitEnvPoint(p.envKind, b, x, y, g.x, g.top, g.h, view.pps, range)
       if (index < 0) {
         const t = Math.max(0, Math.min(b.length, (x - g.x) / view.pps))

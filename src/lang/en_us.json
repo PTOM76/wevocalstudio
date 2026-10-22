@@ -158,6 +158,11 @@
   "menu.deleteBlock": "Delete block",
   "menu.minimapPlayhead": "Minimap playhead",
   "menu.vibratoEnvelope": "Add Vibrato…",
+  "menu.envelopeReset": "Reset Envelope",
+  "menu.envelopeDeletePoint": "Delete Point",
+  "menu.envelopeSelect": "Envelope: Select",
+  "menu.envelopePen": "Envelope: Pen",
+  "menu.envelopeTool": "Toggle Envelope Pen/Select",
 
   "settings.title": "Settings",
   "settings.general": "General",

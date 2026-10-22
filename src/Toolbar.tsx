@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react'
 import { Box } from '@mui/material'
 import { DockToolHost, OverflowRow, SmallButton, ToolbarDivider } from 'pevenmui'
-import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faWaveSquare, faScissors, faCopy, faPaste, faClone, faSliders, faTrashCan, faCropSimple, faXmark, faCheck, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { faArrowsLeftRightToLine, faChartLine, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faWaveSquare, faScissors, faCopy, faPaste, faClone, faSliders, faTrashCan, faCropSimple, faXmark, faCheck, faArrowPointer, faPen, faRotateLeft, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { useT, type MessageKey } from './i18n'
 import { keyLabel, type Action } from './keymap'
 import { countRender } from 'pevenmui/debug'
@@ -25,6 +25,12 @@ export default function Toolbar(p: {
   onEnvelope: () => void
   pitchEnvelope: boolean
   onPitchEnvelope: () => void
+  /** 表示しているエンベロープ（なければ null）、道具がペンか、道具の切り替え、選んだブロックのエンベロープの初期化 */
+  envKind: 'volume' | 'pitch' | null
+  envPen: boolean
+  onEnvPen: (pen: boolean) => void
+  canEnvReset: boolean
+  onEnvReset: () => void
   canCut: boolean
   canPaste: boolean
   hasBlocks: boolean
@@ -89,6 +95,13 @@ export default function Toolbar(p: {
         <ToolButton icon={faMagnet} label="menu.snap" action="snap" pressed={p.snap} onClick={p.onSnap} />
         <ToolButton icon={faChartLine} label="menu.envelope" action="envelope" pressed={p.envelope} onClick={p.onEnvelope} />
         <ToolButton icon={faWaveSquare} label="menu.pitchEnvelope" action="pitchEnvelope" pressed={p.pitchEnvelope} onClick={p.onPitchEnvelope} />
+        {p.envKind && (
+          <>
+            <ToolButton icon={faArrowPointer} label="menu.envelopeSelect" action="envelopeTool" pressed={!p.envPen} onClick={() => p.onEnvPen(false)} />
+            <ToolButton icon={faPen} label="menu.envelopePen" action="envelopeTool" pressed={p.envPen} onClick={() => p.onEnvPen(true)} />
+            <ToolButton icon={faRotateLeft} label="menu.envelopeReset" action="envelopeReset" disabled={!p.canEnvReset} onClick={p.onEnvReset} />
+          </>
+        )}
         <Divider />
         <ToolButton icon={faMagnifyingGlassPlus} label="menu.zoomIn" action="zoomIn" onClick={() => p.onZoom(1.5)} />
         <ToolButton icon={faMagnifyingGlassMinus} label="menu.zoomOut" action="zoomOut" onClick={() => p.onZoom(1 / 1.5)} />
