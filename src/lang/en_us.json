@@ -917,9 +917,11 @@
 
   "roll.title": "Piano roll",
   "roll.grid": "Grid",
-  "roll.help": "Click to add a note, drag to move, drag the right edge to resize, double-click or Delete to remove. Shift adds to the selection or drags a box, Ctrl+A selects all. Hold Alt to ignore the grid. The bottom strip is velocity. Wheel: pitch range, Ctrl+wheel: zoom, Shift+wheel: scroll, Alt+wheel: row height",
+  "roll.help": "Click to add a note, drag to move, drag the right edge to resize, double-click or Delete to remove. Shift adds to the selection or drags a box, Ctrl+A selects all. Hold Alt to ignore the grid. Arrows move (Shift+Up/Down: octave, Shift+Left/Right: length), Ctrl+C, X, V, D: copy, cut, paste, duplicate, Q: quantize. The bottom strip is velocity. Wheel: pitch range, Ctrl+wheel: zoom, Shift+wheel: scroll, Alt+wheel: row height",
   "roll.velocity": "Velocity",
   "roll.selected": "{n} selected",
+  "roll.quantize": "Quantize",
+  "roll.legato": "Legato",
 
   "instrument.title": "Instrument ({name})",
   "instrument.help": "The instrument that plays the notes of MIDI blocks. Volume, FX, and pan use the track's.",

@@ -3,13 +3,14 @@
 // Shift を押しながらクリックで選択の足し引き、Shift を押しながら空いている所をドラッグで枠で選ぶ、Ctrl+A で全部。選んだものは一緒に動く。
 // 下の帯は音の強さ（ベロシティ）。Ctrl+ホイールで横の拡大、Shift+ホイールで横のスクロール、Alt+ホイールで行の高さ、ホイールで音の高さをずらす。Alt を押している間はグリッドに合わせない
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, Button, Typography } from '@mui/material'
 import { ScrollBar, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
 import { LabeledSelect as Choice } from 'wevocal-lib/react'
 import { blockBeats, projectBeatMap } from '../beats'
 import { useT } from '../i18n'
 import { newId, type MidiBlock, type Note, type Project } from '../project'
 import { drawRoll } from './draw'
+import { copyNotes, legato, pasteNotes, quantize, resize, selectionEnd, shift, type NoteClip } from './edit'
 import { hitNote, hitVel } from './hit'
 import { GAP, KEYS, NAMES, ROW_MAX, ROW_MIN, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
 
@@ -18,6 +19,9 @@ type Drag =
   | { kind: 'size'; start: Note[]; beat0: number; merge: string }
   | { kind: 'vel'; id: string; merge: string }
   | { kind: 'box'; x0: number; y0: number }
+
+/** コピーした音符（ピアノロールを閉じても残す） */
+let clipboard: NoteClip | null = null
 
 /** グリッドの選択肢（時間軸の細かさと同じ値。ここにない値のときは足す） */
 const DIVISIONS = [1, 2, 4, 8, 16, 32, 64, 128, 256, 3, 6, 12, 24]
@@ -241,14 +245,36 @@ export default function PianoRoll(p: PianoRollProps) {
     const h = hitNote(block.notes, view, x, y)
     if (h.index >= 0) remove([block.notes[h.index].id])
   }
+  /** グリッドに寄せる（始まりと長さを 100%） */
+  const doQuantize = () => sel.length && p.onChange(quantize(block.notes, sel, { step, start: true, length: true, strength: 1, swing: 0 }, len))
+  const doLegato = () => sel.length && p.onChange(legato(block.notes, sel))
+  /** 貼り付け: 選んでいる音符の終わりの次（選んでいなければ見えている左端）へ */
+  const doPaste = () => {
+    if (!clipboard) return
+    const at = sel.length ? selectionEnd(block.notes, sel) : Math.round(view.left / step) * step
+    const r = pasteNotes(block.notes, clipboard, at, len)
+    p.onChange(r.notes)
+    setSel(r.added)
+  }
   const onKey = (e: React.KeyboardEvent) => {
-    if ((e.key === 'Delete' || e.key === 'Backspace') && sel.length) {
-      e.preventDefault()
-      remove(sel)
-    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-      e.preventDefault()
-      setSel(block.notes.map((n) => n.id))
-    }
+    const mod = e.ctrlKey || e.metaKey
+    const key = e.key.toLowerCase()
+    if ((e.key === 'Delete' || e.key === 'Backspace') && sel.length) remove(sel)
+    else if (mod && key === 'a') setSel(block.notes.map((n) => n.id))
+    else if (mod && (key === 'c' || key === 'x')) {
+      clipboard = copyNotes(block.notes, sel) ?? clipboard
+      if (key === 'x') remove(sel)
+    } else if (mod && key === 'v') doPaste()
+    else if (mod && key === 'd') {
+      clipboard = copyNotes(block.notes, sel) ?? clipboard
+      doPaste()
+    } else if (!mod && key === 'q') doQuantize()
+    else if (!mod && sel.length && e.key.startsWith('Arrow')) {
+      const dir = e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 1
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') p.onChange(e.shiftKey ? resize(block.notes, sel, dir * step, len) : shift(block.notes, sel, dir * step, 0, len))
+      else p.onChange(shift(block.notes, sel, 0, dir * (e.shiftKey ? 12 : 1), len))
+    } else return
+    e.preventDefault()
   }
   const options: [number, string][] = (DIVISIONS.includes(p.division) ? DIVISIONS : [...DIVISIONS, p.division]).map((d) => [d, `1/${d}`])
   const top = NAMES[view.low % 12] + (Math.floor(view.low / 12) - 1)
@@ -259,8 +285,14 @@ export default function PianoRoll(p: PianoRollProps) {
         <Box sx={{ width: 140 }}>
           <Choice label={t('roll.grid')} value={p.division} options={options} onChange={p.onDivision} />
         </Box>
-        <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{t('roll.help')}</Typography>
+        <Button size="small" disabled={!sel.length} onClick={doQuantize}>
+          {t('roll.quantize')}
+        </Button>
+        <Button size="small" disabled={!sel.length} onClick={doLegato}>
+          {t('roll.legato')}
+        </Button>
       </Box>
+      <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{t('roll.help')}</Typography>
       <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 260, position: 'relative' }}>
         <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onDoubleClick={onDouble} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
       </Box>
