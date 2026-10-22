@@ -11,7 +11,7 @@ export default function PianoRollDialog(p: PianoRollProps & { open: boolean; onC
   // 画面の下の欄に置いているときは、タブの × で閉じられるので、閉じるの行は出さない
   const docked = !!useDock()?.isDocked('pianoRoll') && !mobile
   return (
-    <WindowDialog open={open} onClose={onClose} title={t('roll.title')} name="pianoRoll" dockable={!mobile} width={960} height={720} dialogProps={{ fullWidth: true, maxWidth: 'lg' }}>
+    <WindowDialog open={open} onClose={onClose} title={t('roll.title')} name="pianoRoll" dockable={!mobile} width={960} height={720} dialogProps={{ fullWidth: true, maxWidth: 'lg', fullScreen: mobile }}>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', p: 0, overflow: 'hidden' }}>
         <PianoRoll {...roll} />
       </DialogContent>

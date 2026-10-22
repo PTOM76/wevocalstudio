@@ -95,6 +95,8 @@ src/pianoRoll/
   laneEdit.ts  ピアノロールの下のレーン（強さ、ピッチベンド、CC）の曲線の編集。点の判定と、曲線の入れ替え。画面を知らない
   PianoRoll.tsx  ピアノロールの本体（MIDI ブロックの音符を編集する）。ダイアログの枠は PianoRollDialog.tsx。
   Toolbar.tsx  ピアノロールの上の部分（メニューバーとツールバー）。ダイアログと別のウィンドウに出したときに使う（PevenMUI の MenuBar を embedded で置く）。
+  useRollEdit.ts  ピアノロールの編集の操作（消す、コピーと貼り付け、複製、移調、クオンタイズ、接着など）と、そのキー操作
+  useRollWheel.ts  ピアノロールのホイール: Ctrl で横の拡大（マウスの位置を動かさない）、Shift で横のスクロール、Alt で行の高さ、そのままで音の高さ。ページごと動かないよう passive にしない
   view.ts  ピアノロールの表示の位置と大きさ（拍と音の高さ、画面の座標の変換）。画面を知らない
 
 src/settings/

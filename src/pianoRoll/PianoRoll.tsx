@@ -4,18 +4,20 @@
 // 左の鍵盤を押すと、その高さの音が鳴る。道具（選択、ペン、消しゴム）、ズーム、再生はこの中のツールバーにある（別のウィンドウに出しても使えるよう）。操作の説明は右上の ? のツールチップ（roll.help）。下の帯は音の強さ（ベロシティ）。Ctrl+ホイールで横の拡大、Shift+ホイールで横のスクロール、Alt+ホイールで行の高さ、ホイールで音の高さをずらす。Alt を押している間はグリッドに合わせない
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, Typography } from '@mui/material'
-import { ScrollBar, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
+import { ContextMenu, ScrollBar, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
 import { blockBeats, projectBeatMap } from '../beats'
 import { useT } from '../i18n'
 import { newId, type MidiBlock, type MidiCurve, type Note, type Project } from '../project'
 import { drawRoll } from './draw'
 import InfoLine from './InfoLine'
-import RollToolbar, { type HumanizeForm, type QuantizeForm, type Tool } from './Toolbar'
-import { copyNotes, glue, humanize, legato, pasteNotes, quantize, resize, selectionEnd, setMute, shift, slice, type NoteClip } from './edit'
+import RollToolbar, { type Tool } from './Toolbar'
+import { setMute, slice } from './edit'
+import { hasClipboard, useRollEdit } from './useRollEdit'
+import { useRollWheel } from './useRollWheel'
 import { hitNote, hitVel } from './hit'
 import { curveOf, hitPoint, lanePoints, valueAt, withPoints, type Lane } from './laneEdit'
 import { curveRange } from '../midiCurves'
-import { GAP, KEYS, NAMES, SCALES, type ScaleKind, ROW_MAX, ROW_MIN, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
+import { EDGE, GAP, KEYS, NAMES, SCALES, type ScaleKind, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
 
 type Drag =
   | { kind: 'move'; start: Note[]; beat0: number; pitch0: number; merge: string }
@@ -24,16 +26,13 @@ type Drag =
   | { kind: 'point'; index: number; merge: string }
   | { kind: 'box'; x0: number; y0: number }
   | { kind: 'key' }
+  /** 指 1 本で空いている所をなぞる: スクロール（動かさずに離すと音符を足し、長押しすると枠で選ぶ） */
+  | { kind: 'pan'; x: number; y: number; cx: number; cy: number; left0: number; low0: number; t0: number; moved: boolean; timer: number }
   | { kind: 'erase'; merge: string }
   | { kind: 'mute'; value: boolean; merge: string }
 
 
 /** キーでの道具の切り替え（FL Studio にならう） */
-const TOOL_KEYS: Record<string, Tool> = { e: 'select', p: 'pen', d: 'erase', c: 'slice', t: 'mute' }
-
-/** コピーした音符（ピアノロールを閉じても残す） */
-let clipboard: NoteClip | null = null
-
 /** グリッドの選択肢（時間軸の細かさと同じ値。ここにない値のときは足す） */
 const DIVISIONS = [1, 2, 4, 8, 16, 32, 64, 128, 256, 3, 6, 12, 24]
 
@@ -72,7 +71,8 @@ export default function PianoRoll(p: PianoRollProps) {
   const [left, setLeft] = useState(0)
   const [zoom, setZoom] = useState<number | null>(null)
   const [low, setLow] = useState(48)
-  const [row, setRow] = useState(14)
+  // 指で操作する端末では、行を高くする
+  const [row, setRow] = useState(() => (window.matchMedia?.('(pointer: coarse)').matches ? 24 : 14))
   const [sel, setSel] = useState<string[]>([])
   // グリッドに合わせる（Alt を押している間は逆）
   const [snapOn, setSnapOn] = useState(true)
@@ -89,6 +89,12 @@ export default function PianoRoll(p: PianoRollProps) {
   // 鳴らしている音（鍵盤の色付け）
   const [held, setHeld] = useState<number | null>(null)
   const drag = useRef<Drag | null>(null)
+  // 指の操作: 今の指か（右端をつかめる幅を広げる）、触れている指の位置、2 本指のつまみ
+  const touch = useRef(false)
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<{ dist0: number; ppb0: number; beat: number; y0: number; low0: number } | null>(null)
+  const [noteMenu, setNoteMenu] = useState<{ x: number; y: number } | null>(null)
+  const edgePx = () => (touch.current ? 18 : EDGE)
   const count = useRef(0)
   const lastDur = useRef(0)
   // 今鳴らしている音（動かして高さが変わったら、離して鳴らし直す）
@@ -158,28 +164,10 @@ export default function PianoRoll(p: PianoRollProps) {
     return () => cancelAnimationFrame(id)
   }, [p.playing, block.start, len])
 
-  // ホイール: Ctrl で横の拡大（マウスの位置を動かさない）、Shift で横のスクロール、Alt で行の高さ、そのままで音の高さ。ページごと動かないよう passive にしない
-  useEffect(() => {
-    const el = canvas.current
-    if (!el) return
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      const v = viewRef.current
-      const dir = e.deltaY > 0 ? 1 : -1
-      if (e.ctrlKey) {
-        const at = localPoint(el, e.clientX, e.clientY).x
-        const ppb = Math.max(2, Math.min(2000, v.ppb * (dir > 0 ? 0.85 : 1 / 0.85)))
-        const beat = xBeat(v, at)
-        setZoom(ppb)
-        setLeft(Math.max(0, beat - (at - KEYS) / ppb))
-      } else if (e.shiftKey) setLeft(Math.max(0, v.left + (dir * 60) / v.ppb))
-      else if (e.altKey) setRow(Math.max(ROW_MIN, Math.min(ROW_MAX, v.row - dir)))
-      else setLow(v.low - dir * 2)
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  useRollWheel(canvas, viewRef, { zoom: setZoom, left: setLeft, row: setRow, low: setLow })
 
+  const edit = useRollEdit({ notes: block.notes, selected: sel, setSelected: setSel, len, step, left: view.left, onChange: p.onChange, setTool })
+  const { remove, onKey } = edit
   const pos = (e: { clientX: number; clientY: number }) => localPoint(canvas.current!, e.clientX, e.clientY)
   const velAt = (y: number) => Math.max(0.02, Math.min(1, 1 - (y - rollHeight(view) - GAP) / VEL))
   const setVelocity = (ids: string[], v: number, merge: string) => p.onChange(block.notes.map((n) => (ids.includes(n.id) ? { ...n, vel: v } : n)), merge)
@@ -188,6 +176,19 @@ export default function PianoRoll(p: PianoRollProps) {
     const { x, y } = pos(e)
     e.currentTarget.setPointerCapture(e.pointerId)
     e.currentTarget.focus()
+    touch.current = e.pointerType === 'touch'
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    // 2 本目の指: つまみ（拡大と縮小、縦横のスクロール）に切り替える
+    if (pointers.current.size === 2) {
+      const [a, b2] = [...pointers.current.values()]
+      const mid = localPoint(canvas.current!, (a.x + b2.x) / 2, (a.y + b2.y) / 2)
+      if (drag.current?.kind === 'pan') clearTimeout(drag.current.timer)
+      drag.current = null
+      setFrame(null)
+      sound(null)
+      pinch.current = { dist0: Math.hypot(a.x - b2.x, a.y - b2.y) || 1, ppb0: view.ppb, beat: xBeat(view, mid.x), y0: mid.y, low0: view.low }
+      return
+    }
     // 鍵盤: 押している間鳴らし、なぞると続けて鳴らす
     if (x < KEYS) {
       if (y < rollHeight(view)) {
@@ -220,7 +221,7 @@ export default function PianoRoll(p: PianoRollProps) {
       setVelocity(sel.includes(id) ? sel : [id], velAt(y), merge)
       return
     }
-    const h = hitNote(block.notes, view, x, y)
+    const h = hitNote(block.notes, view, x, y, edgePx())
     if (tool === 'erase') {
       drag.current = { kind: 'erase', merge }
       if (h.index >= 0) p.onChange(block.notes.filter((_, i) => i !== h.index), merge)
@@ -260,6 +261,17 @@ export default function PianoRoll(p: PianoRollProps) {
       drag.current = { kind: 'size', start: notes.map((q) => ({ ...q })), beat0: xBeat(view, x), merge }
       return
     }
+    // 指で選択の道具のとき: なぞるとスクロール。動かさずに離すと音符を足し、長押しすると枠で選ぶ
+    if (touch.current && !e.shiftKey) {
+      const timer = window.setTimeout(() => {
+        if (drag.current?.kind !== 'pan' || drag.current.moved) return
+        setSel([])
+        setFrame({ x0: x, y0: y, x1: x, y1: y })
+        drag.current = { kind: 'box', x0: x, y0: y }
+      }, 450)
+      drag.current = { kind: 'pan', x, y, cx: e.clientX, cy: e.clientY, left0: view.left, low0: view.low, t0: Date.now(), moved: false, timer }
+      return
+    }
     if (!e.shiftKey) setSel([])
     setFrame({ x0: x, y0: y, x1: x, y1: y })
     drag.current = { kind: 'box', x0: x, y0: y }
@@ -269,15 +281,39 @@ export default function PianoRoll(p: PianoRollProps) {
   const newNote = (x: number, y: number, free: boolean): Note => ({ id: newId(), t: Math.max(0, Math.min(len - step, free || !snapOn ? xBeat(view, x) : Math.floor(xBeat(view, x) / step + 1e-6) * step)), dur: lastDur.current || step, pitch: rowPitch(view, y), vel: 0.8 })
 
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const pc = pinch.current
+    if (pc && pointers.current.size === 2) {
+      const [a, b2] = [...pointers.current.values()]
+      const mid = localPoint(canvas.current!, (a.x + b2.x) / 2, (a.y + b2.y) / 2)
+      const ppb = Math.max(2, Math.min(2000, (pc.ppb0 * (Math.hypot(a.x - b2.x, a.y - b2.y) || 1)) / pc.dist0))
+      setZoom(ppb)
+      setLeft(Math.max(0, pc.beat - (mid.x - KEYS) / ppb))
+      setLow(pc.low0 + Math.round((mid.y - pc.y0) / view.row))
+      return
+    }
     const d = drag.current
     if (!d) return
     const { x, y } = pos(e)
+    if (d.kind === 'pan') {
+      const dx = e.clientX - d.cx
+      const dy = e.clientY - d.cy
+      if (!d.moved && Math.abs(dx) + Math.abs(dy) > 8) {
+        d.moved = true
+        clearTimeout(d.timer)
+      }
+      if (d.moved) {
+        setLeft(Math.max(0, d.left0 - dx / view.ppb))
+        setLow(d.low0 + Math.round(dy / view.row))
+      }
+      return
+    }
     if (d.kind === 'key') {
       if (y >= 0 && y < rollHeight(view)) sound(rowPitch(view, y))
       return
     }
     if (d.kind === 'mute') {
-      const h = hitNote(block.notes, view, x, y)
+      const h = hitNote(block.notes, view, x, y, edgePx())
       if (h.index >= 0 && !!block.notes[h.index].mute !== d.value) p.onChange(setMute(block.notes, [block.notes[h.index].id], d.value), d.merge)
       return
     }
@@ -338,15 +374,24 @@ export default function PianoRoll(p: PianoRollProps) {
     p.onChange(notes, d.merge)
   }
 
-  const onUp = () => {
+  const onUp = (e?: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e) pointers.current.delete(e.pointerId)
+    if (pointers.current.size < 2) pinch.current = null
+    const d = drag.current
+    // 動かさずに離した指: 音符を足す
+    if (d?.kind === 'pan') {
+      clearTimeout(d.timer)
+      if (!d.moved && Date.now() - d.t0 < 400 && d.y < rollHeight(view)) {
+        const note = newNote(d.x, d.y, false)
+        p.onChange([...block.notes, note])
+        setSel([note.id])
+        sound(note.pitch, note.vel)
+        setTimeout(() => sound(null), 200)
+      }
+    }
     drag.current = null
     setFrame(null)
     sound(null)
-  }
-  const remove = (ids: string[]) => {
-    if (!ids.length) return
-    p.onChange(block.notes.filter((n) => !ids.includes(n.id)))
-    setSel([])
   }
   /** ダブルクリックで、空いている所に音符を足す */
   const onDouble = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -362,6 +407,14 @@ export default function PianoRoll(p: PianoRollProps) {
   const onContext = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault()
     const { x, y } = pos(e)
+    // 指の長押し: 押した音符のメニュー
+    if (touch.current && y < rollHeight(view) && hitNote(block.notes, view, x, y, edgePx()).index >= 0) {
+      const n = block.notes[hitNote(block.notes, view, x, y, edgePx()).index]
+      if (!sel.includes(n.id)) setSel([n.id])
+      drag.current = null
+      sound(null)
+      return setNoteMenu({ x: e.clientX, y: e.clientY })
+    }
     if (laneInfo && y >= rollHeight(view) + GAP) {
       const i = hitPoint(points, view, lane, x, y)
       if (i >= 0) p.onCurves(withPoints(block.curves, lane, points.filter((_, k) => k !== i)))
@@ -377,46 +430,6 @@ export default function PianoRoll(p: PianoRollProps) {
     setZoom(ppb)
     setLeft(Math.max(0, mid - visibleBeats({ ...view, ppb }) / 2))
   }
-  /** グリッドに寄せる（始まりと長さを 100%） */
-  const doQuantize = (f: QuantizeForm = { start: true, length: true, strength: 100, swing: 0 }) => sel.length && p.onChange(quantize(block.notes, sel, { step, start: f.start, length: f.length, strength: f.strength / 100, swing: f.swing / 100 }, len))
-  const doHumanize = (f: HumanizeForm) => sel.length && p.onChange(humanize(block.notes, sel, { time: f.time / 100, vel: f.vel / 100 }, len))
-  const doGlue = () => sel.length > 1 && p.onChange(glue(block.notes, sel))
-  const doLegato = () => sel.length && p.onChange(legato(block.notes, sel))
-  const doTranspose = (semis: number) => sel.length && p.onChange(shift(block.notes, sel, 0, semis, len))
-  const doCopy = (cut: boolean) => {
-    clipboard = copyNotes(block.notes, sel) ?? clipboard
-    if (cut) remove(sel)
-  }
-  /** 貼り付け: 選んでいる音符の終わりの次（選んでいなければ見えている左端）へ */
-  const doPaste = () => {
-    if (!clipboard) return
-    const at = sel.length ? selectionEnd(block.notes, sel) : Math.round(view.left / step) * step
-    const r = pasteNotes(block.notes, clipboard, at, len)
-    p.onChange(r.notes)
-    setSel(r.added)
-  }
-  const doDuplicate = () => {
-    doCopy(false)
-    doPaste()
-  }
-  const onKey = (e: React.KeyboardEvent) => {
-    const mod = e.ctrlKey || e.metaKey
-    const key = e.key.toLowerCase()
-    if ((e.key === 'Delete' || e.key === 'Backspace') && sel.length) remove(sel)
-    else if (mod && key === 'a') setSel(block.notes.map((n) => n.id))
-    else if (mod && (key === 'c' || key === 'x')) doCopy(key === 'x')
-    else if (mod && key === 'v') doPaste()
-    else if (mod && key === 'd') doDuplicate()
-    else if (mod && key === 'g') doGlue()
-    else if (!mod && key === 'q') doQuantize()
-    else if (!mod && TOOL_KEYS[key]) setTool(TOOL_KEYS[key])
-    else if (!mod && sel.length && e.key.startsWith('Arrow')) {
-      const dir = e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 1
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') p.onChange(e.shiftKey ? resize(block.notes, sel, dir * step, len) : shift(block.notes, sel, dir * step, 0, len))
-      else doTranspose(dir * (e.shiftKey ? 12 : 1))
-    } else return
-    e.preventDefault()
-  }
   const options: [number, string][] = (DIVISIONS.includes(p.division) ? DIVISIONS : [...DIVISIONS, p.division]).map((d) => [d, `1/${d}`])
   const top = NAMES[view.low % 12] + (Math.floor(view.low / 12) - 1)
   return (
@@ -431,20 +444,20 @@ export default function PianoRoll(p: PianoRollProps) {
           tool={tool}
           onTool={setTool}
           selected={sel.length}
-          canPaste={!!clipboard}
+          canPaste={hasClipboard()}
           playing={p.playing}
           onTogglePlay={p.onTogglePlay}
-          onCut={() => doCopy(true)}
-          onCopy={() => doCopy(false)}
-          onPaste={doPaste}
-          onDuplicate={doDuplicate}
+          onCut={() => edit.copy(true)}
+          onCopy={() => edit.copy(false)}
+          onPaste={edit.paste}
+          onDuplicate={edit.duplicate}
           onRemove={() => remove(sel)}
           onSelectAll={() => setSel(block.notes.map((n) => n.id))}
-          onTranspose={doTranspose}
-          onQuantize={doQuantize}
-          onLegato={doLegato}
-          onGlue={doGlue}
-          onHumanize={doHumanize}
+          onTranspose={edit.transpose}
+          onQuantize={edit.quantizeSel}
+          onLegato={edit.legatoSel}
+          onGlue={edit.glueSel}
+          onHumanize={edit.humanizeSel}
           onZoom={zoomBy}
           onFit={() => (setZoom(null), setLeft(0))}
           preview={preview}
@@ -453,9 +466,18 @@ export default function PianoRoll(p: PianoRollProps) {
           onScale={(root, kind) => setScale({ root, kind })}
         />
       )}
+      <ContextMenu
+        position={noteMenu}
+        entries={[
+          { label: t('roll.remove'), onClick: () => remove(sel) },
+          { label: t('menu.copy'), onClick: () => edit.copy(false) },
+          { label: t('menu.duplicate'), onClick: edit.duplicate },
+        ]}
+        onClose={() => setNoteMenu(null)}
+      />
       <InfoLine notes={block.notes} selected={sel} len={len} step={step} onChange={p.onChange} lane={lane} laneLabel={laneLabel} onLane={setLane} />
       <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 120, position: 'relative', mx: 1.5 }}>
-        <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onDoubleClick={onDouble} onContextMenu={onContext} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
+        <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => onUp()} onDoubleClick={onDouble} onContextMenu={onContext} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
       </Box>
       <Box sx={{ mx: 1.5, mt: 0.5 }}>
       <ScrollBar orientation="horizontal" total={Math.max(len, visibleBeats(view))} start={view.left} size={visibleBeats(view)} onChange={(v) => setLeft(Math.max(0, v))} />

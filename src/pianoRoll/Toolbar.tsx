@@ -129,7 +129,7 @@ export default function RollToolbar(p: RollToolbarProps) {
       <Box sx={{ display: 'flex', alignItems: 'center', px: 0.5, py: 0.25, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
         <MenuBar menus={menus} embedded />
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, height: 40, px: 1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.25, minHeight: 40, px: 1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
         {tool('select', t('roll.toolSelect'), faArrowPointer)}
         {tool('pen', t('roll.toolPen'), faPencil)}
         {tool('erase', t('roll.toolErase'), faEraser)}
