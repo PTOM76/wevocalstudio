@@ -237,8 +237,8 @@ export default function PianoRoll(p: PianoRollProps) {
     drag.current = { kind: 'box', x0: x, y0: y }
   }
 
-  /** 押した所に置く新しい音符（長さは直前に決めた長さ、なければグリッド 1 つ） */
-  const newNote = (x: number, y: number, free: boolean): Note => ({ id: newId(), t: Math.max(0, Math.min(len - step, snap(xBeat(view, x), free))), dur: lastDur.current || step, pitch: rowPitch(view, y), vel: 0.8 })
+  /** 押した所に置く新しい音符（始まりは、押したマスの頭。長さは直前に決めた長さ、なければグリッド 1 つ） */
+  const newNote = (x: number, y: number, free: boolean): Note => ({ id: newId(), t: Math.max(0, Math.min(len - step, free || !snapOn ? xBeat(view, x) : Math.floor(xBeat(view, x) / step + 1e-6) * step)), dur: lastDur.current || step, pitch: rowPitch(view, y), vel: 0.8 })
 
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const d = drag.current
