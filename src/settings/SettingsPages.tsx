@@ -63,6 +63,10 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
           {S('recordNoiseSuppression')}
           {S('recordAutoGain')}
           {S('midiInput')}
+          {S('midiChannel')}
+          {S('midiSustain')}
+          {S('midiLatencyMs')}
+          {S('midiRecordMode')}
         </Group>
         <Group title={t('settings.groupUpdate')}>
           <UpdateSection />

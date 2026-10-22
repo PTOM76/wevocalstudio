@@ -1,5 +1,6 @@
 // 録音（再生位置から、ほかのトラックを鳴らしながら録り、録った音を波形ブロックとして置く。wevocal-lib の録音）
 import { useRef, useState } from 'react'
+import { projectBeatMap } from './beats'
 import { fillMidi, newId } from './project'
 import { canRecord, openInput, startRecording, type Recording } from 'wevocal-lib'
 import { useT } from './i18n'
@@ -32,7 +33,8 @@ export function useRecorder(o: {
   /** 弾いた音を録る（録っていなければ何もしない） */
   const onMidiNote = (pitch: number, vel: number, on: boolean) => {
     if (!midiRec) return
-    const now = o.position()
+    // 入力が遅れて届く分を引く
+    const now = o.position() - p.settings.midiLatencyMs / 1000
     if (on) take.current.down.set(pitch, { abs: now, vel })
     else {
       const d = take.current.down.get(pitch)
@@ -54,9 +56,16 @@ export function useRecorder(o: {
     const notes = take.current.notes
     take.current = { notes: [], down: new Map() }
     if (!notes.length) return
-    const start = Math.min(...notes.map((n) => n.abs))
+    const start = Math.max(0, Math.min(...notes.map((n) => n.abs)))
     const end = Math.max(...notes.map((n) => n.abs + n.dur))
-    doc.addMidiBlock(fillMidi({ id: newId(), track: r.track, start, length: Math.max(0.25, end - start), mute: false, notes: notes.map((n) => ({ id: newId(), t: n.abs - start, dur: n.dur, pitch: n.pitch, vel: n.vel })) }, project.tempo, project.markers))
+    const block = fillMidi({ id: newId(), track: r.track, start, length: Math.max(0.25, end - start), mute: false, notes: notes.map((n) => ({ id: newId(), t: n.abs - start, dur: n.dur, pitch: n.pitch, vel: n.vel })) }, project.tempo, project.markers)
+    // 重ねる録り方: そのトラックの、録った範囲の頭を含む MIDI ブロックがあれば、そこに音符を足す
+    const target = p.settings.midiRecordMode === 'overlay' && (project.midi ?? []).find((b) => b.track === r.track && b.start <= start + 1e-6 && start < b.start + b.length)
+    if (target) {
+      const map = projectBeatMap(project)
+      const shift = map.toBeat(block.start) - map.toBeat(target.start)
+      doc.updateMidiBlock(target.id, { notes: [...target.notes, ...block.notes.map((n) => ({ ...n, t: n.t + shift }))], length: Math.max(target.length, block.start + block.length - target.start) })
+    } else doc.addMidiBlock(block)
   }
   // 録音中の波形ブロックの表示用（録り始めからの秒と振幅を、描くたびに足す）
   const bars = useRef<[number, number][]>([])

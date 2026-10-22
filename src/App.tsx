@@ -199,6 +199,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // MIDI キーボード: 弾いた音を、録音待機（なければ選んでいる、音源のある最初の）トラックの音源で鳴らす。録音中は MIDI ブロックに録る
   useMidiInput({
     enabled: p.settings.midiInput,
+    channel: p.settings.midiChannel,
+    sustain: p.settings.midiSustain,
     onNote: (pitch, vel, on) => {
       const tracks = project.tracks.filter((tr) => tr.instrument)
       const target = tracks.find((tr) => tr.armed) ?? tracks.find((tr) => tr.id === selectedTrack) ?? tracks[0]
