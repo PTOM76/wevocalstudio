@@ -1,10 +1,12 @@
 // ピアノロールの本体（MIDI ブロックの音符を編集する）。ダイアログの枠は PianoRollDialog.tsx。
 // 空いている所を押すと音符を足し（そのままドラッグで長さ）、音符を押してドラッグで動かし、右端で長さを変え、ダブルクリックか Delete で消す。
 // Shift を押しながらクリックで選択の足し引き、Shift を押しながら空いている所をドラッグで枠で選ぶ、Ctrl+A で全部。選んだものは一緒に動く。
-// 下の帯は音の強さ（ベロシティ）。Ctrl+ホイールで横の拡大、Shift+ホイールで横のスクロール、Alt+ホイールで行の高さ、ホイールで音の高さをずらす。Alt を押している間はグリッドに合わせない
+// 左の鍵盤を押すと、その高さの音が鳴る。道具（選択、ペン、消しゴム）、ズーム、再生はこの中のツールバーにある（別のウィンドウに出しても使えるよう）。操作の説明は右上の ? のツールチップ（roll.help）。下の帯は音の強さ（ベロシティ）。Ctrl+ホイールで横の拡大、Shift+ホイールで横のスクロール、Alt+ホイールで行の高さ、ホイールで音の高さをずらす。Alt を押している間はグリッドに合わせない
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Box, Button, Typography } from '@mui/material'
-import { ScrollBar, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
+import { Box, IconButton, Tooltip, Typography } from '@mui/material'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faAngleDown, faAngleUp, faAnglesDown, faAnglesUp, faArrowPointer, faArrowsLeftRightToLine, faCircleQuestion, faClone, faCopy, faEraser, faLink, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faPaste, faPause, faPencil, faPlay, faScissors, faTableCells, faTrashCan, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { ScrollBar, SmallButton, ToolbarDivider, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
 import { LabeledSelect as Choice } from 'wevocal-lib/react'
 import { blockBeats, projectBeatMap } from '../beats'
 import { useT } from '../i18n'
@@ -19,6 +21,11 @@ type Drag =
   | { kind: 'size'; start: Note[]; beat0: number; merge: string }
   | { kind: 'vel'; id: string; merge: string }
   | { kind: 'box'; x0: number; y0: number }
+  | { kind: 'key' }
+  | { kind: 'erase'; merge: string }
+
+/** 道具: 選択（空いている所のドラッグで枠、ダブルクリックで音符を足す）、ペン（クリックで音符を足す）、消しゴム（なぞった音符を消す） */
+type Tool = 'select' | 'pen' | 'erase'
 
 /** コピーした音符（ピアノロールを閉じても残す） */
 let clipboard: NoteClip | null = null
@@ -38,6 +45,10 @@ export interface PianoRollProps {
   /** 再生中か、再生位置（秒）。再生位置の線を描く */
   playing: boolean
   position: () => number
+  /** 再生と一時停止の切り替え（別のウィンドウでも、ピアノロールの中で操作できるように） */
+  onTogglePlay: () => void
+  /** 専用のツールバーを出すか（既定は出す）。メイン画面のドックに置くときは、既存のツールバーを使うので出さない */
+  toolbar?: boolean
 }
 
 export default function PianoRoll(p: PianoRollProps) {
@@ -53,8 +64,13 @@ export default function PianoRoll(p: PianoRollProps) {
   const [low, setLow] = useState(48)
   const [row, setRow] = useState(14)
   const [sel, setSel] = useState<string[]>([])
+  // グリッドに合わせる（Alt を押している間は逆）
+  const [snapOn, setSnapOn] = useState(true)
+  const [tool, setTool] = useState<Tool>('select')
   const [frame, setFrame] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const [play, setPlay] = useState<number | null>(null)
+  // 鳴らしている音（鍵盤の色付け）
+  const [held, setHeld] = useState<number | null>(null)
   const drag = useRef<Drag | null>(null)
   const count = useRef(0)
   const lastDur = useRef(0)
@@ -67,12 +83,13 @@ export default function PianoRoll(p: PianoRollProps) {
   const view = clampView({ left, ppb: zoom ?? fit, low, row, w: width, h: height }, len)
   const viewRef = useRef(view)
   viewRef.current = view
-  const snap = (beat: number, free: boolean) => (free ? beat : Math.round(beat / step) * step)
+  const snap = (beat: number, free: boolean) => (free || !snapOn ? beat : Math.round(beat / step) * step)
 
   const sound = (pitch: number | null, vel = 0.8) => {
     if (sounding.current !== null && sounding.current !== pitch) p.onPreview?.(sounding.current, 0, false)
     if (pitch !== null && sounding.current !== pitch) p.onPreview?.(pitch, vel, true)
     sounding.current = pitch
+    setHeld(pitch)
   }
 
   useLayoutEffect(() => {
@@ -90,11 +107,21 @@ export default function PianoRoll(p: PianoRollProps) {
       step,
       beatsPerBar: p.project.tempo.beatsPerBar,
       play,
+      pressed: held,
       box: frame,
       velLabel: t('roll.velocity'),
-      colors: { background: pal.background.default, paper: pal.background.paper, hover: pal.action.hover, divider: pal.divider, text: pal.text.primary, textSecondary: pal.text.secondary, note: pal.primary.main, noteSelected: pal.primary.light, play: pal.error.main },
+      colors: { background: pal.background.default, paper: pal.background.paper, hover: pal.action.hover, divider: pal.divider, text: pal.text.primary, textSecondary: pal.text.secondary, note: pal.primary.main, noteSelected: pal.primary.light, play: pal.error.main, whiteKey: '#e9e9e9', blackKey: '#2b2b2b', keyLine: '#9a9a9a' },
     })
   })
+  // 開いたとき、音符のある高さが見えるように縦の位置を決める（音符がなければ C4 の辺り）
+  const placed = useRef('')
+  useLayoutEffect(() => {
+    if (height < 1 || placed.current === block.id) return
+    placed.current = block.id
+    const ps = block.notes.map((n) => n.pitch)
+    const mid = ps.length ? Math.round((Math.min(...ps) + Math.max(...ps)) / 2) : 60
+    setLow(mid - Math.floor(rowsOf({ ...viewRef.current, h: height }) / 2))
+  }, [block.id, height > 0])
   // 閉じるとき、鳴らしている音を離す
   useEffect(() => () => sound(null), [])
   // 再生位置の線（再生中は毎フレーム、ブロックの頭からの拍にして描き直す）
@@ -139,9 +166,16 @@ export default function PianoRoll(p: PianoRollProps) {
 
   const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const { x, y } = pos(e)
-    if (x < KEYS) return
     e.currentTarget.setPointerCapture(e.pointerId)
     e.currentTarget.focus()
+    // 鍵盤: 押している間鳴らし、なぞると続けて鳴らす
+    if (x < KEYS) {
+      if (y < rollHeight(view)) {
+        drag.current = { kind: 'key' }
+        sound(rowPitch(view, y))
+      }
+      return
+    }
     const merge = `roll${count.current++}`
     // 強さの帯
     if (y >= rollHeight(view) + GAP) {
@@ -154,6 +188,11 @@ export default function PianoRoll(p: PianoRollProps) {
       return
     }
     const h = hitNote(block.notes, view, x, y)
+    if (tool === 'erase') {
+      drag.current = { kind: 'erase', merge }
+      if (h.index >= 0) p.onChange(block.notes.filter((_, i) => i !== h.index), merge)
+      return
+    }
     if (h.index >= 0) {
       const n = block.notes[h.index]
       // Shift は選択の足し引き。選んでいないものを押したら、それだけを選ぶ
@@ -167,26 +206,37 @@ export default function PianoRoll(p: PianoRollProps) {
       drag.current = h.edge ? { kind: 'size', start, beat0: xBeat(view, x), merge } : { kind: 'move', start, beat0: xBeat(view, x), pitch0: rowPitch(view, y), merge }
       return
     }
-    // 空いている所: Shift なら枠で選ぶ。そうでなければ音符を足して、そのまま長さをドラッグできるようにする
-    if (e.shiftKey) {
-      setFrame({ x0: x, y0: y, x1: x, y1: y })
-      drag.current = { kind: 'box', x0: x, y0: y }
+    // 空いている所: ペンなら音符を足して、そのまま長さをドラッグできるようにする。選択なら枠で選ぶ（Shift なら今の選択に足す）
+    if (tool === 'pen' && !e.shiftKey) {
+      const note = newNote(x, y, e.altKey)
+      const notes = [...block.notes, note]
+      p.onChange(notes, merge)
+      setSel([note.id])
+      sound(note.pitch, note.vel)
+      drag.current = { kind: 'size', start: notes.map((q) => ({ ...q })), beat0: xBeat(view, x), merge }
       return
     }
-    const pitch = rowPitch(view, y)
-    const dur = lastDur.current || step
-    const note: Note = { id: newId(), t: Math.max(0, Math.min(len - step, snap(xBeat(view, x), e.altKey))), dur, pitch, vel: 0.8 }
-    const notes = [...block.notes, note]
-    p.onChange(notes, merge)
-    setSel([note.id])
-    sound(pitch, note.vel)
-    drag.current = { kind: 'size', start: notes.map((q) => ({ ...q })), beat0: xBeat(view, x), merge }
+    if (!e.shiftKey) setSel([])
+    setFrame({ x0: x, y0: y, x1: x, y1: y })
+    drag.current = { kind: 'box', x0: x, y0: y }
   }
+
+  /** 押した所に置く新しい音符（長さは直前に決めた長さ、なければグリッド 1 つ） */
+  const newNote = (x: number, y: number, free: boolean): Note => ({ id: newId(), t: Math.max(0, Math.min(len - step, snap(xBeat(view, x), free))), dur: lastDur.current || step, pitch: rowPitch(view, y), vel: 0.8 })
 
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const d = drag.current
     if (!d) return
     const { x, y } = pos(e)
+    if (d.kind === 'key') {
+      if (y >= 0 && y < rollHeight(view)) sound(rowPitch(view, y))
+      return
+    }
+    if (d.kind === 'erase') {
+      const h = hitNote(block.notes, view, x, y)
+      if (h.index >= 0) p.onChange(block.notes.filter((_, i) => i !== h.index), d.merge)
+      return
+    }
     if (d.kind === 'box') {
       setFrame({ x0: d.x0, y0: d.y0, x1: x, y1: y })
       const [xa, xb] = [Math.min(d.x0, x), Math.max(d.x0, x)]
@@ -240,14 +290,38 @@ export default function PianoRoll(p: PianoRollProps) {
     p.onChange(block.notes.filter((n) => !ids.includes(n.id)))
     setSel([])
   }
+  /** ダブルクリックで、空いている所に音符を足す */
   const onDouble = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { x, y } = pos(e)
+    if (x < KEYS || y >= rollHeight(view) || hitNote(block.notes, view, x, y).index >= 0) return
+    const note = newNote(x, y, e.altKey)
+    p.onChange([...block.notes, note])
+    setSel([note.id])
+    sound(note.pitch, note.vel)
+    setTimeout(() => sound(null), 200)
+  }
+  /** 右クリックで、押した音符を消す */
+  const onContext = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
     const { x, y } = pos(e)
     const h = hitNote(block.notes, view, x, y)
     if (h.index >= 0) remove([block.notes[h.index].id])
   }
+  /** 横の拡大と縮小（見えている中央を動かさない） */
+  const zoomBy = (f: number) => {
+    const ppb = Math.max(2, Math.min(2000, view.ppb * f))
+    const mid = view.left + visibleBeats(view) / 2
+    setZoom(ppb)
+    setLeft(Math.max(0, mid - visibleBeats({ ...view, ppb }) / 2))
+  }
   /** グリッドに寄せる（始まりと長さを 100%） */
   const doQuantize = () => sel.length && p.onChange(quantize(block.notes, sel, { step, start: true, length: true, strength: 1, swing: 0 }, len))
   const doLegato = () => sel.length && p.onChange(legato(block.notes, sel))
+  const doTranspose = (semis: number) => sel.length && p.onChange(shift(block.notes, sel, 0, semis, len))
+  const doCopy = (cut: boolean) => {
+    clipboard = copyNotes(block.notes, sel) ?? clipboard
+    if (cut) remove(sel)
+  }
   /** 貼り付け: 選んでいる音符の終わりの次（選んでいなければ見えている左端）へ */
   const doPaste = () => {
     if (!clipboard) return
@@ -256,45 +330,73 @@ export default function PianoRoll(p: PianoRollProps) {
     p.onChange(r.notes)
     setSel(r.added)
   }
+  const doDuplicate = () => {
+    doCopy(false)
+    doPaste()
+  }
   const onKey = (e: React.KeyboardEvent) => {
     const mod = e.ctrlKey || e.metaKey
     const key = e.key.toLowerCase()
     if ((e.key === 'Delete' || e.key === 'Backspace') && sel.length) remove(sel)
     else if (mod && key === 'a') setSel(block.notes.map((n) => n.id))
-    else if (mod && (key === 'c' || key === 'x')) {
-      clipboard = copyNotes(block.notes, sel) ?? clipboard
-      if (key === 'x') remove(sel)
-    } else if (mod && key === 'v') doPaste()
-    else if (mod && key === 'd') {
-      clipboard = copyNotes(block.notes, sel) ?? clipboard
-      doPaste()
-    } else if (!mod && key === 'q') doQuantize()
+    else if (mod && (key === 'c' || key === 'x')) doCopy(key === 'x')
+    else if (mod && key === 'v') doPaste()
+    else if (mod && key === 'd') doDuplicate()
+    else if (!mod && key === 'q') doQuantize()
     else if (!mod && sel.length && e.key.startsWith('Arrow')) {
       const dir = e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 1
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') p.onChange(e.shiftKey ? resize(block.notes, sel, dir * step, len) : shift(block.notes, sel, dir * step, 0, len))
-      else p.onChange(shift(block.notes, sel, 0, dir * (e.shiftKey ? 12 : 1), len))
+      else doTranspose(dir * (e.shiftKey ? 12 : 1))
     } else return
     e.preventDefault()
   }
   const options: [number, string][] = (DIVISIONS.includes(p.division) ? DIVISIONS : [...DIVISIONS, p.division]).map((d) => [d, `1/${d}`])
   const top = NAMES[view.low % 12] + (Math.floor(view.low / 12) - 1)
+  const none = !sel.length
+  const btn = (title: string, icon: IconDefinition, onClick: () => void, o: { disabled?: boolean; pressed?: boolean } = {}) => <SmallButton title={title} label={title} icon={icon} onClick={onClick} {...o} />
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }} onKeyDown={onKey}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, pt: 1 }}>
-        <Box sx={{ width: 140 }}>
+      {p.toolbar !== false && (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', pt: 1 }}>
+        <Box sx={{ width: 110, mr: 0.5 }}>
           <Choice label={t('roll.grid')} value={p.division} options={options} onChange={p.onDivision} />
         </Box>
-        <Button size="small" disabled={!sel.length} onClick={doQuantize}>
-          {t('roll.quantize')}
-        </Button>
-        <Button size="small" disabled={!sel.length} onClick={doLegato}>
-          {t('roll.legato')}
-        </Button>
+        {btn(t('menu.snap'), faMagnet, () => setSnapOn((v) => !v), { pressed: snapOn })}
+        <ToolbarDivider gap />
+        {btn(t('roll.toolSelect'), faArrowPointer, () => setTool('select'), { pressed: tool === 'select' })}
+        {btn(t('roll.toolPen'), faPencil, () => setTool('pen'), { pressed: tool === 'pen' })}
+        {btn(t('roll.toolErase'), faEraser, () => setTool('erase'), { pressed: tool === 'erase' })}
+        <ToolbarDivider gap />
+        {btn(t('menu.cut'), faScissors, () => doCopy(true), { disabled: none })}
+        {btn(t('menu.copy'), faCopy, () => doCopy(false), { disabled: none })}
+        {btn(t('menu.paste'), faPaste, doPaste, { disabled: !clipboard })}
+        {btn(t('menu.duplicate'), faClone, doDuplicate, { disabled: none })}
+        {btn(t('roll.remove'), faTrashCan, () => remove(sel), { disabled: none })}
+        <ToolbarDivider gap />
+        {btn(t('roll.up'), faAngleUp, () => doTranspose(1), { disabled: none })}
+        {btn(t('roll.down'), faAngleDown, () => doTranspose(-1), { disabled: none })}
+        {btn(t('roll.octaveUp'), faAnglesUp, () => doTranspose(12), { disabled: none })}
+        {btn(t('roll.octaveDown'), faAnglesDown, () => doTranspose(-12), { disabled: none })}
+        <ToolbarDivider gap />
+        {btn(t('roll.quantize'), faTableCells, doQuantize, { disabled: none })}
+        {btn(t('roll.legato'), faLink, doLegato, { disabled: none })}
+        <ToolbarDivider gap />
+        {btn(t('roll.zoomIn'), faMagnifyingGlassPlus, () => zoomBy(1.4))}
+        {btn(t('roll.zoomOut'), faMagnifyingGlassMinus, () => zoomBy(1 / 1.4))}
+        {btn(t('roll.zoomFit'), faArrowsLeftRightToLine, () => (setZoom(null), setLeft(0)))}
+        <ToolbarDivider gap />
+        {btn(t(p.playing ? 'roll.pause' : 'roll.play'), p.playing ? faPause : faPlay, p.onTogglePlay)}
+        <Box sx={{ flex: 1 }} />
+        <Tooltip title={<Box sx={{ whiteSpace: 'pre-line', fontSize: pevenFont('sm') }}>{t('roll.help')}</Box>} placement="bottom-end">
+          <IconButton size="small" aria-label={t('roll.helpButton')}>
+            <FontAwesomeIcon icon={faCircleQuestion} />
+          </IconButton>
+        </Tooltip>
       </Box>
-      <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{t('roll.help')}</Typography>
+      )}
       <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 260, position: 'relative' }}>
-        <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onDoubleClick={onDouble} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
+        <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onDoubleClick={onDouble} onContextMenu={onContext} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
       </Box>
       <ScrollBar orientation="horizontal" total={Math.max(len, visibleBeats(view))} start={view.left} size={visibleBeats(view)} onChange={(v) => setLeft(Math.max(0, v))} />
       <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>

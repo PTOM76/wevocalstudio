@@ -1,7 +1,7 @@
 // ピアノロールの表示の位置と大きさ（拍と音の高さ、画面の座標の変換）。画面を知らない
 
 /** 鍵盤の列の幅（px） */
-export const KEYS = 44
+export const KEYS = 64
 /** 下の強さの帯の高さと、上との間（px） */
 export const VEL = 64
 export const GAP = 6

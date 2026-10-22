@@ -168,6 +168,7 @@ export default function AppDialogs(p: {
               onDivision={(gridDivision) => p.onSettingsChange({ gridDivision })}
               playing={p.playing}
               position={p.position}
+              onTogglePlay={p.onTogglePlay}
               onChange={(notes, merge) => doc.updateMidiBlock(block.id, { notes }, merge && `${block.id}:${merge}`)}
               onPreview={(pitch, vel, on) => p.onPreview(block.track, pitch, vel, on)}
               onClose={() => {

@@ -13,6 +13,10 @@ export interface RollColors {
   note: string
   noteSelected: string
   play: string
+  /** 鍵盤の白鍵と黒鍵（テーマによらず白と黒） */
+  whiteKey: string
+  blackKey: string
+  keyLine: string
 }
 
 export interface RollDraw {
@@ -24,6 +28,8 @@ export interface RollDraw {
   /** グリッドの間隔（拍） */
   step: number
   beatsPerBar: number
+  /** 鳴っている音（その鍵盤を色付けする。なければ null） */
+  pressed: number | null
   /** 再生位置（拍。再生していなければ null） */
   play: number | null
   box: { x0: number; y0: number; x1: number; y1: number } | null
@@ -39,23 +45,48 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
   g.fillRect(0, 0, v.w, v.h)
   g.font = '10px Roboto, sans-serif'
   g.textBaseline = 'middle'
-  // 鍵盤と、黒鍵の行の色
+  // 行の色（黒鍵の行は少し暗く）
+  for (let r = 0; r < rows; r++) {
+    const pitch = v.low + rows - 1 - r
+    if (BLACK.has(pitch % 12)) {
+      g.fillStyle = c.hover
+      g.fillRect(KEYS, r * v.row, v.w - KEYS, v.row)
+    }
+  }
+  // 鍵盤: 白鍵を敷いて、黒鍵を短く重ねる。黒鍵のない境目（E と F、B と C）と、黒鍵の真ん中に区切りの線
+  const blackW = KEYS * 0.6
+  g.fillStyle = c.whiteKey
+  g.fillRect(0, 0, KEYS - 1, rollHeight(v))
   for (let r = 0; r < rows; r++) {
     const pitch = v.low + rows - 1 - r
     const y = r * v.row
     const black = BLACK.has(pitch % 12)
+    const down = o.pressed === pitch
     if (black) {
-      g.fillStyle = c.hover
-      g.fillRect(KEYS, y, v.w - KEYS, v.row)
-    }
-    g.fillStyle = black ? c.background : c.paper
-    g.fillRect(0, y, KEYS - 2, v.row - 1)
-    // C は必ず、行が高ければほかの白鍵にも音名を書く
-    if (pitch % 12 === 0 || (!black && v.row >= 16)) {
-      g.fillStyle = c.text
-      g.fillText(`${NAMES[pitch % 12]}${Math.floor(pitch / 12) - 1}`, 4, y + v.row / 2)
+      g.fillStyle = down ? c.noteSelected : c.blackKey
+      g.fillRect(0, y, blackW, v.row - 1)
+      g.fillStyle = c.keyLine
+      g.fillRect(blackW, y + v.row / 2, KEYS - 1 - blackW, 1)
+    } else {
+      if (down) {
+        g.fillStyle = c.noteSelected
+        g.fillRect(0, y, KEYS - 1, v.row)
+      }
+      if (pitch % 12 === 4 || pitch % 12 === 11) {
+        g.fillStyle = c.keyLine
+        g.fillRect(0, y, KEYS - 1, 1)
+      }
+      // C は必ず、行が高ければほかの白鍵にも音名を書く
+      if (pitch % 12 === 0 || v.row >= 16) {
+        g.fillStyle = c.blackKey
+        g.textAlign = 'right'
+        g.fillText(`${NAMES[pitch % 12]}${Math.floor(pitch / 12) - 1}`, KEYS - 5, y + v.row / 2)
+        g.textAlign = 'left'
+      }
     }
   }
+  g.fillStyle = c.divider
+  g.fillRect(KEYS - 1, 0, 1, v.h)
   // 縦線（グリッド、拍、小節）。詰まりすぎるときは間引く
   let step = o.step
   while (step * v.ppb < 6) step *= 2
