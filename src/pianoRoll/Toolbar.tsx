@@ -6,6 +6,7 @@ import { faArrowPointer, faArrowsLeftRightToLine, faCaretDown, faCircleQuestion,
 import { ContextMenu, NumberInput, SmallButton, ToolbarDivider, pevenFont, type MenuEntry } from 'pevenmui'
 import { LabeledSelect as Choice } from 'wevocal-lib/react'
 import { useT } from '../i18n'
+import { NAMES, SCALE_KINDS, type ScaleKind } from './view'
 
 export type Tool = 'select' | 'pen' | 'erase' | 'slice' | 'mute'
 
@@ -48,12 +49,19 @@ export interface RollToolbarProps {
   onHumanize: (f: HumanizeForm) => void
   onZoom: (factor: number) => void
   onFit: () => void
+  /** 音の確認（鍵盤や音符の操作で音を鳴らす） */
+  preview: boolean
+  onPreview: () => void
+  /** スケールの強調（ルートは 0〜11） */
+  scale: { root: number; kind: ScaleKind }
+  onScale: (root: number, kind: ScaleKind) => void
 }
 
 export default function RollToolbar(p: RollToolbarProps) {
   const t = useT()
   const none = p.selected === 0
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null)
   // 設定の入力（変換のメニューから開く。値は覚えておく）
   const [form, setForm] = useState<{ kind: 'quantize' | 'humanize'; x: number; y: number } | null>(null)
   const [q, setQ] = useState<QuantizeForm>({ start: true, length: true, strength: 100, swing: 0 })
@@ -72,6 +80,13 @@ export default function RollToolbar(p: RollToolbarProps) {
     { label: t('roll.legato'), disabled: none, onClick: p.onLegato },
     { label: t('roll.glue'), shortcut: 'Ctrl+G', disabled: p.selected < 2, onClick: p.onGlue },
     { label: t('roll.humanize'), disabled: none, onClick: () => setForm({ kind: 'humanize', ...at }) },
+  ]
+
+  const viewEntries: MenuEntry[] = [
+    { label: t('roll.preview'), checked: p.preview, onClick: p.onPreview },
+    { divider: true },
+    { label: t('roll.scaleKind'), submenu: SCALE_KINDS.map((k) => ({ label: t(`roll.scale.${k}`), checked: p.scale.kind === k, onClick: () => p.onScale(p.scale.root, k) })) },
+    { label: t('roll.scaleRoot'), disabled: p.scale.kind === 'none', submenu: NAMES.map((n, i) => ({ label: n, checked: p.scale.root === i, onClick: () => p.onScale(i, p.scale.kind) })) },
   ]
 
   const row = (label: string, control: React.ReactNode) => (
@@ -104,6 +119,10 @@ export default function RollToolbar(p: RollToolbarProps) {
         {t('roll.menuConvert')}
       </Button>
       <ContextMenu position={menu} entries={menu ? entries(menu) : []} onClose={() => setMenu(null)} />
+      <Button size="small" endIcon={<FontAwesomeIcon icon={faCaretDown} />} onClick={(e) => setViewMenu({ x: e.currentTarget.getBoundingClientRect().left, y: e.currentTarget.getBoundingClientRect().bottom })}>
+        {t('roll.menuView')}
+      </Button>
+      <ContextMenu position={viewMenu} entries={viewEntries} onClose={() => setViewMenu(null)} />
       <ToolbarDivider gap />
       {btn(t('roll.zoomIn'), faMagnifyingGlassPlus, () => p.onZoom(1.4))}
       {btn(t('roll.zoomOut'), faMagnifyingGlassMinus, () => p.onZoom(1 / 1.4))}

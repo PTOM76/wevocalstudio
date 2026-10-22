@@ -12,7 +12,7 @@ import { drawRoll } from './draw'
 import RollToolbar, { type HumanizeForm, type QuantizeForm, type Tool } from './Toolbar'
 import { copyNotes, glue, humanize, legato, pasteNotes, quantize, resize, selectionEnd, setDuration, setMute, shift, slice, velocity, type NoteClip } from './edit'
 import { hitNote, hitVel } from './hit'
-import { GAP, KEYS, NAMES, ROW_MAX, ROW_MIN, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
+import { GAP, KEYS, NAMES, SCALES, type ScaleKind, ROW_MAX, ROW_MIN, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
 
 type Drag =
   | { kind: 'move'; start: Note[]; beat0: number; pitch0: number; merge: string }
@@ -67,6 +67,9 @@ export default function PianoRoll(p: PianoRollProps) {
   // グリッドに合わせる（Alt を押している間は逆）
   const [snapOn, setSnapOn] = useState(true)
   const [tool, setTool] = useState<Tool>('select')
+  // 音の確認（鳴らすか）と、スケールの強調
+  const [preview, setPreview] = useState(true)
+  const [scale, setScale] = useState<{ root: number; kind: ScaleKind }>({ root: 0, kind: 'none' })
   const [frame, setFrame] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const [play, setPlay] = useState<number | null>(null)
   // 鳴らしている音（鍵盤の色付け）
@@ -86,6 +89,7 @@ export default function PianoRoll(p: PianoRollProps) {
   const snap = (beat: number, free: boolean) => (free || !snapOn ? beat : Math.round(beat / step) * step)
 
   const sound = (pitch: number | null, vel = 0.8) => {
+    if (!preview && pitch !== null) return
     if (sounding.current !== null && sounding.current !== pitch) p.onPreview?.(sounding.current, 0, false)
     if (pitch !== null && sounding.current !== pitch) p.onPreview?.(pitch, vel, true)
     sounding.current = pitch
@@ -108,6 +112,7 @@ export default function PianoRoll(p: PianoRollProps) {
       beatsPerBar: p.project.tempo.beatsPerBar,
       play,
       pressed: held,
+      scale: scale.kind === 'none' ? null : new Set(SCALES[scale.kind].map((s) => (s + scale.root) % 12)),
       box: frame,
       velLabel: t('roll.velocity'),
       colors: { background: pal.background.default, paper: pal.background.paper, hover: pal.action.hover, divider: pal.divider, text: pal.text.primary, textSecondary: pal.text.secondary, note: pal.primary.main, noteSelected: pal.primary.light, play: pal.error.main, whiteKey: '#e9e9e9', blackKey: '#2b2b2b', keyLine: '#9a9a9a' },
@@ -416,6 +421,10 @@ export default function PianoRoll(p: PianoRollProps) {
           onHumanize={doHumanize}
           onZoom={zoomBy}
           onFit={() => (setZoom(null), setLeft(0))}
+          preview={preview}
+          onPreview={() => setPreview((v) => !v)}
+          scale={scale}
+          onScale={(root, kind) => setScale({ root, kind })}
         />
       )}
       {info}

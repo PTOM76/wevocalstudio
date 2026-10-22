@@ -28,6 +28,8 @@ export interface RollDraw {
   /** グリッドの間隔（拍） */
   step: number
   beatsPerBar: number
+  /** スケールの音（0〜11。スケールの外の行を暗くする。なければ null） */
+  scale: Set<number> | null
   /** 鳴っている音（その鍵盤を色付けする。なければ null） */
   pressed: number | null
   /** 再生位置（拍。再生していなければ null） */
@@ -52,6 +54,11 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
       g.fillStyle = c.hover
       g.fillRect(KEYS, r * v.row, v.w - KEYS, v.row)
     }
+  }
+  // スケールの外の行を暗くする
+  if (o.scale) {
+    g.fillStyle = 'rgba(0, 0, 0, 0.3)'
+    for (let r = 0; r < rows; r++) if (!o.scale.has((v.low + rows - 1 - r) % 12)) g.fillRect(KEYS, r * v.row, v.w - KEYS, v.row)
   }
   // 鍵盤: 白鍵を敷いて、黒鍵を短く重ねる。黒鍵のない境目（E と F、B と C）と、黒鍵の真ん中に区切りの線
   const blackW = KEYS * 0.6

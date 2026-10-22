@@ -45,5 +45,16 @@ export function clampView(v: View, len: number): View {
   return { ...v, left, low }
 }
 
+/** スケール（ルートからの半音の並び）。強調するのは、このスケールの音 */
+export const SCALES = {
+  none: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+  major: [0, 2, 4, 5, 7, 9, 11],
+  minor: [0, 2, 3, 5, 7, 8, 10],
+  majorPenta: [0, 2, 4, 7, 9],
+  minorPenta: [0, 3, 5, 7, 10],
+} as const
+export type ScaleKind = keyof typeof SCALES
+export const SCALE_KINDS = Object.keys(SCALES) as ScaleKind[]
+
 /** グリッドの細かさ（4 分音符を 1 とした拍での間隔）。4 なら 1 拍、16 なら 16 分音符、3 や 6 なら 3 連符 */
 export const stepOf = (division: number) => 4 / Math.max(1, division)
