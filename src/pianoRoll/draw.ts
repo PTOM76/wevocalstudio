@@ -114,7 +114,7 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
     const w = Math.max(3, n.dur * v.ppb)
     if (x + w < KEYS || x > v.w) continue
     const y = pitchY(v, n.pitch)
-    g.globalAlpha = 0.4 + 0.6 * n.vel
+    g.globalAlpha = (0.4 + 0.6 * n.vel) * (n.mute ? 0.3 : 1)
     g.fillStyle = o.selected.includes(n.id) ? c.noteSelected : c.note
     g.fillRect(x, y + 1, w, v.row - 2)
     g.globalAlpha = 0.5

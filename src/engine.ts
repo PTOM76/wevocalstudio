@@ -173,6 +173,7 @@ class Graph {
       const b0 = map.toBeat(b.start)
       const len = blockBeats(map, b)
       for (const n of b.notes) {
+        if (n.mute) continue
         const t = map.toSec(b0 + n.t)
         // ブロックの外にはみ出した音符は、ブロックの終わりで切る
         const dur = map.toSec(b0 + n.t + Math.min(n.dur, len - n.t)) - t

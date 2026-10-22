@@ -91,6 +91,8 @@ export interface Note {
   pitch: number
   /** 強さ 0〜1 */
   vel: number
+  /** ミュート（鳴らさない） */
+  mute?: boolean
 }
 
 /** 読み込んだ MIDI ブロックを今の形にする。unit の無い古いものは音符が秒なので拍へ直し、id の無い音符に id を付ける */

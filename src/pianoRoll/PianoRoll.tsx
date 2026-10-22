@@ -5,14 +5,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, IconButton, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faAngleDown, faAngleUp, faAnglesDown, faAnglesUp, faArrowPointer, faArrowsLeftRightToLine, faCircleQuestion, faClone, faCopy, faEraser, faLink, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faPaste, faPause, faPencil, faPlay, faScissors, faTableCells, faTrashCan, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
-import { ScrollBar, SmallButton, ToolbarDivider, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
+import { faAngleDown, faAngleUp, faAnglesDown, faAnglesUp, faArrowPointer, faArrowsLeftRightToLine, faCircleQuestion, faClone, faCopy, faEraser, faGripLinesVertical, faLink, faRulerHorizontal, faVolumeXmark, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faPaste, faPause, faPencil, faPlay, faScissors, faTableCells, faTrashCan, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { NumberInput, ScrollBar, SmallButton, ToolbarDivider, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
 import { LabeledSelect as Choice } from 'wevocal-lib/react'
 import { blockBeats, projectBeatMap } from '../beats'
 import { useT } from '../i18n'
 import { newId, type MidiBlock, type Note, type Project } from '../project'
 import { drawRoll } from './draw'
-import { copyNotes, legato, pasteNotes, quantize, resize, selectionEnd, shift, type NoteClip } from './edit'
+import { copyNotes, glue, legato, pasteNotes, quantize, resize, selectionEnd, setDuration, setMute, shift, slice, velocity, type NoteClip } from './edit'
 import { hitNote, hitVel } from './hit'
 import { GAP, KEYS, NAMES, ROW_MAX, ROW_MIN, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
 
@@ -23,9 +23,13 @@ type Drag =
   | { kind: 'box'; x0: number; y0: number }
   | { kind: 'key' }
   | { kind: 'erase'; merge: string }
+  | { kind: 'mute'; value: boolean; merge: string }
 
-/** 道具: 選択（空いている所のドラッグで枠、ダブルクリックで音符を足す）、ペン（クリックで音符を足す）、消しゴム（なぞった音符を消す） */
-type Tool = 'select' | 'pen' | 'erase'
+/** 道具: 選択（空いている所のドラッグで枠、ダブルクリックで音符を足す）、ペン（クリックで音符を足す）、消しゴム（なぞった音符を消す）、分割（押した位置で切る）、ミュート（なぞった音符のミュートを切り替える） */
+type Tool = 'select' | 'pen' | 'erase' | 'slice' | 'mute'
+
+/** キーでの道具の切り替え（FL Studio にならう） */
+const TOOL_KEYS: Record<string, Tool> = { e: 'select', p: 'pen', d: 'erase', c: 'slice', t: 'mute' }
 
 /** コピーした音符（ピアノロールを閉じても残す） */
 let clipboard: NoteClip | null = null
@@ -193,6 +197,17 @@ export default function PianoRoll(p: PianoRollProps) {
       if (h.index >= 0) p.onChange(block.notes.filter((_, i) => i !== h.index), merge)
       return
     }
+    if (tool === 'slice') {
+      if (h.index >= 0) p.onChange(slice(block.notes, block.notes[h.index].id, snap(xBeat(view, x), e.altKey)))
+      return
+    }
+    if (tool === 'mute') {
+      if (h.index < 0) return
+      const value = !block.notes[h.index].mute
+      drag.current = { kind: 'mute', value, merge }
+      p.onChange(setMute(block.notes, [block.notes[h.index].id], value), merge)
+      return
+    }
     if (h.index >= 0) {
       const n = block.notes[h.index]
       // Shift は選択の足し引き。選んでいないものを押したら、それだけを選ぶ
@@ -230,6 +245,11 @@ export default function PianoRoll(p: PianoRollProps) {
     const { x, y } = pos(e)
     if (d.kind === 'key') {
       if (y >= 0 && y < rollHeight(view)) sound(rowPitch(view, y))
+      return
+    }
+    if (d.kind === 'mute') {
+      const h = hitNote(block.notes, view, x, y)
+      if (h.index >= 0 && !!block.notes[h.index].mute !== d.value) p.onChange(setMute(block.notes, [block.notes[h.index].id], d.value), d.merge)
       return
     }
     if (d.kind === 'erase') {
@@ -316,6 +336,7 @@ export default function PianoRoll(p: PianoRollProps) {
   }
   /** グリッドに寄せる（始まりと長さを 100%） */
   const doQuantize = () => sel.length && p.onChange(quantize(block.notes, sel, { step, start: true, length: true, strength: 1, swing: 0 }, len))
+  const doGlue = () => sel.length > 1 && p.onChange(glue(block.notes, sel))
   const doLegato = () => sel.length && p.onChange(legato(block.notes, sel))
   const doTranspose = (semis: number) => sel.length && p.onChange(shift(block.notes, sel, 0, semis, len))
   const doCopy = (cut: boolean) => {
@@ -342,7 +363,9 @@ export default function PianoRoll(p: PianoRollProps) {
     else if (mod && (key === 'c' || key === 'x')) doCopy(key === 'x')
     else if (mod && key === 'v') doPaste()
     else if (mod && key === 'd') doDuplicate()
+    else if (mod && key === 'g') doGlue()
     else if (!mod && key === 'q') doQuantize()
+    else if (!mod && TOOL_KEYS[key]) setTool(TOOL_KEYS[key])
     else if (!mod && sel.length && e.key.startsWith('Arrow')) {
       const dir = e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 1
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') p.onChange(e.shiftKey ? resize(block.notes, sel, dir * step, len) : shift(block.notes, sel, dir * step, 0, len))
@@ -353,6 +376,23 @@ export default function PianoRoll(p: PianoRollProps) {
   const options: [number, string][] = (DIVISIONS.includes(p.division) ? DIVISIONS : [...DIVISIONS, p.division]).map((d) => [d, `1/${d}`])
   const top = NAMES[view.low % 12] + (Math.floor(view.low / 12) - 1)
   const none = !sel.length
+  // 情報行: 選んだ音符の値（複数のときは先頭の値）を数値で見て直す。入れた値は選んだ全部に反映する
+  const lead = block.notes.find((n) => sel.includes(n.id))
+  const field = (label: string, value: number, min: number, max: number, step: number, unit: string, apply: (v: number) => Note[]) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{label}</Typography>
+      <NumberInput value={Math.round(value * 1000) / 1000} onChange={(v) => p.onChange(apply(v), `info:${label}`)} min={min} max={max} step={step} unit={unit} width={96} disabled={!lead} ariaLabel={label} />
+    </Box>
+  )
+  const info = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+      {field(t('roll.start'), lead?.t ?? 0, 0, len, step, t('roll.beatUnit'), (v) => shift(block.notes, sel, v - (lead?.t ?? 0), 0, len))}
+      {field(t('roll.length'), lead?.dur ?? 0, 1 / 64, len, step, t('roll.beatUnit'), (v) => setDuration(block.notes, sel, v, len))}
+      {field(t('roll.pitch'), lead?.pitch ?? 60, 0, 127, 1, '', (v) => shift(block.notes, sel, 0, v - (lead?.pitch ?? 60), len))}
+      {field(t('roll.velocity'), Math.round((lead?.vel ?? 0.8) * 127), 1, 127, 1, '', (v) => velocity(block.notes, sel, 'set', v / 127))}
+      {lead && <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{`${NAMES[lead.pitch % 12]}${Math.floor(lead.pitch / 12) - 1}`}</Typography>}
+    </Box>
+  )
   const btn = (title: string, icon: IconDefinition, onClick: () => void, o: { disabled?: boolean; pressed?: boolean } = {}) => <SmallButton title={title} label={title} icon={icon} onClick={onClick} {...o} />
 
   return (
@@ -367,6 +407,8 @@ export default function PianoRoll(p: PianoRollProps) {
         {btn(t('roll.toolSelect'), faArrowPointer, () => setTool('select'), { pressed: tool === 'select' })}
         {btn(t('roll.toolPen'), faPencil, () => setTool('pen'), { pressed: tool === 'pen' })}
         {btn(t('roll.toolErase'), faEraser, () => setTool('erase'), { pressed: tool === 'erase' })}
+        {btn(t('roll.toolSlice'), faGripLinesVertical, () => setTool('slice'), { pressed: tool === 'slice' })}
+        {btn(t('roll.toolMute'), faVolumeXmark, () => setTool('mute'), { pressed: tool === 'mute' })}
         <ToolbarDivider gap />
         {btn(t('menu.cut'), faScissors, () => doCopy(true), { disabled: none })}
         {btn(t('menu.copy'), faCopy, () => doCopy(false), { disabled: none })}
@@ -380,7 +422,8 @@ export default function PianoRoll(p: PianoRollProps) {
         {btn(t('roll.octaveDown'), faAnglesDown, () => doTranspose(-12), { disabled: none })}
         <ToolbarDivider gap />
         {btn(t('roll.quantize'), faTableCells, doQuantize, { disabled: none })}
-        {btn(t('roll.legato'), faLink, doLegato, { disabled: none })}
+        {btn(t('roll.legato'), faRulerHorizontal, doLegato, { disabled: none })}
+        {btn(t('roll.glue'), faLink, doGlue, { disabled: sel.length < 2 })}
         <ToolbarDivider gap />
         {btn(t('roll.zoomIn'), faMagnifyingGlassPlus, () => zoomBy(1.4))}
         {btn(t('roll.zoomOut'), faMagnifyingGlassMinus, () => zoomBy(1 / 1.4))}
@@ -395,6 +438,7 @@ export default function PianoRoll(p: PianoRollProps) {
         </Tooltip>
       </Box>
       )}
+      {info}
       <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 260, position: 'relative' }}>
         <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onDoubleClick={onDouble} onContextMenu={onContext} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
       </Box>

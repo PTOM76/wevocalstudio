@@ -63,6 +63,37 @@ export function legato(notes: Note[], ids: string[]): Note[] {
   })
 }
 
+/** 選んだ音符の長さを、同じ値（拍）にする（ブロックの終わりまで） */
+export function setDuration(notes: Note[], ids: string[], dur: number, len: number): Note[] {
+  return only(notes, ids, (n) => ({ ...n, dur: Math.max(MIN_DUR, Math.min(len - n.t, dur)) }))
+}
+
+/** 音符を at 拍で 2 つに切る（後ろの音符は新しい id）。音符の中でなければ変えない */
+export function slice(notes: Note[], id: string, at: number): Note[] {
+  const n = notes.find((q) => q.id === id)
+  if (!n || at <= n.t + MIN_DUR || at >= n.t + n.dur - MIN_DUR) return notes
+  return notes.flatMap((q) => (q.id === id ? [{ ...q, dur: at - q.t }, { ...q, id: newId(), t: at, dur: q.t + q.dur - at }] : [q]))
+}
+
+/** 選んだ音符のうち、同じ高さで重なるか続いているものを 1 つにつなぐ（先頭の音符の強さを使う） */
+export function glue(notes: Note[], ids: string[]): Note[] {
+  const out: Note[] = []
+  const sel = notes.filter((n) => ids.includes(n.id)).sort((a, b) => a.t - b.t)
+  const drop = new Set<string>()
+  for (const n of sel) {
+    const head = out.find((q) => q.pitch === n.pitch && n.t <= q.t + q.dur + 1e-6)
+    if (head) {
+      head.dur = Math.max(head.dur, n.t + n.dur - head.t)
+      drop.add(n.id)
+    } else out.push({ ...n })
+  }
+  const merged = new Map(out.map((q) => [q.id, q]))
+  return notes.filter((n) => !drop.has(n.id)).map((n) => merged.get(n.id) ?? n)
+}
+
+/** 選んだ音符のミュートを、value にする */
+export const setMute = (notes: Note[], ids: string[], value: boolean): Note[] => only(notes, ids, (n) => ({ ...n, mute: value || undefined }))
+
 /** 選んだ音符の強さを変える。mode: set は同じ値、add は足す、scale は掛ける */
 export function velocity(notes: Note[], ids: string[], mode: 'set' | 'add' | 'scale', value: number): Note[] {
   const f = (v: number) => (mode === 'set' ? value : mode === 'add' ? v + value : v * value)
