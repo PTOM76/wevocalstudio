@@ -45,7 +45,7 @@ src/
   overlap.ts  重なった波形ブロックの段の割り当て（重なっている所だけトラックの高さを段に分ける）。画面を知らない
   overview.ts  ミニマップ用の、全トラックを重ねた小さな音（1 秒 1000 点の振幅）。元の音は書き換えず、波形ブロックの位置と音量から作る
   peaks.ts  波形の描画用のピーク（縮めた形）。元の音ごとに一度だけ、何段階かの細かさで最小と最大を作っておく（描くたびに元の音を読まないように）
-  PianoRollDialog.tsx  ピアノロール（MIDI ブロックの音符を編集する）。空いている所を押すと音符を足し（そのままドラッグで長さ）、音符を押してドラッグで動かし、右端で長さを変え、
+  PianoRollDialog.tsx  ピアノロールのダイアログ（中身は pianoRoll/PianoRoll.tsx）。MIDI ブロックの音符を編集する
   pitchCurveTools.ts  ピッチの一括操作（wevocal-lib の計算。WeVocalSynth と同じ）を、波形ブロックのピッチカーブにする。元の F0 との差を半音で持つ（ペンと同じ形）
   PitchToolBar.tsx  解析の欄のピッチの道具（平らにする、音程にそろえる、ビブラート、MIDI の当てはめ）。計算とダイアログは wevocal-lib（WeVocalSynth と同じ）。結果は波形ブロックのピッチカーブにする
   project.ts  プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
@@ -82,6 +82,12 @@ src/mixer/
   mixer.ts  ミキサー（AudioWorklet）の読み込みと、トラックごとのミキサー、音のデータの送り先、波形ブロックから声を作る
   mixer.worklet.ts  波形ブロックの音を足すミキサー（AudioWorklet。音を出すスレッドで 128 サンプルずつ、今かかっている声だけを読んで足す）
   types.ts  ミキサー（AudioWorklet）とやり取りする形。時刻はすべて AudioContext の秒（currentTime と同じ時計）
+
+src/pianoRoll/
+  draw.ts  ピアノロールを描く（鍵盤、グリッド、音符、再生位置、強さの帯）。画面の部品は持たない
+  hit.ts  ピアノロールで押した所の判定（音符、右端、強さの棒）。画面を知らない
+  PianoRoll.tsx  ピアノロールの本体（MIDI ブロックの音符を編集する）。ダイアログの枠は PianoRollDialog.tsx。
+  view.ts  ピアノロールの表示の位置と大きさ（拍と音の高さ、画面の座標の変換）。画面を知らない
 
 src/settings/
   DataSection.tsx  設定の「データ」（使用量と、作業データ、キャッシュ、追加機能、設定の削除。部品と処理は PevenMUI。WeVocalSynth と同じ）

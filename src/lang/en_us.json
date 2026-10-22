@@ -917,7 +917,7 @@
 
   "roll.title": "Piano roll",
   "roll.grid": "Grid",
-  "roll.help": "Click to add a note, drag to move, drag the right edge to resize, double-click or Delete to remove. Shift adds to the selection or drags a box, Ctrl+A selects all. The bottom strip is velocity. Scroll to change the pitch range",
+  "roll.help": "Click to add a note, drag to move, drag the right edge to resize, double-click or Delete to remove. Shift adds to the selection or drags a box, Ctrl+A selects all. Hold Alt to ignore the grid. The bottom strip is velocity. Wheel: pitch range, Ctrl+wheel: zoom, Shift+wheel: scroll, Alt+wheel: row height",
   "roll.velocity": "Velocity",
   "roll.selected": "{n} selected",
 

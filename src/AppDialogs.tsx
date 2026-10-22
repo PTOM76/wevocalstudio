@@ -55,6 +55,8 @@ export default function AppDialogs(p: {
   /** 再生中か、再生と一時停止の切り替え（FX を開いたまま聞く） */
   playing: boolean
   onTogglePlay: () => void
+  /** 再生位置（秒。ピアノロールの再生位置の線） */
+  position: () => number
   /** 音を作る処理の負荷（0〜1。測れなければ null） */
   load: number | null
   /** 音源で音を鳴らす、離す（ピアノロール）。トラックの id、高さ、強さ、鳴らすか */
@@ -162,6 +164,10 @@ export default function AppDialogs(p: {
               open
               project={project}
               block={block}
+              division={p.settings.gridDivision}
+              onDivision={(gridDivision) => p.onSettingsChange({ gridDivision })}
+              playing={p.playing}
+              position={p.position}
               onChange={(notes, merge) => doc.updateMidiBlock(block.id, { notes }, merge && `${block.id}:${merge}`)}
               onPreview={(pitch, vel, on) => p.onPreview(block.track, pitch, vel, on)}
               onClose={() => {
