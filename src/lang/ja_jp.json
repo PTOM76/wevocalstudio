@@ -163,6 +163,10 @@
   "menu.envelopeSelect": "エンベロープ: 選択",
   "menu.envelopePen": "エンベロープ: ペン",
   "menu.envelopeTool": "エンベロープのペンと選択を切り替え",
+  "menu.rangeGroup": "範囲の操作",
+  "menu.pitchGroup": "ピッチ",
+  "menu.midiGroup": "MIDI",
+  "menu.experimental": "試験的機能",
 
   "settings.title": "設定",
   "settings.general": "全般",

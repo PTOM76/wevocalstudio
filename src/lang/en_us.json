@@ -163,6 +163,10 @@
   "menu.envelopeSelect": "Envelope: Select",
   "menu.envelopePen": "Envelope: Pen",
   "menu.envelopeTool": "Toggle Envelope Pen/Select",
+  "menu.rangeGroup": "Range",
+  "menu.pitchGroup": "Pitch",
+  "menu.midiGroup": "MIDI",
+  "menu.experimental": "Experimental",
 
   "settings.title": "Settings",
   "settings.general": "General",

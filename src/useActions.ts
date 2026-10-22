@@ -369,6 +369,8 @@ export function useActions(c: ActionContext) {
     onClick: commands[a].run,
   })
   const divider: MenuEntry = { divider: true }
+  /** サブメニュー */
+  const sub = (label: Parameters<typeof t>[0], submenu: MenuEntry[]): MenuEntry => ({ label: t(label), onClick: () => {}, submenu })
   // 和音の分離（試験的。設定で出したときだけ）
   const voiceItems = c.voiceSplit ? [item('splitVoicesByPitch'), item('splitVoicesByVolume')] : []
   // 最近使用したファイル（使えないブラウザでは出さない。WeVocalSynth と同じ）
@@ -386,12 +388,12 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.edit'),
       accessKey: 'E',
-      entries: [item('undo'), item('redo'), { label: t('menu.history'), onClick: c.openHistory }, divider, item('cut'), item('copy'), item('paste'), item('duplicate'), item('selectAll'), item('split'), item('splitRange'), item('splitSilence'), item('delete'), divider, item('trimRange'), item('deleteRange'), item('insertSilence'), item('repeatRange'), divider, item('clearRange'), divider, { label: t('menu.marker'), onClick: () => {}, submenu: [item('addMarker'), item('prevMarker'), item('nextMarker'), item('clearMarkers')] }],
+      entries: [item('undo'), item('redo'), { label: t('menu.history'), onClick: c.openHistory }, divider, item('cut'), item('copy'), item('paste'), item('duplicate'), item('delete'), divider, item('selectAll'), item('clearRange'), divider, item('split'), item('splitRange'), item('splitSilence'), divider, sub('menu.rangeGroup', [item('trimRange'), item('deleteRange'), item('insertSilence'), item('repeatRange')]), divider, { label: t('menu.marker'), onClick: () => {}, submenu: [item('addMarker'), item('prevMarker'), item('nextMarker'), item('clearMarkers')] }],
     },
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('exportMidi'), item('glueMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), item('glidePitch'), item('vibratoEnvelope'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
+      entries: [item('properties'), divider, sub('menu.pitchGroup', [item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('glidePitch'), item('vibratoEnvelope')]), sub('menu.midiGroup', [item('addMidiBlock'), item('importMidi'), item('exportMidi'), divider, item('glueMidi'), item('editMidi'), item('trackInstrument')]), divider, item('normalize'), item('bake')],
     },
     {
       label: t('menu.track'),
@@ -418,7 +420,8 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.tools'),
       accessKey: 'L',
-      entries: [item('synth'), item('sampler'), item('kanaCut'), divider, item('pluginTool'), item('pluginAnalyze'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
+      // ボーカル抽出と分離、試験的機能のサブメニュー、音を作る道具、プラグインの道具（WeVocalSynth のツールメニューと同じ並び）
+      entries: [sub('menu.extract', [item('splitVocals'), item('splitLead'), item('splitInstruments')]), ...(voiceItems.length ? [sub('menu.experimental', voiceItems)] : []), divider, item('sampler'), item('synth'), divider, item('kanaCut'), divider, item('pluginTool'), item('pluginAnalyze')],
     },
     {
       label: t('menu.transport'),
