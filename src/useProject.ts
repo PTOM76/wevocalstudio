@@ -414,7 +414,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   /** MIDI ブロックの写しを足す（コピーの貼り付け、複製）。足した id の一覧 */
   const insertMidi = useCallback(
     (blocks: MidiBlock[]) => {
-      const copies = blocks.map((b) => ({ ...b, id: newId(), notes: b.notes.map((n) => ({ ...n })) }))
+      const copies = blocks.map((b) => ({ ...b, id: newId(), notes: b.notes.map((n) => ({ ...n, id: newId() })) }))
       change((p) => ({ ...p, midi: [...(p.midi ?? []), ...copies] }))
       return copies.map((b) => b.id)
     },

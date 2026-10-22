@@ -26,7 +26,7 @@ export async function importMidi(p: Project, file: File, at: number): Promise<Pr
       length: Math.max(0.05, end - start),
       mute: false,
       defaultName: file.name,
-      notes: mt.notes.map((n) => ({ t: n.start - start, dur: Math.max(0.02, n.end - n.start), pitch: n.note, vel: 0.8 })),
+      notes: mt.notes.map((n) => ({ id: newId(), t: n.start - start, dur: Math.max(0.02, n.end - n.start), pitch: n.note, vel: 0.8 })),
     })
   }
   return { ...p, tracks: [...p.tracks, ...tracks], midi: [...(p.midi ?? []), ...blocks] }

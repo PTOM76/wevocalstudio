@@ -80,12 +80,19 @@ export const isMidiBlock = (b: AnyBlock): b is MidiBlock => 'notes' in b
 
 /** 音符（MIDI ブロックの頭からの秒） */
 export interface Note {
+  /** 選択などで音符を指す。古いプロジェクトには無いので、読み込み時に付ける（fillMidi） */
+  id: string
   t: number
   dur: number
   /** MIDI ノート番号（C4 = 60） */
   pitch: number
   /** 強さ 0〜1 */
   vel: number
+}
+
+/** 読み込んだ MIDI ブロックの、id の無い音符に id を付ける */
+export function fillMidi(b: MidiBlock): MidiBlock {
+  return b.notes.every((n) => n.id) ? b : { ...b, notes: b.notes.map((n) => (n.id ? n : { ...n, id: newId() })) }
 }
 
 /** MIDI ブロック。音符を MIDI のまま持ち、トラックの音源で鳴らす */
@@ -420,7 +427,7 @@ export function splitMidiBlock(b: MidiBlock, t: number): [MidiBlock, MidiBlock] 
   const left = b.notes.filter((n) => n.t < at).map((n) => ({ ...n, dur: Math.min(n.dur, at - n.t) }))
   const right = b.notes
     .filter((n) => n.t + n.dur > at)
-    .map((n) => ({ ...n, t: Math.max(0, n.t - at), dur: Math.min(n.dur, n.t + n.dur - at) }))
+    .map((n) => ({ ...n, id: newId(), t: Math.max(0, n.t - at), dur: Math.min(n.dur, n.t + n.dur - at) }))
   return [
     { ...b, length: at, notes: left },
     { ...b, id: newId(), start: t, length: b.length - at, notes: right },

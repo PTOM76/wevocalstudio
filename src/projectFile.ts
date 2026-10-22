@@ -1,6 +1,6 @@
 // プロジェクトファイル（.wvst）の読み書き。先頭に JSON（トラック、波形ブロック、元の音の形）、そのあとに元の音の PCM を並べる
 import type { Clip } from 'wevocal-lib'
-import { DEFAULT_TEMPO, fillBlock, fillTrack, newProject, type Project, type Source } from './project'
+import { DEFAULT_TEMPO, fillBlock, fillMidi, fillTrack, newProject, type Project, type Source } from './project'
 
 export const PROJECT_EXT = '.wvst'
 /** 拡張子を短くする前の名前（中身は同じなので、そのまま開く） */
@@ -70,5 +70,5 @@ export async function readProject(file: Blob): Promise<Project> {
     return { id: s.id, name: s.name, clip, duration: s.frames / s.sampleRate }
   })
   // 足した項目が古いファイルに無くても動くよう、既定値で埋める
-  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, markers: header.markers ?? [], master: { ...newProject().master, ...header.master }, tracks: header.tracks.map(fillTrack), blocks: header.blocks.map(fillBlock), ...(header.midi?.length ? { midi: header.midi } : {}), ...(header.end !== undefined ? { end: header.end } : {}) }
+  return { ...newProject(), sources, tempo: { ...DEFAULT_TEMPO, ...header.tempo }, markers: header.markers ?? [], master: { ...newProject().master, ...header.master }, tracks: header.tracks.map(fillTrack), blocks: header.blocks.map(fillBlock), ...(header.midi?.length ? { midi: header.midi.map(fillMidi) } : {}), ...(header.end !== undefined ? { end: header.end } : {}) }
 }

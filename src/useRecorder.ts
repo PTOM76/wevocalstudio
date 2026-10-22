@@ -56,7 +56,7 @@ export function useRecorder(o: {
     if (!notes.length) return
     const start = Math.min(...notes.map((n) => n.abs))
     const end = Math.max(...notes.map((n) => n.abs + n.dur))
-    doc.addMidiBlock({ id: newId(), track: r.track, start, length: Math.max(0.25, end - start), mute: false, notes: notes.map((n) => ({ t: n.abs - start, dur: n.dur, pitch: n.pitch, vel: n.vel })) })
+    doc.addMidiBlock({ id: newId(), track: r.track, start, length: Math.max(0.25, end - start), mute: false, notes: notes.map((n) => ({ id: newId(), t: n.abs - start, dur: n.dur, pitch: n.pitch, vel: n.vel })) })
   }
   // 録音中の波形ブロックの表示用（録り始めからの秒と振幅を、描くたびに足す）
   const bars = useRef<[number, number][]>([])

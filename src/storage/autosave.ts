@@ -1,6 +1,6 @@
 // 作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く。書き込みは Worker
 import type { Clip } from 'wevocal-lib'
-import { DEFAULT_TEMPO, fillBlock, fillTrack, newProject, type Project, type Source } from '../project'
+import { DEFAULT_TEMPO, fillBlock, fillMidi, fillTrack, newProject, type Project, type Source } from '../project'
 import { slotKey } from 'pevenmui/web'
 import { markActivity } from 'pevenmui/debug'
 import type { AutosaveMessage, AutosaveReply } from './autosaveWorker'
@@ -150,7 +150,7 @@ export async function loadAutosave(): Promise<{ project: Project; fileName: stri
   const blocks = meta.blocks.filter((b) => sources.some((s) => s.id === b.source)).map(fillBlock)
   const base = newProject()
   return {
-    project: { sources, tempo: { ...DEFAULT_TEMPO, ...meta.tempo }, markers: meta.markers ?? [], master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks.map(fillTrack) : base.tracks, blocks, ...(meta.midi?.length ? { midi: meta.midi } : {}), ...(meta.end !== undefined ? { end: meta.end } : {}) },
+    project: { sources, tempo: { ...DEFAULT_TEMPO, ...meta.tempo }, markers: meta.markers ?? [], master: { ...base.master, ...meta.master }, tracks: meta.tracks?.length ? meta.tracks.map(fillTrack) : base.tracks, blocks, ...(meta.midi?.length ? { midi: meta.midi.map(fillMidi) } : {}), ...(meta.end !== undefined ? { end: meta.end } : {}) },
     fileName: meta.fileName,
   }
 }

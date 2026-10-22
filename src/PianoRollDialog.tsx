@@ -6,7 +6,7 @@ import { Box, Button, DialogActions, DialogContent, Typography } from '@mui/mate
 import { WindowDialog, localPoint, pevenFont, usePalette } from 'pevenmui'
 import { LabeledSelect as Choice } from 'wevocal-lib/react'
 import { useT } from './i18n'
-import type { MidiBlock, Note, Project } from './project'
+import { newId, type MidiBlock, type Note, type Project } from './project'
 
 const KEYS = 44
 const ROW = 14
@@ -22,7 +22,7 @@ const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 type Drag =
   | { kind: 'move'; start: Note[]; sec0: number; pitch0: number; merge: string }
   | { kind: 'size'; start: Note[]; sec0: number; merge: string }
-  | { kind: 'vel'; index: number; merge: string }
+  | { kind: 'vel'; id: string; merge: string }
   | { kind: 'box'; x0: number; y0: number }
 
 export default function PianoRollDialog(p: {
@@ -38,10 +38,10 @@ export default function PianoRollDialog(p: {
   const { pal } = usePalette()
   const canvas = useRef<HTMLCanvasElement>(null)
   const block = p.block
-  // 表示する一番下の音（スクロールで動かす）、グリッドの細かさ（1 拍の分割）、選んでいる音符の番号
+  // 表示する一番下の音（スクロールで動かす）、グリッドの細かさ（1 拍の分割）、選んでいる音符の id
   const [low, setLow] = useState(48)
   const [div, setDiv] = useState(4)
-  const [sel, setSel] = useState<number[]>([])
+  const [sel, setSel] = useState<string[]>([])
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const drag = useRef<Drag | null>(null)
   const count = useRef(0)
@@ -93,11 +93,11 @@ export default function PianoRollDialog(p: {
       g.fillRect(KEYS + s * pps, 0, 1, H)
     }
     // 音符（強さが弱いほど薄く）
-    block.notes.forEach((n, i) => {
+    block.notes.forEach((n) => {
       const r = low + ROWS - 1 - n.pitch
       if (r < 0 || r >= ROWS) return
       g.globalAlpha = 0.4 + 0.6 * n.vel
-      g.fillStyle = sel.includes(i) ? pal.primary.light : pal.primary.main
+      g.fillStyle = sel.includes(n.id) ? pal.primary.light : pal.primary.main
       g.fillRect(KEYS + n.t * pps, r * ROW + 1, Math.max(3, n.dur * pps), ROW - 2)
       g.globalAlpha = 0.5
       g.fillStyle = pal.text.primary
@@ -109,8 +109,8 @@ export default function PianoRollDialog(p: {
     g.fillRect(KEYS, ROLL + GAP, W - KEYS, VEL)
     g.fillStyle = pal.text.secondary
     g.fillText(t('roll.velocity'), 4, ROLL + GAP + 10)
-    block.notes.forEach((n, i) => {
-      g.fillStyle = sel.includes(i) ? pal.primary.light : pal.primary.main
+    block.notes.forEach((n) => {
+      g.fillStyle = sel.includes(n.id) ? pal.primary.light : pal.primary.main
       g.fillRect(KEYS + n.t * pps, ROLL + GAP + VEL * (1 - n.vel), 3, VEL * n.vel)
     })
     if (box) {
@@ -148,11 +148,12 @@ export default function PianoRollDialog(p: {
     if (y >= ROLL + GAP) {
       const i = hitVel(x)
       if (i < 0) return
-      if (!sel.includes(i)) setSel([i])
-      drag.current = { kind: 'vel', index: i, merge }
+      const id = block.notes[i].id
+      if (!sel.includes(id)) setSel([id])
+      drag.current = { kind: 'vel', id, merge }
       const v = velAt(y)
-      const targets = sel.includes(i) ? sel : [i]
-      p.onChange(block.notes.map((n, k) => (targets.includes(k) ? { ...n, vel: v } : n)), merge)
+      const targets = sel.includes(id) ? sel : [id]
+      p.onChange(block.notes.map((n) => (targets.includes(n.id) ? { ...n, vel: v } : n)), merge)
       return
     }
     const h = hit(x, y)
@@ -160,10 +161,10 @@ export default function PianoRollDialog(p: {
       const n = block.notes[h.index]
       // Shift は選択の足し引き。選んでいないものを押したら、それだけを選ぶ
       let next = sel
-      if (e.shiftKey) next = sel.includes(h.index) ? sel.filter((i) => i !== h.index) : [...sel, h.index]
-      else if (!sel.includes(h.index)) next = [h.index]
+      if (e.shiftKey) next = sel.includes(n.id) ? sel.filter((id) => id !== n.id) : [...sel, n.id]
+      else if (!sel.includes(n.id)) next = [n.id]
       setSel(next)
-      if (!next.includes(h.index)) return
+      if (!next.includes(n.id)) return
       sound(n.pitch, n.vel)
       drag.current = h.edge ? { kind: 'size', start: block.notes.map((q) => ({ ...q })), sec0: (x - KEYS) / pps, merge } : { kind: 'move', start: block.notes.map((q) => ({ ...q })), sec0: (x - KEYS) / pps, pitch0: rowPitch(y), merge }
       return
@@ -176,10 +177,10 @@ export default function PianoRollDialog(p: {
     }
     const pitch = rowPitch(y)
     const start = Math.max(0, Math.min(block.length - step, snap((x - KEYS) / pps)))
-    const note: Note = { t: start, dur: lastDur.current || step, pitch, vel: 0.8 }
+    const note: Note = { id: newId(), t: start, dur: lastDur.current || step, pitch, vel: 0.8 }
     const notes = [...block.notes, note]
     p.onChange(notes, merge)
-    setSel([notes.length - 1])
+    setSel([note.id])
     sound(pitch, note.vel)
     drag.current = { kind: 'size', start: notes.map((q) => ({ ...q })), sec0: (x - KEYS) / pps - note.dur, merge }
   }
@@ -195,42 +196,44 @@ export default function PianoRollDialog(p: {
       const ya = Math.min(b.y0, b.y1)
       const yb = Math.max(b.y0, b.y1)
       setSel(
-        block.notes.flatMap((n, i) => {
+        block.notes.flatMap((n) => {
           const r = low + ROWS - 1 - n.pitch
           const nx0 = KEYS + n.t * pps
           const nx1 = nx0 + Math.max(3, n.dur * pps)
-          return r >= 0 && r < ROWS && nx1 >= xa && nx0 <= xb && r * ROW + ROW >= ya && r * ROW <= yb ? [i] : []
+          return r >= 0 && r < ROWS && nx1 >= xa && nx0 <= xb && r * ROW + ROW >= ya && r * ROW <= yb ? [n.id] : []
         }),
       )
       return
     }
     if (d.kind === 'vel') {
       const v = velAt(y)
-      const targets = sel.includes(d.index) ? sel : [d.index]
-      p.onChange(block.notes.map((n, k) => (targets.includes(k) ? { ...n, vel: v } : n)), d.merge)
+      const targets = sel.includes(d.id) ? sel : [d.id]
+      p.onChange(block.notes.map((n) => (targets.includes(n.id) ? { ...n, vel: v } : n)), d.merge)
       return
     }
     const notes = block.notes.map((n) => ({ ...n }))
+    // 選んでいる音符の、動かし始めたときの並びでの番号
+    const ix = d.start.flatMap((n, i) => (sel.includes(n.id) ? [i] : []))
     if (d.kind === 'move') {
       // 選んだものが全部収まる範囲で動かす（時間は、グリッドに合わせた差で）
       const ds = snap((x - KEYS) / pps - d.sec0)
       const dp = rowPitch(y) - d.pitch0
-      const loS = Math.max(...sel.map((i) => -d.start[i].t))
-      const hiS = Math.min(...sel.map((i) => block.length - d.start[i].dur - d.start[i].t))
-      const loP = Math.max(...sel.map((i) => -d.start[i].pitch))
-      const hiP = Math.min(...sel.map((i) => 127 - d.start[i].pitch))
+      const loS = Math.max(...ix.map((i) => -d.start[i].t))
+      const hiS = Math.min(...ix.map((i) => block.length - d.start[i].dur - d.start[i].t))
+      const loP = Math.max(...ix.map((i) => -d.start[i].pitch))
+      const hiP = Math.min(...ix.map((i) => 127 - d.start[i].pitch))
       const s = Math.max(loS, Math.min(hiS, ds))
       const pp = Math.max(loP, Math.min(hiP, dp))
-      for (const i of sel) notes[i] = { ...d.start[i], t: d.start[i].t + s, pitch: d.start[i].pitch + pp }
-      const lead = notes[sel[0]]
+      for (const i of ix) notes[i] = { ...d.start[i], t: d.start[i].t + s, pitch: d.start[i].pitch + pp }
+      const lead = notes[ix[0]]
       if (lead) sound(lead.pitch, lead.vel)
     } else {
       const dd = snap((x - KEYS) / pps - d.sec0)
-      for (const i of sel) {
+      for (const i of ix) {
         const n = d.start[i]
         notes[i] = { ...n, dur: Math.max(step, Math.min(block.length - n.t, n.dur + dd)) }
       }
-      const lead = notes[sel[0]]
+      const lead = notes[ix[0]]
       if (lead) lastDur.current = lead.dur
     }
     p.onChange(notes, d.merge)
@@ -240,15 +243,15 @@ export default function PianoRollDialog(p: {
     setBox(null)
     sound(null)
   }
-  const remove = (indices: number[]) => {
-    if (!block || !indices.length) return
-    p.onChange(block.notes.filter((_, k) => !indices.includes(k)))
+  const remove = (ids: string[]) => {
+    if (!block || !ids.length) return
+    p.onChange(block.notes.filter((n) => !ids.includes(n.id)))
     setSel([])
   }
   const onDouble = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = pos(e)
     const h = hit(x, y)
-    if (h.index >= 0) remove([h.index])
+    if (h.index >= 0 && block) remove([block.notes[h.index].id])
   }
   const onKey = (e: React.KeyboardEvent) => {
     if ((e.key === 'Delete' || e.key === 'Backspace') && sel.length) {
@@ -256,7 +259,7 @@ export default function PianoRollDialog(p: {
       remove(sel)
     } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && block) {
       e.preventDefault()
-      setSel(block.notes.map((_, i) => i))
+      setSel(block.notes.map((n) => n.id))
     }
   }
   const onWheel = (e: React.WheelEvent) => setLow((v) => Math.max(0, Math.min(127 - ROWS + 1, v + (e.deltaY > 0 ? -2 : 2))))
