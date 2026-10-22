@@ -1,4 +1,5 @@
 // プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
+import { beatMap, type BeatMap } from './beats'
 import { chainTail, eqToSlot, missingPlugins, whenPluginsLoaded, isFlatEq, type Algorithm, type Clip, type FxSlot, type TrackEq } from 'wevocal-lib'
 
 /** 読み込んだ音声ファイル（元の音）。波形ブロックはこれを参照するだけで、中身を書き換えない */
@@ -78,11 +79,13 @@ export interface BaseBlock {
 export type AnyBlock = Block | MidiBlock
 export const isMidiBlock = (b: AnyBlock): b is MidiBlock => 'notes' in b
 
-/** 音符（MIDI ブロックの頭からの秒） */
+/** 音符（MIDI ブロックの頭からの拍。4 分音符 = 1。秒への変換は beats.ts） */
 export interface Note {
   /** 選択などで音符を指す。古いプロジェクトには無いので、読み込み時に付ける（fillMidi） */
   id: string
+  /** 始まり（拍） */
   t: number
+  /** 長さ（拍） */
   dur: number
   /** MIDI ノート番号（C4 = 60） */
   pitch: number
@@ -90,15 +93,25 @@ export interface Note {
   vel: number
 }
 
-/** 読み込んだ MIDI ブロックの、id の無い音符に id を付ける */
-export function fillMidi(b: MidiBlock): MidiBlock {
-  return b.notes.every((n) => n.id) ? b : { ...b, notes: b.notes.map((n) => (n.id ? n : { ...n, id: newId() })) }
+/** 読み込んだ MIDI ブロックを今の形にする。unit の無い古いものは音符が秒なので拍へ直し、id の無い音符に id を付ける */
+export function fillMidi(b: Omit<MidiBlock, 'unit'> & { unit?: 'beat' }, tempo: Tempo, markers: readonly Marker[]): MidiBlock {
+  const map = b.unit === 'beat' ? null : beatMap(tempo, markers)
+  const b0 = map ? map.toBeat(b.start) : 0
+  const notes = b.notes.map((n) => {
+    const id = n.id || newId()
+    if (!map) return n.id ? n : { ...n, id }
+    const t = map.toBeat(b.start + n.t) - b0
+    return { ...n, id, t, dur: map.toBeat(b.start + n.t + n.dur) - b0 - t }
+  })
+  return { ...b, unit: 'beat', notes }
 }
 
 /** MIDI ブロック。音符を MIDI のまま持ち、トラックの音源で鳴らす */
 export interface MidiBlock extends BaseBlock {
   /** MIDI ファイルから読み込んだときの既定表示名 */
   defaultName?: string
+  /** 音符を拍で持つ印（無いものは古いプロジェクトで、秒。読み込み時に直す: fillMidi） */
+  unit: 'beat'
   notes: Note[]
 }
 
@@ -421,16 +434,17 @@ export function subtreeEnd(p: Project, index: number) {
  * MIDI ブロックを時刻 t で 2 つに分ける。またぐ音符は、前の方では t で切り、後ろの方では頭から残りの長さで続ける。
  * t がブロックの中でなければ null
  */
-export function splitMidiBlock(b: MidiBlock, t: number): [MidiBlock, MidiBlock] | null {
-  const at = t - b.start
-  if (at <= 0.001 || at >= b.length - 0.001) return null
+export function splitMidiBlock(b: MidiBlock, t: number, map: BeatMap): [MidiBlock, MidiBlock] | null {
+  const sec = t - b.start
+  if (sec <= 0.001 || sec >= b.length - 0.001) return null
+  const at = map.toBeat(t) - map.toBeat(b.start)
   const left = b.notes.filter((n) => n.t < at).map((n) => ({ ...n, dur: Math.min(n.dur, at - n.t) }))
   const right = b.notes
     .filter((n) => n.t + n.dur > at)
     .map((n) => ({ ...n, id: newId(), t: Math.max(0, n.t - at), dur: Math.min(n.dur, n.t + n.dur - at) }))
   return [
-    { ...b, length: at, notes: left },
-    { ...b, id: newId(), start: t, length: b.length - at, notes: right },
+    { ...b, length: sec, notes: left },
+    { ...b, id: newId(), start: t, length: b.length - sec, notes: right },
   ]
 }
 

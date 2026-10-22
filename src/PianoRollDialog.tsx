@@ -1,11 +1,12 @@
 // ピアノロール（MIDI ブロックの音符を編集する）。空いている所を押すと音符を足し（そのままドラッグで長さ）、音符を押してドラッグで動かし、右端で長さを変え、
 // ダブルクリックか Delete で消す。Shift を押しながらクリックで選択の足し引き、Shift を押しながら空いている所をドラッグで枠で選ぶ、Ctrl+A で全部。選んだものは一緒に動く。
-// 下の帯は音の強さ（ベロシティ）。棒をドラッグして変える。音符を押したり動かしたりすると、その高さの音を音源で鳴らす
+// 横は拍（テンポが変わっても音符は拍に付いてくる）。下の帯は音の強さ（ベロシティ）。棒をドラッグして変える。音符を押したり動かしたりすると、その高さの音を音源で鳴らす
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, DialogActions, DialogContent, Typography } from '@mui/material'
 import { WindowDialog, localPoint, pevenFont, usePalette } from 'pevenmui'
 import { LabeledSelect as Choice } from 'wevocal-lib/react'
 import { useT } from './i18n'
+import { blockBeats, projectBeatMap } from './beats'
 import { newId, type MidiBlock, type Note, type Project } from './project'
 
 const KEYS = 44
@@ -48,9 +49,11 @@ export default function PianoRollDialog(p: {
   const lastDur = useRef(0)
   // 今鳴らしている音（動かして高さが変わったら、離して鳴らし直す）
   const sounding = useRef<number | null>(null)
-  const beat = 60 / p.project.tempo.bpm
+  // 横は拍（4 分音符 = 1）。音符が拍で持たれているので、テンポによらない
+  const beat = 1
   const step = beat / div
-  const pps = block ? (W - KEYS) / Math.max(block.length, step * 4) : 1
+  const len = block ? blockBeats(projectBeatMap(p.project), block) : 0
+  const pps = block ? (W - KEYS) / Math.max(len, step * 4) : 1
   const snap = (sec: number) => Math.round(sec / step) * step
   const rowPitch = (y: number) => low + ROWS - 1 - Math.floor(y / ROW)
 
@@ -88,7 +91,7 @@ export default function PianoRollDialog(p: {
     // 縦線（グリッド、拍、小節）
     const bar = beat * p.project.tempo.beatsPerBar
     const near = (v: number, unit: number) => Math.abs(v / unit - Math.round(v / unit)) < 1e-6
-    for (let s = 0; s <= block.length + 1e-6; s += step) {
+    for (let s = 0; s <= len + 1e-6; s += step) {
       g.fillStyle = near(s, bar) || near(s, beat) ? pal.divider : pal.action.hover
       g.fillRect(KEYS + s * pps, 0, 1, H)
     }
@@ -176,7 +179,7 @@ export default function PianoRollDialog(p: {
       return
     }
     const pitch = rowPitch(y)
-    const start = Math.max(0, Math.min(block.length - step, snap((x - KEYS) / pps)))
+    const start = Math.max(0, Math.min(len - step, snap((x - KEYS) / pps)))
     const note: Note = { id: newId(), t: start, dur: lastDur.current || step, pitch, vel: 0.8 }
     const notes = [...block.notes, note]
     p.onChange(notes, merge)
@@ -219,7 +222,7 @@ export default function PianoRollDialog(p: {
       const ds = snap((x - KEYS) / pps - d.sec0)
       const dp = rowPitch(y) - d.pitch0
       const loS = Math.max(...ix.map((i) => -d.start[i].t))
-      const hiS = Math.min(...ix.map((i) => block.length - d.start[i].dur - d.start[i].t))
+      const hiS = Math.min(...ix.map((i) => len - d.start[i].dur - d.start[i].t))
       const loP = Math.max(...ix.map((i) => -d.start[i].pitch))
       const hiP = Math.min(...ix.map((i) => 127 - d.start[i].pitch))
       const s = Math.max(loS, Math.min(hiS, ds))
@@ -231,7 +234,7 @@ export default function PianoRollDialog(p: {
       const dd = snap((x - KEYS) / pps - d.sec0)
       for (const i of ix) {
         const n = d.start[i]
-        notes[i] = { ...n, dur: Math.max(step, Math.min(block.length - n.t, n.dur + dd)) }
+        notes[i] = { ...n, dur: Math.max(step, Math.min(len - n.t, n.dur + dd)) }
       }
       const lead = notes[ix[0]]
       if (lead) lastDur.current = lead.dur

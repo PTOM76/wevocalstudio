@@ -1,6 +1,6 @@
 // 録音（再生位置から、ほかのトラックを鳴らしながら録り、録った音を波形ブロックとして置く。wevocal-lib の録音）
 import { useRef, useState } from 'react'
-import { newId } from './project'
+import { fillMidi, newId } from './project'
 import { canRecord, openInput, startRecording, type Recording } from 'wevocal-lib'
 import { useT } from './i18n'
 import type { Project } from './project'
@@ -56,7 +56,7 @@ export function useRecorder(o: {
     if (!notes.length) return
     const start = Math.min(...notes.map((n) => n.abs))
     const end = Math.max(...notes.map((n) => n.abs + n.dur))
-    doc.addMidiBlock({ id: newId(), track: r.track, start, length: Math.max(0.25, end - start), mute: false, notes: notes.map((n) => ({ id: newId(), t: n.abs - start, dur: n.dur, pitch: n.pitch, vel: n.vel })) })
+    doc.addMidiBlock(fillMidi({ id: newId(), track: r.track, start, length: Math.max(0.25, end - start), mute: false, notes: notes.map((n) => ({ id: newId(), t: n.abs - start, dur: n.dur, pitch: n.pitch, vel: n.vel })) }, project.tempo, project.markers))
   }
   // 録音中の波形ブロックの表示用（録り始めからの秒と振幅を、描くたびに足す）
   const bars = useRef<[number, number][]>([])

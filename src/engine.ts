@@ -2,6 +2,7 @@
 // トラックの FX の列、パン、メーターとマスターは Web Audio のノード。再生中に変えたときは、声の一覧を送り直し、トラックとマスターは値だけを変える
 import { AHEAD, anticipated, CHUNK, PREROLL, signature } from './anticipate'
 import { ChunkCache, chunkKey } from './fxCache'
+import { blockBeats, projectBeatMap } from './beats'
 import { createInstrument, findInstrument, preloadInstruments, type InstrumentInstance, type NoteEvent } from 'wevocal-lib'
 import { liveProcessors, renderLoad } from 'wevocal-lib'
 import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, createLimitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
@@ -49,7 +50,8 @@ const maxTrackLatency = (p: Project, sampleRate: number) => Math.max(0, ...p.tra
 /** トラックの MIDI ブロックの識別（変わったら、送った音符を取り消して送り直す） */
 const midiSig = (p: Project, track: string) => {
   const t = p.tracks.find((x) => x.id === track)
-  return JSON.stringify([t && ownAudible(p, t), (p.midi ?? []).filter((b) => b.track === track)])
+  // 音符は拍なので、テンポが変わっても送り直す
+  return JSON.stringify([t && ownAudible(p, t), p.tempo, p.markers.filter((m) => m.tempo), (p.midi ?? []).filter((b) => b.track === track)])
 }
 /** 組んだノード（トラックごとの入口とミキサー、マスター） */
 class Graph {
@@ -165,12 +167,15 @@ class Graph {
     const out: NoteEvent[] = []
     const tr = p.tracks.find((t) => t.id === track)
     const own = !!tr && ownAudible(p, tr)
+    const map = projectBeatMap(p)
     for (const b of p.midi ?? []) {
       if (b.track !== track || b.mute || !own) continue
+      const b0 = map.toBeat(b.start)
+      const len = blockBeats(map, b)
       for (const n of b.notes) {
-        const t = b.start + n.t
+        const t = map.toSec(b0 + n.t)
         // ブロックの外にはみ出した音符は、ブロックの終わりで切る
-        const dur = Math.min(n.dur, b.length - n.t)
+        const dur = map.toSec(b0 + n.t + Math.min(n.dur, len - n.t)) - t
         if (t >= from && t < to && dur > 0) out.push({ time: this.zero + t, dur, pitch: n.pitch, vel: n.vel })
       }
     }

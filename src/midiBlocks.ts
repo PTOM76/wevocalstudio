@@ -1,5 +1,6 @@
 // MIDI ブロックの時間軸での描画と、押した所の判定（音符は小さな帯で見せる）。画面を知らない
 import { ownAudible, trackHeight, type MidiBlock, type Project } from './project'
+import { blockBeats, projectBeatMap } from './beats'
 import { trackTop } from './drawTimeline'
 
 /** 端をつかめる幅（px） */
@@ -49,6 +50,7 @@ export interface MidiColors {
 export function drawMidiBlocks(g: CanvasRenderingContext2D, p: Project, trackId: string, scroll: number, pps: number, vscroll: number, width: number, selected: string[], c: MidiColors) {
   const track = p.tracks.find((t) => t.id === trackId)
   if (!track) return
+  const map = projectBeatMap(p)
   for (const b of p.midi ?? []) {
     if (b.track !== trackId) continue
     const r = midiRect(p, b, scroll, pps, vscroll)
@@ -67,9 +69,14 @@ export function drawMidiBlocks(g: CanvasRenderingContext2D, p: Project, trackId:
     const h = r.h - (top - r.y) - 3
     const nh = Math.max(2, Math.min(8, h / (hi - lo + 1)))
     g.fillStyle = c.note
+    // 音符は拍なので、秒に直して描く
+    const b0 = map.toBeat(b.start)
+    const len = blockBeats(map, b)
     for (const n of b.notes) {
       const y = top + (1 - (n.pitch - lo) / (hi - lo + 1)) * (h - nh)
-      g.fillRect(r.x + n.t * pps, y, Math.max(2, Math.min(n.dur, b.length - n.t) * pps), nh)
+      const t0 = map.toSec(b0 + n.t) - b.start
+      const t1 = map.toSec(b0 + n.t + Math.min(n.dur, len - n.t)) - b.start
+      g.fillRect(r.x + t0 * pps, y, Math.max(2, (t1 - t0) * pps), nh)
     }
     g.restore()
   }

@@ -5,6 +5,7 @@ import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip, type FxSlot } from 
 import { describeChange } from './history'
 import { defaultInstrument } from './midiImport'
 import type { MessageKey } from './i18n'
+import { projectBeatMap } from './beats'
 import { BLOCK_LIMITS, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, splitMidiBlock, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
@@ -367,7 +368,24 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   /** 曲の終わりを決める。null で自動に戻す */
   const setEnd = useCallback((time: number | null) => change(({ end: _, ...p }) => (time === null ? p : { ...p, end: time })), [change])
 
-  const updateTempo = useCallback((patch: Partial<Tempo>, merge?: string) => change((p) => ({ ...p, tempo: { ...p.tempo, ...patch } }), merge), [change])
+  /** テンポを変える。MIDI ブロックは拍の位置を保つよう、位置と長さ（秒）を直す */
+  const updateTempo = useCallback(
+    (patch: Partial<Tempo>, merge?: string) =>
+      change((p) => {
+        const next = { ...p, tempo: { ...p.tempo, ...patch } }
+        if (!p.midi?.length) return next
+        const was = projectBeatMap(p)
+        const now = projectBeatMap(next)
+        return {
+          ...next,
+          midi: p.midi.map((b) => {
+            const start = now.toSec(was.toBeat(b.start))
+            return { ...b, start, length: now.toSec(was.toBeat(b.start + b.length)) - start }
+          }),
+        }
+      }, merge),
+    [change],
+  )
 
   const updateMaster = useCallback((patch: Partial<Master>, merge?: string) => change((p) => ({ ...p, master: { ...p.master, ...patch } }), merge), [change])
 
@@ -404,7 +422,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
         const t = p.tracks.find((x) => x.id === trackId)
         if (!t) return p
         const length = (p.tempo.beatsPerBar * 60 * 2) / p.tempo.bpm
-        const block: MidiBlock = { id, track: trackId, start: Math.max(0, time), length, notes: [], mute: false }
+        const block: MidiBlock = { id, track: trackId, start: Math.max(0, time), length, unit: 'beat', notes: [], mute: false }
         return { ...p, tracks: p.tracks.map((x) => (x === t && !t.instrument ? { ...x, instrument: defaultInstrument() } : x)), midi: [...(p.midi ?? []), block] }
       })
       return id
@@ -480,7 +498,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
       change((p) => ({
         ...p,
         blocks: p.blocks.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitBlock(b, t, defaultsRef.current.defaultFade) ?? [b]))),
-        ...(p.midi ? { midi: p.midi.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitMidiBlock(b, t) ?? [b]))) } : {}),
+        ...(p.midi ? { midi: p.midi.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitMidiBlock(b, t, projectBeatMap(p)) ?? [b]))) } : {}),
       })),
     [change],
   )
