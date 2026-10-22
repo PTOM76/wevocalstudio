@@ -1,6 +1,6 @@
 // 先に作った FX の音（anticipate.ts のかたまり）を、再生をまたいで取っておく。同じトラックの同じ音、同じ位置なら描かずに使う（memo/fx-cache.md）
-import { signature } from './anticipate'
-import type { Project } from './project'
+import { CHUNK, PREROLL } from './anticipate'
+import type { Project, Track } from './project'
 
 /** 短い文字のハッシュ（プラグインが保存する状態は長いので、キーには縮めて入れる） */
 function hash(s: string) {
@@ -9,15 +9,37 @@ function hash(s: string) {
   return (h >>> 0).toString(36)
 }
 
+/** トラックの設定（FX、音源、音量など。選択、レーンの表示、パン、プラグインが保存する状態は音に関係しない）の識別 */
+const settingsCache = new WeakMap<Track, string>()
+function settingsOf(t: Track) {
+  let out = settingsCache.get(t)
+  if (out === undefined) {
+    const { pan: _pan, autoLane: _lane, sends: _sends, name: _name, height: _height, collapsed: _collapsed, armed: _armed, mute: _mute, solo: _solo, ...rest } = t
+    out = hash(JSON.stringify({ ...rest, fx: rest.fx?.map(({ state: _state, ...s }) => s) }))
+    settingsCache.set(t, out)
+  }
+  return out
+}
+
 /**
- * かたまりのキー。signature は再生中に変わるプラグインの状態を含めないので、取っておくときは状態も入れる
- * （プラグインの画面で音を変えたあとに、前の音を鳴らさないように）
+ * かたまりのキー。かたまり k の音は、k * CHUNK - PREROLL 秒から (k + 1) * CHUNK 秒までの波形ブロックと音符、トラックの設定、テンポで決まるので、
+ * その範囲にかかるものだけをキーに入れる（別の所の編集では、このかたまりは作り直さない）。
+ * プラグインが保存する状態は再生中に変わるので設定には入れず、取っておくときだけ入れる（プラグインの画面で音を変えたあとに、前の音を鳴らさないように）
  */
 export function chunkKey(p: Project, trackId: string, k: number): string | null {
   const t = p.tracks.find((x) => x.id === trackId)
   if (!t) return null
+  const from = k * CHUNK - PREROLL
+  const to = (k + 1) * CHUNK
+  const within = (b: { start: number; length: number }) => b.start < to && b.start + b.length > from
+  const blocks = p.blocks.filter((b) => b.track === trackId && within(b))
+  const midi = (p.midi ?? []).filter((b) => b.track === trackId && within(b))
+  const sources = [...new Set(blocks.map((b) => b.source))].map((id) => {
+    const s = p.sources.find((x) => x.id === id)
+    return `${id}:${s?.duration ?? 0}:${s?.clip.channels[0]?.length ?? 0}`
+  })
   const states = (t.fx ?? []).map((s) => (s.state ? hash(s.state) : '')).join(',')
-  return `${trackId}|${hash(signature(p, t))}|${states}|${k}`
+  return `${trackId}|${settingsOf(t)}|${hash(JSON.stringify([blocks, midi, sources, p.tempo, p.markers]))}|${states}|${k}`
 }
 
 const bytesOf = (b: AudioBuffer) => b.length * b.numberOfChannels * 4
