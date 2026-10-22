@@ -9,9 +9,11 @@ import { blockBeats, projectBeatMap } from '../beats'
 import { useT } from '../i18n'
 import { newId, type MidiBlock, type MidiCurve, type Note, type Project } from '../project'
 import { drawRoll } from './draw'
-import InfoLine from './InfoLine'
+import InfoLine, { laneLabelOf } from './InfoLine'
+import ScreenKeyboard from './ScreenKeyboard'
+import { useStepInput } from './useStepInput'
 import RollToolbar, { type Tool } from './Toolbar'
-import { setMute, slice } from './edit'
+import { selectionEnd, setMute, slice } from './edit'
 import { hasClipboard, useRollEdit } from './useRollEdit'
 import { useRollWheel } from './useRollWheel'
 import { hitNote, hitVel } from './hit'
@@ -33,9 +35,6 @@ type Drag =
 
 
 /** キーでの道具の切り替え（FL Studio にならう） */
-/** グリッドの選択肢（時間軸の細かさと同じ値。ここにない値のときは足す） */
-const DIVISIONS = [1, 2, 4, 8, 16, 32, 64, 128, 256, 3, 6, 12, 24]
-
 export interface PianoRollProps {
   project: Project
   block: MidiBlock
@@ -59,10 +58,7 @@ export interface PianoRollProps {
 export default function PianoRoll(p: PianoRollProps) {
   const t = useT()
   const { pal } = usePalette()
-  const laneLabel = (l: Lane) => {
-    const names: Record<string, string> = { vel: t('roll.velocity'), bend: t('roll.laneBend'), cc1: t('roll.cc1'), cc7: t('roll.cc7'), cc10: t('roll.cc10'), cc11: t('roll.cc11'), cc64: t('roll.cc64') }
-    return names[l] ?? `CC ${l.slice(2)}`
-  }
+  const laneLabel = (l: Lane) => laneLabelOf(t, l)
   const canvas = useRef<HTMLCanvasElement>(null)
   const box = useRef<HTMLDivElement>(null)
   const { width, height } = useBoxSize(box)
@@ -83,6 +79,9 @@ export default function PianoRoll(p: PianoRollProps) {
   const laneInfo = curveOf(lane)
   // 音の確認（鳴らすか）と、スケールの強調
   const [preview, setPreview] = useState(true)
+  // 画面の鍵盤（指で操作する端末では最初から出す）と、その一番左の C
+  const [kb, setKb] = useState(() => !!window.matchMedia?.('(pointer: coarse)').matches)
+  const [kbBase, setKbBase] = useState(48)
   const [scale, setScale] = useState<{ root: number; kind: ScaleKind }>({ root: 0, kind: 'none' })
   const [frame, setFrame] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const [play, setPlay] = useState<number | null>(null)
@@ -132,6 +131,7 @@ export default function PianoRoll(p: PianoRollProps) {
       beatsPerBar: p.project.tempo.beatsPerBar,
       play,
       pressed: held,
+      stepAt: step2.on ? step2.at : null,
       scale: scale.kind === 'none' ? null : new Set(SCALES[scale.kind].map((s) => (s + scale.root) % 12)),
       box: frame,
       velLabel: t('roll.velocity'),
@@ -166,6 +166,7 @@ export default function PianoRoll(p: PianoRollProps) {
 
   useRollWheel(canvas, viewRef, { zoom: setZoom, left: setLeft, row: setRow, low: setLow })
 
+  const step2 = useStepInput({ notes: block.notes, len, dur: () => lastDur.current || step, onChange: p.onChange, setSelected: setSel })
   const edit = useRollEdit({ notes: block.notes, selected: sel, setSelected: setSel, len, step, left: view.left, onChange: p.onChange, setTool })
   const { remove, onKey } = edit
   const pos = (e: { clientX: number; clientY: number }) => localPoint(canvas.current!, e.clientX, e.clientY)
@@ -430,40 +431,35 @@ export default function PianoRoll(p: PianoRollProps) {
     setZoom(ppb)
     setLeft(Math.max(0, mid - visibleBeats({ ...view, ppb }) / 2))
   }
-  const options: [number, string][] = (DIVISIONS.includes(p.division) ? DIVISIONS : [...DIVISIONS, p.division]).map((d) => [d, `1/${d}`])
+  /** ステップ入力を始める位置: 選んでいる音符の終わり（なければ頭） */
+  const stepStart = () => (sel.length ? selectionEnd(block.notes, sel) : 0)
   const top = NAMES[view.low % 12] + (Math.floor(view.low / 12) - 1)
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={onKey}>
       {p.toolbar !== false && (
         <RollToolbar
           division={p.division}
-          divisions={options}
           onDivision={p.onDivision}
           snapOn={snapOn}
           onSnap={() => setSnapOn((v) => !v)}
           tool={tool}
           onTool={setTool}
-          selected={sel.length}
+          selectedIds={sel}
+          edit={edit}
           canPaste={hasClipboard()}
           playing={p.playing}
           onTogglePlay={p.onTogglePlay}
-          onCut={() => edit.copy(true)}
-          onCopy={() => edit.copy(false)}
-          onPaste={edit.paste}
-          onDuplicate={edit.duplicate}
-          onRemove={() => remove(sel)}
           onSelectAll={() => setSel(block.notes.map((n) => n.id))}
-          onTranspose={edit.transpose}
-          onQuantize={edit.quantizeSel}
-          onLegato={edit.legatoSel}
-          onGlue={edit.glueSel}
-          onHumanize={edit.humanizeSel}
           onZoom={zoomBy}
           onFit={() => (setZoom(null), setLeft(0))}
           preview={preview}
           onPreview={() => setPreview((v) => !v)}
           scale={scale}
           onScale={(root, kind) => setScale({ root, kind })}
+          keyboard={kb}
+          onKeyboard={() => setKb((v) => !v)}
+          stepInput={step2.on}
+          onStepInput={() => step2.toggle(stepStart())}
         />
       )}
       <ContextMenu
@@ -482,6 +478,19 @@ export default function PianoRoll(p: PianoRollProps) {
       <Box sx={{ mx: 1.5, mt: 0.5 }}>
       <ScrollBar orientation="horizontal" total={Math.max(len, visibleBeats(view))} start={view.left} size={visibleBeats(view)} onChange={(v) => setLeft(Math.max(0, v))} />
       </Box>
+      {kb && (
+        <ScreenKeyboard
+          base={kbBase}
+          onBase={setKbBase}
+          onNote={(pitch, vel, on) => {
+            if (preview) p.onPreview?.(pitch, vel, on)
+            step2.note(pitch, vel, on)
+          }}
+          stepOn={step2.on}
+          onStep={(on) => step2.toggle(stepStart(), on)}
+          onRest={step2.rest}
+        />
+      )}
       <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary', px: 1.5, py: 0.75 }}>
         {top} 〜　{sel.length ? t('roll.selected', { n: sel.length }) : ''}
       </Typography>

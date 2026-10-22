@@ -6,8 +6,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowPointer, faCaretDown, faCircleQuestion, faClone, faCopy, faEraser, faGripLinesVertical, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faPaste, faPause, faPencil, faPlay, faScissors, faTrashCan, faVolumeXmark, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { ContextMenu, MenuBar, NumberInput, SmallButton, ToolbarDivider, pevenFont, type MenuEntry, type MenuGroup } from 'pevenmui'
 import { useT } from '../i18n'
+import type { useRollEdit } from './useRollEdit'
 import { NAMES, SCALE_KINDS, type ScaleKind } from './view'
 
+/** グリッドの選択肢（時間軸の細かさと同じ値。ここにない値のときは足す） */
+const DIVISIONS = [1, 2, 4, 8, 16, 32, 64, 128, 256, 3, 6, 12, 24]
+
+export type RollEdit = ReturnType<typeof useRollEdit>
 export type Tool = 'select' | 'pen' | 'erase' | 'slice' | 'mute'
 
 /** クオンタイズの設定（強さとスイングは %） */
@@ -26,28 +31,19 @@ export interface HumanizeForm {
 
 export interface RollToolbarProps {
   division: number
-  divisions: [number, string][]
   onDivision: (division: number) => void
   snapOn: boolean
   onSnap: () => void
   tool: Tool
   onTool: (tool: Tool) => void
-  /** 選んでいる音符の数 */
-  selected: number
+  /** 選んでいる音符の id */
+  selectedIds: string[]
+  /** 編集の操作（useRollEdit） */
+  edit: RollEdit
   canPaste: boolean
   playing: boolean
   onTogglePlay: () => void
-  onCut: () => void
-  onCopy: () => void
-  onPaste: () => void
-  onDuplicate: () => void
-  onRemove: () => void
   onSelectAll: () => void
-  onTranspose: (semis: number) => void
-  onQuantize: (f: QuantizeForm) => void
-  onLegato: () => void
-  onGlue: () => void
-  onHumanize: (f: HumanizeForm) => void
   onZoom: (factor: number) => void
   onFit: () => void
   /** 音の確認（鍵盤や音符の操作で音を鳴らす） */
@@ -56,11 +52,18 @@ export interface RollToolbarProps {
   /** スケールの強調（ルートは 0〜11） */
   scale: { root: number; kind: ScaleKind }
   onScale: (root: number, kind: ScaleKind) => void
+  /** 画面の鍵盤を出すか */
+  keyboard: boolean
+  onKeyboard: () => void
+  /** ステップ入力 */
+  stepInput: boolean
+  onStepInput: () => void
 }
 
 export default function RollToolbar(p: RollToolbarProps) {
   const t = useT()
-  const none = p.selected === 0
+  const none = p.selectedIds.length === 0
+  const divisions: [number, string][] = (DIVISIONS.includes(p.division) ? DIVISIONS : [...DIVISIONS, p.division]).map((d) => [d, `1/${d}`])
   const root = useRef<HTMLDivElement>(null)
   const [gridMenu, setGridMenu] = useState<{ x: number; y: number } | null>(null)
   // 設定の入力（変換のメニューから開く。値は覚えておく）
@@ -74,11 +77,11 @@ export default function RollToolbar(p: RollToolbarProps) {
     {
       label: t('roll.menuEdit'),
       entries: [
-        { label: t('menu.cut'), shortcut: 'Ctrl+X', disabled: none, onClick: p.onCut },
-        { label: t('menu.copy'), shortcut: 'Ctrl+C', disabled: none, onClick: p.onCopy },
-        { label: t('menu.paste'), shortcut: 'Ctrl+V', disabled: !p.canPaste, onClick: p.onPaste },
-        { label: t('menu.duplicate'), shortcut: 'Ctrl+D', disabled: none, onClick: p.onDuplicate },
-        { label: t('roll.remove'), shortcut: 'Delete', disabled: none, onClick: p.onRemove },
+        { label: t('menu.cut'), shortcut: 'Ctrl+X', disabled: none, onClick: (() => p.edit.copy(true)) },
+        { label: t('menu.copy'), shortcut: 'Ctrl+C', disabled: none, onClick: (() => p.edit.copy(false)) },
+        { label: t('menu.paste'), shortcut: 'Ctrl+V', disabled: !p.canPaste, onClick: p.edit.paste },
+        { label: t('menu.duplicate'), shortcut: 'Ctrl+D', disabled: none, onClick: p.edit.duplicate },
+        { label: t('roll.remove'), shortcut: 'Delete', disabled: none, onClick: (() => p.edit.remove(p.selectedIds)) },
         { divider: true },
         { label: t('roll.selectAll'), shortcut: 'Ctrl+A', onClick: p.onSelectAll },
       ],
@@ -86,15 +89,15 @@ export default function RollToolbar(p: RollToolbarProps) {
     {
       label: t('roll.menuConvert'),
       entries: [
-        { label: t('roll.up'), shortcut: '↑', disabled: none, onClick: () => p.onTranspose(1) },
-        { label: t('roll.down'), shortcut: '↓', disabled: none, onClick: () => p.onTranspose(-1) },
-        { label: t('roll.octaveUp'), shortcut: 'Shift+↑', disabled: none, onClick: () => p.onTranspose(12) },
-        { label: t('roll.octaveDown'), shortcut: 'Shift+↓', disabled: none, onClick: () => p.onTranspose(-12) },
+        { label: t('roll.up'), shortcut: '↑', disabled: none, onClick: () => p.edit.transpose(1) },
+        { label: t('roll.down'), shortcut: '↓', disabled: none, onClick: () => p.edit.transpose(-1) },
+        { label: t('roll.octaveUp'), shortcut: 'Shift+↑', disabled: none, onClick: () => p.edit.transpose(12) },
+        { label: t('roll.octaveDown'), shortcut: 'Shift+↓', disabled: none, onClick: () => p.edit.transpose(-12) },
         { divider: true },
-        { label: t('roll.quantize'), shortcut: 'Q', disabled: none, onClick: () => p.onQuantize(q) },
+        { label: t('roll.quantize'), shortcut: 'Q', disabled: none, onClick: () => p.edit.quantizeSel(q) },
         { label: t('roll.quantizeSettings'), disabled: none, onClick: () => setForm('quantize') },
-        { label: t('roll.legato'), disabled: none, onClick: p.onLegato },
-        { label: t('roll.glue'), shortcut: 'Ctrl+G', disabled: p.selected < 2, onClick: p.onGlue },
+        { label: t('roll.legato'), disabled: none, onClick: p.edit.legatoSel },
+        { label: t('roll.glue'), shortcut: 'Ctrl+G', disabled: p.selectedIds.length < 2, onClick: p.edit.glueSel },
         { label: t('roll.humanize'), disabled: none, onClick: () => setForm('humanize') },
       ],
     },
@@ -106,12 +109,14 @@ export default function RollToolbar(p: RollToolbarProps) {
         { label: t('roll.zoomFit'), onClick: p.onFit },
         { divider: true },
         { label: t('roll.preview'), checked: p.preview, onClick: p.onPreview },
+        { label: t('roll.screenKeyboard'), checked: p.keyboard, onClick: p.onKeyboard },
+        { label: t('roll.stepInput'), checked: p.stepInput, onClick: p.onStepInput },
         { label: t('roll.scaleKind'), submenu: SCALE_KINDS.map((k) => ({ label: t(`roll.scale.${k}`), checked: p.scale.kind === k, onClick: () => p.onScale(p.scale.root, k) })) },
         { label: t('roll.scaleRoot'), disabled: p.scale.kind === 'none', submenu: NAMES.map((n, i) => ({ label: n, checked: p.scale.root === i, onClick: () => p.onScale(i, p.scale.kind) })) },
       ],
     },
   ]
-  const gridEntries: MenuEntry[] = p.divisions.map(([d, label]) => ({ label, checked: p.division === d, onClick: () => p.onDivision(d) }))
+  const gridEntries: MenuEntry[] = divisions.map(([d, label]) => ({ label, checked: p.division === d, onClick: () => p.onDivision(d) }))
 
   const row = (label: string, control: React.ReactNode) => (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
@@ -144,11 +149,11 @@ export default function RollToolbar(p: RollToolbarProps) {
         </Tooltip>
         <ContextMenu position={gridMenu} entries={gridEntries} onClose={() => setGridMenu(null)} />
         <ToolbarDivider gap />
-        {btn(t('menu.cut'), faScissors, p.onCut, { disabled: none })}
-        {btn(t('menu.copy'), faCopy, p.onCopy, { disabled: none })}
-        {btn(t('menu.paste'), faPaste, p.onPaste, { disabled: !p.canPaste })}
-        {btn(t('menu.duplicate'), faClone, p.onDuplicate, { disabled: none })}
-        {btn(t('roll.remove'), faTrashCan, p.onRemove, { disabled: none })}
+        {btn(t('menu.cut'), faScissors, (() => p.edit.copy(true)), { disabled: none })}
+        {btn(t('menu.copy'), faCopy, (() => p.edit.copy(false)), { disabled: none })}
+        {btn(t('menu.paste'), faPaste, p.edit.paste, { disabled: !p.canPaste })}
+        {btn(t('menu.duplicate'), faClone, p.edit.duplicate, { disabled: none })}
+        {btn(t('roll.remove'), faTrashCan, (() => p.edit.remove(p.selectedIds)), { disabled: none })}
         <ToolbarDivider gap />
         {btn(t('roll.zoomIn'), faMagnifyingGlassPlus, () => p.onZoom(1.4))}
         {btn(t('roll.zoomOut'), faMagnifyingGlassMinus, () => p.onZoom(1 / 1.4))}
@@ -181,8 +186,8 @@ export default function RollToolbar(p: RollToolbarProps) {
             size="small"
             sx={{ alignSelf: 'flex-end' }}
             onClick={() => {
-              if (form === 'quantize') p.onQuantize(q)
-              else p.onHumanize(h)
+              if (form === 'quantize') p.edit.quantizeSel(q)
+              else p.edit.humanizeSel(h)
               setForm(null)
             }}
           >

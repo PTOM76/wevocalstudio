@@ -1,4 +1,5 @@
 // 設定画面の分類ごとの中身（定義のある項目は S(名前) の 1 行。WeVocalSynth と同じ形）
+import { canMidiInput } from '../useMidiInput'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Box, Button, Typography } from '@mui/material'
 import { listInputDevices, visibleAlgorithms, type Algorithm, type InputDevice } from 'wevocal-lib'
@@ -34,6 +35,23 @@ function InputDeviceRow(p: { value: string; onChange: (v: string) => void; t: (k
   )
 }
 
+/** MIDI キーボードの機器（つないでいるもの）の選択。MIDI 入力を使うときだけ、機器の一覧を読む */
+function MidiDeviceRow(p: { value: string; onChange: (v: string) => void; t: (key: MessageKey) => string }) {
+  const [inputs, setInputs] = useState<{ id: string; name: string }[]>([])
+  useEffect(() => {
+    if (!canMidiInput()) return
+    void navigator.requestMIDIAccess().then(
+      (a) => setInputs([...a.inputs.values()].map((i) => ({ id: i.id, name: i.name ?? i.id }))),
+      () => setInputs([]),
+    )
+  }, [])
+  return (
+    <Row label={p.t('settings.midiDevice')}>
+      <Choice<string> value={p.value} onChange={p.onChange} options={[['', p.t('settings.midiDeviceAll')], ...inputs.map((d) => [d.id, d.name] as [string, string])]} />
+    </Row>
+  )
+}
+
 /** 設定画面の分類ごとの中身。定義（items/）のある項目は S('名前') の 1 行で置け、検索の対象にも自動で入る */
 export function settingsPages({ draft, set, t, onClose, go, project }: { draft: Settings; set: (patch: Partial<Settings>) => void; t: (key: MessageKey, vars?: Record<string, string | number>) => string; onClose: () => void; go: (category: Category) => void; project: ProjectSettings }): Record<Category, ReactNode> {
   const S = (name: keyof Settings) => <SettingRow name={name} draft={draft} set={set} t={t} />
@@ -63,6 +81,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
           {S('recordNoiseSuppression')}
           {S('recordAutoGain')}
           {S('midiInput')}
+          {draft.midiInput && <MidiDeviceRow value={draft.midiDevice} onChange={(midiDevice) => set({ midiDevice })} t={t} />}
           {S('midiChannel')}
           {S('midiSustain')}
           {S('midiLatencyMs')}

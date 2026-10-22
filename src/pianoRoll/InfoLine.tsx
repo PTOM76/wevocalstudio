@@ -4,11 +4,17 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCaretDown } from '@fortawesome/free-solid-svg-icons'
 import { ContextMenu, NumberInput, pevenFont } from 'pevenmui'
 import { useState } from 'react'
-import { useT } from '../i18n'
+import { useT, type MessageKey } from '../i18n'
 import type { Note } from '../project'
 import { setDuration, shift, velocity } from './edit'
 import { LANES, type Lane } from './laneEdit'
 import { NAMES } from './view'
+
+/** レーンの名前（強さ、ピッチベンド、CC） */
+export function laneLabelOf(t: (key: MessageKey) => string, l: Lane) {
+  const names: Record<string, string> = { vel: t('roll.velocity'), bend: t('roll.laneBend'), cc1: t('roll.cc1'), cc7: t('roll.cc7'), cc10: t('roll.cc10'), cc11: t('roll.cc11'), cc64: t('roll.cc64') }
+  return names[l] ?? `CC ${l.slice(2)}`
+}
 
 export default function InfoLine(p: {
   notes: Note[]

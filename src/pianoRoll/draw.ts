@@ -32,6 +32,8 @@ export interface RollDraw {
   scale: Set<number> | null
   /** 鳴っている音（その鍵盤を色付けする。なければ null） */
   pressed: number | null
+  /** ステップ入力の位置（拍。ステップ入力でなければ null。点線で描く） */
+  stepAt: number | null
   /** 再生位置（拍。再生していなければ null） */
   play: number | null
   box: { x0: number; y0: number; x1: number; y1: number } | null
@@ -167,6 +169,13 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
       g.fillStyle = o.selected.includes(n.id) ? c.noteSelected : c.note
       g.fillRect(x, top + VEL * (1 - n.vel), 3, VEL * n.vel)
     }
+  if (o.stepAt !== null) {
+    const x = beatX(v, o.stepAt)
+    if (x >= KEYS && x <= v.w) {
+      g.fillStyle = c.noteSelected
+      for (let y = 0; y < v.h; y += 6) g.fillRect(x, y, 1.5, 3)
+    }
+  }
   if (o.play !== null) {
     const x = beatX(v, o.play)
     if (x >= KEYS && x <= v.w) {

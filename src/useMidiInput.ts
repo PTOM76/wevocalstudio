@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 /** この環境で MIDI 入力を使えるか */
 export const canMidiInput = () => typeof navigator !== 'undefined' && !!navigator.requestMIDIAccess
 
-export function useMidiInput(o: { enabled: boolean; /** 受けるチャンネル（1〜16。0 はすべて） */ channel?: number; /** サステインペダル（CC64）で、離した音をペダルを上げるまで伸ばす */ sustain?: boolean; onNote: (pitch: number, vel: number, on: boolean) => void; fail: (e: unknown) => void }) {
+export function useMidiInput(o: { enabled: boolean; /** 使う機器の id（空はつないだすべて） */ device?: string; /** 受けるチャンネル（1〜16。0 はすべて） */ channel?: number; /** サステインペダル（CC64）で、離した音をペダルを上げるまで伸ばす */ sustain?: boolean; onNote: (pitch: number, vel: number, on: boolean) => void; fail: (e: unknown) => void }) {
   // 呼ぶ側の最新の関数を使う（つなぎ直さずに済むように）
   const latest = useRef(o)
   latest.current = o
@@ -35,7 +35,8 @@ export function useMidiInput(o: { enabled: boolean; /** 受けるチャンネル
       }
     }
     const attach = () => {
-      if (access) for (const input of access.inputs.values()) input.onmidimessage = handler
+      const device = latest.current.device
+      if (access) for (const input of access.inputs.values()) input.onmidimessage = !device || input.id === device ? handler : null
     }
     navigator
       .requestMIDIAccess()
@@ -54,5 +55,5 @@ export function useMidiInput(o: { enabled: boolean; /** 受けるチャンネル
         for (const input of access.inputs.values()) input.onmidimessage = null
       }
     }
-  }, [o.enabled])
+  }, [o.enabled, o.device])
 }

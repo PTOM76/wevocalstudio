@@ -24,6 +24,7 @@ import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
 import { buildMidi } from './midiExport'
+import { emitNote } from './pianoRoll/noteBus'
 import { readMidi } from './midiImport'
 import { addWvspTracks, newProject, songEnd, trackHeight, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, visibleTracks, type Track } from './project'
 import Timeline, { useHeaderWidth } from './Timeline'
@@ -199,9 +200,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // MIDI キーボード: 弾いた音を、録音待機（なければ選んでいる、音源のある最初の）トラックの音源で鳴らす。録音中は MIDI ブロックに録る
   useMidiInput({
     enabled: p.settings.midiInput,
+    device: p.settings.midiDevice,
     channel: p.settings.midiChannel,
     sustain: p.settings.midiSustain,
     onNote: (pitch, vel, on) => {
+      // 開いているピアノロールのステップ入力にも渡す
+      emitNote(pitch, vel, on)
       const tracks = project.tracks.filter((tr) => tr.instrument)
       const target = tracks.find((tr) => tr.armed) ?? tracks.find((tr) => tr.id === selectedTrack) ?? tracks[0]
       if (!target) return

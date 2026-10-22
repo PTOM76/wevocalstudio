@@ -27,6 +27,8 @@ export const general = defineItems('general', {
   // MIDI キーボードをつなぐ（弾いた音を、音源のあるトラックで鳴らす。録音待機のトラックでは MIDI ブロックに録る）。Chrome、Edge のみ
   midiInput: check(false, { label: 'settings.midiInput', help: 'settings.midiInputHelp' }),
   // 受けるチャンネル（0 はすべて）、サステインペダル（CC64）、録音の遅れの補正（ms。入力が遅れて届く分を、録る位置から引く）、録り方
+  // 使う MIDI 入力の機器（'' はつないだすべて。設定画面は自前の行）
+  midiDevice: value(''),
   midiChannel: number(0, { label: 'settings.midiChannel', help: 'settings.midiChannelHelp', min: 0, max: 16, step: 1 }),
   midiSustain: check(true, { label: 'settings.midiSustain' }),
   midiLatencyMs: number(0, { label: 'settings.midiLatencyMs', help: 'settings.midiLatencyMsHelp', min: 0, max: 300, step: 5, unit: 'ms' }),
