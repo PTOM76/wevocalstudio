@@ -76,6 +76,8 @@ export default function Timeline(p: {
   livePos: () => number | null
   /** 再生位置に表示を追従させる */
   follow: boolean
+  /** ホイールで拡大縮小する操作（ctrl は Ctrl 併用、wheel はホイールだけ。もう一方は縦のスクロール） */
+  wheelZoom: 'ctrl' | 'wheel'
   /** 編集カーソルだけを動かす（波形ブロックを押したとき） */
   onCursor: (t: number) => void
   selected: string[]
@@ -248,6 +250,8 @@ export default function Timeline(p: {
   // 並び替えのドラッグ中、欄の上下の端に近づいたら縦にスクロールする（落とす位置の線も追従）
   const dragYRef = useRef(0)
   const maxVRef = useRef(0)
+  const wheelZoomRef = useRef(p.wheelZoom)
+  wheelZoomRef.current = p.wheelZoom
   useEffect(() => {
     if (!draggingTrackId) return
     const EDGE = 40
@@ -361,9 +365,11 @@ export default function Timeline(p: {
     }
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      // 何も押していなければ縦にスクロール
-      if (!e.ctrlKey && !e.shiftKey && !e.deltaX) acc.vy += e.deltaY
-      else if (e.ctrlKey) {
+      const modifier = e.ctrlKey || e.metaKey
+      const zooming = wheelZoomRef.current === 'wheel' ? !modifier && !e.shiftKey && !e.deltaX : modifier
+      // 拡大縮小でも横スクロールでもなければ縦にスクロール
+      if (!zooming && !e.shiftKey && !e.deltaX) acc.vy += e.deltaY
+      else if (zooming) {
         acc.zoom *= e.deltaY < 0 ? 1.2 : 1 / 1.2
         acc.zx = localX(e)
       } else acc.sx += e.deltaX || e.deltaY

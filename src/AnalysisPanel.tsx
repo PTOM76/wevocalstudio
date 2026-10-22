@@ -66,6 +66,10 @@ export default function AnalysisPanel(p: {
   range: Range | null
   /** テンポ（ビブラートの速さ、MIDI のテンポ） */
   bpm: number
+  /** F0 を探す音の範囲（Hz）と、「平らにする」の強さ（設定） */
+  f0MinHz: number
+  f0MaxHz: number
+  flattenStrength: number
   /** ペンで描いたカーブ（merge は続けて描く間の履歴のまとまり） */
   onCurve: (curve: PitchCurve | undefined, merge: string) => void
   onEndMerge: () => void
@@ -105,12 +109,12 @@ export default function AnalysisPanel(p: {
   }, [])
 
   // 元の音の F0 は、使う範囲が変わったときだけ解析する
-  const spanKey = p.block && p.source ? `${p.source.id}|${p.block.offset}|${p.block.length}|${p.block.rate}` : ''
+  const spanKey = p.block && p.source ? `${p.source.id}|${p.block.offset}|${p.block.length}|${p.block.rate}|${p.f0MinHz}|${p.f0MaxHz}` : ''
   useEffect(() => {
     setOrig(null)
     if (!p.block || !p.source) return
     const ac = new AbortController()
-    analyzePitch(sourceSpan(p.block, p.source), { signal: ac.signal }).then(setOrig, () => {})
+    analyzePitch(sourceSpan(p.block, p.source), { signal: ac.signal, minHz: p.f0MinHz, maxHz: p.f0MaxHz }).then(setOrig, () => {})
     return () => ac.abort()
     // 範囲（spanKey）が変わったときだけ
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,7 +128,7 @@ export default function AnalysisPanel(p: {
     const ac = new AbortController()
     const id = setTimeout(() => {
       setBusy(true)
-      Promise.all([analyzeSpectrogram(target.clip, { signal: ac.signal }), analyzePitch(target.clip, { signal: ac.signal })])
+      Promise.all([analyzeSpectrogram(target.clip, { signal: ac.signal }), analyzePitch(target.clip, { signal: ac.signal, minHz: p.f0MinHz, maxHz: p.f0MaxHz })])
         .then(([s, f]) => {
           setSpec(s)
           setPitch(f)
@@ -136,7 +140,8 @@ export default function AnalysisPanel(p: {
       clearTimeout(id)
       ac.abort()
     }
-  }, [target])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, p.f0MinHz, p.f0MaxHz])
 
   const maxHz = spec?.maxHz ?? 22050
   const yOfHz = (hz: number) => HEIGHT - (Math.log(hz / MIN_HZ) / Math.log(maxHz / MIN_HZ)) * HEIGHT
@@ -278,7 +283,7 @@ export default function AnalysisPanel(p: {
         <ToolButton icon={faEraser} label="analysis.clearCurve" disabled={!p.block?.curve} onClick={() => p.onCurve(undefined, `clear${strokes.current++}`)} />
         <Divider />
         {/* ピッチの道具（wevocal-lib の計算とダイアログ。WeVocalSynth と同じ） */}
-        <PitchToolBar block={p.block} f0={orig} range={p.range} bpm={p.bpm} onCurve={p.onCurve} />
+        <PitchToolBar block={p.block} f0={orig} range={p.range} bpm={p.bpm} flattenStrength={p.flattenStrength} onCurve={p.onCurve} />
       </Box>
       <Box sx={{ display: 'flex', height: HEIGHT }}>
         <Box sx={{ width: p.headerWidth, flexShrink: 0, borderRight: 1, borderColor: 'divider', p: 1, boxSizing: 'border-box', overflow: 'hidden' }}>

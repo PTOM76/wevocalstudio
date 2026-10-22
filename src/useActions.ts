@@ -22,6 +22,8 @@ export interface ActionContext {
   selectedTrack: string | null
   selectedTracks: string[]
   defaultFade: number
+  /** 貼り付けと無音の挿入のあと、再生位置を入れた範囲の終わりへ移すか（設定） */
+  seekAfterInsert: boolean
   /** 範囲選択 */
   range: Range | null
   setRange: (r: Range | null) => void
@@ -166,7 +168,7 @@ export function useActions(c: ActionContext) {
     ]
     c.select(ids)
     // 貼り付けたものの右端に再生位置を移す（Ctrl+V を続けると、すき間なく並ぶ）
-    c.moveCursor(cursor + Math.max(...items.map((b) => b.start + b.length)) - first)
+    if (c.seekAfterInsert) c.moveCursor(cursor + Math.max(...items.map((b) => b.start + b.length)) - first)
   }
 
   /** 選んでいるものをまとめて、すぐ後ろに並べる */
@@ -226,7 +228,7 @@ export function useActions(c: ActionContext) {
     clearRange: { enabled: !!c.range || any, run: () => (c.setRange(null), c.select([])) },
     trimRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => cropToRange(p, c.range!, c.defaultFade)) },
     deleteRange: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => deleteRange(p, c.range!, c.defaultFade)), c.setRange(null)) },
-    insertSilence: { enabled: !!c.range, run: () => c.range && doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start, c.defaultFade)) },
+    insertSilence: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start, c.defaultFade)), c.seekAfterInsert && c.moveCursor(c.range.end)) },
     repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId, c.defaultFade)) },
     normalize: { enabled: anyWave, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
     bake: { enabled: anyWave, run: () => c.bake(ids) },

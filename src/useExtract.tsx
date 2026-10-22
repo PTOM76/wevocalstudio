@@ -30,7 +30,7 @@ export function useExtract(o: { doc: ReturnType<typeof useProject>; settings: Se
   // GPU で処理できなかったら、CPU で続けるかを尋ねる（WeVocalSynth と同じ）
   const confirmCpu = (reason: string) => confirm({ message: t('extract.gpuFallback', { reason }), okLabel: t('extract.gpuFallbackOk') })
   // この端末と非互換のモデルなら、代わりのモデルで抽出する（設定は変えない）
-  const base = (): ExtractOptions => ({ model: resolveModel(s.vocalModel, s.vocalGpu).model, gpu: s.vocalGpu, keepHighBand: s.vocalKeepHighBand })
+  const base = (): ExtractOptions => ({ model: resolveModel(s.vocalModel, s.vocalGpu).model, gpu: s.vocalGpu, keepHighBand: s.vocalKeepHighBand, memoryMb: s.vocalMemoryMb, threads: s.vocalThreads })
   const ui = { ensure: install.ensure, confirmCpu, noAdapter: t('extract.noAdapter') }
 
   /** 選んだ波形ブロックの音を `split` で分け、名前を付けて新しいトラックに並べる */

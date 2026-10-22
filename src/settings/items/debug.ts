@@ -15,6 +15,10 @@ export const debug = defineItems('debug', {
   showVst: check(false, { label: 'settings.showVst', help: 'settings.showVstHelp' }),
   // 開発者向けのプラグイン（雛形）を FX の追加の一覧に出す
   showDevPlugins: check(false, { label: 'settings.showDevPlugins', help: 'settings.showDevPluginsHelp' }),
+  // 止めている間は AudioContext を一時停止する（iOS で音が出ないときの切り分け用。WeVocalSynth と同じ）
+  suspendWhenStopped: check(true, { label: 'settings.suspendWhenStopped', help: 'settings.suspendWhenStoppedHelp' }),
+  // iOS のオーディオセッションを再生用にする（消音スイッチでも鳴る）
+  playbackSession: check(true, { label: 'settings.playbackSession', help: 'settings.playbackSessionHelp' }),
   // 追加機能を、選んだフォルダーに保存する（試験的。Chrome、Edge。WeVocalSynth と同じ）。フォルダーは AddonFolderRow で選ぶ
   addonFolder: check(false, { label: 'settings.addonFolder', help: 'settings.addonFolderHelp' }),
   filePicker: choice<PickerMode>('auto', {

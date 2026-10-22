@@ -281,7 +281,7 @@ export interface Project {
 }
 
 /** 新しいプロジェクト。すぐ置けるよう、空のトラックを 1 つ用意しておく */
-export const newProject = (): Project => ({ sources: [], tempo: DEFAULT_TEMPO, markers: [], master: { volume: 0, pan: 0, mute: false }, tracks: [newTrack(1)], blocks: [] })
+export const newProject = (bpm = DEFAULT_TEMPO.bpm): Project => ({ sources: [], tempo: bpm === DEFAULT_TEMPO.bpm ? DEFAULT_TEMPO : { ...DEFAULT_TEMPO, bpm }, markers: [], master: { volume: 0, pan: 0, mute: false }, tracks: [newTrack(1)], blocks: [] })
 
 /** 新しい波形ブロックの処理方式（設定の既定値） */
 export type PitchDefaults = Pick<Block, 'algorithm' | 'preserveFormant'>

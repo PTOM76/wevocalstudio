@@ -57,10 +57,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const t = useT()
   const { confirm, dialog: confirmDialog } = useConfirm()
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
-  setKeyOverrides(p.settings.keys)
+  setKeyOverrides(p.settings.keymap, p.settings.ctrlS)
   const mobile = useMobileLayout()
   const { width: header, bar: headerBar, collapsed: headerCollapsed, toggle: toggleHeader } = useHeaderWidth()
   // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
+  const { suspendWhenStopped, playbackSession } = p.settings
+  useEffect(() => void configurePlayback({ suspendWhenStopped, playbackSession, report: reportAudioContext }), [suspendWhenStopped, playbackSession])
   useEffect(() => setOutputDevice(p.settings.outputDevice), [p.settings.outputDevice])
   useEffect(() => setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null), [p.settings.outputLimit, p.settings.outputLimitDb])
   const addonFolderNotice = useAddonFolder(p.settings.addonFolder)
@@ -78,7 +80,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onSettingsChange])
-  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit, defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0 })
+  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit, defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0, defaultBpm: p.settings.defaultBpm })
   const { project, selected } = doc
   const setSelected = doc.select
   const player = useRef(new Player())
@@ -253,7 +255,14 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     } else setPlayPos(null)
   }
 
-  const load = (files: File[], at?: DropAt) => doc.addFiles(files, at).catch(fail)
+  // 何もない状態で最初に読み込んだ音からは、テンポを自動で解析する（設定）
+  const load = (files: File[], at?: DropAt) => {
+    const first = project.blocks.length === 0
+    return doc
+      .addFiles(files, at)
+      .then((added) => (first && p.settings.autoTempo && added[0] ? tempo.detectClip(added[0].clip) : undefined))
+      .catch(fail)
+  }
 
   const files = useProjectFile({
     t,
@@ -283,6 +292,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
 
   const { menus, blockMenu, emptyMenu, commands } = useActions({
+    seekAfterInsert: p.settings.seekAfterInsert,
     doc,
     cursor,
     playing,
@@ -310,7 +320,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       void (files.dirty ? confirm({ message: t('confirm.newProject'), okLabel: t('menu.newProject'), danger: true }) : Promise.resolve(true)).then((ok) => {
         if (!ok) return
         stop()
-        const fresh = newProject()
+        const fresh = newProject(p.settings.defaultBpm)
         doc.replace(fresh, 'history.new')
         files.markSaved(fresh)
         setFileName('untitled')
@@ -383,7 +393,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     openHistory: () => dialogs.open('history'),
     snap: p.settings.snap,
     toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
-    follow: p.settings.follow,
+    follow: p.settings.followPlayhead,
     envelope: p.settings.envelope,
     // 音量とピッチのエンベロープは、どちらか一方だけを出す
     toggleEnvelope: () => p.onSettingsChange({ envelope: !p.settings.envelope, pitchEnvelope: false, autoEdit: false }),
@@ -393,7 +403,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     togglePitchEnvelope: () => p.onSettingsChange({ pitchEnvelope: !p.settings.pitchEnvelope, envelope: false, autoEdit: false }),
     autoEdit: p.settings.autoEdit,
     toggleAutoEdit: () => p.onSettingsChange({ autoEdit: !p.settings.autoEdit, envelope: false, pitchEnvelope: false }),
-    toggleFollow: () => p.onSettingsChange({ follow: !p.settings.follow }),
+    toggleFollow: () => p.onSettingsChange({ followPlayhead: !p.settings.followPlayhead }),
     beatGrid: p.settings.grid === 'beats',
     toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
     showAnalysis: p.settings.showAnalysis,
@@ -441,7 +451,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     >
       <AppHeader menus={menus} canUndo={doc.canUndo} canRedo={doc.canRedo} onUndo={doc.undo} onRedo={doc.redo} projectName={fileName} dirty={files.dirty} />
       <Toolbar
-        follow={p.settings.follow}
+        follow={p.settings.followPlayhead}
         snap={p.settings.snap}
         envelope={p.settings.envelope}
         onEnvelope={commands.envelope.run}
@@ -495,7 +505,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         livePos={livePos}
         recording={!!recording}
         live={live}
-        follow={p.settings.follow}
+        follow={p.settings.followPlayhead}
         onCursor={moveCursor}
         selected={selected}
         onSelect={setSelected}
@@ -510,6 +520,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         headerWidth={header}
         headerBar={headerBar}
         headerCollapsed={headerCollapsed}
+        wheelZoom={p.settings.wheelZoom}
         onToggleHeader={toggleHeader}
         onMasterChange={doc.updateMaster}
         onTrackChange={(id, patch, merge) => {
@@ -580,6 +591,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       {p.settings.showAnalysis && (
         <AnalysisPanel
           bpm={project.tempo.bpm}
+          f0MinHz={p.settings.f0MinHz}
+          f0MaxHz={p.settings.f0MaxHz}
+          flattenStrength={p.settings.flattenStrength}
           block={project.blocks.find((b) => b.id === selected[0]) ?? null}
           source={sourceOf(project.blocks.find((b) => b.id === selected[0])?.source)}
           view={view}
@@ -607,7 +621,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           position={playPos ?? cursor}
           livePosition={() => livePos() ?? cursor}
           playing={playing}
-          showPlayhead
+          showPlayhead={p.settings.minimapPlayhead}
         />
         </Box>
       )}

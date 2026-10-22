@@ -3,6 +3,7 @@ import type { Algorithm } from 'wevocal-lib'
 import type { StemModel, VocalModel } from 'wevocalextractor/host'
 import type { GridDivision, GridMode } from '../../grid'
 import { check, choice, defineItems, number, value } from './define'
+import { t } from '../../i18n'
 
 /** 「処理」 */
 export const pitch = defineItems('process', {
@@ -16,6 +17,19 @@ export const pitch = defineItems('process', {
   anticipativeFx: check(false, { label: 'settings.anticipativeFx', help: 'settings.anticipativeFxHelp' }),
   // 先に計算した音を、再生をまたいで取っておく量（MB。0 で取っておかない。memo/fx-cache.md）
   anticipativeCacheMb: number(256, { label: 'settings.anticipativeCacheMb', help: 'settings.anticipativeCacheMbHelp', min: 0, max: 2048, step: 64, unit: 'MB' }),
+})
+
+/** 「ピッチ」「テンポ」（名前と既定値は WeVocalSynth と同じ） */
+export const analysis = defineItems('process', {
+  // 解析の欄の F0 を探す音の範囲（Hz）
+  f0MinHz: number(60, { label: 'settings.f0MinHz', min: 40, max: 400, step: 1, unit: 'Hz' }),
+  f0MaxHz: number(1000, { label: 'settings.f0MaxHz', min: 200, max: 2000, step: 10, unit: 'Hz' }),
+  // 「平らにする」の強さ（1 未満なら元の揺れを少し残す）
+  flattenStrength: choice<number>(1, { label: 'settings.flattenStrength', help: 'settings.flattenStrengthHelp', values: [1, 0.75, 0.5, 0.25], format: (s) => Math.round(s * 100) + '%' }),
+  // 音声を最初に読み込んだとき、テンポを自動解析して BPM と 1 拍目の位置を入れる
+  autoTempo: check(true, { label: 'settings.autoTempo', help: 'settings.autoTempoHelp' }),
+  // 新しいプロジェクトの BPM
+  defaultBpm: number(120, { label: 'settings.defaultBpm', help: 'settings.defaultBpmHelp', min: 20, max: 300, step: 1, unit: 'BPM', round: (v) => Math.round(v * 100) / 100 }),
 })
 
 /** 時間軸の線（「編集」に出す） */
@@ -39,6 +53,9 @@ export const vocal = defineItems('vocal', {
   vocalGpu: value(true, { label: 'settings.vocalGpu', help: 'settings.vocalGpuHelp' }),
   // 約 11kHz より上を残す（既定は消す）
   vocalKeepHighBand: check(false, { label: 'settings.vocalKeepHighBand', help: 'settings.vocalKeepHighBandHelp' }),
+  // CPU（wasm）で使うスレッドの数（0 は自動）と、抽出の wasm のメモリの上限（MB）
+  vocalThreads: choice<number>(0, { label: 'settings.vocalThreads', help: 'settings.vocalThreadsHelp', values: [0, 1, 2, 4, 8], format: (n) => (n === 0 ? t('settings.vocalThreadsAuto') : String(n)) }),
+  vocalMemoryMb: choice<number>(1024, { label: 'settings.vocalMemory', help: 'settings.vocalMemoryHelp', values: [256, 512, 1024, 2048, 4096], format: (mb) => (mb < 1024 ? `${mb} MB` : `${mb / 1024} GB`) }),
   // 楽器ごとに分けるモデル（Demucs。4 つか、ギターとピアノも分ける 6 つ）
   stemModel: choice<StemModel>('htdemucs', {
     label: 'settings.stemModel',

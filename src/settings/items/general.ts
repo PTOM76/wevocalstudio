@@ -1,8 +1,12 @@
 // 「全般」「編集」「キーとマウス」「ファイル」の項目（名前と既定値は WeVocalSynth と同じ）
 import type { KeymapOverrides } from 'pevenmui'
+import type { WheelZoom } from 'wevocal-lib/react'
 import type { StartFolder } from 'pevenmui/web'
 import type { Action } from '../../keymap'
 import { check, choice, defineItems, number, value } from './define'
+
+/** Ctrl+S で行うこと（もう一方は Ctrl+Shift+S になる） */
+export type CtrlSAction = 'project' | 'export'
 
 /** 「全般」 */
 export const general = defineItems('general', {
@@ -50,12 +54,30 @@ export const edit = defineItems('edit', {
   // 新しい波形ブロックと分割点に付けるフェード
   defaultBlockFade: check(true, { label: 'settings.defaultBlockFade' }),
   defaultBlockFadeMs: number(10, { label: 'settings.defaultBlockFadeMs', min: 1, max: 500, step: 1, unit: 'ms' }),
+  // 貼り付けと無音の挿入のあと、再生位置を入れた範囲の終わりへ移す（WeVocalSynth と同じ）
+  seekAfterInsert: check(true, { label: 'settings.seekAfterInsert' }),
 })
 
 /** 「キーとマウス」 */
 export const keys = defineItems('keys', {
+  // ホイールでの拡大縮小の割り当て
+  wheelZoom: choice<WheelZoom>('ctrl', {
+    label: 'settings.wheelZoom',
+    options: [
+      ['ctrl', 'settings.wheelZoomCtrl'],
+      ['wheel', 'settings.wheelZoomWheel'],
+    ],
+  }),
+  // Ctrl+S で行うこと。もう一方は Ctrl+Shift+S になる
+  ctrlS: choice<CtrlSAction>('project', {
+    label: 'settings.ctrlS',
+    options: [
+      ['project', 'settings.ctrlSProject'],
+      ['export', 'settings.ctrlSExport'],
+    ],
+  }),
   // 既定から変えたキーの割り当て（keymap.ts）
-  keys: value<KeymapOverrides<Action>>({}),
+  keymap: value<KeymapOverrides<Action>>({}),
 })
 
 /** 「ファイル」 */

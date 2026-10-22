@@ -3,10 +3,10 @@ import { collectItems, type ItemsOf, type SettingsOf } from 'pevenmui'
 import { debug } from './debug'
 import { display, stored, view } from './display'
 import { edit, file, general, keys } from './general'
-import { grid, pitch, vocal } from './process'
+import { analysis, grid, pitch, vocal } from './process'
 
 /** すべての項目の集まり。設定を足すときは、分類のファイルに 1 行足す */
-export const GROUPS = [general, edit, grid, keys, file, display, view, stored, pitch, vocal, debug] as const
+export const GROUPS = [general, edit, grid, keys, file, display, view, stored, pitch, analysis, vocal, debug] as const
 
 const collected = collectItems(GROUPS)
 /** 項目の定義（名前から引く） */

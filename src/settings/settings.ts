@@ -6,6 +6,30 @@ import { DEFAULT_SETTINGS, type Settings } from './items'
 export { DEFAULT_SETTINGS, type Settings }
 export type { ThemeSetting } from './items/display'
 
+/** 名前を変えた設定の、古い名前で保存した値を新しい名前に移す（起動時に 1 回） */
+function migrate(key: string) {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return
+    const s = JSON.parse(raw) as Record<string, unknown>
+    const renamed: [string, string][] = [
+      ['follow', 'followPlayhead'],
+      ['keys', 'keymap'],
+    ]
+    let changed = false
+    for (const [from, to] of renamed) {
+      if (!(from in s)) continue
+      if (!(to in s)) s[to] = s[from]
+      delete s[from]
+      changed = true
+    }
+    if (changed) localStorage.setItem(key, JSON.stringify(s))
+  } catch {
+    // 読めない、書けないときは、そのまま既定値で始める
+  }
+}
+migrate(app.key('settings'))
+
 const store = createSettingsStore<Settings>(app.key('settings'), DEFAULT_SETTINGS)
 /** localStorage から読む（描画の前に使う。起動時のウィンドウの枠） */
 export const loadSettings = store.load

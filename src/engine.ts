@@ -7,7 +7,7 @@ import { createInstrument, findInstrument, preloadInstruments, type ControlEvent
 import { curveSteps } from './midiCurves'
 import { playedNotes, playedPoints } from './midiLoop'
 import { liveProcessors, renderLoad } from 'wevocal-lib'
-import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, createLimitedOutput, preloadFx, startContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
+import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainOptions, createLimitedOutput, preloadFx, startContext, suspendContext, startRenderLoad, renderWithProgress, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { clipFor, piecesFor, preparePitch } from './dsp/pitch'
@@ -665,6 +665,12 @@ export class Player {
     // 待っている play があれば捨てる
     this.latest++
     this.halt()
+    // フェードが終わってから、音声処理を止める（設定でオフなら suspendContext が何もしない。再生や鍵盤の音が始まっていれば止めない）
+    const ctx = this.ctx
+    if (ctx)
+      setTimeout(() => {
+        if (!this.playing && !this.starting && !this.monitor) suspendContext(ctx, 'player')
+      }, FADE * 4 * 1000 + 50)
   }
 
   /** 鳴っている音を止める（play の組み直しからも使う。待っている play は捨てない） */
@@ -776,6 +782,8 @@ export class Player {
       this.monitor.sync(q, false)
       this.monitorKey = key
     }
+    // 止まっている間に音声処理を止めていたら、鍵盤の音のために動かす
+    if (ctx.state !== 'running') await startContext(ctx, 'player')
     send(this.monitor)
   }
 

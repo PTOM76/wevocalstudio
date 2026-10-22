@@ -1,5 +1,6 @@
 // キーの割り当て。既定の表（操作の名前 → キー）と、設定の「キーとマウス」で変えた分（PevenMUI の keymap と同じ形）
 import { comboOf, resolveKeymap, type KeymapOverrides } from 'pevenmui'
+import type { CtrlSAction } from './settings/items/general'
 
 /** 操作の名前 */
 export type Action =
@@ -215,8 +216,18 @@ export const ACTIONS = (Object.keys(DEFAULT_KEYS) as Action[]).map((id) => ({ id
 
 /** 今の割り当て（設定で変えたものはそれ、ほかは既定）。App が設定から入れる */
 let keymap: Record<Action, string[]> = DEFAULT_KEYS
-export function setKeyOverrides(o: KeymapOverrides<Action>) {
-  keymap = resolveKeymap(ACTIONS, o)
+export function setKeyOverrides(o: KeymapOverrides<Action>, ctrlS: CtrlSAction = 'project') {
+  keymap = resolveKeymap(ACTIONS, o, (id) => defaultKeys(id, ctrlS))
+}
+
+/** 既定のキー。`ctrlS` が書き出しなら、Ctrl+S を書き出し、Ctrl+Shift+S を保存にする（名前を付けて保存は割り当てなし） */
+function defaultKeys(id: Action, ctrlS: CtrlSAction): string[] {
+  if (ctrlS === 'export') {
+    if (id === 'save') return ['Ctrl+Shift+KeyS']
+    if (id === 'saveAs') return []
+    if (id === 'export') return ['Ctrl+KeyS', 'Ctrl+Alt+KeyR']
+  }
+  return DEFAULT_KEYS[id]
 }
 export const currentKeys = (a: Action) => keymap[a]
 /** 今の割り当て全部（ショートカットの一覧） */

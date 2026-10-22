@@ -14,6 +14,8 @@ export default function PitchToolBar(p: {
   f0: { data: Float32Array; hopSec: number } | null
   range: Range | null
   bpm: number
+  /** 「平らにする」の強さ（設定。1 で揺れを取り除く） */
+  flattenStrength: number
   onCurve: (curve: PitchCurve, merge: string) => void
 }) {
   const t = useT()
@@ -30,7 +32,7 @@ export default function PitchToolBar(p: {
   const close = () => setOpen(null)
   return (
     <PitchToolText.Provider value={t}>
-      <ToolButton icon={faGripLines} label="pitchTool.flatten" disabled={off} onClick={() => run((cur, f0, k0, k1) => flattenPitch(cur, f0, k0, k1))} />
+      <ToolButton icon={faGripLines} label="pitchTool.flatten" disabled={off} onClick={() => run((cur, f0, k0, k1) => flattenPitch(cur, f0, k0, k1, p.flattenStrength))} />
       <ToolButton icon={faMagnet} label="snap.title" disabled={off} onClick={() => setOpen('snap')} />
       <ToolButton icon={faWaveSquare} label="vibrato.title" disabled={off} onClick={() => setOpen('vibrato')} />
       <ToolButton icon={faFileAudio} label="midi.title" disabled={off} onClick={() => setOpen('midi')} />

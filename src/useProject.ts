@@ -39,11 +39,11 @@ async function decodeNamed(file: File): Promise<Clip> {
   }
 }
 
-export function useProject(defaults: PitchDefaults & { historyLimit: number; defaultFade: number }) {
+export function useProject(defaults: PitchDefaults & { historyLimit: number; defaultFade: number; defaultBpm: number }) {
   // 元に戻せる回数（設定）
   const limit = useRef(defaults.historyLimit)
   limit.current = defaults.historyLimit
-  const [history, setHistory] = useState<History>(() => ({ past: [], present: { project: newProject(), selected: [], label: 'history.new' }, future: [] }))
+  const [history, setHistory] = useState<History>(() => ({ past: [], present: { project: newProject(defaults.defaultBpm), selected: [], label: 'history.new' }, future: [] }))
   // 読み込みの途中で設定が変わっても、最新の既定値を使う
   const defaultsRef = useRef(defaults)
   defaultsRef.current = defaults
@@ -213,9 +213,11 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   const addFiles = useCallback(
     async (files: File[], at?: DropAt) => {
       let start = at?.start ?? 0
+      const added: Source[] = []
       for (const file of files) {
         const clip = await decodeNamed(file)
         const source: Source = { id: newId(), name: file.name, clip, duration: clip.channels[0].length / clip.sampleRate }
+        added.push(source)
         const name = file.name.replace(/\.[^.]+$/, '')
         const begin = start
         change((p) => {
@@ -232,6 +234,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
         })
         if (at) start += source.duration
       }
+      return added
     },
     [change],
   )

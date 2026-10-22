@@ -29,6 +29,8 @@ export const display = defineItems('display', {
     ],
   }),
   showMeters: check(true, { label: 'settings.showMeters', help: 'settings.showMetersHelp' }),
+  // ミニマップに再生位置の線を表示する（WeVocalSynth と同じ）
+  minimapPlayhead: check(true, { label: 'menu.minimapPlayhead', help: 'settings.minimapPlayheadHelp' }),
   envelopeRange: choice<VolumeEnvelopeRange>(60, { label: 'settings.envelopeRange', help: 'settings.envelopeRangeHelp', values: [...VOLUME_ENV_RANGES], format: (n) => `−${n} ～ +12 dB` }),
   pitchEnvelopeRange: choice<(typeof PITCH_ENV_RANGES)[number]>(3, { label: 'settings.pitchEnvelopeRange', help: 'settings.pitchEnvelopeRangeHelp', values: [...PITCH_ENV_RANGES], format: (n) => `±${n} st` }),
   language: value<LangSetting>('auto', { label: 'settings.language' }),
@@ -43,7 +45,7 @@ export const view = defineItems(null, {
   // ドラッグを目盛りの線や波形ブロックの端に吸い付ける
   snap: value(true, { label: 'menu.snap' }),
   // 再生中に表示を再生位置に追従させる
-  follow: value(true, { label: 'menu.follow' }),
+  followPlayhead: value(true, { label: 'menu.follow' }),
   // 音量のエンベロープを出して編集する
   envelope: value(false, { label: 'menu.envelope' }),
   // ピッチのエンベロープを出して編集する（音量のエンベロープとはどちらか一方）

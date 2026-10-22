@@ -97,6 +97,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         <Group title={t('settings.groupHistory')}>{S('historyLimit')}</Group>
         <Group title={t('settings.groupInput')}>
           {S('sliderDoubleClickReset')}
+          {S('seekAfterInsert')}
           {S('grid')}
         </Group>
         <Group title={t('settings.groupFade')}>
@@ -107,7 +108,9 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
     ),
     keys: (
       <Group title={t('settings.groupShortcuts')}>
-        <KeymapEditor actions={keyActions} overrides={draft.keys} onChange={(keys) => set({ keys })} />
+        {S('ctrlS')}
+        {S('wheelZoom')}
+        <KeymapEditor actions={keyActions} overrides={draft.keymap} onChange={(keymap) => set({ keymap })} />
       </Group>
     ),
     file: (
@@ -122,6 +125,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('theme')}
         {S('uiScale')}
         {S('showMeters')}
+        {S('minimapPlayhead')}
         {S('envelopeRange')}
         {S('pitchEnvelopeRange')}
         {S('editBar')}
@@ -131,15 +135,26 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
       </Group>
     ),
     process: (
-      <Group title={t('settings.groupDefaultAlgorithm')}>
-        <Row label={t('settings.algorithm')}>
-          <Choice<Algorithm> value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} options={visibleAlgorithms(draft.showLegacyAlgorithms, [draft.algorithm]).map((a): [Algorithm, string] => [a.value, t(a.label)])} />
-        </Row>
-        {S('showLegacyAlgorithms')}
-        {S('preserveFormant')}
-        {S('anticipativeFx')}
-        {S('anticipativeCacheMb')}
-      </Group>
+      <>
+        <Group title={t('settings.groupDefaultAlgorithm')}>
+          <Row label={t('settings.algorithm')}>
+            <Choice<Algorithm> value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} options={visibleAlgorithms(draft.showLegacyAlgorithms, [draft.algorithm]).map((a): [Algorithm, string] => [a.value, t(a.label)])} />
+          </Row>
+          {S('showLegacyAlgorithms')}
+          {S('preserveFormant')}
+          {S('anticipativeFx')}
+          {S('anticipativeCacheMb')}
+        </Group>
+        <Group title={t('settings.groupTempo')}>
+          {S('autoTempo')}
+          {S('defaultBpm')}
+        </Group>
+        <Group title={t('settings.groupPitch')}>
+          {S('f0MinHz')}
+          {S('f0MaxHz')}
+          {S('flattenStrength')}
+        </Group>
+      </>
     ),
     vocal: (
       <>
@@ -167,6 +182,8 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
           />
           {S('vocalKeepHighBand')}
           {S('vocalBeforeAnalysis')}
+          {S('vocalThreads')}
+          {S('vocalMemoryMb')}
         </Group>
         <Group title={t('settings.groupStems')}>
           {S('stemModel')}
@@ -216,6 +233,8 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('showVoiceSplit')}
         {S('showVst')}
         {S('showDevPlugins')}
+        {S('suspendWhenStopped')}
+        {S('playbackSession')}
         {/* 追加機能の保存先のフォルダー（Chrome、Edge だけ） */}
         {addonFolderSupported() && S('addonFolder')}
         {addonFolderSupported() && draft.addonFolder && <AddonFolderRow />}
