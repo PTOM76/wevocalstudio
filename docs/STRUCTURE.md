@@ -13,6 +13,7 @@ src/
   App.tsx  画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
   appConfig.ts  アプリの定義（名前、URL、保存のキー）を画面から使う形にする
   AppDialogs.tsx  アプリ全体のダイアログ（ショートカット、履歴、書き出し、設定、ライセンス、バージョン情報。WeVocalSynth の AppDialogs と同じ役目）
+  AppDock.tsx  ドック（画面の下の欄に、ダイアログを置けるようにする PevenMUI の DockProvider）に、アプリの訳文を渡す
   AppHeader.tsx  上部のバー（WeVocalSynth の AppHeader と同じ）。PC は低いメニューバー、スマホは上部バー。右端に元に戻す、やり直し
   appInfo.ts  アプリの定義。vite.config.ts からも読み込むので、ほかのファイルを import しない（画面からは appConfig.ts の app を使う）
   autoLane.ts  時間軸に出すオートメーションのレーン（トラックとマスターに重ねて描く折れ線）。位置の計算、描画、点を押したかの判定。画面を知らない

@@ -7,6 +7,7 @@ import '@fontsource/roboto/500.css'
 import { AddonsContext, PevenProvider, WindowLimitScreen, preventPageZoom, setUiScale } from 'pevenmui'
 import { loadInstalledPlugins, setPluginStore } from 'wevocal-lib'
 import { acquireSlot, configureWindowSlots, createPackageStore, packageFolderOf } from 'pevenmui/web'
+import AppDock from './AppDock'
 import App from './App'
 import { addonsContext } from './addons'
 import { app } from './appConfig'
@@ -34,7 +35,9 @@ function Root() {
       <ThemeSync theme={settings.theme} />
       {/* 追加機能（ボーカル抽出）。導入と読み込みは PevenMUI（WeVocalSynth と同じ） */}
       <AddonsContext.Provider value={addonsContext}>
-        <App settings={settings} onSettingsChange={update} />
+        <AppDock>
+          <App settings={settings} onSettingsChange={update} />
+        </AppDock>
       </AddonsContext.Provider>
     </PevenProvider>
   )

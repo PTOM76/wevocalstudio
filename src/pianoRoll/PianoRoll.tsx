@@ -429,7 +429,7 @@ export default function PianoRoll(p: PianoRollProps) {
         />
       )}
       {info}
-      <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 260, position: 'relative', mx: 1.5 }}>
+      <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 120, position: 'relative', mx: 1.5 }}>
         <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onDoubleClick={onDouble} onContextMenu={onContext} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
       </Box>
       <Box sx={{ mx: 1.5, mt: 0.5 }}>

@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Box } from '@mui/material'
-import { NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
+import { DockArea, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
 import StatusBar from './StatusBar'
 import { useAddonFolder } from './useAddonFolder'
 import AppHeader from './AppHeader'
@@ -562,6 +562,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         pendingLabel={t('status.pitchBlock')}
       />
       </Box>
+      {!mobile && <DockArea />}
       {p.settings.showAnalysis && (
         <AnalysisPanel
           bpm={project.tempo.bpm}

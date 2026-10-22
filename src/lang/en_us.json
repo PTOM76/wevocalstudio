@@ -1018,5 +1018,8 @@
   "midiImport.tempoProject": "Follow project tempo",
   "midiImport.atCursor": "Edit cursor",
   "midiImport.atStart": "Start of project",
-  "midiImport.run": "Import"
+  "midiImport.run": "Import",
+
+  "dock.dock": "Dock at the bottom",
+  "dock.undock": "Show as a dialog"
 }

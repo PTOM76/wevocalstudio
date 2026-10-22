@@ -1018,5 +1018,8 @@
   "midiImport.tempoProject": "プロジェクトのテンポに乗せる",
   "midiImport.atCursor": "編集カーソルの位置",
   "midiImport.atStart": "先頭",
-  "midiImport.run": "読み込む"
+  "midiImport.run": "読み込む",
+
+  "dock.dock": "画面の下の欄に置く",
+  "dock.undock": "ダイアログにする"
 }
