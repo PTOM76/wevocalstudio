@@ -9,7 +9,7 @@ import { actionOf, keyLabel, type Action } from './keymap'
 import { newId, type Block, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange } from './project'
 import { ENVELOPES, type EnvKind } from './envelopes'
 import { reverseBlocks } from './reverse'
-import { cropToRange, deleteRange, insertSilence, normalizeBlocks, repeatRange } from './rangeEdit'
+import { cropToRange, deleteRange, insertSilence, normalizeBlocks, rangeToNewTrack, repeatRange } from './rangeEdit'
 import type { useProject } from './useProject'
 
 type ProjectApi = ReturnType<typeof useProject>
@@ -247,6 +247,8 @@ export function useActions(c: ActionContext) {
     insertSilence: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start, c.defaultFade)), c.seekAfterInsert && c.moveCursor(c.range.end)) },
     repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId, c.defaultFade)) },
     normalize: { enabled: anyWave, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
+    copyRangeToTrack: { enabled: !!c.range, run: () => c.range && doc.apply((p) => rangeToNewTrack(p, c.range!, false, c.selectedTrack, c.defaultFade)) },
+    moveRangeToTrack: { enabled: !!c.range, run: () => c.range && doc.apply((p) => rangeToNewTrack(p, c.range!, true, c.selectedTrack, c.defaultFade)) },
     reverse: { enabled: anyWave, run: () => doc.apply((p) => reverseBlocks(p, ids)) },
     bake: { enabled: anyWave, run: () => c.bake(ids) },
     // 分けるのは 1 つずつ（選んでいる最後のもの）
@@ -390,7 +392,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.edit'),
       accessKey: 'E',
-      entries: [item('undo'), item('redo'), { label: t('menu.history'), onClick: c.openHistory }, divider, item('cut'), item('copy'), item('paste'), item('duplicate'), item('delete'), divider, item('selectAll'), item('clearRange'), divider, item('split'), item('splitRange'), item('splitSilence'), divider, sub('menu.rangeGroup', [item('trimRange'), item('deleteRange'), item('insertSilence'), item('repeatRange')]), divider, { label: t('menu.marker'), onClick: () => {}, submenu: [item('addMarker'), item('prevMarker'), item('nextMarker'), item('clearMarkers')] }],
+      entries: [item('undo'), item('redo'), { label: t('menu.history'), onClick: c.openHistory }, divider, item('cut'), item('copy'), item('paste'), item('duplicate'), item('delete'), divider, item('selectAll'), item('clearRange'), divider, item('split'), item('splitRange'), item('splitSilence'), divider, sub('menu.rangeGroup', [item('trimRange'), item('deleteRange'), item('insertSilence'), item('repeatRange'), divider, item('copyRangeToTrack'), item('moveRangeToTrack')]), divider, { label: t('menu.marker'), onClick: () => {}, submenu: [item('addMarker'), item('prevMarker'), item('nextMarker'), item('clearMarkers')] }],
     },
     {
       label: t('menu.block'),
@@ -543,6 +545,20 @@ export function useActions(c: ActionContext) {
     ]
   }
 
+  /** 押したトラックの操作（ミュート、ソロ、名前の変更、複製、削除）と、区切り。トラックがなければなし */
+  const trackEntries = (id: string | null): MenuEntry[] => {
+    const tr = id ? doc.project.tracks.find((x) => x.id === id) : undefined
+    if (!tr) return []
+    return [
+      { label: t('menu.muteTrack'), checked: tr.mute, onClick: () => doc.updateTrack(tr.id, { mute: !tr.mute }) },
+      { label: t('menu.soloTrack'), checked: tr.solo, onClick: () => doc.updateTrack(tr.id, { solo: !tr.solo }) },
+      { label: t('menu.renameTrack'), onClick: () => c.openDialog('renameTrack', tr.id) },
+      { label: t('menu.duplicateTrack'), onClick: () => doc.duplicateTrack(tr.id) },
+      { label: t('menu.removeTrack'), onClick: () => doc.removeTrack(tr.id) },
+      divider,
+    ]
+  }
+
   /** 何もない所の右クリックのメニュー。time と track は押した所 */
   const emptyMenu = (kind: 'lane' | 'ruler', time: number, track: string | null, marker?: string): MenuEntry[] =>
     kind === 'ruler'
@@ -564,6 +580,8 @@ export function useActions(c: ActionContext) {
           item('clearRange'),
         ]
       : [
+          // 押したトラックの操作（トラックの欄を閉じているときも、ここからミュートやソロなどができる）
+          ...trackEntries(track),
           { label: t('menu.pasteHere'), disabled: commands.paste.enabled === false, onClick: () => paste({ time, track }) },
           { label: t('menu.importHere'), onClick: () => c.importAt(time, track) },
           { label: t('menu.addMidiBlock'), onClick: () => c.select([doc.addMidiAt(track ?? c.selectedTrack ?? doc.project.tracks[0]?.id, time)].filter((x): x is string => !!x)) },

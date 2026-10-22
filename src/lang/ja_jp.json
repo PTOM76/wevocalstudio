@@ -168,6 +168,8 @@
   "menu.midiGroup": "MIDI",
   "menu.experimental": "試験的機能",
   "menu.reverse": "逆再生",
+  "menu.copyRangeToTrack": "選択範囲を新しいトラックへコピー",
+  "menu.moveRangeToTrack": "選択範囲を新しいトラックへ移動",
 
   "settings.title": "設定",
   "settings.general": "全般",

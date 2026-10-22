@@ -90,6 +90,8 @@ export type Action =
   | 'glidePitch'
   | 'vibratoEnvelope'
   | 'reverse'
+  | 'copyRangeToTrack'
+  | 'moveRangeToTrack'
   | 'envelopeReset'
   | 'envelopeTool'
 
@@ -217,6 +219,9 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   vibratoEnvelope: [],
   // 選んだ波形ブロックを逆再生にする（もう一度で元に戻る）
   reverse: [],
+  // 範囲の中身を新しいトラックに写す、移す（選んでいるトラックがあればその分だけ）
+  copyRangeToTrack: [],
+  moveRangeToTrack: [],
   // 表示しているエンベロープを、選んだ波形ブロックで初期化する（点を全部消す）
   envelopeReset: [],
   // エンベロープの道具を、選択とペンで切り替える（選択は線と点だけを触る。ペンはブロックのどこを押しても点を足す）

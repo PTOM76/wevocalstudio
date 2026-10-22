@@ -1,6 +1,6 @@
 // 範囲選択（全トラックにかかる時間の範囲）への編集。範囲だけ残す、範囲を消して詰める、無音を挿入する（WeVocalSynth の編集メニューと同じ操作）
 import type { Range } from 'wevocal-lib'
-import { DEFAULT_FADE, splitBlock, type Block, type Marker, type Project } from './project'
+import { DEFAULT_FADE, newId, newTrack, splitBlock, type Block, type Marker, type Project } from './project'
 
 /** 範囲の両端で、かかる波形ブロックを分ける */
 function cutAt(blocks: Block[], r: Range, fade: number): Block[] {
@@ -45,6 +45,23 @@ export function repeatRange(p: Project, r: Range, n: number, newId: () => string
   q = { ...q, blocks: cutAt(q.blocks, r, fade) }
   const copies = Array.from({ length: n }, (_, i) => piece.map((b) => ({ ...b, id: newId(), start: b.start + len * (i + 1) }))).flat()
   return { ...q, blocks: [...q.blocks, ...copies] }
+}
+
+/**
+ * 範囲の中身を、新しいトラックに置く（位置はそのまま）。only があればそのトラックの波形ブロックだけ、なければ全トラックの分。
+ * move なら元の場所から取り除き、そうでなければ写す。新しいトラックは only のすぐ下（なければ一番下）
+ */
+export function rangeToNewTrack(p: Project, r: Range, move: boolean, only: string | null, fade = DEFAULT_FADE): Project {
+  const cut = cutAt(p.blocks, r, fade)
+  const isPiece = (b: Block) => inside(b, r) && b.length > 0.001 && (!only || b.track === only)
+  const pieces = cut.filter(isPiece)
+  if (!pieces.length) return p
+  const at = only ? p.tracks.findIndex((t) => t.id === only) : -1
+  const source = at >= 0 ? p.tracks[at] : undefined
+  const track = { ...newTrack(0), name: source ? `${source.name}` : `Track ${p.tracks.length + 1}` }
+  const tracks = at >= 0 ? [...p.tracks.slice(0, at + 1), track, ...p.tracks.slice(at + 1)] : [...p.tracks, track]
+  const placed = pieces.map((b) => ({ ...b, id: move ? b.id : newId(), track: track.id }))
+  return { ...p, tracks, blocks: [...(move ? cut.filter((b) => !isPiece(b)) : cut), ...placed] }
 }
 
 /** 選んだ波形ブロックのピークを `peakDb` にそろえる（波形ブロックの音量を変える。元の音はそのまま） */
