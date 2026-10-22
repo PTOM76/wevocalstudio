@@ -6,7 +6,8 @@ import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint, ty
 import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette, usePanelWidth } from 'pevenmui'
 import { markActivity, countRender } from 'pevenmui/debug'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
-import { hitMidi, type MidiDragKind } from './midiBlocks'
+import { hitMidi, trimLeft, type MidiDragKind } from './midiBlocks'
+import { projectBeatMap } from './beats'
 import { layoutRows } from './overlap'
 import { depthOf, projectEnd, songEnd, masterHeight, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange } from './project'
 import { ENVELOPES, envelopeRange, hitEnvPoint, type EnvKind } from './envelopes'
@@ -159,7 +160,7 @@ export default function Timeline(p: {
   // ドラッグしているオートメーションの点（レーンの target と点の番号）
   const autoDrag = useRef<{ target: string; index: number; merge: string } | null>(null)
   // ドラッグしている MIDI ブロック（つかんだ所の、ブロックの左端からの px）
-  const midiDrag = useRef<{ id: string; kind: MidiDragKind; grabPx: number; merge: string } | null>(null)
+  const midiDrag = useRef<{ id: string; kind: MidiDragKind; grabPx: number; merge: string; orig: MidiBlock } | null>(null)
   // Shift+クリックの起点（前に押した波形ブロック）
   const anchor = useRef<string | null>(null)
   // 右ドラッグの枠で選ぶ。moved なら右クリックのメニューは出さない
@@ -566,7 +567,7 @@ export default function Timeline(p: {
         p.onSelect([mh.block.id])
         p.onSelectTrack(mh.block.track)
         e.currentTarget.setPointerCapture(e.pointerId)
-        midiDrag.current = { id: mh.block.id, kind: mh.kind, grabPx: x - (mh.block.start - view.scroll) * view.pps, merge: `midi${dragCount.current++}` }
+        midiDrag.current = { id: mh.block.id, kind: mh.kind, grabPx: x - (mh.block.start - view.scroll) * view.pps, merge: `midi${dragCount.current++}`, orig: mh.block }
         return
       }
     }
@@ -679,6 +680,8 @@ export default function Timeline(p: {
       const tr = trackAt(y)
       return p.onMidiChange(b.id, { start: Math.max(0, gridAt(x - md.grabPx, shiftKey)), ...(tr ? { track: tr.id } : {}) }, md.merge)
     }
+    // 左端: 左端より前の音符を切る（元のブロックから計算するので、ドラッグの途中で戻せる）
+    if (md.kind === 'left') return p.onMidiChange(b.id, trimLeft(md.orig, gridAt(x, shiftKey), projectBeatMap(p.project)), md.merge)
     p.onMidiChange(b.id, { length: Math.max(0.05, gridAt(x, shiftKey) - b.start) }, md.merge)
   }
 

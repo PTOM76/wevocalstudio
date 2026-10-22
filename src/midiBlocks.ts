@@ -2,11 +2,12 @@
 import { ownAudible, trackHeight, type MidiBlock, type Project } from './project'
 import { blockBeats, projectBeatMap } from './beats'
 import { trackTop } from './drawTimeline'
+import type { BeatMap } from './beats'
 
 /** 端をつかめる幅（px） */
 const EDGE = 6
 
-export type MidiDragKind = 'move' | 'right'
+export type MidiDragKind = 'move' | 'left' | 'right'
 
 /** 表示する音の高さの範囲（音符のあるところ。最低でも 1 オクターブ） */
 export function pitchSpan(b: MidiBlock): [number, number] {
@@ -19,6 +20,22 @@ export function pitchSpan(b: MidiBlock): [number, number] {
     hi = mid + 5
   }
   return [lo, hi]
+}
+
+/**
+ * 左端を newStart（秒）にした MIDI ブロックの、位置、長さ、音符。右端の位置は変えない。
+ * 音符は拍の位置を保つので、左端より前になるものは切る（またぐものは左端までにする）。元のブロック（ドラッグを始めたときのもの）から計算するので、ドラッグの途中で戻せる
+ */
+export function trimLeft(orig: MidiBlock, newStart: number, map: BeatMap): Pick<MidiBlock, 'start' | 'length' | 'notes'> {
+  const end = orig.start + orig.length
+  const start = Math.max(0, Math.min(end - 0.05, newStart))
+  const db = map.toBeat(start) - map.toBeat(orig.start)
+  const notes = orig.notes.flatMap((n) => {
+    const t = n.t - db
+    if (t + n.dur <= 1e-9) return []
+    return [t < 0 ? { ...n, t: 0, dur: n.dur + t } : { ...n, t }]
+  })
+  return { start, length: end - start, notes }
 }
 
 /** MIDI ブロックの外枠（時間軸の座標。トラックの行の中、波形ブロックと同じ高さ） */
@@ -36,7 +53,8 @@ export function hitMidi(p: Project, x: number, y: number, toTime: (x: number) =>
   const t = toTime(x)
   const block = (p.midi ?? []).findLast((b) => b.track === track.id && t >= b.start - EDGE / pps && t < b.start + b.length + EDGE / pps)
   if (!block) return null
-  return { block, kind: (block.start + block.length - t) * pps < EDGE ? 'right' : 'move' }
+  const kind: MidiDragKind = (block.start + block.length - t) * pps < EDGE ? 'right' : (t - block.start) * pps < EDGE ? 'left' : 'move'
+  return { block, kind }
 }
 
 export interface MidiColors {
