@@ -3,18 +3,17 @@
 // Shift を押しながらクリックで選択の足し引き、Shift を押しながら空いている所をドラッグで枠で選ぶ、Ctrl+A で全部。選んだものは一緒に動く。
 // 左の鍵盤を押すと、その高さの音が鳴る。道具（選択、ペン、消しゴム）、ズーム、再生はこの中のツールバーにある（別のウィンドウに出しても使えるよう）。操作の説明は右上の ? のツールチップ（roll.help）。下の帯は音の強さ（ベロシティ）。Ctrl+ホイールで横の拡大、Shift+ホイールで横のスクロール、Alt+ホイールで行の高さ、ホイールで音の高さをずらす。Alt を押している間はグリッドに合わせない
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Box, Button, Typography } from '@mui/material'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCaretDown } from '@fortawesome/free-solid-svg-icons'
-import { ContextMenu, NumberInput, ScrollBar, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
+import { Box, Typography } from '@mui/material'
+import { ScrollBar, localPoint, pevenFont, useBoxSize, usePalette } from 'pevenmui'
 import { blockBeats, projectBeatMap } from '../beats'
 import { useT } from '../i18n'
 import { newId, type MidiBlock, type MidiCurve, type Note, type Project } from '../project'
 import { drawRoll } from './draw'
+import InfoLine from './InfoLine'
 import RollToolbar, { type HumanizeForm, type QuantizeForm, type Tool } from './Toolbar'
-import { copyNotes, glue, humanize, legato, pasteNotes, quantize, resize, selectionEnd, setDuration, setMute, shift, slice, velocity, type NoteClip } from './edit'
+import { copyNotes, glue, humanize, legato, pasteNotes, quantize, resize, selectionEnd, setMute, shift, slice, type NoteClip } from './edit'
 import { hitNote, hitVel } from './hit'
-import { LANES, curveOf, hitPoint, lanePoints, valueAt, withPoints, type Lane } from './laneEdit'
+import { curveOf, hitPoint, lanePoints, valueAt, withPoints, type Lane } from './laneEdit'
 import { curveRange } from '../midiCurves'
 import { GAP, KEYS, NAMES, SCALES, type ScaleKind, ROW_MAX, ROW_MIN, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
 
@@ -80,7 +79,6 @@ export default function PianoRoll(p: PianoRollProps) {
   const [tool, setTool] = useState<Tool>('select')
   // 下のレーン（強さ、ピッチベンド、CC）
   const [lane, setLane] = useState<Lane>('vel')
-  const [laneMenu, setLaneMenu] = useState<{ x: number; y: number } | null>(null)
   const points = lanePoints(block.curves, lane)
   const laneInfo = curveOf(lane)
   // 音の確認（鳴らすか）と、スケールの強調
@@ -421,28 +419,6 @@ export default function PianoRoll(p: PianoRollProps) {
   }
   const options: [number, string][] = (DIVISIONS.includes(p.division) ? DIVISIONS : [...DIVISIONS, p.division]).map((d) => [d, `1/${d}`])
   const top = NAMES[view.low % 12] + (Math.floor(view.low / 12) - 1)
-  // 情報行: 選んだ音符の値（複数のときは先頭の値）を数値で見て直す。入れた値は選んだ全部に反映する
-  const lead = block.notes.find((n) => sel.includes(n.id))
-  const field = (label: string, value: number, min: number, max: number, step: number, unit: string, apply: (v: number) => Note[]) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-      <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{label}</Typography>
-      <NumberInput value={Math.round(value * 1000) / 1000} onChange={(v) => p.onChange(apply(v), `info:${label}`)} min={min} max={max} step={step} unit={unit} width={96} disabled={!lead} ariaLabel={label} />
-    </Box>
-  )
-  const info = (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', px: 1.5, py: 0.75, borderBottom: 1, borderColor: 'divider' }}>
-      {field(t('roll.start'), lead?.t ?? 0, 0, len, step, t('roll.beatUnit'), (v) => shift(block.notes, sel, v - (lead?.t ?? 0), 0, len))}
-      {field(t('roll.length'), lead?.dur ?? 0, 1 / 64, len, step, t('roll.beatUnit'), (v) => setDuration(block.notes, sel, v, len))}
-      {field(t('roll.pitch'), lead?.pitch ?? 60, 0, 127, 1, '', (v) => shift(block.notes, sel, 0, v - (lead?.pitch ?? 60), len))}
-      {field(t('roll.velocity'), Math.round((lead?.vel ?? 0.8) * 127), 1, 127, 1, '', (v) => velocity(block.notes, sel, 'set', v / 127))}
-      {lead && <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{`${NAMES[lead.pitch % 12]}${Math.floor(lead.pitch / 12) - 1}`}</Typography>}
-      <Box sx={{ flex: 1 }} />
-      <Button size="small" color="inherit" endIcon={<FontAwesomeIcon icon={faCaretDown} />} onClick={(e) => setLaneMenu({ x: e.currentTarget.getBoundingClientRect().left, y: e.currentTarget.getBoundingClientRect().bottom })}>
-        {t('roll.lane', { name: laneLabel(lane) })}
-      </Button>
-      <ContextMenu position={laneMenu} entries={LANES.map((l) => ({ label: laneLabel(l), checked: lane === l, onClick: () => setLane(l) }))} onClose={() => setLaneMenu(null)} />
-    </Box>
-  )
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={onKey}>
       {p.toolbar !== false && (
@@ -477,7 +453,7 @@ export default function PianoRoll(p: PianoRollProps) {
           onScale={(root, kind) => setScale({ root, kind })}
         />
       )}
-      {info}
+      <InfoLine notes={block.notes} selected={sel} len={len} step={step} onChange={p.onChange} lane={lane} laneLabel={laneLabel} onLane={setLane} />
       <Box ref={box} sx={{ flex: '1 1 420px', minHeight: 120, position: 'relative', mx: 1.5 }}>
         <canvas ref={canvas} tabIndex={0} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onDoubleClick={onDouble} onContextMenu={onContext} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', outline: 'none' }} />
       </Box>
