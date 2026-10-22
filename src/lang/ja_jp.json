@@ -733,6 +733,7 @@
   "synth.voiceO": "声（お）",
   "synth.voiceU": "声（う）",
   "synth.volume": "音量",
+  "synth.open": "音声を作成",
 
   "vibrato.depth": "深さ",
   "vibrato.rate": "速さ",
@@ -1070,5 +1071,10 @@
   "dock.dock": "画面の下の欄に置く",
   "dock.undock": "ダイアログにする",
 
-  "hint.touch": "ブロックはダブルタップでプロパティ、長押しでメニューを開けます。トラックの欄は « で閉じられます"
+  "hint.touch": "ブロックはダブルタップでプロパティ、長押しでメニューを開けます。トラックの欄は « で閉じられます",
+
+  "empty.formats": "WAV / AIFF / MP3 / MP4など（ドラッグ＆ドロップ可）",
+  "empty.choose": "ファイルを選択",
+  "empty.showMore": "もっと見る（あと{n}件）",
+  "empty.showLess": "閉じる"
 }

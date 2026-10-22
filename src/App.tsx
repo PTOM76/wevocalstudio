@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Box } from '@mui/material'
-import { DockArea, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
+import { DockArea, EmptyState, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
 import StatusBar from './StatusBar'
 import { useAddonFolder } from './useAddonFolder'
 import AppHeader from './AppHeader'
@@ -10,7 +10,8 @@ import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web'
 import { configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
-import { AUDIO_ACCEPT, downloadBlob, readWvsp, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
+import { faFolderOpen, faMicrophone, faWaveSquare } from '@fortawesome/free-solid-svg-icons'
+import { AUDIO_ACCEPT, canRecord, downloadBlob, readWvsp, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
 import { app } from './appConfig'
 import AppDialogs from './AppDialogs'
 import { useDialogs } from './useDialogs'
@@ -601,6 +602,17 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         madeVersion={madeVersion}
         pendingLabel={t('status.pitchBlock')}
       />
+      {/* 何も置いていないときの案内（開く、音を作る、録音、最近使用したファイル。部品は PevenMUI の EmptyState。WeVocalSynth と同じ）。時間軸の操作は妨げない */}
+      {project.blocks.length === 0 && !project.midi?.length && project.tracks.length <= 1 && !recording && (
+        <Box sx={{ position: 'absolute', inset: 0, pl: `${header}px`, pointerEvents: 'none', '& button': { pointerEvents: 'auto' } }}>
+          <EmptyState
+            message={t('empty.formats')}
+            primary={{ label: t('empty.choose'), icon: faFolderOpen, onClick: commands.import.run }}
+            actions={[{ label: t('synth.open'), icon: faWaveSquare, onClick: commands.synth.run }, ...(canRecord() ? [{ label: t('record.title'), icon: faMicrophone, onClick: commands.record.run }] : [])]}
+            recent={files.recent.supported ? { title: t('menu.recent'), names: files.recent.names, open: files.recent.open, more: (n) => t('empty.showMore', { n }), less: t('empty.showLess') } : undefined}
+          />
+        </Box>
+      )}
       </Box>
       {!mobile && <DockArea />}
       {p.settings.showAnalysis && (
