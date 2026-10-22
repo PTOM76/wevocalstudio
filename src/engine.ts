@@ -11,7 +11,7 @@ import { automatedSlots, chainLatency, createFxChain, hasAutomation, type ChainO
 import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { clipFor, piecesFor, preparePitch } from './dsp/pitch'
-import { samplerShifts } from './dsp/samplerPitch'
+import { samplerShifts, wantSamplerPitch } from './dsp/samplerPitch'
 import { ancestors, audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, liveSlots, type Project, type Track } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
@@ -811,6 +811,12 @@ export class Player {
     }
     // 止まっている間に音声処理を止めていたら、鍵盤の音のために動かす
     if (ctx.state !== 'running') await startContext(ctx, 'player')
+    // サンプラーのフォルマント保持: 押した高さの音を作り終えてから鳴らす（作っている間に離したら鳴らさない）
+    if (on && wantSamplerPitch(q, track, pitch)) {
+      await preparePitch(q)
+      if (!this.monitorOn.has(id) || this.playing || !this.monitor) return
+      this.monitor.sync(q, false)
+    }
     send(this.monitor)
   }
 

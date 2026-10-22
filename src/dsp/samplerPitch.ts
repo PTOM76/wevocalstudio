@@ -18,7 +18,27 @@ export interface SamplerShift {
 /** フォルマントを保持するサンプラーか（音源のつまみ「フォルマントを保持」がオンで、音色の元の音がある） */
 const keeps = (spec: InstrumentSlot | undefined) => !!spec && spec.values.formant >= 0.5 && !!findInstrument(spec.plugin)?.sample && !!spec.sample
 
-const cache = new WeakMap<Project, SamplerShift[]>()
+let cache = new WeakMap<Project, SamplerShift[]>()
+/** 鍵盤で押した高さ（音符になくても、押したときにフォルマント保持の音を作る）。トラックごとに新しい順に KEEP_EXTRA 個まで */
+const extra = new Map<string, number[]>()
+const KEEP_EXTRA = 24
+
+/**
+ * 鍵盤で押した高さの音を、フォルマント保持で作る対象に足す。この高さがフォルマント保持の対象なら true
+ * （呼ぶ側は preparePitch で作り終えてから鳴らす。作ってあれば、すぐ終わる）
+ */
+export function wantSamplerPitch(p: Project, track: string, pitch: number): boolean {
+  const spec = p.tracks.find((x) => x.id === track)?.instrument
+  if (!spec || !keeps(spec) || !p.sources.some((s) => s.id === spec.sample)) return false
+  const semis = pitch - (spec.values.root ?? 60)
+  if (semis === 0 || Math.abs(semis) > MAX_SHIFT) return false
+  const list = extra.get(track) ?? []
+  if (!list.includes(pitch)) {
+    extra.set(track, [pitch, ...list].slice(0, KEEP_EXTRA))
+    cache = new WeakMap()
+  }
+  return true
+}
 
 /** プロジェクトの、サンプラーのフォルマント保持で作る音の一覧（トラックの MIDI ブロックの音符の高さごと。元の音の高さと同じ高さは速度を変えないので要らない） */
 export function samplerShifts(p: Project): SamplerShift[] {
@@ -30,7 +50,7 @@ export function samplerShifts(p: Project): SamplerShift[] {
     const source = keeps(spec) ? p.sources.find((s) => s.id === spec!.sample) : undefined
     if (!spec || !source) continue
     const root = spec.values.root ?? 60
-    const pitches = new Set((p.midi ?? []).filter((b) => b.track === track.id).flatMap((b) => b.notes.map((n) => n.pitch)))
+    const pitches = new Set([...(p.midi ?? []).filter((b) => b.track === track.id).flatMap((b) => b.notes.map((n) => n.pitch)), ...(extra.get(track.id) ?? [])])
     for (const pitch of [...pitches].sort((a, b) => a - b)) {
       const semis = pitch - root
       if (semis === 0 || Math.abs(semis) > MAX_SHIFT) continue
