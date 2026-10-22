@@ -3,7 +3,7 @@ export const APP_INFO = {
   // 保存のキーの接頭辞。公開したあとに変えると、保存済みの設定が読めなくなる
   id: 'wevocalstudio',
   name: 'WeVocal Studio',
-  description: 'A browser-based DAW for arranging and editing audio',
+  description: 'Webブラウザ上でトラックにブロックとして音声やMIDIなどを並べて編集する総合音声ツール(DAW)',
   author: 'PitaQ',
   repository: 'https://github.com/PTOM76/wevocalstudio',
   // OGP の絶対 URL（ビルド時は SITE_URL が優先）
