@@ -52,6 +52,9 @@ const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noref
 // デバッグ表示に AudioContext の状態を出す（iPhone で音が出ないときの調査。WeVocalSynth と同じ）
 configurePlayback({ report: reportAudioContext })
 
+/** タッチの操作の案内を出したか（一度だけ） */
+const TOUCH_HINT_KEY = 'studio.touchHint'
+
 export default function App(p: { settings: Settings; onSettingsChange: (patch: Partial<Settings>) => void }) {
   countRender('App')
   const t = useT()
@@ -435,6 +438,18 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ）。パソコンはツールバーの下、スマホは波形マップの下
   const touchLike = mobile || isMobile()
   const editBarOn = editBarEnabled(p.settings.editBar, touchLike)
+  // タッチの端末では、最初に波形ブロックを置いたときに、長押しとダブルタップの操作を一度だけ知らせる（見つけにくいため）
+  const hasBlocks = project.blocks.length > 0
+  useEffect(() => {
+    if (!touchLike || !hasBlocks) return
+    try {
+      if (localStorage.getItem(TOUCH_HINT_KEY)) return
+      localStorage.setItem(TOUCH_HINT_KEY, '1')
+    } catch {
+      return
+    }
+    setNotice(t('hint.touch'))
+  }, [touchLike, hasBlocks, t])
   const editBar = editBarOn && (selected.length > 0 || range) ? <BlockEditBar commands={commands} mode={selected.length > 0 ? (selected.every((id) => project.midi?.some((b) => b.id === id)) ? 'midi' : 'block') : 'range'} top={!touchLike} /> : null
 
   return (

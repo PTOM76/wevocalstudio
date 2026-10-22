@@ -172,6 +172,8 @@ export interface Block extends BaseBlock {
   pitchEnvelope?: PitchPoint[]
   /** ピッチエンベロープの表示範囲（半音。未指定なら設定の既定値） */
   pitchEnvelopeRange?: PitchEnvelopeRange
+  /** 頭をなめらかにつないだ長さ（秒。時間軸の上で）。つなぎ直すとき、この区間の点を置き換える */
+  glide?: number
   /** フェードイン、フェードアウト（秒） */
   fadeIn: number
   fadeOut: number

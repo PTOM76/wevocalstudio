@@ -62,7 +62,7 @@ export interface ActionContext {
   exportWvsp: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
-  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument' | 'midiProps' | 'tool' | 'analyze' | 'glidePitch', arg?: string | string[]) => void
+  openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument' | 'midiProps' | 'tool' | 'analyze' | 'glidePitch' | 'vibrato', arg?: string | string[]) => void
   /** MIDI ファイルを選んで、トラックと MIDI ブロックにする */
   importMidi: () => void
   /** 選んだ MIDI ブロック（なければ全部）を MIDI ファイルに書き出す */
@@ -320,6 +320,7 @@ export function useActions(c: ActionContext) {
     pitchDownFine: { enabled: anyWave, run: () => doc.nudgePitch(ids, -0.1) },
     pitchReset: { enabled: anyWave, run: () => doc.nudgePitch(ids, null) },
     glidePitch: { enabled: ids.length >= 2, run: () => c.openDialog('glidePitch', ids) },
+    vibratoEnvelope: { enabled: anyWave, run: () => c.openDialog('vibrato', ids) },
   }
 
   // キーの割り当ては keymap.ts の表。文字の入力中は奪わない
@@ -374,7 +375,7 @@ export function useActions(c: ActionContext) {
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('exportMidi'), item('glueMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), item('glidePitch'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
+      entries: [item('properties'), divider, item('addMidiBlock'), item('importMidi'), item('exportMidi'), item('glueMidi'), item('editMidi'), item('trackInstrument'), divider, item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), item('glidePitch'), item('vibratoEnvelope'), divider, item('normalize'), item('bake'), divider, item('splitVocals'), item('splitLead'), item('splitInstruments'), ...voiceItems],
     },
     {
       label: t('menu.track'),
@@ -474,6 +475,7 @@ export function useActions(c: ActionContext) {
     item('pitchUp'),
     item('pitchDown'),
     item('pitchReset'),
+    item('vibratoEnvelope'),
     item('bake'),
     divider,
     item('cut'),

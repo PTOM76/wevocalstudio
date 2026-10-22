@@ -293,7 +293,7 @@ export default function Timeline(p: {
       view,
       p.selected,
       p.range,
-      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, envelopeRange: p.envelopeRange, pitchEnvelopeRange: p.pitchEnvelopeRange, autoEdit: p.autoEdit, vscroll: vs },
+      { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, envelopeRange: p.envelopeRange, pitchEnvelopeRange: p.pitchEnvelopeRange, autoEdit: p.autoEdit, vscroll: vs, trackNames: p.headerCollapsed },
       {
         bg: pal.background.default,
         lane: pal.divider,
@@ -309,7 +309,7 @@ export default function Timeline(p: {
         range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
       },
     )
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.envelopeRange, p.pitchEnvelopeRange, p.autoEdit, vs])
+  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.envelopeRange, p.pitchEnvelopeRange, p.autoEdit, vs, p.headerCollapsed])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)

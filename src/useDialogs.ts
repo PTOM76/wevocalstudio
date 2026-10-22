@@ -5,7 +5,7 @@ import { useDialogs as usePevenDialogs, type Dialogs as PevenDialogs } from 'pev
 export type DialogId =
   | 'settings' | 'about' | 'licenses' | 'export' | 'history' | 'shortcuts'
   // 最適化とピッチ接続（選んでいる波形ブロックの id の一覧を渡す）
-  | 'optimize' | 'glidePitch'
+  | 'optimize' | 'glidePitch' | 'vibrato'
   // 値を渡して開くもの: 波形ブロックのプロパティ（id の一覧）、マーカー（id）、トラックの FX の列（トラックの id か 'master'）
   | 'block' | 'marker' | 'markerTempo' | 'fx'
   // 音を 0 から作る、選んだ波形ブロックを MIDI の音符に並べる（波形ブロックの id）

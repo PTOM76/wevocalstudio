@@ -88,6 +88,7 @@ export type Action =
   | 'pitchDownFine'
   | 'pitchReset'
   | 'glidePitch'
+  | 'vibratoEnvelope'
 
 /**
  * キーの書き方は `Ctrl+Shift+キー`（キーは KeyboardEvent の code）。1 つの操作に複数のキーを割り当てられる。
@@ -209,6 +210,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   pitchReset: ['Ctrl+Backspace', 'Ctrl+Digit0', 'Ctrl+Numpad0'],
   // 選んだ波形ブロックを、前の波形ブロックのピッチからなめらかにつなぐ（ピッチのエンベロープを足す）
   glidePitch: [],
+  // 選んだ波形ブロック（範囲があればその中）に、ビブラートをピッチのエンベロープとして足す
+  vibratoEnvelope: [],
 }
 
 /** 操作の一覧（並びは設定の画面の並び） */

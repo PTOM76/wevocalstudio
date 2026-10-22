@@ -48,6 +48,8 @@ export interface DrawOptions {
   autoEdit: boolean
   /** 縦のスクロール量（px。トラックの行だけをずらす。目盛りとマスターは固定） */
   vscroll: number
+  /** トラックの名前を行の左上に重ねる（トラックの欄を閉じているとき） */
+  trackNames: boolean
 }
 
 export interface TimelineColors {
@@ -278,6 +280,18 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
     }
     // MIDI ブロック（音符を小さな帯で見せる）
     drawMidiBlocks(g, p, track.id, view.scroll, view.pps, o.vscroll, w, selected, { block: c.block, blockSelected: c.blockSelected, note: c.wave, text: c.text })
+    // トラックの欄を閉じているときは、トラックの名前を行の左上に重ねる
+    if (o.trackNames) {
+      g.font = '11px sans-serif'
+      g.textBaseline = 'top'
+      const tw = Math.min(w / 2, g.measureText(track.name).width + 8)
+      g.fillStyle = c.bg
+      g.globalAlpha = 0.75
+      g.fillRect(0, laneY, tw, 16)
+      g.globalAlpha = 1
+      g.fillStyle = c.text
+      g.fillText(track.name, 4, laneY + 2, tw - 6)
+    }
   })
   g.restore()
 

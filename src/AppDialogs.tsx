@@ -14,7 +14,7 @@ import { videoLook, type VideoLook } from 'wevocalconverter/host'
 import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { kanaHost, videoHost } from './addons'
 import type { Range } from 'wevocal-lib'
-import { ExportDialog, FxChainDialog, MarkerTempoDialog, SamplerDialog, SynthDialog, type ExportSettings } from 'wevocal-lib/react'
+import { ExportDialog, FxChainDialog, MarkerTempoDialog, PitchToolText, SamplerDialog, SynthDialog, VibratoDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
 import { addClipTrack } from './project'
 import { AppIcon } from './AppHeader'
@@ -25,6 +25,7 @@ import type { Settings } from './settings/settings'
 import OptimizeDialog from './OptimizeDialog'
 import GlideDialog from './GlideDialog'
 import { glideBlocks } from './glide'
+import { vibratoBlocks } from './vibratoEnv'
 import type { OptimizeOptions } from './optimize'
 import InstrumentDialog from './InstrumentDialog'
 import MidiBlockDialog from './MidiBlockDialog'
@@ -122,6 +123,19 @@ export default function AppDialogs(p: {
         onClose={dialogs.closer('glidePitch')}
         onApply={({ seconds, shape, tension }) => doc.apply((current) => glideBlocks(current, dialogs.arg<string[]>('glidePitch') ?? [], seconds, shape, tension))}
       />
+      {/* ビブラートを、選んだ波形ブロック（範囲があればその中）のピッチのエンベロープとして足す（ダイアログは wevocal-lib。WeVocalSynth のピッチの道具と同じ） */}
+      <PitchToolText.Provider value={t}>
+        <VibratoDialog
+          open={dialogs.isOpen('vibrato')}
+          hasSelection={!!p.range}
+          bpm={project.tempo.bpm}
+          onClose={dialogs.closer('vibrato')}
+          onRun={(o) => {
+            doc.apply((current) => vibratoBlocks(current, dialogs.arg<string[]>('vibrato') ?? [], p.range, o))
+            dialogs.close('vibrato')
+          }}
+        />
+      </PitchToolText.Provider>
       <SettingsDialog
         open={dialogs.isOpen('settings')}
         onClose={dialogs.closer('settings')}

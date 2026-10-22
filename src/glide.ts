@@ -37,7 +37,9 @@ export function glideBlocks(p: Project, ids: string[], seconds = GLIDE_SECONDS, 
       if (Math.abs(offset) < 0.01) continue
       // 元の音の時刻にして持つ（分割や端の調整をしてもずれない）
       const end = b.offset + Math.min(seconds, b.length / 2) * b.rate
-      const rest = (b.pitchEnvelope ?? []).filter((pt) => pt.s > end)
+      // 前につないだ長さがあれば、その区間の点も置き換える（形状や長さを後から変えられる）
+      const clearTo = Math.max(end, b.glide ? b.offset + b.glide * b.rate : -Infinity)
+      const rest = (b.pitchEnvelope ?? []).filter((pt) => pt.s > clearTo)
       const divisions = shape === 'linear' || shape === 'square' ? 1 : 16
       const points: PitchPoint[] = shape === 'square'
         ? [{ s: b.offset, st: offset }, { s: end, st: offset }, { s: end, st: 0 }]
@@ -46,7 +48,7 @@ export function glideBlocks(p: Project, ids: string[], seconds = GLIDE_SECONDS, 
             return { s: b.offset + (end - b.offset) * x, st: offset * (1 - progressOf(shape, x, tension)) }
           })
       points.push(...rest)
-      patched.set(b.id, { ...b, pitchEnvelope: points })
+      patched.set(b.id, { ...b, pitchEnvelope: points, glide: Math.min(seconds, b.length / 2) })
     }
   }
   return patched.size ? { ...p, blocks: p.blocks.map((b) => patched.get(b.id) ?? b) } : p

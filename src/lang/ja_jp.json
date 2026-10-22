@@ -157,6 +157,7 @@
   "menu.glueMidi": "MIDI ブロックを 1 つにつなぐ",
   "menu.deleteBlock": "ブロックを削除",
   "menu.minimapPlayhead": "ミニマップの再生位置",
+  "menu.vibratoEnvelope": "ビブラートを付ける…",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -1067,5 +1068,7 @@
   "midiImport.run": "読み込む",
 
   "dock.dock": "画面の下の欄に置く",
-  "dock.undock": "ダイアログにする"
+  "dock.undock": "ダイアログにする",
+
+  "hint.touch": "ブロックはダブルタップでプロパティ、長押しでメニューを開けます。トラックの欄は « で閉じられます"
 }

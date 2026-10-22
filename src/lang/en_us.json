@@ -157,6 +157,7 @@
   "menu.glueMidi": "Glue MIDI blocks",
   "menu.deleteBlock": "Delete block",
   "menu.minimapPlayhead": "Minimap playhead",
+  "menu.vibratoEnvelope": "Add Vibrato…",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -1067,5 +1068,7 @@
   "midiImport.run": "Import",
 
   "dock.dock": "Dock at the bottom",
-  "dock.undock": "Show as a dialog"
+  "dock.undock": "Show as a dialog",
+
+  "hint.touch": "Double-tap a block for its properties, or long-press for a menu. Close the track list with «."
 }
