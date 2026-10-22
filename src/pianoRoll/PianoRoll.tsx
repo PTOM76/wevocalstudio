@@ -388,7 +388,10 @@ export default function PianoRoll(p: PianoRollProps) {
         p.onChange([...block.notes, note])
         setSel([note.id])
         sound(note.pitch, note.vel)
-        setTimeout(() => sound(null), 200)
+        setTimeout(() => sounding.current === note.pitch && sound(null), 200)
+        drag.current = null
+        setFrame(null)
+        return
       }
     }
     drag.current = null
@@ -403,7 +406,7 @@ export default function PianoRoll(p: PianoRollProps) {
     p.onChange([...block.notes, note])
     setSel([note.id])
     sound(note.pitch, note.vel)
-    setTimeout(() => sound(null), 200)
+    setTimeout(() => sounding.current === note.pitch && sound(null), 200)
   }
   /** 右クリックで、押した音符を消す */
   const onContext = (e: React.MouseEvent<HTMLCanvasElement>) => {

@@ -35,8 +35,10 @@ export const dropMelody = (name = 'melody.wav', transpose = 0) => `(async () => 
   for (let i = 0; i < len; i++) dv.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 32767, true)
   const dt = new DataTransfer()
   dt.items.add(new File([buf], ${JSON.stringify(name)}, { type: 'audio/wav' }))
-  window.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }))
-  window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }))
+  // Studio は画面の要素でドロップを受けるので、時間軸の canvas から送る（window だけに送っても届かない）
+  const target = document.querySelector('canvas') ?? window
+  target.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }))
+  target.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }))
 })()`
 
 /**

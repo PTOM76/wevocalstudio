@@ -221,7 +221,10 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       // 開いているピアノロールのステップ入力にも渡す
       emitNote(pitch, vel, on)
       const tracks = project.tracks.filter((tr) => tr.instrument)
-      const target = tracks.find((tr) => tr.armed) ?? tracks.find((tr) => tr.id === selectedTrack) ?? tracks[0]
+      // ピアノロールを開いているときは、そのブロックのトラック（画面の鍵盤と同じ）
+      const rollId = dialogs.arg<string>('pianoRoll')
+      const rollTrack = rollId ? project.midi?.find((b) => b.id === rollId)?.track : undefined
+      const target = tracks.find((tr) => tr.id === rollTrack) ?? tracks.find((tr) => tr.armed) ?? tracks.find((tr) => tr.id === selectedTrack) ?? tracks[0]
       if (!target) return
       void player.current.monitorNote(project, target.id, pitch, vel, on)
       onMidiNote(pitch, vel, on)

@@ -20,6 +20,8 @@ const FADE = 0.02
 const MIN_REBUILD = 0.12
 /** 位置だけ動かすときの、送り直しの間隔の下限（秒） */
 const MIN_SEEK = 0.03
+/** 鍵盤の音（ピアノロールの試聴など）を鳴らしておく長さの下限（秒）。押してすぐ離しても聞こえるように */
+const MONITOR_MIN = 0.15
 interface TrackNodes {
   input: GainNode
   /** 波形ブロックの音の入口。FX の遅れ（latency）をそろえるため、遅れの少ないトラックを遅らせる（子のトラックの音は入らない） */
@@ -96,6 +98,7 @@ class Graph {
     this.masterPan = ctx.createStereoPanner()
     this.out = ctx.createGain()
     this.masterFx = createFxChain(ctx, [], this.host, this.chainOptions('master'))
+    this.masterFx.setTransport(this.transport())
     // 再生は耳とスピーカーを守るリミッターを通す（wevocal-lib。WeVocalSynth と同じ）。書き出しは通さない
     this.master.connect(this.masterFx.input)
     // リミッターは再生ごとに作る（どこかで壊れた値が一度入っても、次の再生に残さない）
@@ -257,6 +260,9 @@ class Graph {
   /** 時間軸の起点だけを付け替える（再生位置を変えたとき。グラフは作り直さず、声と音符を新しい位置で送り直す。声は FADE でつながる） */
   reposition(p: Project, zero: number) {
     this.zero = zero
+    // 位置に合わせて動くプラグインにも、新しい起点を伝える
+    this.masterFx.setTransport(this.transport())
+    for (const n of this.tracks.values()) n.fx.setTransport(this.transport())
     for (const n of this.tracks.values()) {
       if (!n.inst) continue
       n.inst.instance.clear()
@@ -286,6 +292,10 @@ class Graph {
   noteOff(track: string, pitch: number) {
     this.tracks.get(track)?.inst?.instance.noteOff(pitch)
   }
+  /** そのトラックに、今動いている音源があるか（先読みのトラックやフリーズ中は、再生のグラフに音源がない） */
+  hasInstrument(track: string) {
+    return !!this.tracks.get(track)?.inst
+  }
 
   /** 曲の中の今の時刻（秒）。再生中は ctx の時計から求める */
   private timeNow() {
@@ -308,6 +318,11 @@ class Graph {
 
   /** プラグインに渡すホストの情報 */
   private readonly host = { bpm: () => this.bpm }
+
+  /** プラグインに伝える曲の位置（位置 0 にあたる時刻とテンポ） */
+  private transport() {
+    return { zero: this.zero, bpm: this.bpm }
+  }
 
   /** レベルメーター用の AnalyserNode（時間波形を読むだけなので小さくてよい） */
   private static analyser(ctx: BaseAudioContext) {
@@ -343,6 +358,7 @@ class Graph {
     const pan = this.ctx.createStereoPanner()
     // トラック: 音量 → FX の列 → パン → マスター
     const fx = createFxChain(this.ctx, this.liveFx(t), this.host, this.chainOptions(t.id))
+    fx.setTransport(this.transport())
     input.connect(fx.input)
     fx.output.connect(pan)
     const cache = this.ctx.createGain()
@@ -546,6 +562,8 @@ export class Player {
   /** 再生していないときの、キーボードで鳴らす音のためのグラフ（波形ブロックと MIDI ブロックは持たず、音源と FX の列だけ） */
   private monitor: Graph | null = null
   private monitorKey = ''
+  /** 鳴らしている鍵盤の音を鳴らし始めた時刻（トラックと高さごと） */
+  private monitorOn = new Map<string, number>()
   /** 重いプラグインを持つトラックの音を、先に作って鳴らす（設定。anticipate.ts） */
   anticipative = false
   /** 先に作って鳴らしているトラック（id → 音を決めるものの識別、次に作るかたまりの番号） */
@@ -770,14 +788,23 @@ export class Player {
   /** キーボードの音を鳴らす、離す。再生中は再生のグラフの音源で、していなければ、音源と FX の列だけのグラフで鳴らす */
   async monitorNote(p: Project, track: string, pitch: number, vel: number, on: boolean) {
     const send = (g: Graph) => (on ? g.noteOn(track, pitch, vel) : g.noteOff(track, pitch))
-    if (this.playing && this.graph) return send(this.graph)
+    // 押してすぐ離しても聞こえるように、離すのは鳴らしてから MONITOR_MIN 秒あとにする
+    const id = `${track}:${pitch}`
+    if (on) this.monitorOn.set(id, performance.now())
+    else {
+      const wait = MONITOR_MIN * 1000 - (performance.now() - (this.monitorOn.get(id) ?? 0))
+      this.monitorOn.delete(id)
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait))
+    }
+    // 再生のグラフに音源があればそれで鳴らす。先読みのトラックなど、なければモニターのグラフで鳴らす
+    if (this.playing && this.graph?.hasInstrument(track)) return send(this.graph)
     const ctx = (this.ctx ??= new AudioContext())
     const q: Project = { ...p, blocks: [], midi: [] }
     // 音源と FX の列、音量、パンが変わったときだけ組み直す
     const key = JSON.stringify([p.tracks.map((t) => [t.id, t.instrument, t.fx, t.volume, t.pan, t.invert, t.mute, t.solo, t.parent]), p.master, p.tempo.bpm])
     if (!this.monitor || key !== this.monitorKey) {
       await Promise.all([startContext(ctx, 'player'), loadMixer(ctx), preloadFx(ctx, ...fxLists(q)), preloadInstruments(ctx, instrumentIds(q))])
-      if (this.playing) return
+      if (this.playing && this.graph?.hasInstrument(track)) return send(this.graph)
       this.monitor ??= new Graph(ctx, 0)
       this.monitor.sync(q, false)
       this.monitorKey = key
