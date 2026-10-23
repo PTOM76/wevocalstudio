@@ -26,7 +26,7 @@ export function denseEnv(pts: EnvPt[], divisions = 16): EnvPt[] {
 /** 点が持つ形状だけを取り出す（直線は省く） */
 const shapeOf = (p: Shaped): Shaped => ({ ...(p.shape && p.shape !== 'linear' ? { shape: p.shape } : {}), ...(p.shape === 'bezier' && p.tension ? { tension: p.tension } : {}) })
 
-interface EnvSpec {
+export interface EnvSpec {
   /** 点の一覧（波形ブロックの頭からの秒） */
   points: (b: Block) => EnvPt[]
   /** 点の一覧を、波形ブロックに書く値にする */

@@ -4,7 +4,10 @@ import { defineConfig } from 'vitest/config'
 // テストは React と音声の入出力を使わない純粋な関数だけを対象にする（ブラウザの機能は要らない）。wevocal-lib の分も隣の WeVocalSynth の中から動かす
 export default defineConfig({
   resolve: {
-    alias: [{ find: /^wevocal-lib$/, replacement: resolve(import.meta.dirname, '../wevocalsynth/wevocal-lib/web/src/index.ts') }],
+    alias: [
+      { find: /^wevocal-lib$/, replacement: resolve(import.meta.dirname, '../wevocalsynth/wevocal-lib/web/src/index.ts') },
+      { find: /^pevenmui\/debug$/, replacement: resolve(import.meta.dirname, '../wevocalsynth/pevenmui/src/debug/index.ts') },
+    ],
   },
   test: {
     environment: 'node',
