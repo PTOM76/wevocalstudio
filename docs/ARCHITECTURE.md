@@ -46,6 +46,20 @@ DAW と同じく、毎フレーム変わるもの（再生位置）と、変え�
 - MIDI ブロックの有無は `midiBlocks(p)` で読む（`p.midi ?? []` を書かない）
 - テストは `npm test`。文書と `edits/` に付ける
 
+## 画面と操作の置き場所
+| 置き場所 | 持つもの |
+| --- | --- |
+| `App.tsx` | 画面の組み立てだけ。状態と操作は下のフックに置く |
+| `useTransport.ts` | 再生、編集カーソル、再生カーソル、一時停止、繰り返しと、再生、一時停止、停止、移動の操作 |
+| `useActions.ts`、`commands/` | 操作の表（`table.ts`）、メニューバーと右クリックのメニュー（`menus.ts`）、型（`types.ts`）。キーの割り当てとメニューは操作の名前で呼ぶ。選択は文書から読む |
+| `DocContext.tsx` | 文書を部品に渡す。時間軸、解析の欄、ダイアログ、コマンドは props ではなくここから選択、範囲、プロジェクトの変更を使う |
+| `Timeline.tsx`、`timeline/` | 時間軸の画面（`Timeline.tsx`）、描画（`useTimelineDraw`）、ホイール、トラックの欄（`TrackColumn`）、操作（`useTimelinePointer`。ドラッグの種類ごとの状態を持つ）、ドラッグの計算（`dragMath`。純粋な関数）、ダブルクリックとメニューの振り分け（`menuHandlers`） |
+| `pianoRoll/` | ピアノロール。表示の位置（`useRollView`）、ドラッグの計算（`gesture`。純粋な関数）、編集（`useRollEdit`）、描画（`draw`） |
+| `engine.ts`、`engine/` | 再生と書き出し。音のグラフ（`graph`）、再生（`player`）、書き出しの描画（`render`）、共通の補助（`params`）、音符の並べ替え（`midiEvents`。純粋な関数） |
+
+- ファイルは 500 行以下にする。超えそうなら、状態を持つ部分（フック）と、計算だけの部分（純粋な関数。テストを付ける）に分ける
+- 画面のコードは、プロジェクトを組み替える処理を直接書かず、`document/edits/` の関数を文書に渡す
+
 ## データの形（`src/project.ts`）
 
 | 型 | 持つもの |
