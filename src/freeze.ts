@@ -3,7 +3,7 @@
 // 自分の音量、パン、位相の反転は書き出さない（フリーズ中も変えられる）。自分の FX は withFx のときだけ含める（重い VST などを確定する）。元の波形ブロックは残し、解除すれば戻る
 import { chainLatency, chainTail } from 'wevocal-lib'
 import { renderMix } from './engine'
-import { ancestors, descendants, liveSlots, newId, newProject, type Project, type Track } from './project'
+import { ancestors, descendants, liveSlots, newId, newProject, type Project, type Track, midiBlocks } from './project'
 
 /** トラックとサブトラックの音を、自分のフェーダーの前の音にする（withFx なら自分の FX の列の後の音）。頭は最初のブロックの位置から */
 export async function freezeTrack(p: Project, trackId: string, withFx = false, signal?: AbortSignal): Promise<Project> {
@@ -12,7 +12,7 @@ export async function freezeTrack(p: Project, trackId: string, withFx = false, s
   const subs = descendants(p, track)
   const ids = new Set([trackId, ...subs.map((t) => t.id)])
   const blocks = p.blocks.filter((b) => ids.has(b.track))
-  const midi = (p.midi ?? []).filter((b) => ids.has(b.track))
+  const midi = midiBlocks(p).filter((b) => ids.has(b.track))
   const all = [...blocks, ...midi]
   if (!all.length) return p
   const start = Math.min(...all.map((b) => b.start))

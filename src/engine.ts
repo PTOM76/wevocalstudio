@@ -12,7 +12,7 @@ import { clipId, loadMixer, Mixers, voicesOf } from './mixer/mixer'
 import type { Voice } from './mixer/types'
 import { clipFor, piecesFor, preparePitch } from './dsp/pitch'
 import { samplerShifts, wantSamplerPitch } from './dsp/samplerPitch'
-import { ancestors, audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, liveSlots, shapeProgress, type EnvPoint, type Project, type Track } from './project'
+import { ancestors, audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, songEnd, liveSlots, shapeProgress, type EnvPoint, type Project, type Track, midiBlocks } from './project'
 
 /** 鳴らし直すとき、差し替えるときのつなぎ（秒） */
 const FADE = 0.02
@@ -56,7 +56,7 @@ const maxTrackLatency = (p: Project, sampleRate: number) => Math.max(0, ...p.tra
 const midiSig = (p: Project, track: string) => {
   const t = p.tracks.find((x) => x.id === track)
   // 音符は拍なので、テンポが変わっても送り直す
-  return JSON.stringify([t && ownAudible(p, t), p.tempo, p.markers.filter((m) => m.tempo), (p.midi ?? []).filter((b) => b.track === track)])
+  return JSON.stringify([t && ownAudible(p, t), p.tempo, p.markers.filter((m) => m.tempo), midiBlocks(p).filter((b) => b.track === track)])
 }
 /** 組んだノード（トラックごとの入口とミキサー、マスター） */
 class Graph {
@@ -189,7 +189,7 @@ class Graph {
     const tr = p.tracks.find((t) => t.id === track)
     const own = !!tr && ownAudible(p, tr)
     const map = projectBeatMap(p)
-    for (const b of p.midi ?? []) {
+    for (const b of midiBlocks(p)) {
       if (b.track !== track || b.mute || !own) continue
       const b0 = map.toBeat(b.start)
       const len = blockBeats(map, b)
@@ -210,7 +210,7 @@ class Graph {
     const tr = p.tracks.find((t) => t.id === track)
     if (!tr || !ownAudible(p, tr)) return out
     const map = projectBeatMap(p)
-    for (const b of p.midi ?? []) {
+    for (const b of midiBlocks(p)) {
       if (b.track !== track || b.mute || !b.curves?.length) continue
       const b0 = map.toBeat(b.start)
       const len = blockBeats(map, b)
@@ -952,7 +952,7 @@ export async function renderTrackChunk(p: Project, trackId: string, start: numbe
     master: { volume: 0, pan: 0, mute: false },
     tracks: [{ ...track, parent: undefined, pan: 0, mute: false, solo: false, sends: [], autoLane: undefined }],
     blocks: p.blocks.filter((b) => b.track === trackId),
-    midi: (p.midi ?? []).filter((b) => b.track === trackId),
+    midi: midiBlocks(p).filter((b) => b.track === trackId),
   }
   await preparePitch(q)
   const length = Math.max(128, Math.ceil((lead + dur) * sampleRate))
@@ -981,6 +981,6 @@ export async function renderTrack(p: Project, trackId: string, length: number, s
   if (!track) throw new Error('track not found')
   const chain = [...ancestors(p, track).reverse(), track]
   const tracks = chain.map((t) => (t === track ? { ...t, volume: 0, pan: 0, invert: false, mute: false, solo: false } : { ...t, mute: false, solo: false }))
-  const q: Project = { ...p, master: { volume: 0, pan: 0, mute: false }, tracks, blocks: p.blocks.filter((b) => b.track === trackId), midi: (p.midi ?? []).filter((b) => b.track === trackId) }
+  const q: Project = { ...p, master: { volume: 0, pan: 0, mute: false }, tracks, blocks: p.blocks.filter((b) => b.track === trackId), midi: midiBlocks(p).filter((b) => b.track === trackId) }
   return renderMix(q, length, sampleRate, undefined, signal)
 }

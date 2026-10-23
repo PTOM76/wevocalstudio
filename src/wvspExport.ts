@@ -1,7 +1,7 @@
 // プロジェクトを WeVocalSynth のプロジェクト（.wvsp）にする。波形ブロックがあるトラックを 1 本ずつ描画して wvsp のトラックにする（memo/wvsp-export.md）
 import { EQ_ID, slotToEq, writeWvsp } from 'wevocal-lib'
 import { renderTrack } from './engine'
-import { ancestors, ownAudible, descendants, projectEnd, type Project, type Track } from './project'
+import { ancestors, ownAudible, descendants, projectEnd, type Project, type Track, midiBlocks } from './project'
 
 /** FX の列の先頭の EQ（wvsp の古い項目 eq。Synth が fx を読めるまでの互換） */
 const firstEq = (fx: Track['fx']) => {
@@ -12,7 +12,7 @@ const firstEq = (fx: Track['fx']) => {
 /** 書き出すトラックの id（選んだトラックとその子孫で波形ブロックがあるもの。選んでいなければ全トラック） */
 export function wvspTargets(p: Project, selected: string[]): string[] {
   const picked = selected.length ? new Set(selected.flatMap((id) => [id, ...descendants(p, p.tracks.find((t) => t.id === id)!).map((t) => t.id)])) : null
-  return p.tracks.filter((t) => (!picked || picked.has(t.id)) && (p.blocks.some((b) => b.track === t.id) || (p.midi ?? []).some((b) => b.track === t.id))).map((t) => t.id)
+  return p.tracks.filter((t) => (!picked || picked.has(t.id)) && (p.blocks.some((b) => b.track === t.id) || midiBlocks(p).some((b) => b.track === t.id))).map((t) => t.id)
 }
 
 export async function exportWvsp(p: Project, fileName: string, selected: string[], onProgress?: (v: number) => void, signal?: AbortSignal): Promise<Blob> {

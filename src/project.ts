@@ -419,7 +419,7 @@ export const midiBlocks = (p: Project): MidiBlock[] => p.midi ?? []
 export const allBlocks = (p: Project): AnyBlock[] => [...p.blocks, ...midiBlocks(p)]
 
 /** 最後の波形ブロックの終わり（秒） */
-export const projectEnd = (p: Project) => Math.max(p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0), (p.midi ?? []).reduce((m, b) => Math.max(m, b.start + b.length), 0))
+export const projectEnd = (p: Project) => Math.max(p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0), midiBlocks(p).reduce((m, b) => Math.max(m, b.start + b.length), 0))
 
 /** 曲の終わり（秒）。決めていなければ、最後の波形ブロックの終わりに、全トラックとマスターの FX の余韻の最大を足す。書き出しの長さと「曲の終わりで止める」に使う */
 export function songEnd(p: Project): number {

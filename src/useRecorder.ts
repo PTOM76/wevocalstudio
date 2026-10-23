@@ -1,7 +1,7 @@
 // 録音（再生位置から、ほかのトラックを鳴らしながら録り、録った音を波形ブロックとして置く。wevocal-lib の録音）
 import { useRef, useState } from 'react'
 import { projectBeatMap } from './beats'
-import { fillMidi, newId } from './project'
+import { fillMidi, newId, midiBlocks } from './project'
 import { canRecord, openInput, startRecording, type Recording } from 'wevocal-lib'
 import { useT } from './i18n'
 import type { Project } from './project'
@@ -60,7 +60,7 @@ export function useRecorder(o: {
     const end = Math.max(...notes.map((n) => n.abs + n.dur))
     const block = fillMidi({ id: newId(), track: r.track, start, length: Math.max(0.25, end - start), mute: false, notes: notes.map((n) => ({ id: newId(), t: n.abs - start, dur: n.dur, pitch: n.pitch, vel: n.vel })) }, project.tempo, project.markers)
     // 重ねる録り方: そのトラックの、録った範囲の頭を含む MIDI ブロックがあれば、そこに音符を足す
-    const target = p.settings.midiRecordMode === 'overlay' && (project.midi ?? []).find((b) => b.track === r.track && b.start <= start + 1e-6 && start < b.start + b.length)
+    const target = p.settings.midiRecordMode === 'overlay' && midiBlocks(project).find((b) => b.track === r.track && b.start <= start + 1e-6 && start < b.start + b.length)
     if (target) {
       const map = projectBeatMap(project)
       const shift = map.toBeat(block.start) - map.toBeat(target.start)

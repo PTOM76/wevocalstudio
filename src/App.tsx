@@ -27,7 +27,7 @@ import { snapGrid } from './grid'
 import { buildMidi } from './midiExport'
 import { emitNote } from './pianoRoll/noteBus'
 import { readMidi } from './midiImport'
-import { addWvspTracks, newProject, songEnd, trackHeight, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, visibleTracks, type Track } from './project'
+import { addWvspTracks, midiBlocks, newProject, songEnd, trackHeight, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, visibleTracks, type Track } from './project'
 import Timeline, { useHeaderWidth } from './Timeline'
 import Toolbar from './Toolbar'
 import Transport from './Transport'
@@ -245,7 +245,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       const tracks = project.tracks.filter((tr) => tr.instrument)
       // ピアノロールを開いているときは、そのブロックのトラック（画面の鍵盤と同じ）
       const rollId = dialogs.arg<string>('pianoRoll')
-      const rollTrack = rollId ? project.midi?.find((b) => b.id === rollId)?.track : undefined
+      const rollTrack = rollId ? midiBlocks(project).find((b) => b.id === rollId)?.track : undefined
       const target = tracks.find((tr) => tr.id === rollTrack) ?? tracks.find((tr) => tr.armed) ?? tracks.find((tr) => tr.id === selectedTrack) ?? tracks[0]
       if (!target) return
       void player.current.monitorNote(project, target.id, pitch, vel, on)
@@ -479,7 +479,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     }
     setNotice(t('hint.touch'))
   }, [touchLike, hasBlocks, t])
-  const editBar = editBarOn && (selected.length > 0 || range) ? <BlockEditBar commands={commands} mode={selected.length > 0 ? (selected.every((id) => project.midi?.some((b) => b.id === id)) ? 'midi' : 'block') : 'range'} top={!touchLike} /> : null
+  const editBar = editBarOn && (selected.length > 0 || range) ? <BlockEditBar commands={commands} mode={selected.length > 0 ? (selected.every((id) => midiBlocks(project).some((b) => b.id === id)) ? 'midi' : 'block') : 'range'} top={!touchLike} /> : null
 
   return (
     // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）
@@ -638,7 +638,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         pendingLabel={t('status.pitchBlock')}
       />
       {/* 何も置いていないときの案内（開く、音を作る、録音、最近使用したファイル。部品は PevenMUI の EmptyState。WeVocalSynth と同じ）。時間軸の操作は妨げない */}
-      {project.blocks.length === 0 && !project.midi?.length && project.tracks.length <= 1 && !recording && (
+      {project.blocks.length === 0 && !midiBlocks(project).length && project.tracks.length <= 1 && !recording && (
         <Box sx={{ position: 'absolute', inset: 0, boxSizing: 'border-box', pl: `${header + 16}px`, pr: 2, pointerEvents: 'none', '& button': { pointerEvents: 'auto' } }}>
           <EmptyState
             message={t('empty.formats')}

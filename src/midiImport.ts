@@ -1,7 +1,7 @@
 // MIDI ファイルの読み込み。選んだトラック（チャンネルで分けることもできる）ごとに、新しいトラックと MIDI ブロックを作る（音源は標準のシンセ）。画面を知らない
 import { defaultValues, findInstrument, parseMidi, type MidiFile } from 'wevocal-lib'
 import { projectBeatMap } from './beats'
-import { newId, newTrack, type InstrumentSlot, type Marker, type MidiBlock, type MidiCurve, type Note, type Project, type Track } from './project'
+import { midiBlocks, newId, newTrack, type InstrumentSlot, type Marker, type MidiBlock, type MidiCurve, type Note, type Project, type Track } from './project'
 
 /** 標準のシンセの音源（新しい MIDI ブロックの既定） */
 export function defaultInstrument(): InstrumentSlot {
@@ -96,5 +96,5 @@ export function importMidi(p: Project, pending: MidiPending, at: number, o: Midi
     }
   }
   if (!blocks.length) return null
-  return { ...q, tracks: [...q.tracks, ...tracks], midi: [...(q.midi ?? []), ...blocks] }
+  return { ...q, tracks: [...q.tracks, ...tracks], midi: [...midiBlocks(q), ...blocks] }
 }

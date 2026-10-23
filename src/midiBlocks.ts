@@ -1,5 +1,5 @@
 // MIDI ブロックの時間軸での描画と、押した所の判定（音符は小さな帯で見せる）。画面を知らない
-import { ownAudible, trackHeight, type MidiBlock, type Project } from './project'
+import { ownAudible, trackHeight, type MidiBlock, type Project, midiBlocks } from './project'
 import { blockBeats, projectBeatMap } from './beats'
 import { trackTop } from './drawTimeline'
 import { playedNotes } from './midiLoop'
@@ -52,7 +52,7 @@ export function hitMidi(p: Project, x: number, y: number, toTime: (x: number) =>
   const track = p.tracks[i]
   if (!track) return null
   const t = toTime(x)
-  const block = (p.midi ?? []).findLast((b) => b.track === track.id && t >= b.start - edge / pps && t < b.start + b.length + edge / pps)
+  const block = midiBlocks(p).findLast((b) => b.track === track.id && t >= b.start - edge / pps && t < b.start + b.length + edge / pps)
   if (!block) return null
   const kind: MidiDragKind = (block.start + block.length - t) * pps < edge ? 'right' : (t - block.start) * pps < edge ? 'left' : 'move'
   return { block, kind }
@@ -70,7 +70,7 @@ export function drawMidiBlocks(g: CanvasRenderingContext2D, p: Project, trackId:
   const track = p.tracks.find((t) => t.id === trackId)
   if (!track) return
   const map = projectBeatMap(p)
-  for (const b of p.midi ?? []) {
+  for (const b of midiBlocks(p)) {
     if (b.track !== trackId) continue
     const r = midiRect(p, b, scroll, pps, vscroll)
     if (!r || r.x > width || r.x + r.w < 0) continue

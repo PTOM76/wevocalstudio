@@ -1,4 +1,5 @@
 // 先に作った FX の音（anticipate.ts のかたまり）を、再生をまたいで取っておく。同じトラックの同じ音、同じ位置なら描かずに使う（memo/fx-cache.md）
+import { midiBlocks } from './project'
 import { CHUNK, PREROLL } from './anticipate'
 import type { Project, Track } from './project'
 
@@ -33,7 +34,7 @@ export function chunkKey(p: Project, trackId: string, k: number): string | null 
   const to = (k + 1) * CHUNK
   const within = (b: { start: number; length: number }) => b.start < to && b.start + b.length > from
   const blocks = p.blocks.filter((b) => b.track === trackId && within(b))
-  const midi = (p.midi ?? []).filter((b) => b.track === trackId && within(b))
+  const midi = midiBlocks(p).filter((b) => b.track === trackId && within(b))
   const sources = [...new Set(blocks.map((b) => b.source))].map((id) => {
     const s = p.sources.find((x) => x.id === id)
     return `${id}:${s?.duration ?? 0}:${s?.clip.channels[0]?.length ?? 0}`

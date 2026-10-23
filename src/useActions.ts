@@ -6,7 +6,7 @@ import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { actionOf, keyLabel, type Action } from './keymap'
-import { newId, type Block, type EnvShape, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange } from './project'
+import { newId, type Block, type EnvShape, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange, midiBlocks } from './project'
 import { ENVELOPES, type EnvKind } from './envelopes'
 import { reverseBlocks } from './reverse'
 import { cropToRange, deleteRange, insertSilence, normalizeBlocks, rangeToNewTrack, repeatRange } from './rangeEdit'
@@ -129,7 +129,7 @@ export function useActions(c: ActionContext) {
   const t = useT()
   const { doc } = c
   // 選んでいる MIDI ブロック（ピアノロールで開く）
-  const midiChosen = (doc.project.midi ?? []).filter((b) => c.selected.includes(b.id))
+  const midiChosen = midiBlocks(doc.project).filter((b) => c.selected.includes(b.id))
   const midiSel = midiChosen[0]
   const chosen = doc.project.blocks.filter((b) => c.selected.includes(b.id))
   const ids = chosen.map((b) => b.id)
@@ -263,7 +263,7 @@ export function useActions(c: ActionContext) {
     },
     importMidi: { run: c.importMidi },
     glueMidi: { enabled: midiChosen.length > 1, run: () => doc.apply((q) => glueMidi(q, midiChosen.map((b) => b.id))) },
-    exportMidi: { enabled: (doc.project.midi ?? []).length > 0, run: () => c.exportMidi(midiChosen.map((b) => b.id)) },
+    exportMidi: { enabled: midiBlocks(doc.project).length > 0, run: () => c.exportMidi(midiChosen.map((b) => b.id)) },
     pluginTool: { run: () => c.openDialog('tool') },
     pluginAnalyze: { run: () => c.openDialog('analyze') },
     editMidi: { enabled: !!midiSel, run: () => midiSel && c.openDialog('pianoRoll', midiSel.id) },

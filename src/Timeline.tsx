@@ -12,7 +12,7 @@ import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { hitMidi, trimLeft, type MidiDragKind } from './midiBlocks'
 import { blockBeats, projectBeatMap } from './beats'
 import { layoutRows } from './overlap'
-import { depthOf, projectEnd, songEnd, masterHeight, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange } from './project'
+import { depthOf, projectEnd, songEnd, masterHeight, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange, midiBlocks } from './project'
 import { ENVELOPES, envelopeRange, hitEnvLine, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, snapToStep, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
@@ -732,7 +732,7 @@ export default function Timeline(p: {
 
   /** ドラッグしている MIDI ブロックを、指の位置に合わせて動かす（波形ブロックと同じく、縦に動かすとほかのトラックへ移り、端で表示が流れる） */
   const moveMidi = (md: NonNullable<typeof midiDrag.current>, x: number, y: number, shiftKey: boolean) => {
-    const b = (p.project.midi ?? []).find((q) => q.id === md.id)
+    const b = midiBlocks(p.project).find((q) => q.id === md.id)
     if (!b) return
     if (md.kind === 'move') {
       const tr = trackAt(y)

@@ -16,7 +16,7 @@ import { kanaHost, videoHost } from './addons'
 import type { Range } from 'wevocal-lib'
 import { ExportDialog, FxChainDialog, MarkerTempoDialog, PitchToolText, SamplerDialog, SynthDialog, VibratoDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
-import { addClipTrack } from './project'
+import { addClipTrack, midiBlocks } from './project'
 import { AppIcon } from './AppHeader'
 import { app } from './appConfig'
 import { i18n, useT } from './i18n'
@@ -180,7 +180,7 @@ export default function AppDialogs(p: {
       />
       {(() => {
         const id = dialogs.arg<string>('pianoRoll')
-        const block = (project.midi ?? []).find((b) => b.id === id) ?? null
+        const block = midiBlocks(project).find((b) => b.id === id) ?? null
         return (
           block && (
             <PianoRollDialog
@@ -237,7 +237,7 @@ export default function AppDialogs(p: {
       })()}
       {(() => {
         const id = dialogs.arg<string>('midiProps')
-        const block = (project.midi ?? []).find((b) => b.id === id) ?? null
+        const block = midiBlocks(project).find((b) => b.id === id) ?? null
         return (
           block && (
             <MidiBlockDialog

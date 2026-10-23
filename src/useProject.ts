@@ -7,7 +7,7 @@ import { defaultInstrument } from './midiImport'
 import type { MessageKey } from './i18n'
 import { projectBeatMap } from './beats'
 import * as edit from './document/edits/blocks'
-import { BLOCK_LIMITS, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
+import { BLOCK_LIMITS, midiBlocks, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** 置く場所（トラックと時刻）。省略したときは空いているトラックか、新しいトラック */
 export interface DropAt {
@@ -52,7 +52,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
       if (next === h.present.project) return h
       // まとめるときは名前も前のまま
       // 消えた波形ブロックは選択から外す
-      const selected = h.present.selected.filter((id) => next.blocks.some((b) => b.id === id) || next.midi?.some((b) => b.id === id))
+      const selected = h.present.selected.filter((id) => next.blocks.some((b) => b.id === id) || midiBlocks(next).some((b) => b.id === id))
       return commitHistory(h, { project: next, selected, label: merged ? h.present.label : describeChange(h.present.project, next) }, limit.current, merged)
     })
   }, [])
@@ -246,8 +246,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
         if (i < 0) return p
         const copy = { ...p.tracks[i], id: newId(), name: `${p.tracks[i].name} (2)`, armed: false }
         const blocks = p.blocks.filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
-        const midi = (p.midi ?? []).filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
-        return { ...p, tracks: [...p.tracks.slice(0, i + 1), copy, ...p.tracks.slice(i + 1)], blocks: [...p.blocks, ...blocks], ...(midi.length ? { midi: [...(p.midi ?? []), ...midi] } : {}) }
+        const midi = midiBlocks(p).filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
+        return { ...p, tracks: [...p.tracks.slice(0, i + 1), copy, ...p.tracks.slice(i + 1)], blocks: [...p.blocks, ...blocks], ...(midi.length ? { midi: [...midiBlocks(p), ...midi] } : {}) }
       }),
     [change],
   )
@@ -410,7 +410,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   const insertMidi = useCallback(
     (blocks: MidiBlock[]) => {
       const copies = blocks.map((b) => ({ ...b, id: newId(), notes: b.notes.map((n) => ({ ...n, id: newId() })) }))
-      change((p) => ({ ...p, midi: [...(p.midi ?? []), ...copies] }))
+      change((p) => ({ ...p, midi: [...midiBlocks(p), ...copies] }))
       return copies.map((b) => b.id)
     },
     [change],

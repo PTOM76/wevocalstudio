@@ -1,6 +1,6 @@
 // サンプラーの「フォルマントを保持」。音符の高さごとに、元の音を波形ブロックと同じピッチ処理（フォルマントを保つ方式）で作るための、見えない波形ブロックを決める。画面を知らない
 import { findInstrument } from 'wevocal-lib'
-import { newBlock, type Block, type InstrumentSlot, type Project } from '../project'
+import { newBlock, type Block, type InstrumentSlot, type Project, midiBlocks } from '../project'
 
 /** 見えない波形ブロックに使う処理方式（音の種類を選ばない） */
 const DEFAULTS = { algorithm: 'wsola', preserveFormant: true } as const
@@ -50,7 +50,7 @@ export function samplerShifts(p: Project): SamplerShift[] {
     const source = keeps(spec) ? p.sources.find((s) => s.id === spec!.sample) : undefined
     if (!spec || !source) continue
     const root = spec.values.root ?? 60
-    const pitches = new Set([...(p.midi ?? []).filter((b) => b.track === track.id).flatMap((b) => b.notes.map((n) => n.pitch)), ...(extra.get(track.id) ?? [])])
+    const pitches = new Set([...midiBlocks(p).filter((b) => b.track === track.id).flatMap((b) => b.notes.map((n) => n.pitch)), ...(extra.get(track.id) ?? [])])
     for (const pitch of [...pitches].sort((a, b) => a - b)) {
       const semis = pitch - root
       if (semis === 0 || Math.abs(semis) > MAX_SHIFT) continue

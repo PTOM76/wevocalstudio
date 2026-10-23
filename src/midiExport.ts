@@ -1,4 +1,5 @@
 // MIDI ファイルの書き出し。MIDI ブロックを、トラックごとの音符にして標準 MIDI ファイルにする。画面を知らない
+import { midiBlocks } from './project'
 import { writeMidi, type MidiWriteTrack } from 'wevocal-lib'
 import { projectBeatMap } from './beats'
 import type { MidiBlock, Project } from './project'
@@ -10,7 +11,7 @@ import type { MidiBlock, Project } from './project'
 export function buildMidi(p: Project, ids?: string[]): Uint8Array | null {
   const map = projectBeatMap(p)
   const origin = map.toBeat(0)
-  const blocks = (p.midi ?? []).filter((b) => !b.mute && (!ids?.length || ids.includes(b.id)))
+  const blocks = midiBlocks(p).filter((b) => !b.mute && (!ids?.length || ids.includes(b.id)))
   const tracks: MidiWriteTrack[] = []
   for (const track of p.tracks) {
     const mine: MidiBlock[] = blocks.filter((b) => b.track === track.id)

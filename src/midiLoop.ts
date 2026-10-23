@@ -1,7 +1,7 @@
 // MIDI ブロックのループ（loop 拍ごとに、頭からの中身を繰り返す）の展開と、MIDI ブロックの接着。画面を知らない
 import { beatMap, blockBeats } from './beats'
 import { sortPoints } from './midiCurves'
-import { newId, type MidiBlock, type MidiCurve, type Note, type Project } from './project'
+import { newId, type MidiBlock, type MidiCurve, type Note, type Project, midiBlocks } from './project'
 
 /** 鳴らす音符の 1 回分（ブロックの頭からの拍。長さはブロックの終わりとループの終わりで切ってある） */
 export interface PlayedNote {
@@ -44,7 +44,7 @@ export function playedPoints(points: { t: number; v: number }[], loop: number | 
 /** ids の MIDI ブロックのうち、同じトラックのものを 1 つにつなぐ（トラックごとに 1 つ）。つなぐ相手が 2 つ以上なければ、そのまま */
 export function glueMidi(p: Project, ids: string[]): Project {
   const map = beatMap(p.tempo, p.markers)
-  const midi = p.midi ?? []
+  const midi = midiBlocks(p)
   const next: MidiBlock[] = []
   const done = new Set<string>()
   for (const b of midi) {
