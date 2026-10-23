@@ -3,7 +3,6 @@ import { glueMidi } from './midiLoop'
 import type { MidiBlock } from './project'
 import { useEffect, useRef, useState } from 'react'
 import { textSelected, type MenuEntry, type MenuGroup } from 'pevenmui'
-import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { actionOf, keyLabel, type Action } from './keymap'
 import { newId, type Block, type EnvShape, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange, midiBlocks } from './project'
@@ -18,18 +17,9 @@ export interface ActionContext {
   doc: ProjectApi
   cursor: number
   playing: boolean
-  /** 選んでいる波形ブロック（複数） */
-  selected: string[]
-  selectedTrack: string | null
-  selectedTracks: string[]
   defaultFade: number
   /** 貼り付けと無音の挿入のあと、再生位置を入れた範囲の終わりへ移すか（設定） */
   seekAfterInsert: boolean
-  /** 範囲選択 */
-  range: Range | null
-  setRange: (r: Range | null) => void
-  select: (ids: string[]) => void
-  selectTrack: (id: string | null) => void
   play: () => void
   /** 止めて、再生を始めた位置に戻る */
   stop: () => void
@@ -128,16 +118,19 @@ interface Command {
 export function useActions(c: ActionContext) {
   const t = useT()
   const { doc } = c
+  // 選んでいるトラック（複数のうち最後に選んだもの。貼り付けや録音の先）
+  const selectedTrack = doc.selectedTracks[doc.selectedTracks.length - 1] ?? null
+  const selectTrack = (id: string | null) => doc.selectTracks(id ? [id] : [])
   // 選んでいる MIDI ブロック（ピアノロールで開く）
-  const midiChosen = midiBlocks(doc.project).filter((b) => c.selected.includes(b.id))
+  const midiChosen = midiBlocks(doc.project).filter((b) => doc.selected.includes(b.id))
   const midiSel = midiChosen[0]
-  const chosen = doc.project.blocks.filter((b) => c.selected.includes(b.id))
+  const chosen = doc.project.blocks.filter((b) => doc.selected.includes(b.id))
   const ids = chosen.map((b) => b.id)
   // 波形ブロックか MIDI ブロックを選んでいる
   const any = chosen.length > 0 || midiChosen.length > 0
   const canSplit = [...chosen, ...midiChosen].some((b) => c.cursor > b.start + 0.001 && c.cursor < b.start + b.length - 0.001)
   const anyWave = chosen.length > 0
-  const track = doc.project.tracks.find((tr) => tr.id === c.selectedTrack)
+  const track = doc.project.tracks.find((tr) => tr.id === selectedTrack)
   const blockTrack = doc.project.tracks.find((tr) => tr.id === (midiChosen[0] ?? chosen[0])?.track)
   // 表示しているエンベロープに点がある、選んだ波形ブロック（初期化の対象）
   const envBlocks = c.envKind ? chosen.filter((b) => ENVELOPES[c.envKind!].points(b).length > 0) : []
@@ -159,11 +152,11 @@ export function useActions(c: ActionContext) {
   /** 貼り付ける。at を渡せば、その時刻とトラックに（何もない所の右クリックの「ここに貼り付け」） */
   const paste = (place?: { time: number; track: string | null }) => {
     const cursor = place?.time ?? c.cursor
-    const selectedTrack = place?.track ?? c.selectedTrack
+    const pasteTrack = place?.track ?? selectedTrack
     // トラックをコピーしていれば、選んでいるトラックのすぐ下に貼り付ける
     const tc = trackClipboard.current
     if (tc) {
-      c.selectTrack(doc.insertTrack(tc.track, tc.blocks, selectedTrack))
+      selectTrack(doc.insertTrack(tc.track, tc.blocks, pasteTrack))
       return
     }
     const blocks = clipboard.current
@@ -174,13 +167,13 @@ export function useActions(c: ActionContext) {
     const items = [...blocks, ...midi]
     const first = Math.min(...items.map((b) => b.start))
     const top = Math.min(...items.map((b) => tracks.findIndex((tr) => tr.id === b.track)))
-    const target = Math.max(0, tracks.findIndex((tr) => tr.id === selectedTrack))
+    const target = Math.max(0, tracks.findIndex((tr) => tr.id === pasteTrack))
     const at = (b: { track: string }) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
     const ids = [
       ...doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))),
       ...doc.insertMidi(midi.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))),
     ]
-    c.select(ids)
+    doc.select(ids)
     // 貼り付けたものの右端に再生位置を移す（Ctrl+V を続けると、すき間なく並ぶ）
     if (c.seekAfterInsert) c.moveCursor(cursor + Math.max(...items.map((b) => b.start + b.length)) - first)
   }
@@ -190,7 +183,7 @@ export function useActions(c: ActionContext) {
     const items = [...chosen, ...midiChosen]
     const first = Math.min(...items.map((b) => b.start))
     const last = Math.max(...items.map((b) => b.start + b.length))
-    c.select([...doc.insertBlocks(chosen.map((b) => ({ ...b, start: b.start + last - first }))), ...doc.insertMidi(midiChosen.map((b) => ({ ...b, start: b.start + last - first })))])
+    doc.select([...doc.insertBlocks(chosen.map((b) => ({ ...b, start: b.start + last - first }))), ...doc.insertMidi(midiChosen.map((b) => ({ ...b, start: b.start + last - first })))])
   }
 
   /** 選んでいるものを、グリッド 1 つぶん動かす（波形ブロックと MIDI ブロック） */
@@ -213,7 +206,7 @@ export function useActions(c: ActionContext) {
     nudgeLeft: { enabled: any, run: () => nudge(-1) },
     nudgeRight: { enabled: any, run: () => nudge(1) },
     newProject: { run: c.newProject },
-    addTrack: { run: () => c.selectTrack(doc.addTrack(c.selectedTrack)) },
+    addTrack: { run: () => selectTrack(doc.addTrack(selectedTrack)) },
     toEnd: { run: () => c.seek(doc.project.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)) },
     snap: { run: c.toggleSnap },
     follow: { run: c.toggleFollow },
@@ -230,25 +223,25 @@ export function useActions(c: ActionContext) {
     prevMarker: { run: () => { const m = doc.project.markers.findLast((m) => m.time < c.cursor - 1e-3); if (m) c.seek(m.time) } },
     split: { enabled: canSplit, run: () => doc.split(c.cursor, [...ids, ...midiChosen.map((b) => b.id)]) },
     splitSilence: { enabled: anyWave, run: () => doc.splitBySilence(ids) },
-    selectAll: { run: () => c.select(doc.project.blocks.map((b) => b.id)) },
+    selectAll: { run: () => doc.select(doc.project.blocks.map((b) => b.id)) },
     // 範囲の両端で、かかっている波形ブロックを全部分ける
     splitRange: {
-      enabled: !!c.range,
+      enabled: !!doc.range,
       run: () => {
-        if (!c.range) return
-        doc.split(c.range.start)
-        doc.split(c.range.end)
+        if (!doc.range) return
+        doc.split(doc.range.start)
+        doc.split(doc.range.end)
       },
     },
     // 選択の解除（範囲と波形ブロック）
-    clearRange: { enabled: !!c.range || any, run: () => doc.apply((p) => p, undefined, { range: null, selected: [] }) },
-    trimRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => cropToRange(p, c.range!, c.defaultFade)) },
-    deleteRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => deleteRange(p, c.range!, c.defaultFade), undefined, { range: null }) },
-    insertSilence: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start, c.defaultFade)), c.seekAfterInsert && c.moveCursor(c.range.end)) },
-    repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId, c.defaultFade)) },
+    clearRange: { enabled: !!doc.range || any, run: () => doc.apply((p) => p, undefined, { range: null, selected: [] }) },
+    trimRange: { enabled: !!doc.range, run: () => doc.range && doc.apply((p) => cropToRange(p, doc.range!, c.defaultFade)) },
+    deleteRange: { enabled: !!doc.range, run: () => doc.range && doc.apply((p) => deleteRange(p, doc.range!, c.defaultFade), undefined, { range: null }) },
+    insertSilence: { enabled: !!doc.range, run: () => doc.range && (doc.apply((p) => insertSilence(p, doc.range!.start, doc.range!.end - doc.range!.start, c.defaultFade)), c.seekAfterInsert && c.moveCursor(doc.range.end)) },
+    repeatRange: { enabled: !!doc.range, run: () => doc.range && doc.apply((p) => repeatRange(p, doc.range!, 1, newId, c.defaultFade)) },
     normalize: { enabled: anyWave, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },
-    copyRangeToTrack: { enabled: !!c.range, run: () => c.range && doc.apply((p) => rangeToNewTrack(p, c.range!, false, c.selectedTrack, c.defaultFade)) },
-    moveRangeToTrack: { enabled: !!c.range, run: () => c.range && doc.apply((p) => rangeToNewTrack(p, c.range!, true, c.selectedTrack, c.defaultFade)) },
+    copyRangeToTrack: { enabled: !!doc.range, run: () => doc.range && doc.apply((p) => rangeToNewTrack(p, doc.range!, false, selectedTrack, c.defaultFade)) },
+    moveRangeToTrack: { enabled: !!doc.range, run: () => doc.range && doc.apply((p) => rangeToNewTrack(p, doc.range!, true, selectedTrack, c.defaultFade)) },
     reverse: { enabled: anyWave, run: () => doc.apply((p) => reverseBlocks(p, ids)) },
     bake: { enabled: anyWave, run: () => c.bake(ids) },
     // 分けるのは 1 つずつ（選んでいる最後のもの）
@@ -257,8 +250,8 @@ export function useActions(c: ActionContext) {
     kanaCut: { enabled: anyWave, run: () => any && c.openDialog('kanaCut', ids[ids.length - 1]) },
     addMidiBlock: {
       run: () => {
-        const id = doc.addMidiAt(c.selectedTrack ?? doc.project.tracks[0]?.id, c.cursor)
-        if (id) c.select([id])
+        const id = doc.addMidiAt(selectedTrack ?? doc.project.tracks[0]?.id, c.cursor)
+        if (id) doc.select([id])
       },
     },
     importMidi: { run: c.importMidi },
@@ -275,23 +268,23 @@ export function useActions(c: ActionContext) {
     splitVoicesByPitch: { enabled: anyWave, run: () => any && c.extract.voices(ids[ids.length - 1], 'pitch') },
     splitVoicesByVolume: { enabled: anyWave, run: () => any && c.extract.voices(ids[ids.length - 1], 'volume') },
     showAll: { enabled: c.end > 0, run: () => c.fit(0, c.end) },
-    zoomRange: { enabled: !!c.range || anyWave, run: () => (c.range ? c.fit(c.range.start, c.range.end) : c.fit(Math.min(...chosen.map((b) => b.start)), Math.max(...chosen.map((b) => b.start + b.length)))) },
-    playRange: { enabled: !!c.range, run: () => c.range && c.playAt(c.range.start) },
-    renameTrack: { enabled: !!c.selectedTrack, run: () => c.selectedTrack && c.openDialog('renameTrack', c.selectedTrack) },
-    duplicateTrack: { enabled: !!c.selectedTrack, run: () => c.selectedTrack && doc.duplicateTrack(c.selectedTrack) },
-    muteTrack: { enabled: !!track, run: () => track && doc.updateTracks(Object.fromEntries((c.selectedTracks.includes(track.id) ? c.selectedTracks : [track.id]).map((id) => [id, { mute: !track.mute }]))) },
-    soloTrack: { enabled: !!track, run: () => track && doc.updateTracks(Object.fromEntries((c.selectedTracks.includes(track.id) ? c.selectedTracks : [track.id]).map((id) => [id, { solo: !track.solo }]))) },
+    zoomRange: { enabled: !!doc.range || anyWave, run: () => (doc.range ? c.fit(doc.range.start, doc.range.end) : c.fit(Math.min(...chosen.map((b) => b.start)), Math.max(...chosen.map((b) => b.start + b.length)))) },
+    playRange: { enabled: !!doc.range, run: () => doc.range && c.playAt(doc.range.start) },
+    renameTrack: { enabled: !!selectedTrack, run: () => selectedTrack && c.openDialog('renameTrack', selectedTrack) },
+    duplicateTrack: { enabled: !!selectedTrack, run: () => selectedTrack && doc.duplicateTrack(selectedTrack) },
+    muteTrack: { enabled: !!track, run: () => track && doc.updateTracks(Object.fromEntries((doc.selectedTracks.includes(track.id) ? doc.selectedTracks : [track.id]).map((id) => [id, { mute: !track.mute }]))) },
+    soloTrack: { enabled: !!track, run: () => track && doc.updateTracks(Object.fromEntries((doc.selectedTracks.includes(track.id) ? doc.selectedTracks : [track.id]).map((id) => [id, { solo: !track.solo }]))) },
     clearMarkers: { enabled: doc.project.markers.length > 0, run: () => doc.apply((p) => ({ ...p, markers: [] })) },
     // 波形ブロックか MIDI ブロックを選んでいればそれを、選んでいなければ選んでいるトラックを（元に戻せる）
     delete: {
-      enabled: any || !!c.selectedTrack,
+      enabled: any || !!selectedTrack,
       run: () => {
         if (any) {
           doc.removeBlocks([...ids, ...midiChosen.map((b) => b.id)])
-          c.select([])
-        } else if (c.selectedTrack) {
-          doc.removeTrack(c.selectedTrack)
-          c.selectTrack(null)
+          doc.select([])
+        } else if (selectedTrack) {
+          doc.removeTrack(selectedTrack)
+          selectTrack(null)
         }
       },
     },
@@ -306,14 +299,14 @@ export function useActions(c: ActionContext) {
         trackClipboard.current = null
         setCopied((n) => n + 1)
         doc.removeBlocks([...ids, ...midiChosen.map((b) => b.id)])
-        c.select([])
+        doc.select([])
       },
     },
     copy: {
-      enabled: any || !!c.selectedTrack,
+      enabled: any || !!selectedTrack,
       run: () => {
         // 波形ブロックを選んでいればそれ、なければ選んでいるトラックを波形ブロックごと
-        const track = !any ? doc.project.tracks.find((t) => t.id === c.selectedTrack) : undefined
+        const track = !any ? doc.project.tracks.find((t) => t.id === selectedTrack) : undefined
         trackClipboard.current = track ? { track, blocks: doc.project.blocks.filter((b) => b.track === track.id) } : null
         clipboard.current = track ? [] : chosen
         midiClipboard.current = track ? [] : midiChosen
@@ -327,7 +320,7 @@ export function useActions(c: ActionContext) {
     newWindow: { run: c.newWindow },
     save: { run: c.save },
     saveAs: { run: c.saveAs },
-    saveRangeToFolder: { enabled: !!c.folder && !!c.range, run: () => c.folder?.saveRange() },
+    saveRangeToFolder: { enabled: !!c.folder && !!doc.range, run: () => c.folder?.saveRange() },
     saveBlocksToFolder: { enabled: !!c.folder && any, run: () => c.folder?.saveBlocks(ids) },
     import: { run: c.importFiles },
     saveOptimized: { enabled: doc.project.blocks.length > 0, run: c.saveOptimized },
@@ -406,14 +399,14 @@ export function useActions(c: ActionContext) {
         item('addTrack'),
         item('duplicateTrack'),
         item('renameTrack'),
-        { label: t('track.addSubtrack'), disabled: !c.selectedTrack, onClick: () => c.selectedTrack && c.selectTrack(doc.addSubtrack(c.selectedTrack)) },
+        { label: t('track.addSubtrack'), disabled: !selectedTrack, onClick: () => selectedTrack && selectTrack(doc.addSubtrack(selectedTrack)) },
         {
           label: t('menu.removeTrack'),
-          disabled: !c.selectedTrack,
+          disabled: !selectedTrack,
           onClick: () => {
-            if (c.selectedTrack) doc.removeTrack(c.selectedTrack)
-            c.selectTrack(null)
-            c.select([])
+            if (selectedTrack) doc.removeTrack(selectedTrack)
+            selectTrack(null)
+            doc.select([])
           },
         },
         divider,
@@ -607,7 +600,7 @@ export function useActions(c: ActionContext) {
           ...trackEntries(track),
           { label: t('menu.pasteHere'), disabled: commands.paste.enabled === false, onClick: () => paste({ time, track }) },
           { label: t('menu.importHere'), onClick: () => c.importAt(time, track) },
-          { label: t('menu.addMidiBlock'), onClick: () => c.select([doc.addMidiAt(track ?? c.selectedTrack ?? doc.project.tracks[0]?.id, time)].filter((x): x is string => !!x)) },
+          { label: t('menu.addMidiBlock'), onClick: () => doc.select([doc.addMidiAt(track ?? selectedTrack ?? doc.project.tracks[0]?.id, time)].filter((x): x is string => !!x)) },
           divider,
           item('selectAll'),
           item('splitRange'),
