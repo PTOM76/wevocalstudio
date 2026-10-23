@@ -47,6 +47,7 @@ import { CONVERTER_ADDON } from 'wevocalconverter/host'
 import { useMidiInput } from './useMidiInput'
 import { useRecorder } from './useRecorder'
 import { useAutosave } from './useAutosave'
+import { useScreensetMenu } from './useScreensetMenu'
 import { usePlayerSync } from './usePlayerSync'
 
 /** 今動いている版 */
@@ -61,6 +62,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   countRender('App')
   const t = useT()
   const { confirm, dialog: confirmDialog } = useConfirm()
+  const screensets = useScreensetMenu({ showAnalysis: (on) => p.onSettingsChange({ showAnalysis: on }) })
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
   setKeyOverrides(p.settings.keymap, p.settings.ctrlS)
   const mobile = useMobileLayout()
@@ -265,6 +267,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     openSettings: () => dialogs.open('settings'),
     openHistory: () => dialogs.open('history'),
     ...viewToggles(p.settings, p.onSettingsChange),
+    screensetMenu: screensets.menu,
     help: {
       guide: () => openExternal(`${app.repository}/blob/main/docs/MANUAL.md`),
       shortcuts: () => dialogs.open('shortcuts'),
@@ -481,6 +484,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
       <NoticeMessage message={error === null ? null : { severity: 'error', message: t('error.failed', { error }) }} onClose={() => setError(null)} autoHideMs={8000} />
       {confirmDialog}
+      {screensets.dialog}
       {extract.dialog}
       {addonInstall.dialog}
       {addonFolderNotice}

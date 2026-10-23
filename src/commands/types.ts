@@ -1,6 +1,6 @@
 // コマンド（キーとメニューから行う操作）の型。ActionContext は App が渡すもの、CommandEnv は選択やコピーを加えた、表とメニューの共通の材料
 import type { MidiBlock } from '../project'
-import { commandDefiner, type CommandSpec } from 'pevenmui'
+import { commandDefiner, type CommandSpec, type MenuEntry } from 'pevenmui'
 import type { MessageKey, useT } from '../i18n'
 import { type Block, type PitchEnvelopeRange, type Source, type Track, type VolumeEnvelopeRange } from '../project'
 import { type EnvKind } from '../envelopes'
@@ -101,6 +101,8 @@ export interface ActionContext {
   toggleMinimap: () => void
   showStatusBar: boolean
   toggleStatusBar: () => void
+  /** 表示メニューの、名前を付けた配置（useScreensetMenu） */
+  screensetMenu: MenuEntry
   help: { guide: () => void; shortcuts: () => void; checkUpdate: () => void; licenses: () => void; about: () => void }
 }
 
