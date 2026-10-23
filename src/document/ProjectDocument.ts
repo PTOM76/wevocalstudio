@@ -1,5 +1,5 @@
 // 1 つのプロジェクトの文書。プロジェクトと選んだブロックを履歴のストアに持ち、変更を通す（React を使わない。画面は useHistory で読む）
-import { createHistoryStore, type FxSlot, type HistoryStore, type Range } from 'wevocal-lib'
+import { createHistoryStore, newHistory, type FxSlot, type History, type HistoryStore, type Range } from 'wevocal-lib'
 import { describeChange } from '../history'
 import type { MessageKey } from '../i18n'
 import { midiBlocks, type Project } from '../project'
@@ -148,3 +148,6 @@ export class ProjectDocument {
     })
   }
 }
+
+/** プロジェクトからの新しい履歴（タブを増やすとき。選択はなし） */
+export const freshHistory = (project: Project, label: MessageKey = 'history.new'): History<Step> => newHistory<Step>({ project, ...NO_SELECTION, label })

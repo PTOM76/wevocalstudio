@@ -266,6 +266,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   const split = useCallback((t: number, ids: string[] = []) => change((p) => edit.splitAt(p, t, ids, defaultsRef.current.defaultFade)), [change])
 
   return {
+    /** 履歴のストア（タブの切り替えで、履歴ごと入れ替える） */
+    store: doc.store,
     project: history.present.project,
     selected: history.present.selected,
     select,

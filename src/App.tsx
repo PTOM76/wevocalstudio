@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Box } from '@mui/material'
-import { DockArea, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout } from 'pevenmui'
+import { DockArea, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, DocumentTabs } from 'pevenmui'
 import StatusBar from './StatusBar'
 import { useAddonFolder } from './useAddonFolder'
 import AppHeader from './AppHeader'
@@ -32,6 +32,8 @@ import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
 import { emitNote } from './pianoRoll/noteBus'
 import { addWvspTracks, midiBlocks, newProject, songEnd, visibleTracks } from './project'
+import { isBlank } from './projectTabs'
+import { useProjectTabs } from './useProjectTabs'
 import Timeline, { useHeaderWidth } from './Timeline'
 import Toolbar from './Toolbar'
 import Transport from './Transport'
@@ -177,27 +179,23 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     project,
     fileName,
     range,
-    onOpened: (proj, name) => {
-      stop()
-      doc.replace(proj)
-      setRange(null)
-      setFileName(name)
-      setSelected([])
-      setSelectedTrack(null)
-      setCursor(0)
-    },
+    // 何もしていないタブはそのまま置き換え、使っているタブなら、新しいタブで開く
+    onOpened: (proj, name, file) => (isBlank(project, files.dirty) ? tabs.replaceActive(proj, name, file) : tabs.add(proj, name, file, 'history.open')),
+    anyDirty: () => tabs.anyDirty(),
     onAudio: (list) => void load(list),
     onWvsp: (file) =>
       void readWvsp(file)
         .then((r) => doc.apply((q) => addWvspTracks(q, file.name.replace(/\.[^.]+$/, ''), r.tracks.map((t) => ({ name: t.info.name, clip: t.edited })), cursor)))
         .catch(fail),
-    confirmDiscard: () => confirm({ message: t('confirm.discard'), okLabel: t('confirm.discardOk'), danger: true }),
     fail,
     notify: setNotice,
     onExported: () => dialogs.close('export'),
   })
 
 
+  const tabs = useProjectTabs({ store: doc.store, files, name: fileName, setName: setFileName, cursor, setCursor, view, setView, stop, dirty: files.dirty })
+  const closeTab = (id: string) =>
+    void (tabs.dirtyOf(id) ? confirm({ message: t('confirm.discard'), okLabel: t('confirm.discardOk'), danger: true }) : Promise.resolve(true)).then((ok) => ok && tabs.close(id, () => newProject(p.settings.defaultBpm)))
   const midiFiles = useMidiFiles({ project, fileName, t, notify: setNotice, fail, onPending: (m) => dialogs.open('midiImport', m) })
   const { menus, blockMenu, emptyMenu, envelopeMenu, commands } = useActions({
     envKind,
@@ -219,19 +217,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     seek,
     moveCursor,
     gridStep: () => snapGrid(p.settings.grid, project.tempo, view.pps, p.settings.gridDivision, project.markers, cursor).step,
-    newProject: () =>
-      // 保存していない変更があるときだけ確かめる
-      void (files.dirty ? confirm({ message: t('confirm.newProject'), okLabel: t('menu.newProject'), danger: true }) : Promise.resolve(true)).then((ok) => {
-        if (!ok) return
-        stop()
-        const fresh = newProject(p.settings.defaultBpm)
-        doc.replace(fresh, 'history.new')
-        files.markSaved(fresh)
-        setFileName('untitled')
-        setSelected([])
-        setRange(null)
-        setCursor(0)
-      }),
+    // 何もしていないタブは置き換え、使っているタブは残して、新しいタブにする
+    newProject: () => (isBlank(project, files.dirty) ? tabs.replaceActive(newProject(p.settings.defaultBpm), 'untitled', null, 'history.new') : tabs.add(newProject(p.settings.defaultBpm), 'untitled')),
     fit: (from, to) => {
       // 両端に少し余白を残す
       const len = Math.max(0.1, to - from)
@@ -317,6 +304,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       }}
     >
       <AppHeader menus={menus} canUndo={doc.canUndo} canRedo={doc.canRedo} onUndo={doc.undo} onRedo={doc.redo} projectName={fileName} dirty={files.dirty} />
+      {tabs.tabs.length > 1 && <DocumentTabs tabs={tabs.tabs} activeId={tabs.active} onSelect={tabs.select} onClose={closeTab} onAdd={commands.newProject.run} labels={{ close: t('tabs.close'), add: t('tabs.add') }} />}
       <Toolbar
         follow={p.settings.followPlayhead}
         snap={p.settings.snap}

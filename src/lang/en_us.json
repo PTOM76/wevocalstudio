@@ -1096,5 +1096,7 @@
   "empty.formats": "WAV / AIFF / MP3 / MP4 etc. (drag & drop supported)",
   "empty.choose": "Choose a file",
   "empty.showMore": "Show more ({n})",
-  "empty.showLess": "Show less"
+  "empty.showLess": "Show less",
+  "tabs.close": "Close",
+  "tabs.add": "New project"
 }

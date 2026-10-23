@@ -10,6 +10,7 @@ import type { VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { videoHost } from './addons'
 import type { useT } from './i18n'
 import { missingFx, type Project } from './project'
+import { isDirty } from './projectTabs'
 import { exportWvsp } from './wvspExport'
 import { optimizeProject, sourcesBytes, type OptimizeOptions } from './optimize'
 import { LEGACY_PROJECT_EXT, PROJECT_EXT, readProject, writeProject } from './projectFile'
@@ -29,23 +30,23 @@ export function useProjectFile(o: {
   project: Project
   fileName: string
   range: Range | null
-  /** 開いたプロジェクトに切り替える（再生を止め、選択を消す） */
-  onOpened: (p: Project, name: string) => void
+  /** 開いたプロジェクトに切り替える（再生を止め、選択を消す。保存の印と上書き先は、呼び出し側が restore で入れる） */
+  onOpened: (p: Project, name: string, file: SavedFile | null) => void
   /** 音声ファイルを今のプロジェクトに読み込む */
   onAudio: (files: File[]) => void
   /** WeVocalSynth のプロジェクト（.wvsp）を今のプロジェクトに読み込む */
   onWvsp: (file: File) => void
-  /** 保存していない変更を捨ててよいか確かめる */
-  confirmDiscard: () => Promise<boolean>
   fail: (e: unknown) => void
   /** 書き出し終わったとき（ダイアログを閉じる） */
   onExported: () => void
+  /** 表示していないタブに、保存していない変更があるか（閉じる前の確認に足す） */
+  anyDirty?: () => boolean
   notify: (message: string) => void
 }) {
   const { t, settings } = o
   // 保存したとき（開いたとき）のプロジェクト。今と違えば変更あり（名前の後ろに *）
   const [saved, setSaved] = useState(o.project)
-  const dirty = o.project !== saved && o.project.blocks.length + saved.blocks.length > 0
+  const dirty = isDirty(o.project, saved)
   // 上書きする先（選ぶ画面で開いたか保存したファイル。なければ保存で選ぶ）
   const fileRef = useRef<SavedFile | null>(null)
 
@@ -53,12 +54,9 @@ export function useProjectFile(o: {
   configureFileAccess({ rememberFolder: settings.rememberFolder, startFolder: settings.startFolder, recentFiles: settings.recentFiles, pickerMode: settings.filePicker })
 
   const openProjectFile = async (file: File) => {
-    if (dirty && !(await o.confirmDiscard())) return
     try {
       const p = await readProject(file)
-      fileRef.current = fileRefOf(file) ?? null
-      setSaved(p)
-      o.onOpened(p, file.name.replace(/\.[^.]+$/, ''))
+      o.onOpened(p, file.name.replace(/\.[^.]+$/, ''), fileRefOf(file) ?? null)
       void missingFx(p).then((ids) => ids.length && o.notify(t('toast.missingPlugins', { ids: ids.join(', ') })))
     } catch (e) {
       o.fail(e)
@@ -217,7 +215,7 @@ export function useProjectFile(o: {
   }
 
   // 自動保存がオフなら、閉じる前に確かめる（オンなら次に開いたときに戻せる）
-  useLeaveGuard(settings.confirmClose && !settings.autoRestore, () => dirty)
+  useLeaveGuard(settings.confirmClose && !settings.autoRestore, () => dirty || !!o.anyDirty?.())
 
   // OS でファイルをダブルクリックして起動したとき（インストールした PWA の File Handling。vite.config.ts の file_handlers）
   const openRef = useRef(openFiles)
@@ -240,6 +238,12 @@ export function useProjectFile(o: {
     markSaved: (p: Project) => {
       fileRef.current = null
       setSaved(p)
+    },
+    /** タブの切り替え用。保存の印と上書き先を取り出す、入れる */
+    snapshot: () => ({ saved, file: fileRef.current }),
+    restore: (r: { saved: Project; file: SavedFile | null }) => {
+      fileRef.current = r.file
+      setSaved(r.saved)
     },
     openFiles,
     picker,
