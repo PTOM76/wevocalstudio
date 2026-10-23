@@ -11,7 +11,7 @@
 - [プラグインによる処理と解析](tools.md)
 - [ボーカル抽出](extract.md)
 - [音声の作成と一音ずつの切り出し](create.md)
-- [操作履歴と書き出し](save.md)
+- [操作履歴、タブ、書き出し](save.md)
 - [設定](settings.md)
 - [キーボード操作](shortcuts.md)
 - [困ったとき](troubleshooting.md)

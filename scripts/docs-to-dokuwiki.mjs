@@ -28,7 +28,7 @@ const PAGES = [
 	{ name: 'tools', title: 'プラグインによる処理と解析', desc: '道具と解析のプラグイン、解析の欄。', sections: ['プラグインによる処理と解析', '解析の欄'] },
 	{ name: 'extract', title: 'ボーカル抽出', desc: '曲から声や楽器を取り出す機能。', sections: ['ボーカル抽出'] },
 	{ name: 'create', title: '音声の作成と一音ずつの切り出し', desc: '音声の作成、MIDI の音符に並べる機能、一音ずつ切り出す機能。', sections: ['音声の作成', 'MIDI の音符に並べる', '一音ずつ切り出す'] },
-	{ name: 'save', title: '操作履歴と書き出し', desc: '操作履歴と、音声などの書き出し。', sections: ['操作履歴', '書き出し'] },
+	{ name: 'save', title: '操作履歴、タブ、書き出し', desc: '操作履歴、プロジェクトのタブ、画面の端の欄、音声などの書き出し。', sections: ['操作履歴', 'プロジェクトのタブ', '画面の端の欄（ドック）', '書き出し'] },
 	{ name: 'settings', title: '設定', desc: '設定画面の各項目。', sections: ['設定'] },
 	{ name: 'shortcuts', title: 'キーボード操作', desc: 'キーボードで使用できる操作の一覧。', sections: ['キーボード操作'] },
 	{ name: 'troubleshooting', title: '困ったとき', desc: 'うまく動かないときの対処。', sections: ['困ったとき'] },

@@ -1,5 +1,5 @@
 // 撮影の手順で共通に使う部品
-import { openApp, sleep } from './app.mjs'
+import { dropMelody, openApp, sleep } from './app.mjs'
 
 /** ツールバーのボタン（左から順。表示しているものだけ） */
 export const toolbarButtons = (b) =>
@@ -13,14 +13,23 @@ export const toolbarButtons = (b) =>
 export const textRect = (b, text, where = 'true') =>
   b.rect(`[...document.querySelectorAll('body *')].filter((e) => e.textContent.trim() === ${JSON.stringify(text)} && (() => { const r = e.getBoundingClientRect(); return r.width > 0 && (${where}) })()).pop()`)
 
-/** 範囲を選択した、パソコンの基本の画面 */
+/** 1 本目のトラックの波形ブロックの中の点（トラックの高さが変わっても当たる位置） */
+export const BLOCK = [300, 230]
+
+/** トラックを 2 本にして、1 本目の波形ブロックを選んだ、パソコンの基本の画面 */
 export async function desktopMain(base, opts = {}) {
   const b = await openApp(base, opts)
-  await b.drag(383, 300, 703, 300)
+  await b.evaluate(dropMelody('harmony.wav', -4))
+  await sleep(5000)
+  await b.dismissToasts()
+  await b.click(...BLOCK)
   await sleep(800)
   await b.park()
   return b
 }
+
+/** Esc を押す（メニューやダイアログを閉じる） */
+export const escape = (b) => b.call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
 
 /** 開いているダイアログを、周りに 16px の余白を付けて撮る */
 export async function dialogShot(b, file) {

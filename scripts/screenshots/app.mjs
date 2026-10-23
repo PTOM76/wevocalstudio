@@ -1,4 +1,4 @@
-// WeVocalSynth を開いて操作する道具（撮影の手順は shots.mjs）
+// WeVocal Studio を開いて操作する道具（撮影の手順は shots.mjs）
 import { launch, sleep } from './cdp.mjs'
 
 export { sleep }
