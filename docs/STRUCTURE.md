@@ -83,6 +83,10 @@ src/
 src/document/edits/
   blocks.test.ts  edits/blocks.ts のテスト
   blocks.ts  波形ブロックと MIDI ブロックを変える処理。プロジェクトを受け取って、新しいプロジェクトを返す純粋な関数（React を使わないので、そのまま試せる）
+  project.test.ts  edits/project.ts のテスト
+  project.ts  プロジェクト全体の設定（マーカー、曲の終わり、テンポ、マスター）を変える処理。プロジェクトを受け取って新しいプロジェクトを返す純粋な関数で、React を使わない
+  tracks.test.ts  edits/tracks.ts のテスト
+  tracks.ts  トラックを変える処理（足す、複製、貼り付け、消す、階層、並べ替え）。プロジェクトを受け取って新しいプロジェクトを返す純粋な関数で、React を使わない
 
 src/dsp/
   pitch.ts  wasm の処理の窓口。波形ブロックのピッチと速度を音に反映し（作ったものはキャッシュ）、テンポを解析する。

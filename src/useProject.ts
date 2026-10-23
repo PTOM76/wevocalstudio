@@ -5,8 +5,9 @@ import { commitHistory, decodeFile, gotoHistory, historySteps, newHistory, redoH
 import { describeChange } from './history'
 import { defaultInstrument } from './midiImport'
 import type { MessageKey } from './i18n'
-import { projectBeatMap } from './beats'
 import * as edit from './document/edits/blocks'
+import * as projectEdit from './document/edits/project'
+import * as trackEdit from './document/edits/tracks'
 import { BLOCK_LIMITS, midiBlocks, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** 置く場所（トラックと時刻）。省略したときは空いているトラックか、新しいトラック */
@@ -206,18 +207,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
         added.push(source)
         const name = file.name.replace(/\.[^.]+$/, '')
         const begin = start
-        change((p) => {
-          let tracks = p.tracks
-          let track = at && tracks.find((t) => t.id === at.track)
-          if (!track) {
-            // 波形ブロックのない最初のトラックを使い、なければ足す。空のトラックの名前はファイルの名前にする
-            const empty = tracks.find((t) => !p.blocks.some((b) => b.track === t.id))
-            track = { ...(empty ?? newTrack(tracks.length + 1)), name }
-            const named = track
-            tracks = empty ? tracks.map((t) => (t.id === named.id ? named : t)) : [...tracks, named]
-          }
-          return { ...p, sources: [...p.sources, source], tracks, blocks: [...p.blocks, newBlock(track.id, source, begin, defaultsRef.current, defaultsRef.current.defaultFade)] }
-        })
+        change((p) => trackEdit.placeSource(p, source, name, at?.track, begin, defaultsRef.current, defaultsRef.current.defaultFade))
         if (at) start += source.duration
       }
       return added
@@ -228,166 +218,64 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   const addTrack = useCallback(
     (after?: string | null) => {
       const track = newTrack(0)
-      change((p) => {
-        const i = after ? p.tracks.findIndex((t) => t.id === after) : -1
-        const at = i < 0 ? p.tracks.length : subtreeEnd(p, i)
-        return { ...p, tracks: [...p.tracks.slice(0, at), { ...track, name: `Track ${p.tracks.length + 1}` }, ...p.tracks.slice(at)] }
-      })
+      change((p) => trackEdit.addTrackAfter(p, track, after))
       return track.id
     },
     [change],
   )
 
   /** トラックを波形ブロックごと写して、すぐ下に置く */
-  const duplicateTrack = useCallback(
-    (id: string) =>
-      change((p) => {
-        const i = p.tracks.findIndex((t) => t.id === id)
-        if (i < 0) return p
-        const copy = { ...p.tracks[i], id: newId(), name: `${p.tracks[i].name} (2)`, armed: false }
-        const blocks = p.blocks.filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
-        const midi = midiBlocks(p).filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
-        return { ...p, tracks: [...p.tracks.slice(0, i + 1), copy, ...p.tracks.slice(i + 1)], blocks: [...p.blocks, ...blocks], ...(midi.length ? { midi: [...midiBlocks(p), ...midi] } : {}) }
-      }),
-    [change],
-  )
+  const duplicateTrack = useCallback((id: string) => change((p) => trackEdit.duplicateTrack(p, id)), [change])
 
   /** トラックの写しを、after のすぐ下（なければ一番下）に波形ブロックごと置き、新しい id を返す（貼り付け） */
   const insertTrack = useCallback(
     (track: Track, blocks: Block[], after: string | null) => {
       const copy = { ...track, id: newId(), armed: false }
-      change((p) => {
-        const i = after ? p.tracks.findIndex((t) => t.id === after) : -1
-        const at = i < 0 ? p.tracks.length : i + 1
-        const bs = blocks.filter((b) => p.sources.some((s) => s.id === b.source)).map((b) => ({ ...b, id: newId(), track: copy.id }))
-        return { ...p, tracks: [...p.tracks.slice(0, at), copy, ...p.tracks.slice(at)], blocks: [...p.blocks, ...bs] }
-      })
+      change((p) => trackEdit.insertTrack(p, copy, blocks, after))
       return copy.id
     },
     [change],
   )
 
   /** トラックとその波形ブロックを消す。使われなくなった元の音も消す */
-  const removeTrack = useCallback(
-    (id: string) =>
-      change((p) => {
-        const blocks = p.blocks.filter((b) => b.track !== id)
-        const midi = p.midi?.filter((b) => b.track !== id)
-        // 子は一つ上の階層に上げる
-        const gone = p.tracks.find((t) => t.id === id)
-        const tracks = p.tracks.filter((t) => t.id !== id).map((t) => (t.parent === id ? { ...t, parent: gone?.parent } : t))
-        return { ...p, tracks, blocks, ...(midi ? { midi } : {}), sources: p.sources.filter((s) => blocks.some((b) => b.source === s.id) || tracks.some((t) => t.frozen?.source === s.id || t.instrument?.sample === s.id)) }
-      }),
-    [change],
-  )
+  const removeTrack = useCallback((id: string) => change((p) => trackEdit.removeTrack(p, id)), [change])
 
   /** parent の子として、新しいトラックを親の子孫の一番後ろに足して id を返す（サブトラック） */
   const addSubtrack = useCallback(
     (parent: string) => {
       const track = newTrack(0)
-      change((p) => {
-        const i = p.tracks.findIndex((t) => t.id === parent)
-        if (i < 0) return p
-        const at = subtreeEnd(p, i)
-        const child = { ...track, name: `Track ${p.tracks.length + 1}`, parent }
-        return { ...p, tracks: [...p.tracks.slice(0, at), child, ...p.tracks.slice(at)].map((t) => (t.id === parent ? { ...t, collapsed: false } : t)) }
-      })
+      change((p) => trackEdit.addSubtrack(p, track, parent))
       return track.id
     },
     [change],
   )
 
   /** 上の同じ階層のトラックの中に入れる */
-  const indentTrack = useCallback(
-    (id: string) =>
-      change((p) => {
-        const i = p.tracks.findIndex((t) => t.id === id)
-        const me = p.tracks[i]
-        if (!me) return p
-        const above = p.tracks.slice(0, i).reverse().find((t) => t.parent === me.parent)
-        return above ? { ...p, tracks: p.tracks.map((t) => (t.id === id ? { ...t, parent: above.id } : t.id === above.id ? { ...t, collapsed: false } : t)) } : p
-      }),
-    [change],
-  )
+  const indentTrack = useCallback((id: string) => change((p) => trackEdit.indentTrack(p, id)), [change])
 
   /** 親の外に出す。子孫ごと、親の子孫の一番後ろへ動かす（並びを崩さないように） */
-  const outdentTrack = useCallback(
-    (id: string) =>
-      change((p) => {
-        const i = p.tracks.findIndex((t) => t.id === id)
-        const me = p.tracks[i]
-        const parent = me && p.tracks.find((t) => t.id === me.parent)
-        if (!parent) return p
-        const mine = p.tracks.slice(i, subtreeEnd(p, i))
-        const rest = p.tracks.filter((t) => !mine.includes(t))
-        const pi = rest.findIndex((t) => t.id === parent.id)
-        const at = subtreeEnd({ ...p, tracks: rest }, pi)
-        const moved = mine.map((t) => (t.id === id ? { ...t, parent: parent.parent } : t))
-        return { ...p, tracks: [...rest.slice(0, at), ...moved, ...rest.slice(at)] }
-      }),
-    [change],
-  )
+  const outdentTrack = useCallback((id: string) => change((p) => trackEdit.outdentTrack(p, id)), [change])
 
   /** トラックを指定のスロットに移動する。to は「この番号のトラックの前」（0～N） */
-  const reorderTrack = useCallback(
-    (id: string, to: number) =>
-      change((p) => {
-        const from = p.tracks.findIndex((t) => t.id === id)
-        if (from < 0) return p
-        const end = subtreeEnd(p, from)
-        const mine = p.tracks.slice(from, end)
-        const rest = p.tracks.filter((t) => !mine.includes(t))
-        const clamped = Math.max(0, Math.min(rest.length, to))
-        if (clamped === from) return p
-        const tracks = [...rest.slice(0, clamped), ...mine, ...rest.slice(clamped)]
-        return { ...p, tracks }
-      }),
-    [change],
-  )
+  const reorderTrack = useCallback((id: string, to: number) => change((p) => trackEdit.reorderTrack(p, id, to)), [change])
 
   /** マーカーを足す（同じ位置にあれば足さない）。名前は M1、M2… */
-  const addMarker = useCallback(
-    (time: number) =>
-      change((p) => (p.markers.some((m) => Math.abs(m.time - time) < 1e-3) ? p : { ...p, markers: [...p.markers, { id: newId(), time, name: `M${p.markers.length + 1}` }].sort((a, b) => a.time - b.time) })),
-    [change],
-  )
-  const updateMarker = useCallback((id: string, patch: Partial<Marker>) => change((p) => ({ ...p, markers: p.markers.map((m) => (m.id === id ? { ...m, ...patch } : m)) })), [change])
-  const removeMarker = useCallback((id: string) => change((p) => ({ ...p, markers: p.markers.filter((m) => m.id !== id) })), [change])
+  const addMarker = useCallback((time: number) => change((p) => projectEdit.addMarker(p, time)), [change])
+  const updateMarker = useCallback((id: string, patch: Partial<Marker>) => change((p) => projectEdit.patchMarker(p, id, patch)), [change])
+  const removeMarker = useCallback((id: string) => change((p) => projectEdit.removeMarker(p, id)), [change])
 
   /** 曲の終わりを決める。null で自動に戻す */
-  const setEnd = useCallback((time: number | null) => change(({ end: _, ...p }) => (time === null ? p : { ...p, end: time })), [change])
+  const setEnd = useCallback((time: number | null) => change((p) => projectEdit.setEnd(p, time)), [change])
 
   /** テンポを変える。MIDI ブロックは拍の位置を保つよう、位置と長さ（秒）を直す */
-  const updateTempo = useCallback(
-    (patch: Partial<Tempo>, merge?: string) =>
-      change((p) => {
-        const next = { ...p, tempo: { ...p.tempo, ...patch } }
-        if (!p.midi?.length) return next
-        const was = projectBeatMap(p)
-        const now = projectBeatMap(next)
-        return {
-          ...next,
-          midi: p.midi.map((b) => {
-            const start = now.toSec(was.toBeat(b.start))
-            return { ...b, start, length: now.toSec(was.toBeat(b.start + b.length)) - start }
-          }),
-        }
-      }, merge),
-    [change],
-  )
+  const updateTempo = useCallback((patch: Partial<Tempo>, merge?: string) => change((p) => projectEdit.patchTempo(p, patch), merge), [change])
 
-  const updateMaster = useCallback((patch: Partial<Master>, merge?: string) => change((p) => ({ ...p, master: { ...p.master, ...patch } }), merge), [change])
+  const updateMaster = useCallback((patch: Partial<Master>, merge?: string) => change((p) => projectEdit.patchMaster(p, patch), merge), [change])
 
-  const updateTrack = useCallback(
-    (id: string, patch: Partial<Track>, merge?: string) => change((p) => ({ ...p, tracks: p.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }), merge),
-    [change],
-  )
+  const updateTrack = useCallback((id: string, patch: Partial<Track>, merge?: string) => change((p) => trackEdit.patchTrack(p, id, patch), merge), [change])
 
   /** 複数のトラックを一度に変える（選んだトラックをまとめて） */
-  const updateTracks = useCallback(
-    (patches: Record<string, Partial<Track>>, merge?: string) => change((p) => ({ ...p, tracks: p.tracks.map((t) => (patches[t.id] ? { ...t, ...patches[t.id] } : t)) }), merge),
-    [change],
-  )
+  const updateTracks = useCallback((patches: Record<string, Partial<Track>>, merge?: string) => change((p) => trackEdit.patchTracks(p, patches), merge), [change])
 
   const updateBlock = useCallback((id: string, patch: Partial<Block>, merge?: string) => change((p) => edit.patchBlocks(p, { [id]: patch }), merge), [change])
 
