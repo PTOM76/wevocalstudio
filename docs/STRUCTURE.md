@@ -24,6 +24,7 @@ src/
   BlockEditBar.tsx  画面の下に出す編集のボタンの列（PevenMUI の EditBar）。波形ブロックを選んでいれば波形ブロックの編集、範囲を選んでいれば範囲の編集
   DocContext.tsx  開いているプロジェクトの文書（useProject の戻り値）を、部品へ props で渡さずに読めるようにする。選択、範囲、プロジェクトを変える操作はここから使う
   drawTimeline.ts  時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
+  EmptyProject.tsx  何も置いていないときの案内（開く、音を作る、録音、最近使用したファイル。部品は PevenMUI の EmptyState。WeVocalSynth と同じ）。時間軸の操作は妨げない
   engine.ts  再生と書き出し。波形ブロックの音は、トラックごとのミキサー（AudioWorklet）が 128 サンプルずつ今かかっている所だけを読んで足す。
   envelopeCurve.test.ts  envelopeCurve.ts のテスト
   envelopeCurve.ts  エンベロープの点（音量とピッチ）と、点から次の点までの形状。値の読み出しは画面を知らない純粋な関数
@@ -51,6 +52,7 @@ src/
   OptimizeDialog.tsx  最適化して保存のダイアログ（何を確定し、何を捨てるかを選ぶ。実行は useProjectFile の saveOptimized）
   overlap.ts  重なった波形ブロックの段の割り当て（重なっている所だけトラックの高さを段に分ける）。画面を知らない
   overview.ts  ミニマップ用の、全トラックを重ねた小さな音（1 秒 1000 点の振幅）。元の音は書き換えず、波形ブロックの位置と音量から作る
+  OverviewMinimap.tsx  全体を縮めた波形（ミニマップ）。高さはミニマップの分だけで、伸ばさない。WeVocalSynth と同じ wevocal-lib の部品
   peaks.ts  波形の描画用のピーク（縮めた形）。元の音ごとに一度だけ、何段階かの細かさで最小と最大を作っておく（描くたびに元の音を読まないように）
   PianoRollDialog.tsx  ピアノロールのダイアログ（中身は pianoRoll/PianoRoll.tsx）。MIDI ブロックの音符を編集する
   pitchCurveTools.ts  ピッチの一括操作（wevocal-lib の計算。WeVocalSynth と同じ）を、波形ブロックのピッチカーブにする。元の F0 との差を半音で持つ（ペンと同じ形）
@@ -76,12 +78,14 @@ src/
   useBlockJobs.ts  時間のかかる、波形ブロックとトラックの確定（現在の音にして置き換える）と、トラックのフリーズ（書き出した音で鳴らす）。進み具合は PevenMUI のジョブで見せ、取り消せる
   useDialogs.ts  ダイアログの開閉と、開くときに渡す値（PevenMUI の useDialogs。WeVocalSynth と同じ）
   useExtract.tsx  ボーカル抽出と楽器ごとの分離、和音の分離（手順は extractor の host.ts。WeVocalSynth と共通）。選んだ波形ブロックの音を分けて、新しいトラックに並べる
+  useMidiFiles.ts  MIDI ファイルの書き出しと読み込み（ブロックのメニューから）。読み込みは選んだファイルをダイアログに渡し、トラックと MIDI ブロックにするのはそちらで行う
   useMidiInput.ts  MIDI 入力（キーボードなどの接続。ブラウザの Web MIDI。Chrome、Edge。Safari は非対応）。つないだ入力すべての、鳴らす、離すを onNote に渡す
   usePlayerSync.ts  再生中の同期。範囲や曲の終わりで止める、再生中に変えたものを音に反映する、ピッチを変えた音を用意してゲージを動かす
   useProject.ts  プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
   useProjectFile.ts  プロジェクトの開く、保存（上書きと名前を付けて）、書き出し、最近使用したファイル、OS から開く、閉じる前の確認（WeVocalSynth と同じ PevenMUI の fileAccess）
   useRecorder.ts  録音（再生位置から、ほかのトラックを鳴らしながら録り、録った音を波形ブロックとして置く。wevocal-lib の録音）
   useTempoDetect.ts  テンポの解析（選んだ波形ブロックから。WeVocalSynth と同じ解析）と、BPM、1 拍目の位置の設定
+  useTouchHint.ts  タッチの端末では、最初に波形ブロックを置いたときに、長押しとダブルタップの操作を一度だけ知らせる（見つけにくいため）
   useTransport.ts  再生と編集カーソル。再生（Player）、再生中か、編集カーソル（押した所、貼り付ける所）、再生カーソル、一時停止の位置、繰り返しを持ち、再生、一時停止、停止、移動の操作を渡す
   vibratoEnv.ts  選んだ波形ブロックに、ビブラートをピッチのエンベロープとして足す。範囲があれば、その中だけ（波形ブロックの外は触らない）。画面を知らない
   viewToggles.ts  表示と道具の ON / OFF（設定の値）を、コマンドの文脈（ActionContext）の形にする。切り替えは設定を変えるだけ

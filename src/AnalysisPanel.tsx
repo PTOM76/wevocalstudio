@@ -1,12 +1,13 @@
 // 解析の欄（WeVocalAnalyzer のスペクトログラムと F0）。選んだ波形ブロックの音を、時間軸とそろえて下に描く。ペンでピッチカーブを描く
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDoc } from './DocContext'
 import { Box, Typography } from '@mui/material'
 import { faEraser, faHand, faPen } from '@fortawesome/free-solid-svg-icons'
 import { Divider, ToolButton } from './Toolbar'
 import PitchToolBar from './PitchToolBar'
 import { localPoint, usePalette } from 'pevenmui'
 import { markActivity, countRender } from 'pevenmui/debug'
-import type { Clip, Range } from 'wevocal-lib'
+import type { Clip } from 'wevocal-lib'
 import { analyzePitch, analyzeSpectrogram, renderSpectrogram, type Pitch, type Spectrogram } from 'wevocalanalyzer'
 import { blockReady, clipFor, needsProcess } from './dsp/pitch'
 import type { TimelineView } from './drawTimeline'
@@ -57,24 +58,25 @@ function putCurve(c: PitchCurve, at: number, v: number): PitchCurve {
 }
 
 export default function AnalysisPanel(p: {
-  block: Block | null
-  source: Source | undefined
   view: TimelineView
   headerWidth: number
   version: number
-  /** 範囲選択（つかむとき、範囲の中なら範囲をまとめて動かす） */
-  range: Range | null
-  /** テンポ（ビブラートの速さ、MIDI のテンポ） */
-  bpm: number
   /** F0 を探す音の範囲（Hz）と、「平らにする」の強さ（設定） */
   f0MinHz: number
   f0MaxHz: number
   flattenStrength: number
-  /** ペンで描いたカーブ（merge は続けて描く間の履歴のまとまり） */
-  onCurve: (curve: PitchCurve | undefined, merge: string) => void
-  onEndMerge: () => void
 }) {
   countRender('AnalysisPanel')
+  // 解析するのは、選んでいる最初の波形ブロック。範囲選択は、つかむとき範囲の中なら範囲をまとめて動かすのに使う。テンポはビブラートの速さと MIDI のテンポ
+  const doc = useDoc()
+  const { range } = doc
+  const bpm = doc.project.tempo.bpm
+  const block = doc.project.blocks.find((b) => b.id === doc.selected[0]) ?? null
+  const source = doc.project.sources.find((x) => x.id === block?.source)
+  /** ペンで描いたカーブ（merge は続けて描く間の履歴のまとまり） */
+  const onCurve = (curve: PitchCurve | undefined, merge: string) => {
+    if (block) doc.updateBlock(block.id, { curve }, merge)
+  }
   const t = useT()
   const { pal } = usePalette()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -93,13 +95,13 @@ export default function AnalysisPanel(p: {
   const drawing = useRef<{ last: { s: number; v: number } | null; merge: string; curve: PitchCurve } | null>(null)
   const strokes = useRef(0)
   // 音が変わるのは、ピッチなどを変えた波形ブロックの音が全部できたときだけ（ほかのかたまりができるたびに作り直して解析し直さない）
-  const done = !!p.block && needsProcess(p.block) && blockReady(p.block) === 1
+  const done = !!block && needsProcess(block) && blockReady(block) === 1
   const target = useMemo(() => {
     // デバッグ表示の止まった処理の印（音をつなぐので、長い波形ブロックでは重い）
     markActivity('analysis clip')
-    return p.block && p.source ? blockClip(p.block, p.source) : null
+    return block && source ? blockClip(block, source) : null
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [p.block, p.source, done])
+  }, [block, source, done])
 
   useEffect(() => {
     const box = canvasRef.current!.parentElement!
@@ -109,12 +111,12 @@ export default function AnalysisPanel(p: {
   }, [])
 
   // 元の音の F0 は、使う範囲が変わったときだけ解析する
-  const spanKey = p.block && p.source ? `${p.source.id}|${p.block.offset}|${p.block.length}|${p.block.rate}|${p.f0MinHz}|${p.f0MaxHz}` : ''
+  const spanKey = block && source ? `${source.id}|${block.offset}|${block.length}|${block.rate}|${p.f0MinHz}|${p.f0MaxHz}` : ''
   useEffect(() => {
     setOrig(null)
-    if (!p.block || !p.source) return
+    if (!block || !source) return
     const ac = new AbortController()
-    analyzePitch(sourceSpan(p.block, p.source), { signal: ac.signal, minHz: p.f0MinHz, maxHz: p.f0MaxHz }).then(setOrig, () => {})
+    analyzePitch(sourceSpan(block, source), { signal: ac.signal, minHz: p.f0MinHz, maxHz: p.f0MaxHz }).then(setOrig, () => {})
     return () => ac.abort()
     // 範囲（spanKey）が変わったときだけ
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,8 +167,8 @@ export default function AnalysisPanel(p: {
     tmp.getContext('2d')!.putImageData(img, 0, 0)
     g.drawImage(tmp, 0, 0, canvas.width, canvas.height)
     // 元の音の F0（薄い線）。時刻は元の音の上なので、速度で割って時間軸に置く
-    if (orig && p.block) {
-      const b = p.block
+    if (orig && block) {
+      const b = block
       g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
       g.strokeStyle = 'rgba(255,255,255,0.45)'
       g.lineWidth = 1
@@ -206,15 +208,15 @@ export default function AnalysisPanel(p: {
       }
       g.stroke()
     }
-  }, [spec, pitch, orig, target, width, p.view, p.block])
+  }, [spec, pitch, orig, target, width, p.view, block])
 
   /** つかむ: 押した所の一続き（範囲選択の中なら範囲）を決める。元の音の時刻 */
   const grabSpan = (x: number): [number, number] | null => {
-    const b = p.block
+    const b = block
     if (!b || !orig) return null
     const t = p.view.scroll + x / p.view.pps
     const src = (tt: number) => b.offset + (tt - b.start) * b.rate
-    if (p.range && t >= p.range.start && t <= p.range.end) return [src(Math.max(b.start, p.range.start)), src(Math.min(b.start + b.length, p.range.end))]
+    if (range && t >= range.start && t <= range.end) return [src(Math.max(b.start, range.start)), src(Math.min(b.start + b.length, range.end))]
     // 声のある一続き（F0 が途切れる所まで）
     let k = Math.round((src(t) - b.offset) / orig.hopSec)
     if (!(orig.data[k] > 0)) return null
@@ -239,13 +241,13 @@ export default function AnalysisPanel(p: {
       const old = i >= 0 && i < g.base.st.length ? g.base.st[i] : 0
       curve = putCurve(curve, s, old + d * Math.min(1, w))
     }
-    p.onCurve(curve, g.merge)
+    onCurve(curve, g.merge)
   }
 
   /** ペン: 押した所の高さになるようにカーブを書く（元の F0 との差を半音で）。Alt で元に戻す（0） */
   const drawAt = (x: number, y: number, erase: boolean) => {
     const d = drawing.current
-    const b = p.block
+    const b = block
     if (!d || !b || !orig) return
     const t = p.view.scroll + x / p.view.pps
     // 元の音の上の時刻
@@ -261,7 +263,7 @@ export default function AnalysisPanel(p: {
     for (let i = 0; i <= steps; i++) curve = putCurve(curve, from.s + ((s - from.s) * i) / steps, from.v + ((v - from.v) * i) / steps)
     d.curve = curve
     d.last = { s, v }
-    p.onCurve(curve, d.merge)
+    onCurve(curve, d.merge)
   }
 
   const hoverText = (() => {
@@ -277,13 +279,13 @@ export default function AnalysisPanel(p: {
     <Box sx={{ flexShrink: 0, borderTop: 1, borderColor: 'divider' }}>
       {/* 解析の欄のツールバー（ペン、つかむ、カーブを消す） */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, height: 32, px: 1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
-        <ToolButton icon={faPen} label="analysis.pen" help="analysis.penHelp" pressed={pen} disabled={!p.block} onClick={() => setTool(pen ? null : 'pen')} />
-        <ToolButton icon={faHand} label="analysis.grab" help="analysis.grabHelp" pressed={tool === 'grab'} disabled={!p.block} onClick={() => setTool(tool === 'grab' ? null : 'grab')} />
+        <ToolButton icon={faPen} label="analysis.pen" help="analysis.penHelp" pressed={pen} disabled={!block} onClick={() => setTool(pen ? null : 'pen')} />
+        <ToolButton icon={faHand} label="analysis.grab" help="analysis.grabHelp" pressed={tool === 'grab'} disabled={!block} onClick={() => setTool(tool === 'grab' ? null : 'grab')} />
         <Divider />
-        <ToolButton icon={faEraser} label="analysis.clearCurve" disabled={!p.block?.curve} onClick={() => p.onCurve(undefined, `clear${strokes.current++}`)} />
+        <ToolButton icon={faEraser} label="analysis.clearCurve" disabled={!block?.curve} onClick={() => onCurve(undefined, `clear${strokes.current++}`)} />
         <Divider />
         {/* ピッチの道具（wevocal-lib の計算とダイアログ。WeVocalSynth と同じ） */}
-        <PitchToolBar block={p.block} f0={orig} range={p.range} bpm={p.bpm} flattenStrength={p.flattenStrength} onCurve={p.onCurve} />
+        <PitchToolBar block={block} f0={orig} range={range} bpm={bpm} flattenStrength={p.flattenStrength} onCurve={onCurve} />
       </Box>
       <Box sx={{ display: 'flex', height: HEIGHT }}>
         <Box sx={{ width: p.headerWidth, flexShrink: 0, borderRight: 1, borderColor: 'divider', p: 1, boxSizing: 'border-box', overflow: 'hidden' }}>
@@ -293,8 +295,8 @@ export default function AnalysisPanel(p: {
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             {t('analysis.title')}
           </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }} noWrap title={p.source?.name}>
-            {p.block ? p.source?.name : t('analysis.select')}
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }} noWrap title={source?.name}>
+            {block ? source?.name : t('analysis.select')}
           </Typography>
           {busy && (
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -316,22 +318,22 @@ export default function AnalysisPanel(p: {
             onPointerDown={(e) => {
               // 位置は clientX、clientY から求める（offsetX は画面の拡大やタッチでずれることがある。時間軸と同じ）
               const at = localPoint(e.currentTarget, e.clientX, e.clientY)
-              if (tool === 'grab' && p.block) {
+              if (tool === 'grab' && block) {
                 const span = grabSpan(at.x)
                 if (!span) return
                 e.currentTarget.setPointerCapture(e.pointerId)
-                grabbing.current = { s0: span[0], s1: span[1], base: p.block.curve ?? { from: p.block.offset, st: [] }, y: at.y, merge: `grab${strokes.current++}` }
+                grabbing.current = { s0: span[0], s1: span[1], base: block.curve ?? { from: block.offset, st: [] }, y: at.y, merge: `grab${strokes.current++}` }
                 return
               }
-              if (!pen || !p.block) return
+              if (!pen || !block) return
               e.currentTarget.setPointerCapture(e.pointerId)
-              drawing.current = { last: null, merge: `curve${strokes.current++}`, curve: p.block.curve ?? { from: p.block.offset, st: [] } }
+              drawing.current = { last: null, merge: `curve${strokes.current++}`, curve: block.curve ?? { from: block.offset, st: [] } }
               drawAt(at.x, at.y, e.altKey)
             }}
             onPointerUp={() => {
               drawing.current = null
               grabbing.current = null
-              p.onEndMerge()
+              doc.endMerge()
             }}
             onPointerMove={(e) => {
               const at = localPoint(e.currentTarget, e.clientX, e.clientY)

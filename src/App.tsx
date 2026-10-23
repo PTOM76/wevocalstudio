@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Box } from '@mui/material'
-import { DockArea, EmptyState, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
+import { DockArea, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout } from 'pevenmui'
 import StatusBar from './StatusBar'
 import { useAddonFolder } from './useAddonFolder'
 import AppHeader from './AppHeader'
@@ -9,15 +9,17 @@ import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
 import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web'
 import { configurePlayback } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
-import { Minimap } from 'wevocal-lib/react'
-import { faFolderOpen, faMicrophone, faWaveSquare } from '@fortawesome/free-solid-svg-icons'
-import { AUDIO_ACCEPT, canRecord, downloadBlob, readWvsp, SELECTION_DARK, SELECTION_LIGHT } from 'wevocal-lib'
+import { AUDIO_ACCEPT, readWvsp } from 'wevocal-lib'
 import { app } from './appConfig'
 import AppDialogs from './AppDialogs'
 import { DocContext } from './DocContext'
 import { useDialogs } from './useDialogs'
 import type { TimelineView } from './drawTimeline'
 import { useTransport } from './useTransport'
+import { useTouchHint } from './useTouchHint'
+import { useMidiFiles } from './useMidiFiles'
+import OverviewMinimap from './OverviewMinimap'
+import EmptyProject from './EmptyProject'
 import { useBlockJobs } from './useBlockJobs'
 import { viewToggles } from './viewToggles'
 import { useAppSetup } from './useAppSetup'
@@ -28,9 +30,7 @@ import type { Settings } from './settings/settings'
 import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
-import { buildMidi } from './midiExport'
 import { emitNote } from './pianoRoll/noteBus'
-import { readMidi } from './midiImport'
 import { addWvspTracks, midiBlocks, newProject, songEnd, visibleTracks } from './project'
 import Timeline, { useHeaderWidth } from './Timeline'
 import Toolbar from './Toolbar'
@@ -54,9 +54,6 @@ const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noref
 
 // デバッグ表示に AudioContext の状態を出す（iPhone で音が出ないときの調査。WeVocalSynth と同じ）
 configurePlayback({ report: reportAudioContext })
-
-/** タッチの操作の案内を出したか（一度だけ） */
-const TOUCH_HINT_KEY = 'studio.touchHint'
 
 export default function App(p: { settings: Settings; onSettingsChange: (patch: Partial<Settings>) => void }) {
   countRender('App')
@@ -106,8 +103,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     const fullTo = before ? project.tracks.findIndex((tr) => tr.id === before.id) : project.tracks.length
     doc.reorderTrack(id, fullTo)
   }
-  const sourceOf = (id: string | undefined) => project.sources.find((s) => s.id === id)
-  const { pal, dark } = usePalette()
   // ミニマップ（全体を縮めた波形。WeVocalSynth と同じ部品）
   // 作り直しは操作のあとに回す（ドラッグの途中で固まらないように）
   const deferredProject = useDeferredValue(project)
@@ -203,6 +198,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   })
 
 
+  const midiFiles = useMidiFiles({ project, fileName, t, notify: setNotice, fail, onPending: (m) => dialogs.open('midiImport', m) })
   const { menus, blockMenu, emptyMenu, envelopeMenu, commands } = useActions({
     envKind,
     envPen,
@@ -269,23 +265,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       importTarget.current = undefined
       audioInput.current?.click()
     },
-    // MIDI ブロックを MIDI ファイルに書き出す（選んだもの。なければ全部）
-    exportMidi: (ids) => {
-      const data = buildMidi(project, ids)
-      if (!data) return setNotice(t('midi.exportEmpty'))
-      downloadBlob(new Blob([data as BlobPart], { type: 'audio/midi' }), `${fileName.replace(/\.[^.]+$/, '')}.mid`)
-    },
-    // MIDI ファイルを選んで、トラックと MIDI ブロックにする（編集カーソルの位置から）
-    importMidi: () => {
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = '.mid,.midi,audio/midi'
-      input.onchange = () => {
-        const file = input.files?.[0]
-        if (file) void readMidi(file).then((m) => (m ? dialogs.open('midiImport', m) : setNotice(t('midi.empty')))).catch(fail)
-      }
-      input.click()
-    },
+    ...midiFiles,
     importAt: (time, track) => {
       importTarget.current = track ? { track, start: time } : undefined
       audioInput.current?.click()
@@ -319,18 +299,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ）。パソコンはツールバーの下、スマホは波形マップの下
   const touchLike = mobile || isMobile()
   const editBarOn = editBarEnabled(p.settings.editBar, touchLike)
-  // タッチの端末では、最初に波形ブロックを置いたときに、長押しとダブルタップの操作を一度だけ知らせる（見つけにくいため）
   const hasBlocks = project.blocks.length > 0
-  useEffect(() => {
-    if (!touchLike || !hasBlocks) return
-    try {
-      if (localStorage.getItem(TOUCH_HINT_KEY)) return
-      localStorage.setItem(TOUCH_HINT_KEY, '1')
-    } catch {
-      return
-    }
-    setNotice(t('hint.touch'))
-  }, [touchLike, hasBlocks, t])
+  useTouchHint(touchLike, hasBlocks, t, setNotice)
   const editBar = editBarOn && (selected.length > 0 || range) ? <BlockEditBar commands={commands} mode={selected.length > 0 ? (selected.every((id) => midiBlocks(project).some((b) => b.id === id)) ? 'midi' : 'block') : 'range'} top={!touchLike} /> : null
 
   return (
@@ -453,53 +423,22 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       />
       {/* 何も置いていないときの案内（開く、音を作る、録音、最近使用したファイル。部品は PevenMUI の EmptyState。WeVocalSynth と同じ）。時間軸の操作は妨げない */}
       {project.blocks.length === 0 && !midiBlocks(project).length && project.tracks.length <= 1 && !recording && (
-        <Box sx={{ position: 'absolute', inset: 0, boxSizing: 'border-box', pl: `${header + 16}px`, pr: 2, pointerEvents: 'none', '& button': { pointerEvents: 'auto' } }}>
-          <EmptyState
-            message={t('empty.formats')}
-            primary={{ label: t('empty.choose'), icon: faFolderOpen, onClick: commands.import.run }}
-            actions={[{ label: t('synth.open'), icon: faWaveSquare, onClick: commands.synth.run }, ...(canRecord() ? [{ label: t('record.title'), icon: faMicrophone, onClick: commands.record.run }] : [])]}
-            recent={files.recent.supported ? { title: t('menu.recent'), names: files.recent.names, open: files.recent.open, more: (n) => t('empty.showMore', { n }), less: t('empty.showLess') } : undefined}
-          />
-        </Box>
+        <EmptyProject headerWidth={header} onChoose={commands.import.run} onSynth={commands.synth.run} onRecord={commands.record.run} recent={files.recent} />
       )}
       </Box>
       {!mobile && <DockArea />}
       {p.settings.showAnalysis && (
         <AnalysisPanel
-          bpm={project.tempo.bpm}
           f0MinHz={p.settings.f0MinHz}
           f0MaxHz={p.settings.f0MaxHz}
           flattenStrength={p.settings.flattenStrength}
-          block={project.blocks.find((b) => b.id === selected[0]) ?? null}
-          source={sourceOf(project.blocks.find((b) => b.id === selected[0])?.source)}
           view={view}
           headerWidth={header}
           version={madeVersion}
-          range={range}
-          onCurve={(curve, merge) => {
-            const id = selected[0]
-            if (id) doc.updateBlock(id, { curve }, merge)
-          }}
-          onEndMerge={doc.endMerge}
         />
       )}
       {overview && project.blocks.length > 0 && (
-        // 高さは Minimap の分だけ（伸ばさない）
-        <Box sx={{ flexShrink: 0, flexGrow: 0, borderTop: 1, borderColor: 'divider' }}>
-        <Minimap
-          clip={overview.clip}
-          duration={overview.duration}
-          colors={{ text: pal.text.primary, textSecondary: pal.text.secondary, divider: pal.divider, wave: pal.primary.main, selection: dark ? SELECTION_DARK : SELECTION_LIGHT }}
-          view={{ start: view.scroll, dur: timelineWidth / view.pps }}
-          selections={range ? [range] : []}
-          scrollTo={(start) => setView((v) => ({ ...v, scroll: Math.max(0, start) }))}
-          label={t('menu.minimap')}
-          position={playPos ?? cursor}
-          livePosition={() => livePos() ?? cursor}
-          playing={playing}
-          showPlayhead={p.settings.minimapPlayhead}
-        />
-        </Box>
+        <OverviewMinimap overview={overview} view={view} width={timelineWidth} range={range} scrollTo={(start) => setView((v) => ({ ...v, scroll: Math.max(0, start) }))} position={playPos ?? cursor} livePosition={() => livePos() ?? cursor} playing={playing} showPlayhead={p.settings.minimapPlayhead} />
       )}
       {touchLike && editBar}
       <Transport
