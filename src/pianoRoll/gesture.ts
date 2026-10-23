@@ -1,4 +1,5 @@
-// ピアノロールのドラッグで音符がどう変わるかの計算（動かす、長さを変える、枠で選ぶ）。状態に触れない純粋な関数で、PianoRoll が毎回の動きで呼ぶ
+// ピアノロールの操作中の状態（RollGesture。同時に 1 つだけ）と、ドラッグで音符がどう変わるかの計算（動かす、長さを変える、枠で選ぶ）。計算は状態に触れない純粋な関数で、PianoRoll が毎回の動きで呼ぶ
+import { useRef } from 'react'
 import type { Note } from '../project'
 import { KEYS, pitchY, rowPitch, xBeat, type View } from './view'
 
@@ -36,4 +37,37 @@ export function notesInBox(notes: Note[], view: View, x0: number, y0: number, x1
 /** 動かし始めた位置 (beat0、pitch0) から今の画面の位置 (x, y) までの差（拍と音の高さ）。拍は snap で丸める */
 export function dragDelta(view: View, x: number, y: number, beat0: number, pitch0: number, snap: (beat: number) => number) {
   return { dBeat: snap(xBeat(view, x) - beat0), dPitch: rowPitch(view, y) - pitch0 }
+}
+
+/** 押してから離すまでの操作。時間軸（timeline/gesture.ts）と同じく、同時に 1 つだけ */
+export type RollGesture =
+  | { kind: 'move'; start: Note[]; beat0: number; pitch0: number; merge: string }
+  | { kind: 'size'; start: Note[]; beat0: number; merge: string }
+  | { kind: 'vel'; id: string; merge: string }
+  | { kind: 'point'; index: number; merge: string }
+  | { kind: 'box'; x0: number; y0: number }
+  | { kind: 'key' }
+  | { kind: 'laneSize'; y0: number; h0: number }
+  /** 指 1 本で空いている所をなぞる: スクロール（動かさずに離すと音符を足し、長押しすると枠で選ぶ） */
+  | { kind: 'pan'; x: number; y: number; cx: number; cy: number; left0: number; low0: number; t0: number; moved: boolean; timer: number }
+  | { kind: 'erase'; merge: string }
+  | { kind: 'mute'; value: boolean; merge: string }
+
+/** 今の操作を入れる窓口（`.current`）。書き替えると前の操作は終わる（なぞりの長押しのタイマーも止める） */
+export function rollGestureSlot(ref: { current: RollGesture | null }) {
+  return {
+    get current() {
+      return ref.current
+    },
+    set current(g: RollGesture | null) {
+      const old = ref.current
+      if (old?.kind === 'pan' && old !== g) clearTimeout(old.timer)
+      ref.current = g
+    },
+  }
+}
+
+export function useRollGesture() {
+  const ref = useRef<RollGesture | null>(null)
+  return useRef(rollGestureSlot(ref)).current
 }

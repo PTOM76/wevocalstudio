@@ -1,7 +1,7 @@
 // gesture.ts のテスト
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Note } from '../project'
-import { dragDelta, movedNotes, notesInBox, sizedNotes } from './gesture'
+import { dragDelta, movedNotes, notesInBox, rollGestureSlot, sizedNotes, type RollGesture } from './gesture'
 import { KEYS, type View } from './view'
 
 const note = (id: string, t: number, dur: number, pitch = 60): Note => ({ id, t, dur, pitch, vel: 100 }) as Note
@@ -62,5 +62,22 @@ describe('dragDelta', () => {
     const d = dragDelta(view, KEYS + 45, 0, 1, 70, (b) => Math.round(b))
     expect(d.dBeat).toBe(1)
     expect(d.dPitch).toBe(60 - 70)
+  })
+})
+
+describe('rollGestureSlot', () => {
+  it('なぞりを別の操作に書き替えると、長押しのタイマーを止める', () => {
+    vi.useFakeTimers()
+    const fired = vi.fn()
+    const slot = rollGestureSlot({ current: null as RollGesture | null })
+    const timer = setTimeout(fired, 450) as unknown as number
+    slot.current = { kind: 'pan', x: 0, y: 0, cx: 0, cy: 0, left0: 0, low0: 0, t0: 0, moved: false, timer }
+    slot.current = { kind: 'key' }
+    vi.runAllTimers()
+    expect(fired).not.toHaveBeenCalled()
+    expect(slot.current).toEqual({ kind: 'key' })
+    slot.current = null
+    expect(slot.current).toBeNull()
+    vi.useRealTimers()
   })
 })

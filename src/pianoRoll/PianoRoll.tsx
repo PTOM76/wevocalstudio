@@ -25,24 +25,10 @@ import { useLaneHeight } from './useLaneHeight'
 import { useRollView } from './useRollView'
 import { undoRedoKey } from './rollKeys'
 import { usePlayBeat } from './usePlayBeat'
-import { dragDelta, movedNotes, notesInBox, sizedNotes } from './gesture'
+import { dragDelta, movedNotes, notesInBox, sizedNotes, useRollGesture } from './gesture'
 import { curveOf, hitPoint, lanePoints, valueAt, withPoints, type Lane } from './laneEdit'
 import { curveRange } from '../midiCurves'
 import { EDGE, KEYS, SCALES, type ScaleKind, VEL, VEL_MAX, VEL_MIN, laneTop, rollHeight, rowPitch, stepOf, visibleBeats, xBeat } from './view'
-
-type Drag =
-  | { kind: 'move'; start: Note[]; beat0: number; pitch0: number; merge: string }
-  | { kind: 'size'; start: Note[]; beat0: number; merge: string }
-  | { kind: 'vel'; id: string; merge: string }
-  | { kind: 'point'; index: number; merge: string }
-  | { kind: 'box'; x0: number; y0: number }
-  | { kind: 'key' }
-  | { kind: 'laneSize'; y0: number; h0: number }
-  /** 指 1 本で空いている所をなぞる: スクロール（動かさずに離すと音符を足し、長押しすると枠で選ぶ） */
-  | { kind: 'pan'; x: number; y: number; cx: number; cy: number; left0: number; low0: number; t0: number; moved: boolean; timer: number }
-  | { kind: 'erase'; merge: string }
-  | { kind: 'mute'; value: boolean; merge: string }
-
 
 /** キーでの道具の切り替え（FL Studio にならう） */
 export interface PianoRollProps {
@@ -100,7 +86,8 @@ export default function PianoRoll(p: PianoRollProps) {
   const [lane, setLane] = useState<Lane>('vel')
   // 帯の高さ（0 なら隠す）。覚えておく
   const [velH, setLaneHeight] = useLaneHeight()
-  const drag = useRef<Drag | null>(null)
+  // 操作中の状態は 1 つ（gesture.ts）。書き替えると前の操作は終わる
+  const drag = useRollGesture()
   const step = stepOf(p.division)
   const map = projectBeatMap(p.project)
   const len = blockBeats(map, block)
@@ -191,7 +178,6 @@ export default function PianoRoll(p: PianoRollProps) {
     touch.current = e.pointerType === 'touch'
     // 2 本目の指: つまみ（拡大と縮小、縦横のスクロール）に切り替える
     if (pinch.down(e, view)) {
-      if (drag.current?.kind === 'pan') clearTimeout(drag.current.timer)
       drag.current = null
       setFrame(null)
       sound(null)
@@ -364,7 +350,6 @@ export default function PianoRoll(p: PianoRollProps) {
     const d = drag.current
     // 動かさずに離した指: 音符を足す
     if (d?.kind === 'pan') {
-      clearTimeout(d.timer)
       if (!d.moved && Date.now() - d.t0 < 400 && d.y < rollHeight(view)) {
         const note = newNote(d.x, d.y, false)
         p.onChange([...block.notes, note])
