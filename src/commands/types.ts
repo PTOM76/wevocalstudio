@@ -2,7 +2,7 @@
 import type { MidiBlock } from '../project'
 import { commandDefiner, type CommandSpec } from 'pevenmui'
 import type { MessageKey, useT } from '../i18n'
-import { type Block, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange } from '../project'
+import { type Block, type PitchEnvelopeRange, type Source, type Track, type VolumeEnvelopeRange } from '../project'
 import { type EnvKind } from '../envelopes'
 import type { useProject } from '../useProject'
 
@@ -144,6 +144,8 @@ export interface CommandEnv {
   clipboard: { current: Block[] }
   midiClipboard: { current: MidiBlock[] }
   trackClipboard: { current: { track: Track; blocks: Block[] } | null }
+  /** コピーしたものが使う元の音（ほかのタブに貼り付けるとき、一緒に運ぶ） */
+  clipSources: { current: Source[] }
   copied: () => void
   paste: (place?: { time: number; track: string | null }) => void
   duplicate: () => void

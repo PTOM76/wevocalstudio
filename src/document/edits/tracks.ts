@@ -1,6 +1,7 @@
 // トラックを変える処理（足す、複製、貼り付け、消す、階層、並べ替え）。プロジェクトを受け取って新しいプロジェクトを返す純粋な関数で、React を使わない
 import type { AutoPoint, FxSlot } from 'wevocal-lib'
 import { TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, midiBlocks, newBlock, newId, newTrack, subtreeEnd, trackHeight, type Block, type PitchDefaults, type Project, type Source, type Track } from '../../project'
+import { addSources } from './blocks'
 
 /** after のすぐ下（子孫の後ろ。なければ一番下）に、空のトラック track を足す。名前は Track N */
 export function addTrackAfter(p: Project, track: Track, after?: string | null): Project {
@@ -28,8 +29,9 @@ export function duplicateTrack(p: Project, id: string): Project {
   return { ...p, tracks: [...p.tracks.slice(0, i + 1), copy, ...p.tracks.slice(i + 1)], blocks: [...p.blocks, ...blocks], ...(midi.length ? { midi: [...midiBlocks(p), ...midi] } : {}) }
 }
 
-/** トラックの写し copy（新しい id のもの）を、after のすぐ下（なければ一番下）に波形ブロックごと置く。元の音がもう無いブロックは置かない */
-export function insertTrack(p: Project, copy: Track, blocks: Block[], after: string | null): Project {
+/** トラックの写し copy（新しい id のもの）を、after のすぐ下（なければ一番下）に波形ブロックごと置く。sources は、コピーしたときの元の音（足りなければ足す）。元の音がどこにも無いブロックは置かない */
+export function insertTrack(q: Project, copy: Track, blocks: Block[], after: string | null, sources: Source[] = []): Project {
+  const p = addSources(q, sources)
   const i = after ? p.tracks.findIndex((t) => t.id === after) : -1
   const at = i < 0 ? p.tracks.length : i + 1
   const bs = blocks.filter((b) => p.sources.some((s) => s.id === b.source)).map((b) => ({ ...b, id: newId(), track: copy.id }))

@@ -153,9 +153,9 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
 
   /** トラックの写しを、after のすぐ下（なければ一番下）に波形ブロックごと置き、新しい id を返す（貼り付け） */
   const insertTrack = useCallback(
-    (track: Track, blocks: Block[], after: string | null) => {
+    (track: Track, blocks: Block[], after: string | null, sources: Source[] = []) => {
       const copy = { ...track, id: newId(), armed: false }
-      change((p) => trackEdit.insertTrack(p, copy, blocks, after))
+      change((p) => trackEdit.insertTrack(p, copy, blocks, after, sources))
       return copy.id
     },
     [change],
@@ -248,9 +248,9 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
 
   /** 波形ブロックの写しを置き、新しい id を返す（複製、貼り付け）。元の音がもう無いものは置かない */
   const insertBlocks = useCallback(
-    (blocks: Block[]) => {
+    (blocks: Block[], sources: Source[] = []) => {
       const copies = blocks.map((b) => ({ ...b, id: newId() }))
-      change((p) => edit.insertBlocks(p, copies))
+      change((p) => edit.insertBlocks(p, copies, sources))
       return copies.map((b) => b.id)
     },
     [change],

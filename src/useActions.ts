@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { textSelected, useCommandSet } from 'pevenmui'
 import { useT } from './i18n'
 import { actionOf, currentKeymap, type Action } from './keymap'
-import { type Block, type Track, midiBlocks } from './project'
+import { type Block, type Source, type Track, midiBlocks } from './project'
 import { ENVELOPES, type EnvKind } from './envelopes'
 import { COMMANDS } from './commands/table'
 import { buildMenus } from './commands/menus'
@@ -44,6 +44,8 @@ export function useActions(c: ActionContext) {
   const trackClipboard = useRef<{ track: Track; blocks: Block[] } | null>(null)
   // コピーしたら描き直す（「貼り付け」を押せるようにする。ref だけでは古いまま押せなかった）
   const [, setCopied] = useState(0)
+  // コピーしたものが使う元の音（タブをまたいで貼り付けるとき、足りなければ足す）
+  const clipSources = useRef<Source[]>([])
 
   /** 選んでいるトラックの再生位置に置く。複数なら、トラックと時間の並びを保つ */
   /** 貼り付ける。at を渡せば、その時刻とトラックに（何もない所の右クリックの「ここに貼り付け」） */
@@ -53,7 +55,7 @@ export function useActions(c: ActionContext) {
     // トラックをコピーしていれば、選んでいるトラックのすぐ下に貼り付ける
     const tc = trackClipboard.current
     if (tc) {
-      selectTrack(doc.insertTrack(tc.track, tc.blocks, pasteTrack))
+      selectTrack(doc.insertTrack(tc.track, tc.blocks, pasteTrack, clipSources.current))
       return
     }
     const blocks = clipboard.current
@@ -67,7 +69,7 @@ export function useActions(c: ActionContext) {
     const target = Math.max(0, tracks.findIndex((tr) => tr.id === pasteTrack))
     const at = (b: { track: string }) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
     const ids = [
-      ...doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))),
+      ...doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first })), clipSources.current),
       ...doc.insertMidi(midi.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))),
     ]
     doc.select(ids)
@@ -90,7 +92,7 @@ export function useActions(c: ActionContext) {
     doc.updateMidiBlocks(Object.fromEntries(midiChosen.map((b) => [b.id, { start: Math.max(0, b.start + d) }])))
   }
 
-  const env: CommandEnv = { c, doc, t, selectedTrack, selectTrack, midiChosen, midiSel, chosen, ids, any, anyWave, canSplit, track, blockTrack, envBlocks, resetEnvelope, clipboard, midiClipboard, trackClipboard, copied: () => setCopied((n) => n + 1), paste, duplicate, nudge }
+  const env: CommandEnv = { c, doc, t, selectedTrack, selectTrack, midiChosen, midiSel, chosen, ids, any, anyWave, canSplit, track, blockTrack, envBlocks, resetEnvelope, clipboard, midiClipboard, trackClipboard, clipSources, copied: () => setCopied((n) => n + 1), paste, duplicate, nudge }
   // 表は静的なので、今の文脈（env）で判定と実行をする（PevenMUI の useCommandSet）。画面のボタンとメニューは、押せるかと実行の形で読む
   const set = useCommandSet(COMMANDS as Record<Action, Command>, env, currentKeymap(), t)
   const commands = Object.fromEntries((Object.keys(COMMANDS) as Action[]).map((id) => [id, { run: () => set.run(id), enabled: set.enabled(id) ? undefined : false }])) as Record<Action, CommandView>

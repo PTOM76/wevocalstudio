@@ -1,7 +1,7 @@
 // edits/blocks.ts のテスト
 import { describe, expect, it } from 'vitest'
 import { fillBlock, newProject, type Block, type InstrumentSlot, type MidiBlock, type Project, type Source } from '../../project'
-import { PITCH_MAX, addEmptyMidi, addMidiBlocks, insertBlocks, nudgePitch, patchBlocks, patchMidiBlocks, removeBlocks, splitAt, splitBySilence } from './blocks'
+import { PITCH_MAX, addEmptyMidi, addMidiBlocks, insertBlocks, nudgePitch, patchBlocks, patchMidiBlocks, removeBlocks, splitAt, splitBySilence, usedSources } from './blocks'
 
 const clip = (seconds: number, sampleRate = 100) => ({ sampleRate, channels: [new Float32Array(seconds * sampleRate)] })
 const source = (id: string, seconds = 10): Source => ({ id, name: id, clip: clip(seconds), duration: seconds })
@@ -121,5 +121,16 @@ describe('splitBySilence', () => {
     expect(q.blocks.length).toBe(2)
     expect(q.blocks[0].start).toBeCloseTo(0.2, 1)
     expect(q.blocks[1].start).toBeCloseTo(2.0, 1)
+  })
+})
+
+describe('ほかのタブへの貼り付け', () => {
+  it('足りない元の音を足して置く（同じ id の音は足さない）', () => {
+    const from = base({ sources: [source('s'), source('x')] })
+    const sources = usedSources(from, [block('c', { source: 'x' })], [])
+    expect(sources.map((s) => s.id)).toEqual(['x'])
+    const p = insertBlocks(base(), [block('c', { source: 'x' }), block('d')], [...sources, source('s')])
+    expect(p.sources.map((s) => s.id)).toEqual(['s', 'x'])
+    expect(p.blocks.map((b) => b.id)).toEqual(['a', 'b', 'c', 'd'])
   })
 })

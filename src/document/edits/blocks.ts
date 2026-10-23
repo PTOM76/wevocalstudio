@@ -1,7 +1,7 @@
 // 波形ブロックと MIDI ブロックを変える処理。プロジェクトを受け取って、新しいプロジェクトを返す純粋な関数（React を使わないので、そのまま試せる）
 import { DEFAULT_SILENCE, findSounds } from 'wevocal-lib'
 import { projectBeatMap } from '../../beats'
-import { midiBlocks, newId, splitBlock, splitMidiBlock, type Block, type InstrumentSlot, type MidiBlock, type Project } from '../../project'
+import { midiBlocks, newId, splitBlock, splitMidiBlock, type Block, type InstrumentSlot, type MidiBlock, type Project, type Source, type Track } from '../../project'
 
 /** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
 export const PITCH_MAX = 256
@@ -37,8 +37,23 @@ export function addEmptyMidi(p: Project, id: string, trackId: string, time: numb
   return { ...p, tracks: p.tracks.map((x) => (x === t && !t.instrument ? { ...x, instrument: instrument() } : x)), midi: [...midiBlocks(p), block] }
 }
 
-/** 波形ブロックの写し（新しい id を付けたもの）を置く。元の音がもう無いものは置かない */
-export const insertBlocks = (p: Project, copies: Block[]): Project => ({ ...p, blocks: [...p.blocks, ...copies.filter((b) => p.sources.some((s) => s.id === b.source))] })
+/** ブロックとトラック（凍結した音、サンプラーの音）が使う元の音（コピーするとき、一緒に持つ） */
+export function usedSources(p: Project, blocks: Block[], tracks: Track[]): Source[] {
+  const ids = new Set([...blocks.map((b) => b.source), ...tracks.flatMap((t) => [t.frozen?.source, t.instrument?.sample])])
+  return p.sources.filter((s) => ids.has(s.id))
+}
+
+/** 足りない元の音を足す（ほかのタブからの貼り付け。元の音は書き換えないので、同じものを指してよい） */
+export function addSources(p: Project, sources: Source[]): Project {
+  const missing = sources.filter((s) => !p.sources.some((x) => x.id === s.id))
+  return missing.length ? { ...p, sources: [...p.sources, ...missing] } : p
+}
+
+/** 波形ブロックの写し（新しい id を付けたもの）を置く。sources は、コピーしたときの元の音（足りなければ足す）。元の音がどこにも無いものは置かない */
+export function insertBlocks(p: Project, copies: Block[], sources: Source[] = []): Project {
+  const q = addSources(p, sources)
+  return { ...q, blocks: [...q.blocks, ...copies.filter((b) => q.sources.some((s) => s.id === b.source))] }
+}
 
 /** ピッチを delta 半音だけ変える。delta が null なら 0 に戻す。小数の誤差は 0.01 半音（1 セント）に丸める */
 export const nudgePitch = (p: Project, ids: string[], delta: number | null): Project => ({

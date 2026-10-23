@@ -3,6 +3,7 @@ import { glueMidi } from '../midiLoop'
 import { type Action } from '../keymap'
 import { newId, midiBlocks } from '../project'
 import { reverseBlocks } from '../reverse'
+import { usedSources } from '../document/edits/blocks'
 import { cropToRange, deleteRange, insertSilence, normalizeBlocks, rangeToNewTrack, repeatRange } from '../rangeEdit'
 import type { MessageKey } from '../i18n'
 import { defineCommands, type Command } from './types'
@@ -112,8 +113,9 @@ export const COMMANDS = defineCommands({
   cut: {
     label: 'menu.cut' as MessageKey,
     enabled: ({ any }) => any,
-    run: ({ clipboard, chosen, midiClipboard, midiChosen, trackClipboard, copied: setCopied, doc, ids }) => {
+    run: ({ clipboard, chosen, midiClipboard, midiChosen, trackClipboard, clipSources, copied: setCopied, doc, ids }) => {
       clipboard.current = chosen
+      clipSources.current = usedSources(doc.project, chosen, [])
       midiClipboard.current = midiChosen
       trackClipboard.current = null
       setCopied()
@@ -124,12 +126,13 @@ export const COMMANDS = defineCommands({
   copy: {
     label: 'menu.copy' as MessageKey,
     enabled: ({ any, selectedTrack }) => any || !!selectedTrack,
-    run: ({ any, doc, selectedTrack, trackClipboard, clipboard, chosen, midiClipboard, midiChosen, copied: setCopied }) => {
+    run: ({ any, doc, selectedTrack, trackClipboard, clipboard, chosen, midiClipboard, midiChosen, clipSources, copied: setCopied }) => {
       // 波形ブロックを選んでいればそれ、なければ選んでいるトラックを波形ブロックごと
       const track = !any ? doc.project.tracks.find((t) => t.id === selectedTrack) : undefined
       trackClipboard.current = track ? { track, blocks: doc.project.blocks.filter((b) => b.track === track.id) } : null
       clipboard.current = track ? [] : chosen
       midiClipboard.current = track ? [] : midiChosen
+      clipSources.current = trackClipboard.current ? usedSources(doc.project, trackClipboard.current.blocks, [track!]) : usedSources(doc.project, chosen, [])
       setCopied()
     },
   },
