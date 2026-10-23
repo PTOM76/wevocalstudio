@@ -58,6 +58,11 @@ export interface PianoRollProps {
   onTogglePlay: () => void
   /** 再生する（メインの再生と同じ。編集位置か範囲がブロックの中にあればそこから、なければブロックを。loop なら繰り返す） */
   onPlayBlock: (loop: boolean) => void
+  /** 元に戻す、やり直し（メインの操作履歴） */
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
   /** 繰り返しの切り替え（メインの繰り返しと同じもの。再生中に押しても反映される） */
   loop: boolean
   onLoop: (loop: boolean) => void
@@ -481,10 +486,20 @@ export default function PianoRoll(p: PianoRollProps) {
     setZoom(ppb)
     setLeft(Math.max(0, mid - visibleBeats({ ...view, ppb }) / 2))
   }
+  /** 別の窓のときだけ、Ctrl+Z と Ctrl+Y（Ctrl+Shift+Z）で戻す、やり直す（同じ窓ではメインのキーが受ける）。扱ったら true */
+  const rollUndoKey = (e: React.KeyboardEvent) => {
+    if (e.currentTarget.ownerDocument === document || !(e.ctrlKey || e.metaKey)) return false
+    const key = e.key.toLowerCase()
+    if (key !== 'z' && key !== 'y') return false
+    e.preventDefault()
+    if (key === 'y' || e.shiftKey) p.onRedo()
+    else p.onUndo()
+    return true
+  }
   /** ステップ入力を始める位置: 選んでいる音符の終わり（なければ頭） */
   const stepStart = () => (sel.length ? selectionEnd(block.notes, sel) : 0)
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={(e) => (e.key === 'Escape' && p.range ? p.onRange(null) : onKey(e))}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={(e) => (e.key === 'Escape' && p.range ? p.onRange(null) : rollUndoKey(e) || onKey(e))}>
       {p.toolbar !== false && (
         <RollToolbar
           host={p.chromeHost}
@@ -499,6 +514,10 @@ export default function PianoRoll(p: PianoRollProps) {
           canPaste={hasClipboard()}
           playing={p.playing}
           onTogglePlay={() => (p.playing ? p.onTogglePlay() : p.onPlayBlock(p.loop))}
+          canUndo={p.canUndo}
+          canRedo={p.canRedo}
+          onUndo={p.onUndo}
+          onRedo={p.onRedo}
           loopPlay={p.loop}
           onLoopPlay={() => p.onLoop(!p.loop)}
           onSelectAll={() => setSel(block.notes.map((n) => n.id))}

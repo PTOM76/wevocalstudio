@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { Box, Button, IconButton, Popover, Switch, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faEllipsis, faEye, faPenToSquare, faWandMagicSparkles, faArrowPointer, faCaretDown, faCircleQuestion, faClone, faCopy, faEraser, faGripLinesVertical, faMagnet, faMagnifyingGlassMinus, faMagnifyingGlassPlus, faPaste, faPause, faPencil, faPlay, faRepeat, faScissors, faTrashCan, faVolumeXmark, type IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { faRotateLeft, faRotateRight } from '@fortawesome/free-solid-svg-icons'
 import { ContextMenu, MenuBar, NumberInput, SmallButton, ToolbarDivider, pevenFont, type MenuEntry, type MenuGroup } from 'pevenmui'
 import { useT } from '../i18n'
 import type { useRollEdit } from './useRollEdit'
@@ -68,6 +69,11 @@ export interface RollToolbarProps {
   /** ステップ入力 */
   stepInput: boolean
   onStepInput: () => void
+  /** 元に戻す、やり直し（メインの操作履歴。欄に置いているときはメインのバーにあるので出さない） */
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
   /** 欄（ドック）に置いているとき、メインのツールバーの中の場所。あれば、メニューバーとボタンをそこに出す */
   host?: HTMLElement | null
 }
@@ -145,6 +151,13 @@ export default function RollToolbar(p: RollToolbarProps) {
 
   const buttons = (
     <>
+        {!p.host && (
+          <>
+            {btn(t('menu.undo'), faRotateLeft, p.onUndo, { disabled: !p.canUndo })}
+            {btn(t('menu.redo'), faRotateRight, p.onRedo, { disabled: !p.canRedo })}
+            <ToolbarDivider gap />
+          </>
+        )}
         {tool('select', t('roll.toolSelect'), faArrowPointer)}
         {tool('pen', t('roll.toolPen'), faPencil)}
         {tool('erase', t('roll.toolErase'), faEraser)}

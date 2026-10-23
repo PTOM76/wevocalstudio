@@ -192,6 +192,10 @@ export default function AppDialogs(p: {
               playing={p.playing}
               position={p.position}
               onTogglePlay={p.onTogglePlay}
+              canUndo={doc.canUndo}
+              canRedo={doc.canRedo}
+              onUndo={doc.undo}
+              onRedo={doc.redo}
               loop={p.repeat}
               onLoop={p.onRepeat}
               onPlayBlock={(loop) => p.onPlayRange(block.start, block.start + block.length, loop)}
