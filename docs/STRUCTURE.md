@@ -69,7 +69,7 @@ src/
   TrackHeader.tsx  トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
   TrackPropertiesDialog.tsx  選択中のトラックの共通プロパティをまとめて編集する
   Transport.tsx  再生のボタン一式（先頭へ、停止、再生と一時停止、録音、リピート、末尾へ）、時間の表示、マスターのメーター、テンポとグリッド。部品は WeVocalSynth のツールバーと同じ
-  useActions.ts  操作の表（キーとメニューから行うもの）と、メニューバーの並び
+  useActions.ts  操作の表（キーとメニューから行うもの）を作るフック。選択とコピーの状態を持ち、表（commands/table.ts）とメニュー（commands/menus.ts）に渡し、キーを受ける
   useAddonFolder.tsx  追加機能の保存先のフォルダー（試験的）。許可の通知と、設定と自動保存した作業の写しは PevenMUI の useAddonFolderSync（WeVocalSynth と同じ）
   useAutosave.ts  起動時に前回の作業を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
   useDialogs.ts  ダイアログの開閉と、開くときに渡す値（PevenMUI の useDialogs。WeVocalSynth と同じ）
@@ -82,6 +82,11 @@ src/
   useTempoDetect.ts  テンポの解析（選んだ波形ブロックから。WeVocalSynth と同じ解析）と、BPM、1 拍目の位置の設定
   vibratoEnv.ts  選んだ波形ブロックに、ビブラートをピッチのエンベロープとして足す。範囲があれば、その中だけ（波形ブロックの外は触らない）。画面を知らない
   wvspExport.ts  プロジェクトを WeVocalSynth のプロジェクト（.wvsp）にする。波形ブロックがあるトラックを 1 本ずつ描画して wvsp のトラックにする（memo/wvsp-export.md）
+
+src/commands/
+  menus.ts  メニューバーと、右クリック（波形ブロック、MIDI ブロック、エンベロープ、何もない所）のメニューの並び
+  table.ts  コマンドの表（操作の名前 → 実行と、押せるか）。キーの割り当て（keymap.ts）とメニューが、名前で呼ぶ
+  types.ts  コマンド（キーとメニューから行う操作）の型。ActionContext は App が渡すもの、CommandEnv は選択やコピーを加えた、表とメニューの共通の材料
 
 src/document/
   ProjectDocument.test.ts  ProjectDocument.ts のテスト
