@@ -3,10 +3,10 @@ import { type MenuEntry, type MenuGroup } from 'pevenmui'
 import { keyLabel, type Action } from '../keymap'
 import { type Block, type EnvShape } from '../project'
 import { ENVELOPES, type EnvKind } from '../envelopes'
-import type { Command, CommandEnv } from './types'
+import type { CommandEnv, CommandView } from './types'
 
-/** メニューの並び。commands は buildCommands の表 */
-export function buildMenus(env: CommandEnv, commands: Record<Action, Command>) {
+/** メニューの並び。commands は、今の判定と実行（useActions が表から作る） */
+export function buildMenus(env: CommandEnv, commands: Record<Action, CommandView>) {
   const { c, doc, t, selectedTrack, selectTrack, midiChosen, chosen, track, resetEnvelope, paste } = env
   /** メニューの項目（名前は menu.<操作の名前>） */
   const item = (a: Action, label = t(`menu.${a}` as Parameters<typeof t>[0])): MenuEntry => ({

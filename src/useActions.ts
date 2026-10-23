@@ -1,14 +1,14 @@
 // 操作の表（キーとメニューから行うもの）を作るフック。選択とコピーの状態を持ち、表（commands/table.ts）とメニュー（commands/menus.ts）に渡し、キーを受ける
 import type { MidiBlock } from './project'
 import { useEffect, useRef, useState } from 'react'
-import { textSelected } from 'pevenmui'
+import { textSelected, useCommandSet } from 'pevenmui'
 import { useT } from './i18n'
-import { actionOf } from './keymap'
+import { actionOf, currentKeymap, type Action } from './keymap'
 import { type Block, type Track, midiBlocks } from './project'
 import { ENVELOPES, type EnvKind } from './envelopes'
-import { buildCommands } from './commands/table'
+import { COMMANDS } from './commands/table'
 import { buildMenus } from './commands/menus'
-import type { ActionContext, CommandEnv } from './commands/types'
+import type { ActionContext, Command, CommandEnv, CommandView } from './commands/types'
 
 export type { ActionContext } from './commands/types'
 
@@ -91,7 +91,9 @@ export function useActions(c: ActionContext) {
   }
 
   const env: CommandEnv = { c, doc, t, selectedTrack, selectTrack, midiChosen, midiSel, chosen, ids, any, anyWave, canSplit, track, blockTrack, envBlocks, resetEnvelope, clipboard, midiClipboard, trackClipboard, copied: () => setCopied((n) => n + 1), paste, duplicate, nudge }
-  const commands = buildCommands(env)
+  // 表は静的なので、今の文脈（env）で判定と実行をする（PevenMUI の useCommandSet）。画面のボタンとメニューは、押せるかと実行の形で読む
+  const set = useCommandSet(COMMANDS as Record<Action, Command>, env, currentKeymap(), t)
+  const commands = Object.fromEntries((Object.keys(COMMANDS) as Action[]).map((id) => [id, { run: () => set.run(id), enabled: set.enabled(id) ? undefined : false }])) as Record<Action, CommandView>
 
   // キーの割り当ては keymap.ts の表。文字の入力中は奪わない
   const latest = useRef(commands)

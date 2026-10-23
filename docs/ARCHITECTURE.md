@@ -51,7 +51,7 @@ DAW と同じく、毎フレーム変わるもの（再生位置）と、変え�
 | --- | --- |
 | `App.tsx` | 画面の組み立てだけ。状態と操作は下のフックに置く |
 | `useTransport.ts` | 再生、編集カーソル、再生カーソル、一時停止、繰り返しと、再生、一時停止、停止、移動の操作 |
-| `useActions.ts`、`commands/` | 操作の表（`table.ts`）、メニューバーと右クリックのメニュー（`menus.ts`）、型（`types.ts`）。キーの割り当てとメニューは操作の名前で呼ぶ。選択は文書から読む |
+| `useActions.ts`、`commands/` | 操作の静的な表（`table.ts` の COMMANDS。型と判定、実行の仕組みは PevenMUI の commands で、Synth と共通）、メニューバーと右クリックのメニュー（`menus.ts`）、型（`types.ts`）。今の選択と設定（CommandEnv）は、実行と判定のときに渡す。キーの割り当てとメニューは操作の名前で呼ぶ |
 | `DocContext.tsx` | 文書を部品に渡す。時間軸、解析の欄、ダイアログ、コマンドは props ではなくここから選択、範囲、プロジェクトの変更を使う |
 | `Timeline.tsx`、`timeline/` | 時間軸の画面（`Timeline.tsx`）、描画（`useTimelineDraw`）、ホイール、トラックの欄（`TrackColumn`）、操作（`useTimelinePointer`。ドラッグの種類ごとの状態を持つ）、ドラッグの計算（`dragMath`。純粋な関数）、ダブルクリックとメニューの振り分け（`menuHandlers`） |
 | `pianoRoll/` | ピアノロール。表示の位置（`useRollView`）、ドラッグの計算（`gesture`。純粋な関数）、編集（`useRollEdit`）、描画（`draw`） |

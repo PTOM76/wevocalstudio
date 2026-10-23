@@ -8,6 +8,7 @@
 ```
 src/
   addons.ts  配信している追加機能の一覧と、このアプリでの呼び名（導入と読み込みの仕組みは PevenMUI。一覧は extractor の host.ts。WeVocalSynth と同じ）
+  AnalysisDock.tsx  解析の欄を、画面の端の欄（ドック）に置くパネルにする。標準では下の欄に置き、「ダイアログにする」でダイアログにもできる。閉じると、設定の「解析の欄を表示」を切る
   AnalysisPanel.tsx  解析の欄（WeVocalAnalyzer のスペクトログラムと F0）。選んだ波形ブロックの音を、時間軸とそろえて下に描く。ペンでピッチカーブを描く
   anticipate.ts  先に計算して鳴らす（Anticipative FX processing）。重いプラグインを持つトラックの音を、再生位置より先に別のスレッド（OfflineAudioContext の描画）で作っておき、
   App.tsx  画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ

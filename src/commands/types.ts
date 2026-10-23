@@ -1,6 +1,7 @@
 // コマンド（キーとメニューから行う操作）の型。ActionContext は App が渡すもの、CommandEnv は選択やコピーを加えた、表とメニューの共通の材料
 import type { MidiBlock } from '../project'
-import type { useT } from '../i18n'
+import { commandDefiner, type CommandSpec } from 'pevenmui'
+import type { MessageKey, useT } from '../i18n'
 import { type Block, type PitchEnvelopeRange, type Track, type VolumeEnvelopeRange } from '../project'
 import { type EnvKind } from '../envelopes'
 import type { useProject } from '../useProject'
@@ -103,9 +104,15 @@ export interface ActionContext {
   help: { guide: () => void; shortcuts: () => void; checkUpdate: () => void; licenses: () => void; about: () => void }
 }
 
-export interface Command {
+/** 1 つの操作（型と使い方は PevenMUI の commands/commands.ts）。文脈は CommandEnv（今の選択と設定） */
+export type Command = CommandSpec<CommandEnv, MessageKey>
+
+/** コマンドの集まりを定義する（型を保ったまま返す） */
+export const defineCommands = commandDefiner<CommandEnv, MessageKey>()
+
+/** 画面のボタンとメニューが読む、今の判定と実行（enabled が false なら押せない。省くと押せる） */
+export interface CommandView {
   run: () => void
-  /** 押せるか（省略なら押せる） */
   enabled?: boolean
 }
 
