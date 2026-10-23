@@ -4,7 +4,7 @@ import type { HistoryStore } from 'wevocal-lib'
 import type { SavedFile } from 'pevenmui/web'
 import type { TimelineView } from './drawTimeline'
 import { freshHistory, type Step } from './document/ProjectDocument'
-import type { Project } from './project'
+import { newProject, type Project } from './project'
 import { neighborAfterClose, recordDirty, type TabRecord } from './projectTabs'
 
 export const DEFAULT_VIEW: TimelineView = { scroll: 0, pps: 50 }
@@ -85,10 +85,35 @@ export function useProjectTabs(o: {
     if (r) apply(r)
   }
 
+  /** 全タブのプロジェクトと名前（並びの順）と、表示しているタブの位置（自動保存） */
+  const snapshotAll = () => ({
+    tabs: order.map((id) => {
+      const r = id === active ? null : records.current.get(id)
+      return r ? { project: r.history.present.project, fileName: r.name } : { project: store.get().present.project, fileName: o.name }
+    }),
+    active: order.indexOf(active),
+  })
+
+  /** 自動保存から全タブを戻す（起動時。保存した記録はないので、中身があれば変更ありになる） */
+  const restoreAll = (list: { project: Project; fileName: string }[], at: number) => {
+    const ids = list.map((_, i) => (i === at ? active : String(++nextId.current)))
+    const blank = newProject()
+    list.forEach((x, i) => {
+      const r: Rec = { history: freshHistory(x.project, 'history.restore'), name: x.fileName, saved: blank, file: null, cursor: 0, view: DEFAULT_VIEW }
+      if (i === at) apply(r)
+      else records.current.set(ids[i], r)
+    })
+    setOrder(ids)
+  }
+
   const dirtyOf = (id: string) => (id === active ? o.dirty : !!records.current.get(id) && recordDirty(records.current.get(id)!))
   return {
     active,
     tabs: order.map((id) => ({ id, title: id === active ? o.name : (records.current.get(id)?.name ?? ''), dirty: dirtyOf(id) })),
+    /** 並びか表示しているタブが変わると変わる（自動保存を書き直す合図） */
+    key: `${active}:${order.join(',')}`,
+    snapshotAll,
+    restoreAll,
     select,
     add,
     replaceActive,

@@ -1,4 +1,4 @@
-// 作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く。書き込みは Worker
+// 作業の自動保存と復元（IndexedDB。開いているタブすべて）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く。書き込みは Worker
 import type { Clip } from 'wevocal-lib'
 import { DEFAULT_TEMPO, fillBlock, fillMidi, fillTrack, newProject, type MidiBlock, type Project, type Source } from '../project'
 import { slotKey } from 'pevenmui/web'
@@ -12,10 +12,10 @@ const sourceKey = (id: string) => slotKey(`autosave:source:${id}`)
 const CHUNK = 1 << 20
 
 /** 自動保存の形式の版（プロジェクトファイルの VERSION と同じく、形を変えたら上げる） */
-const FORMAT = 2
+const FORMAT = 3
 
-interface Meta {
-  formatVersion?: number
+/** タブ 1 つ分 */
+interface TabMeta {
   fileName: string
   sources: { id: string; name: string; sampleRate: number }[]
   tempo?: Project['tempo']
@@ -25,6 +25,15 @@ interface Meta {
   blocks: Project['blocks']
   midi?: Project['midi']
   end?: number
+}
+
+/** 版 2 までは、タブ 1 つ分をそのまま書いていた */
+type Meta = { formatVersion: 3; active: number; tabs: TabMeta[] } | (TabMeta & { formatVersion?: 1 | 2 })
+const tabsOf = (m: Meta): { tabs: TabMeta[]; active: number } => ('tabs' in m ? m : { tabs: [m], active: 0 })
+
+export interface SavedTab {
+  project: Project
+  fileName: string
 }
 
 let worker: Worker | null = null
@@ -99,17 +108,16 @@ async function writeSource(s: Source) {
   send({ type: 'end', key })
 }
 
-/** 今の作業を書く。元の音はまだ書いていないものだけ、使われなくなったものは消す */
-export async function saveAutosave(p: Project, fileName: string) {
-  for (const s of p.sources) {
+/** 今の作業（全タブ）を書く。元の音はまだ書いていないものだけ、どのタブでも使われなくなったものは消す */
+export async function saveAutosave(list: SavedTab[], active: number) {
+  for (const s of list.flatMap((x) => x.project.sources)) {
     if (written.has(s.id) || writing.has(s.id)) continue
     writing.add(s.id)
     await writeSource(s).finally(() => writing.delete(s.id))
     written.add(s.id)
   }
   markActivity('autosave')
-  const meta: Meta = {
-    formatVersion: FORMAT,
+  const tabs = list.map(({ project: p, fileName }): TabMeta => ({
     fileName,
     sources: p.sources.map((s) => ({ id: s.id, name: s.name, sampleRate: s.clip.sampleRate })),
     tempo: p.tempo,
@@ -119,9 +127,9 @@ export async function saveAutosave(p: Project, fileName: string) {
     blocks: p.blocks,
     midi: p.midi,
     end: p.end,
-  }
-  send({ type: 'put', key: metaKey(), value: meta })
-  const used = new Set(p.sources.map((s) => s.id))
+  }))
+  send({ type: 'put', key: metaKey(), value: { formatVersion: FORMAT, active, tabs } satisfies Meta })
+  const used = new Set(list.flatMap((x) => x.project.sources.map((s) => s.id)))
   const unused = [...written].filter((id) => !used.has(id))
   if (unused.length) {
     send({ type: 'delete', keys: unused.map(sourceKey) })
@@ -129,10 +137,19 @@ export async function saveAutosave(p: Project, fileName: string) {
   }
 }
 
-/** 前回の作業。なければ null */
-export async function loadAutosave(): Promise<{ project: Project; fileName: string } | null> {
+/** 前回の作業（全タブと、表示していたタブの位置）。なければ null */
+export async function loadAutosave(): Promise<{ tabs: SavedTab[]; active: number } | null> {
   const meta = await get<Meta>(metaKey())
-  if (!meta || !(meta.blocks?.length || meta.midi?.length)) return null
+  if (!meta) return null
+  const all = tabsOf(meta)
+  const kept = all.tabs.filter((m) => m.blocks?.length || m.midi?.length)
+  if (!kept.length) return null
+  const tabs: SavedTab[] = []
+  for (const m of kept) tabs.push(await loadTab(m))
+  return { tabs, active: Math.max(0, kept.indexOf(all.tabs[all.active])) }
+}
+
+async function loadTab(meta: TabMeta): Promise<SavedTab> {
   const sources: Source[] = []
   // IDB 接続と Worker 往復を音声ソースごとに繰り返さず、少数ずつ同じ読み取りトランザクションで取る
   for (let i = 0; i < meta.sources.length; i += 4) {
@@ -160,6 +177,7 @@ export async function loadAutosave(): Promise<{ project: Project; fileName: stri
 /** このウィンドウの自動保存を消す（自動保存をやめたとき。ほかのウィンドウのものは残す） */
 export async function clearAutosave() {
   const m = await get<Meta>(metaKey())
-  send({ type: 'delete', keys: [metaKey(), ...(m?.sources ?? []).map((x) => sourceKey(x.id))] })
+  const ids = m ? tabsOf(m).tabs.flatMap((x) => x.sources.map((s) => s.id)) : []
+  send({ type: 'delete', keys: [metaKey(), ...ids.map(sourceKey)] })
   written.clear()
 }

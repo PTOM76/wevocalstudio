@@ -1,17 +1,16 @@
-// 起動時に前回の作業を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
+// 起動時に前回の作業（開いていたタブすべて）を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
 import { useEffect } from 'react'
 import { slot } from 'pevenmui/web'
-import type { MessageKey } from './i18n'
 import { useT } from './i18n'
 import { missingFx, type Project } from './project'
-import { clearAutosave, loadAutosave, saveAutosave } from './storage/autosave'
+import { clearAutosave, loadAutosave, saveAutosave, type SavedTab } from './storage/autosave'
 
 export function useAutosave(o: {
   project: Project
   fileName: string
   autoRestore: boolean
-  replace: (p: Project, label?: MessageKey) => void
-  setFileName: (n: string) => void
+  /** 全タブの出し入れ（useProjectTabs） */
+  tabs: { key: string; snapshotAll: () => { tabs: SavedTab[]; active: number }; restoreAll: (list: SavedTab[], active: number) => void }
   fail: (e: unknown) => void
   notify: (m: string) => void
   /** 復元が終わった（空のプロジェクトで前回の作業を上書きしないよう、それまでは書かない） */
@@ -21,8 +20,6 @@ export function useAutosave(o: {
   const t = useT()
   const { project, fileName, restored, fail } = o
   const p = { settings: { autoRestore: o.autoRestore } }
-  const doc = { replace: o.replace }
-  const setFileName = o.setFileName
   const setNotice = o.notify
   const setRestored = (_: boolean) => o.onRestored()
   // 起動時に前回の作業を復元する（WeVocalSynth と同じ）
@@ -33,10 +30,9 @@ export function useAutosave(o: {
     loadAutosave()
       .then((r) => {
         if (!r) return
-        doc.replace(r.project, 'history.restore')
-        setFileName(r.fileName)
+        o.tabs.restoreAll(r.tabs, r.active)
         setNotice(t('toast.restored'))
-        void missingFx(r.project).then((ids) => ids.length && setNotice(t('toast.missingPlugins', { ids: ids.join(', ') })))
+        void Promise.all(r.tabs.map((x) => missingFx(x.project))).then((all) => [...new Set(all.flat())]).then((ids) => ids.length && setNotice(t('toast.missingPlugins', { ids: ids.join(', ') })))
       })
       .catch(fail)
       .finally(() => setRestored(true))
@@ -48,8 +44,11 @@ export function useAutosave(o: {
   useEffect(() => {
     if (!restored) return
     if (!p.settings.autoRestore) return void clearAutosave().catch(fail)
-    const id = setTimeout(() => saveAutosave(project, fileName).catch(fail), 500)
+    const id = setTimeout(() => {
+      const all = o.tabs.snapshotAll()
+      saveAutosave(all.tabs, all.active).catch(fail)
+    }, 500)
     return () => clearTimeout(id)
-  }, [project, fileName, restored, p.settings.autoRestore])
+  }, [project, fileName, o.tabs.key, restored, p.settings.autoRestore])
 
 }
