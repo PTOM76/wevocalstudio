@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useHistory } from 'wevocal-lib/react'
 import { ProjectDocument } from './document/ProjectDocument'
 import { keepFrozen } from './freeze'
-import { decodeFile, historySteps, type Clip } from 'wevocal-lib'
+import { decodeFile, historySteps, type Clip, type Range } from 'wevocal-lib'
 import { defaultInstrument } from './midiImport'
 import * as edit from './document/edits/blocks'
 import * as projectEdit from './document/edits/project'
@@ -34,6 +34,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   // 読み込みの途中で設定が変わっても、最新の既定値を使う
   const defaultsRef = useRef(defaults)
   defaultsRef.current = defaults
+  // 範囲のドラッグや、続けての範囲の変更は、履歴の 1 段にまとめる
+  const setRange = useCallback((r: Range | null) => doc.selectRange(r, 'range'), [doc])
   const { change, select, selectTracks, selectRange, endMerge, cancelMerge, undo, redo, goto, replace, setFxState } = doc
 
   /** 録った音を、指定したトラックの start 秒に波形ブロックとして置く */
@@ -260,6 +262,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     selectTracks,
     range: history.present.range,
     selectRange,
+    /** 範囲を変える。続けての変更（ドラッグ）は履歴の 1 段にまとめる */
+    setRange,
     /** 操作履歴（古い順の名前と、今の位置） */
     steps: historySteps(history).map((s) => s.label),
     stepIndex: history.past.length,

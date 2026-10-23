@@ -1,11 +1,12 @@
 // 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useDoc } from './DocContext'
 import { Box, IconButton } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faAnglesLeft, faAnglesRight } from '@fortawesome/free-solid-svg-icons'
 import { useT } from './i18n'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
-import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint, type Range } from 'wevocal-lib'
+import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint } from 'wevocal-lib'
 import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette, usePanelWidth } from 'pevenmui'
 import { markActivity, countRender } from 'pevenmui/debug'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
@@ -17,7 +18,7 @@ import { ENVELOPES, envelopeRange, hitEnvLine, hitEnvPoint, type EnvKind } from 
 import { snapGrid, snapToStep, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { RULER, drawCursors, drawTimeline, topOf, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
-import type { Block, Master, MidiBlock, Project, Track } from './project'
+import type { Block, MidiBlock, Project, Track } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
 
@@ -82,34 +83,19 @@ export default function Timeline(p: {
   wheelZoom: 'ctrl' | 'wheel'
   /** 編集カーソルだけを動かす（波形ブロックを押したとき） */
   onCursor: (t: number) => void
-  selected: string[]
-  /** merge が同じなら履歴の 1 段にまとめる（枠でのドラッグ） */
-  onSelect: (ids: string[], merge?: string) => void
   selectedTrack: string | null
   onSelectTrack: (id: string) => void
-  /** 選んでいるトラック（複数） */
-  selectedTracks: string[]
-  onSelectTracks: (ids: string[]) => void
   /** タッチ端末でタップによる追加選択をする */
   selectMode: boolean
   onSeek: (t: number) => void
-  range: Range | null
-  onRange: (r: Range | null) => void
   /** トラック一覧の幅と、その境目の分割バー（App で持つ。解析の欄の左の幅にもそろえる） */
   headerWidth: number
   headerBar: ReactNode
   /** トラックの欄を閉じているか、開閉する */
   headerCollapsed: boolean
   onToggleHeader: () => void
-  onMasterChange: (patch: Partial<Master>, merge?: string) => void
   onTrackChange: (id: string, patch: Partial<Track>, merge?: string) => void
-  /** 続けての変更（ドラッグ、スライダー）の履歴のまとまりを切る */
-  onEndMerge: () => void
-  /** ドラッグ中の Esc: その merge の続けての変更を取り消す */
-  onCancelMerge: (merge: string) => void
   onDropFiles: (files: File[], at?: DropAt) => void
-  onBlockChange: (id: string, patch: Partial<Block>, merge?: string) => void
-  onBlocksChange: (patches: Record<string, Partial<Block>>, merge?: string) => void
   /** 波形ブロックの右クリック（画面の座標） */
   onBlockMenu: (id: string, x: number, y: number) => void
   /** 何もない所の右クリック（目盛りか、トラックの空いている所）。time はグリッドに合わせた時刻 */
@@ -125,7 +111,6 @@ export default function Timeline(p: {
   /** レベルメーター（出さなければ省く） */
   meter?: (trackId: string) => readonly AnalyserNode[] | null
   masterMeter?: () => readonly AnalyserNode[] | null
-  onDuplicateTrack: (id: string) => void
   onFreezeTrack: (id: string, withFx?: boolean) => void
   /** 選択中のトラックのプロパティを開く */
   onTrackProperties: (ids: string[]) => void
@@ -165,8 +150,6 @@ export default function Timeline(p: {
   autoEdit: boolean
   /** オートメーションの点を変えた（トラックの id か 'master'、FX の項目、つまみ、点。merge はドラッグ中にまとめる履歴のキー） */
   onAutoChange: (target: string, slot: number, param: string, points: AutoPoint[], merge?: string) => void
-  /** MIDI ブロックを動かした、長さを変えた（merge はドラッグ中にまとめる履歴のキー） */
-  onMidiChange: (id: string, patch: Partial<MidiBlock>, merge?: string) => void
   /** MIDI ブロックのダブルクリック（ピアノロールを開く） */
   onMidiEdit: (id: string) => void
   onView: (fn: (v: TimelineView) => TimelineView) => void
@@ -178,6 +161,7 @@ export default function Timeline(p: {
   pendingLabel: string
 }) {
   countRender('Timeline')
+  const doc = useDoc()
   const t = useT()
   // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
   const { dark, pal } = usePalette()
@@ -299,8 +283,8 @@ export default function Timeline(p: {
       canvas,
       p.project,
       view,
-      p.selected,
-      p.range,
+      doc.selected,
+      doc.range,
       { grid: p.grid, division: p.division, pendingLabel: p.pendingLabel, envKind: p.envKind, envelopeRange: p.envelopeRange, pitchEnvelopeRange: p.pitchEnvelopeRange, autoEdit: p.autoEdit, vscroll: vs, trackNames: p.headerCollapsed },
       {
         bg: pal.background.default,
@@ -317,7 +301,7 @@ export default function Timeline(p: {
         range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
       },
     )
-  }, [p.project, view, p.selected, p.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.envelopeRange, p.pitchEnvelopeRange, p.autoEdit, vs, p.headerCollapsed])
+  }, [p.project, view, doc.selected, doc.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.envelopeRange, p.pitchEnvelopeRange, p.autoEdit, vs, p.headerCollapsed])
 
   // カーソルの線は上に重ねた canvas に描く。再生中は毎フレーム、再生位置を自分で読んでこれだけを描き直す（画面全体を描き直さない）
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -431,7 +415,7 @@ export default function Timeline(p: {
     const mq = marquee.current
     if (mq) merges.push(`marquee${mq.x},${mq.y}`)
     if (!merges.length) return false
-    for (const m of merges) p.onCancelMerge(m)
+    for (const m of merges) doc.cancelMerge(m)
     rangeDrag.current = null
     touchRange.current = null
     marquee.current = null
@@ -497,7 +481,7 @@ export default function Timeline(p: {
         const spec = ENVELOPES[p.envKind]
         const range = envelopeRange(p.envKind, hit.block, p.envKind === 'pitch' ? p.pitchEnvelopeRange : p.envelopeRange)
         const i = hitEnvPoint(p.envKind, hit.block, x, y, g.x, g.top, g.h, view.pps, range)
-        if (i >= 0) return p.onBlockChange(hit.block.id, spec.patch(hit.block, spec.points(hit.block).filter((_, k) => k !== i)))
+        if (i >= 0) return doc.updateBlock(hit.block.id, spec.patch(hit.block, spec.points(hit.block).filter((_, k) => k !== i)))
       }
       p.onProperties(hit.block.id)
       return
@@ -519,7 +503,7 @@ export default function Timeline(p: {
     const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
     const mh = !hit && y > TOP ? hitMidi(p.project, x, y, toTime, view.pps) : null
     if (mh) {
-      if (!p.selected.includes(mh.block.id)) p.onSelect([mh.block.id])
+      if (!doc.selected.includes(mh.block.id)) doc.select([mh.block.id])
       p.onSelectTrack(mh.block.track)
       return p.onBlockMenu(mh.block.id, cx, cyClient)
     }
@@ -530,7 +514,7 @@ export default function Timeline(p: {
       const mk = y < RULER ? markerAtX(x) : undefined
       return p.onEmptyMenu(y < RULER ? 'ruler' : 'lane', gridAt(x, shift), track, cx, cyClient, mk?.id)
     }
-    if (!p.selected.includes(hit.block.id)) p.onSelect([hit.block.id])
+    if (!doc.selected.includes(hit.block.id)) doc.select([hit.block.id])
     p.onSelectTrack(hit.block.track)
     // エンベロープの線か点の上なら、エンベロープのメニュー
     if (p.envKind) {
@@ -579,15 +563,15 @@ export default function Timeline(p: {
       e.currentTarget.setPointerCapture(e.pointerId)
       const block = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps)?.block ?? hitMidi(p.project, x, y, toTime, view.pps)?.block : undefined
       if (block) {
-        p.onRange(null)
-        p.onSelectTracks([])
-        p.onSelect(p.selected.includes(block.id) ? p.selected.filter((id) => id !== block.id) : [...p.selected, block.id])
+        doc.setRange(null)
+        doc.selectTracks([])
+        doc.select(doc.selected.includes(block.id) ? doc.selected.filter((id) => id !== block.id) : [...doc.selected, block.id])
       } else {
         const track = trackAt(y)
         if (track) {
-          p.onRange(null)
-          p.onSelect([])
-          p.onSelectTracks(p.selectedTracks.includes(track.id) ? p.selectedTracks.filter((id) => id !== track.id) : [...p.selectedTracks, track.id])
+          doc.setRange(null)
+          doc.select([])
+          doc.selectTracks(doc.selectedTracks.includes(track.id) ? doc.selectedTracks.filter((id) => id !== track.id) : [...doc.selectedTracks, track.id])
         }
       }
       return
@@ -656,7 +640,7 @@ export default function Timeline(p: {
     if (!hit && y > TOP && !p.envKind && !p.autoEdit) {
       const mh = hitMidi(p.project, x, y, toTime, view.pps, e.pointerType === 'touch' ? 18 : undefined)
       if (mh) {
-        p.onSelect([mh.block.id])
+        doc.select([mh.block.id])
         p.onSelectTrack(mh.block.track)
         e.currentTarget.setPointerCapture(e.pointerId)
         midiDrag.current = { id: mh.block.id, kind: mh.kind, grabPx: x - (mh.block.start - view.scroll) * view.pps, merge: `midi${dragCount.current++}`, orig: mh.block, alt: e.altKey }
@@ -673,7 +657,7 @@ export default function Timeline(p: {
     }
     if (!hit) {
       // 空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択（範囲を選ぶときは再生位置を動かさないよう、再生位置は離したときに移す）
-      if (!e.ctrlKey && !e.metaKey) p.onSelect([])
+      if (!e.ctrlKey && !e.metaKey) doc.select([])
       const track = trackAt(y)
       if (track) p.onSelectTrack(track.id)
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -698,9 +682,9 @@ export default function Timeline(p: {
         const t = Math.max(0, Math.min(b.length, (x - g.x) / view.pps))
         index = env.filter((pt) => pt.t <= t).length
         env.splice(index, 0, { t, v: spec.value((y - g.top) / g.h, range) })
-        p.onBlockChange(b.id, spec.patch(b, env), `env${dragCount.current}`)
+        doc.updateBlock(b.id, spec.patch(b, env), `env${dragCount.current}`)
       }
-      p.onSelect([b.id])
+      doc.select([b.id])
       e.currentTarget.setPointerCapture(e.pointerId)
       envDrag.current = { block: b.id, index, merge: `env${dragCount.current++}` }
       return
@@ -712,7 +696,7 @@ export default function Timeline(p: {
       const [r0, r1] = [Math.min(row(from), row(hit.block)), Math.max(row(from), row(hit.block))]
       const t0 = Math.min(from.start, hit.block.start)
       const t1 = Math.max(from.start + from.length, hit.block.start + hit.block.length)
-      p.onSelect(p.project.blocks.filter((b) => row(b) >= r0 && row(b) <= r1 && b.start < t1 && b.start + b.length > t0).map((b) => b.id))
+      doc.select(p.project.blocks.filter((b) => row(b) >= r0 && row(b) <= r1 && b.start < t1 && b.start + b.length > t0).map((b) => b.id))
       return
     }
     anchor.current = id
@@ -725,9 +709,9 @@ export default function Timeline(p: {
     }
     // 選んでいるものをつまんだら、選んだもの全部を動かす。Ctrl は、動かせば複製、動かさずに離せば選択の足し引き
     const ctrl = e.ctrlKey || e.metaKey
-    const wasSelected = p.selected.includes(id)
-    const group = wasSelected ? p.selected : ctrl ? [...p.selected, id] : [id]
-    p.onSelect(group)
+    const wasSelected = doc.selected.includes(id)
+    const group = wasSelected ? doc.selected : ctrl ? [...doc.selected, id] : [id]
+    doc.select(group)
     p.onSelectTrack(hit.block.track)
     e.currentTarget.setPointerCapture(e.pointerId)
     const trackIndex = p.project.tracks.findIndex((t) => t.id === hit.block.track)
@@ -751,22 +735,22 @@ export default function Timeline(p: {
     // Alt で本体をつまんだら、中の音だけをずらす（吸い付けない）
     if (altKey && d.kind === 'move') {
       const all = [d.block, ...d.others]
-      return p.onBlocksChange(Object.fromEntries(all.map((b) => [b.id, slipPatch(p.project, b, raw)])), d.merge)
+      return doc.updateBlocks(Object.fromEntries(all.map((b) => [b.id, slipPatch(p.project, b, raw)])), d.merge)
     }
     let dt = p.snap && !shiftKey ? snapDelta(d, raw, snapTargets(p.project, p.cursor, exclude), snapping) : raw
     const di = rowDelta(d.y, y)
     // Alt を押しながら端をドラッグすると速度ごと伸び縮みする
     if (d.kind === 'left' || d.kind === 'right') {
       const all = [d.block, ...d.others]
-      return p.onBlocksChange(Object.fromEntries(all.map((b) => [b.id, dragPatch(p.project, { ...d, block: b, others: [] }, dt, 0, altKey)])), d.merge)
+      return doc.updateBlocks(Object.fromEntries(all.map((b) => [b.id, dragPatch(p.project, { ...d, block: b, others: [] }, dt, 0, altKey)])), d.merge)
     }
-    if (!d.others.length) return p.onBlockChange(d.block.id, dragPatch(p.project, d, dt, di, altKey), d.merge)
+    if (!d.others.length) return doc.updateBlock(d.block.id, dragPatch(p.project, d, dt, di, altKey), d.merge)
     // まとめて動かす。一番前のものが 0 より前に出ない所、トラックの外に出ない所で止める
     const all = [d.block, ...d.others]
     dt = Math.max(dt, -Math.min(...all.map((b) => b.start)))
     const rows = all.map((b) => p.project.tracks.findIndex((t) => t.id === b.track))
     const shift = Math.max(-Math.min(...rows), Math.min(p.project.tracks.length - 1 - Math.max(...rows), di))
-    p.onBlocksChange(Object.fromEntries(all.map((b, i) => [b.id, { start: b.start + dt, track: p.project.tracks[rows[i] + shift].id }])), d.merge)
+    doc.updateBlocks(Object.fromEntries(all.map((b, i) => [b.id, { start: b.start + dt, track: p.project.tracks[rows[i] + shift].id }])), d.merge)
   }
 
   /** ドラッグしている MIDI ブロックを、指の位置に合わせて動かす（波形ブロックと同じく、縦に動かすとほかのトラックへ移り、端で表示が流れる） */
@@ -775,13 +759,13 @@ export default function Timeline(p: {
     if (!b) return
     if (md.kind === 'move') {
       const tr = trackAt(y)
-      return p.onMidiChange(b.id, { start: Math.max(0, gridAt(x - md.grabPx, shiftKey)), ...(tr ? { track: tr.id } : {}) }, md.merge)
+      return doc.updateMidiBlock(b.id, { start: Math.max(0, gridAt(x - md.grabPx, shiftKey)), ...(tr ? { track: tr.id } : {}) }, md.merge)
     }
     // 左端: 左端より前の音符を切る（元のブロックから計算するので、ドラッグの途中で戻せる）
-    if (md.kind === 'left') return p.onMidiChange(b.id, trimLeft(md.orig, gridAt(x, shiftKey), projectBeatMap(p.project)), md.merge)
+    if (md.kind === 'left') return doc.updateMidiBlock(b.id, trimLeft(md.orig, gridAt(x, shiftKey), projectBeatMap(p.project)), md.merge)
     // Alt を押して右端をドラッグすると、今の中身を 1 回分のループにして、長さを変える（繰り返しで伸ばす）
     const loop = md.alt && !md.orig.loop ? { loop: blockBeats(projectBeatMap(p.project), md.orig) } : {}
-    p.onMidiChange(b.id, { length: Math.max(0.05, gridAt(x, shiftKey) - b.start), ...loop }, md.merge)
+    doc.updateMidiBlock(b.id, { length: Math.max(0.05, gridAt(x, shiftKey) - b.start), ...loop }, md.merge)
   }
 
   // 端で表示が流れている間は、指が動かなくても波形ブロックと MIDI ブロックを付いてこさせる
@@ -839,7 +823,7 @@ export default function Timeline(p: {
       const hi = env[ed.index + 1]?.t ?? b.length
       const range = envelopeRange(p.envKind, b, p.envKind === 'pitch' ? p.pitchEnvelopeRange : p.envelopeRange)
       env[ed.index] = { ...env[ed.index], t: Math.max(lo, Math.min(hi, (x - g.x) / view.pps)), v: spec.value((y - g.top) / g.h, range) }
-      return p.onBlockChange(b.id, spec.patch(b, env), ed.merge)
+      return doc.updateBlock(b.id, spec.patch(b, env), ed.merge)
     }
     const mq = marquee.current
     if (mq) {
@@ -853,7 +837,7 @@ export default function Timeline(p: {
       const tb = toTime(Math.max(mq.x, x))
       const ra = slotAt(Math.min(mq.y, y))
       const rb = slotAt(Math.max(mq.y, y))
-      p.onSelect(
+      doc.select(
         p.project.blocks
           .filter((b) => {
             const r = p.project.tracks.findIndex((t) => t.id === b.track)
@@ -873,7 +857,7 @@ export default function Timeline(p: {
       if (Math.abs(x - r.x) < 3) return
       if (touchRange.current) touchRange.current.moved = true
       const snapped = gridAt(x, e.shiftKey)
-      p.onRange({ start: Math.min(r.t, snapped), end: Math.max(r.t, snapped) })
+      doc.setRange({ start: Math.min(r.t, snapped), end: Math.max(r.t, snapped) })
       return
     }
     const d = drag.current
@@ -899,7 +883,7 @@ export default function Timeline(p: {
     const pn = pan.current
     pan.current = null
     if (pn && !longPressed.current && Math.hypot(e.clientX - pn.x0, e.clientY - pn.y0) < 8) {
-      p.onSelect([])
+      doc.select([])
       p.onSeek(gridAt(local(e).x, false))
     }
     if (e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY)) doubleAt(local(e).x, local(e).y)
@@ -920,19 +904,19 @@ export default function Timeline(p: {
     }
     // 範囲を作らずに離したら、範囲を消す
     if (rangeDrag.current && Math.abs(local(e).x - rangeDrag.current.x) < 3) {
-      p.onRange(null)
+      doc.setRange(null)
       p.onSeek(gridAt(rangeDrag.current.x, e.shiftKey))
     }
     // Ctrl で押して動かさずに離したら、選択の足し引き（選んでいたものは外す）
     const d = drag.current
-    if (d?.copy && !d.copy.done && d.copy.wasSelected) p.onSelect(p.selected.filter((s) => s !== d.block.id))
+    if (d?.copy && !d.copy.done && d.copy.wasSelected) doc.select(doc.selected.filter((s) => s !== d.block.id))
     rangeDrag.current = null
     scrub.current = false
     edge.stop()
     blockEdge.stop()
     lastMove.current = null
     drag.current = null
-    p.onEndMerge()
+    doc.endMerge()
   }
 
   // ファイルを落としたトラックと時刻に置く（トラックの外なら空いているトラックか新しいトラック）
@@ -954,7 +938,7 @@ export default function Timeline(p: {
               <FontAwesomeIcon icon={p.headerCollapsed ? faAnglesRight : faAnglesLeft} size="xs" />
             </IconButton>
           </Box>
-          {!p.headerCollapsed && <MasterHeader master={p.project.master} height={masterHeight(p.project.master)} onFx={() => p.onFx('master')} onChange={p.onMasterChange} onEndMerge={p.onEndMerge} meter={p.masterMeter} />}
+          {!p.headerCollapsed && <MasterHeader master={p.project.master} height={masterHeight(p.project.master)} onFx={() => p.onFx('master')} onChange={doc.updateMaster} onEndMerge={doc.endMerge} meter={p.masterMeter} />}
           {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
           <Box
             hidden={p.headerCollapsed}
@@ -976,7 +960,7 @@ export default function Timeline(p: {
             }}
             onPointerUp={() => {
               if (trackDragRef.current && dropSlot !== null) p.onMoveTrack(trackDragRef.current.id, dropSlot)
-              if (trackResizeRef.current) p.onEndMerge()
+              if (trackResizeRef.current) doc.endMerge()
               trackResizeRef.current = null
               trackDragRef.current = null
               setDraggingTrackId(null)
@@ -996,7 +980,7 @@ export default function Timeline(p: {
                   key={track.id}
                   track={track}
                   height={trackHeight(track)}
-                  selected={p.selectedTracks.includes(track.id)}
+                  selected={doc.selectedTracks.includes(track.id)}
                   selectMode={p.selectMode}
                   dragging={draggingTrackId === track.id}
                   onReorderStart={(e) => {
@@ -1017,20 +1001,20 @@ export default function Timeline(p: {
                   onSelect={(e) => {
                     // トラックの欄を押したらトラックだけを選ぶ（Ctrl+C でトラックをコピーできるように）。
                     // Ctrl で足し引き、Shift で前に選んだトラックからの範囲。選んでいるものを押したら選択はそのまま（まとめて音量を動かせるように）
-                    p.onSelect([])
+                    doc.select([])
                     const ids = p.project.tracks.map((tr) => tr.id)
-                    const sel = p.selectedTracks
+                    const sel = doc.selectedTracks
                     if (p.selectMode) {
-                      p.onRange(null)
-                      p.onSelectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
-                    } else if (e.ctrlKey || e.metaKey) p.onSelectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
+                      doc.setRange(null)
+                      doc.selectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
+                    } else if (e.ctrlKey || e.metaKey) doc.selectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
                     else if (e.shiftKey && p.selectedTrack) {
                       const [i0, i1] = [ids.indexOf(p.selectedTrack), ids.indexOf(track.id)].sort((x, y) => x - y)
-                      p.onSelectTracks([...ids.slice(i0, i1 + 1).filter((x) => x !== p.selectedTrack), p.selectedTrack])
+                      doc.selectTracks([...ids.slice(i0, i1 + 1).filter((x) => x !== p.selectedTrack), p.selectedTrack])
                     } else if (!sel.includes(track.id)) p.onSelectTrack(track.id)
                   }}
                   onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
-                  onEndMerge={p.onEndMerge}
+                  onEndMerge={doc.endMerge}
                   onFx={() => p.onFx(track.id)}
                   meter={p.meter && (() => p.meter!(track.id))}
                   depth={depthOf(p.tree, track)}
@@ -1040,10 +1024,10 @@ export default function Timeline(p: {
                   onOutdent={() => p.onTrackOp('outdent', track.id)}
                   onMoveUp={() => i > 0 && p.onMoveTrack(track.id, i - 1)}
                   onMoveDown={() => i < p.project.tracks.length - 1 && p.onMoveTrack(track.id, i + 2)}
-                  onDuplicate={() => p.onDuplicateTrack(track.id)}
+                  onDuplicate={() => doc.duplicateTrack(track.id)}
                   onFreeze={(withFx) => p.onFreezeTrack(track.id, withFx)}
                   onSends={() => p.onSends(track.id)}
-                  onProperties={() => p.onTrackProperties(p.selectedTracks.includes(track.id) ? p.selectedTracks : [track.id])}
+                  onProperties={() => p.onTrackProperties(doc.selectedTracks.includes(track.id) ? doc.selectedTracks : [track.id])}
                   onRemove={() => p.onRemoveTrack(track.id)}
                 />
               )})}

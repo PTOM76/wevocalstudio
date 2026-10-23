@@ -11,9 +11,10 @@ import { configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { faFolderOpen, faMicrophone, faWaveSquare } from '@fortawesome/free-solid-svg-icons'
-import { AUDIO_ACCEPT, canRecord, downloadBlob, readWvsp, SELECTION_DARK, SELECTION_LIGHT, type Range } from 'wevocal-lib'
+import { AUDIO_ACCEPT, canRecord, downloadBlob, readWvsp, SELECTION_DARK, SELECTION_LIGHT } from 'wevocal-lib'
 import { app } from './appConfig'
 import AppDialogs from './AppDialogs'
+import { DocContext } from './DocContext'
 import { useDialogs } from './useDialogs'
 import type { TimelineView } from './drawTimeline'
 import { Player } from './engine'
@@ -114,9 +115,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 再生中の位置は状態に入れず、描く所が毎フレーム読む（画面全体を毎フレーム描き直さないように。WeVocalSynth と同じ）
   const livePos = useCallback(() => (player.current.playing ? player.current.position() : playPos), [playPos])
   // 選んでいるトラック（複数。最後に選んだものが「選んでいるトラック」で、貼り付けや録音の先）
-  const { selectedTracks, selectTracks: setSelectedTracks, range, selectRange } = doc
-  // 範囲のドラッグや、続けての範囲の変更は、履歴の 1 段にまとめる
-  const setRange = (r: Range | null) => selectRange(r, 'range')
+  const { selectedTracks, selectTracks: setSelectedTracks, range, setRange } = doc
   const [selectMode, setSelectMode] = useState(false)
   const selectedTrack = selectedTracks[selectedTracks.length - 1] ?? null
   const setSelectedTrack = (id: string | null) => setSelectedTracks(id ? [id] : [])
@@ -486,6 +485,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）
     <WindowModeContext.Provider value={p.settings.dialogWindow === 'auto' ? autoWindowMode() : p.settings.dialogWindow}>
     <SliderResetContext.Provider value={p.settings.sliderDoubleClickReset}>
+    <DocContext.Provider value={doc}>
     <Box
       sx={{ height: FULL_HEIGHT, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: 'background.default' }}
       onDragOver={(e) => e.preventDefault()}
@@ -557,22 +557,15 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         live={live}
         follow={p.settings.followPlayhead}
         onCursor={moveCursor}
-        selected={selected}
-        onSelect={setSelected}
         selectedTrack={selectedTrack}
         onSelectTrack={setSelectedTrack}
-        selectedTracks={selectedTracks}
-        onSelectTracks={setSelectedTracks}
         selectMode={selectMode}
         onSeek={seek}
-        range={range}
-        onRange={setRange}
         headerWidth={header}
         headerBar={headerBar}
         headerCollapsed={headerCollapsed}
         wheelZoom={p.settings.wheelZoom}
         onToggleHeader={toggleHeader}
-        onMasterChange={doc.updateMaster}
         onTrackChange={(id, patch, merge) => {
           // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量、パン、高さは差分で）
           if (selectedTracks.length < 2 || !selectedTracks.includes(id) || 'name' in patch || 'fx' in patch) return doc.updateTrack(id, patch, merge)
@@ -593,11 +586,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
             merge,
           )
         }}
-        onEndMerge={doc.endMerge}
-        onCancelMerge={doc.cancelMerge}
         onDropFiles={(list, at) => (list.some(isProjectLike) ? files.openFiles(list) : void load(list, at))}
-        onBlockChange={doc.updateBlock}
-        onBlocksChange={doc.updateBlocks}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         onEmptyMenu={(kind, time, track, x, y, marker) => setEmptyAt({ kind, time, track, x, y, marker })}
         onCopyBlocks={(blocks) => void doc.insertBlocks(blocks)}
@@ -606,7 +595,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onFx={(id) => dialogs.open('fx', id)}
         meter={p.settings.showMeters ? player.current.meter : undefined}
         masterMeter={p.settings.showMeters ? player.current.masterMeters : undefined}
-        onDuplicateTrack={doc.duplicateTrack}
         onFreezeTrack={freeze}
         onTrackProperties={(ids) => dialogs.open('trackProperties', ids)}
         onSends={(id) => dialogs.open('sends', id)}
@@ -625,7 +613,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         envelopeRange={p.settings.envelopeRange}
         pitchEnvelopeRange={p.settings.pitchEnvelopeRange}
         autoEdit={p.settings.autoEdit}
-        onMidiChange={doc.updateMidiBlock}
         onMidiEdit={(id) => dialogs.open('pianoRoll', id)}
         onAutoChange={(target, slot, param, points, merge) => {
           const fx = target === 'master' ? project.master.fx : project.tracks.find((tr) => tr.id === target)?.fx
@@ -740,6 +727,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <UpdatePrompt build={BUILD} devUpdates={p.settings.devUpdates} />
       <NoticeMessage message={notice ? { severity: 'info', message: notice } : null} onClose={() => setNotice(null)} vertical={touchLike ? 'top' : 'bottom'} horizontal={touchLike ? 'center' : 'left'} />
     </Box>
+    </DocContext.Provider>
     </SliderResetContext.Provider>
     </WindowModeContext.Provider>
   )
