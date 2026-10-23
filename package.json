@@ -18,7 +18,8 @@
     "build:icons": "node scripts/build-icons.mjs",
     "prepare": "git config core.hooksPath .githooks && node scripts/sync-modules.mjs",
     "build:addons": "node scripts/build-addons.mjs",
-    "docs:shots": "node scripts/screenshots/run.mjs"
+    "docs:shots": "node scripts/screenshots/run.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

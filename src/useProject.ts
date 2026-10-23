@@ -1,7 +1,7 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
 import { keepFrozen } from './freeze'
-import { DEFAULT_SILENCE, decodeFile, findSounds, type Clip, type FxSlot } from 'wevocal-lib'
+import { DEFAULT_SILENCE, commitHistory, decodeFile, findSounds, gotoHistory, historySteps, newHistory, redoHistory, undoHistory, type Clip, type FxSlot, type History } from 'wevocal-lib'
 import { describeChange } from './history'
 import { defaultInstrument } from './midiImport'
 import type { MessageKey } from './i18n'
@@ -24,12 +24,6 @@ interface Step {
   label: MessageKey
 }
 
-interface History {
-  past: Step[]
-  present: Step
-  future: Step[]
-}
-
 /** ファイルをデコードする。失敗したら、どのファイルかがわかるよう名前を付けて投げる（ブラウザの EncodingError だけでは見分けられない） */
 async function decodeNamed(file: File): Promise<Clip> {
   try {
@@ -43,7 +37,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   // 元に戻せる回数（設定）
   const limit = useRef(defaults.historyLimit)
   limit.current = defaults.historyLimit
-  const [history, setHistory] = useState<History>(() => ({ past: [], present: { project: newProject(defaults.defaultBpm), selected: [], label: 'history.new' }, future: [] }))
+  const [history, setHistory] = useState<History<Step>>(() => newHistory({ project: newProject(defaults.defaultBpm), selected: [], label: 'history.new' }))
   // 読み込みの途中で設定が変わっても、最新の既定値を使う
   const defaultsRef = useRef(defaults)
   defaultsRef.current = defaults
@@ -61,8 +55,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
       // まとめるときは名前も前のまま
       // 消えた波形ブロックは選択から外す
       const selected = h.present.selected.filter((id) => next.blocks.some((b) => b.id === id) || next.midi?.some((b) => b.id === id))
-      const present = { project: next, selected, label: merged ? h.present.label : describeChange(h.present.project, next) }
-      return { past: merged ? h.past : [...h.past, h.present].slice(-limit.current), present, future: [] }
+      return commitHistory(h, { project: next, selected, label: merged ? h.present.label : describeChange(h.present.project, next) }, limit.current, merged)
     })
   }, [])
 
@@ -91,8 +84,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     setHistory((h) => {
       const cur = h.present.selected
       if (ids.length === cur.length && ids.every((id, i) => id === cur[i])) return h
-      const present = { ...h.present, selected: ids, label: 'history.select' as MessageKey }
-      return { past: merged ? h.past : [...h.past, h.present].slice(-limit.current), present, future: [] }
+      return commitHistory(h, { ...h.present, selected: ids, label: 'history.select' as MessageKey }, limit.current, merged)
     })
   }, [])
 
@@ -103,28 +95,24 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
 
   const undo = useCallback(() => {
     lastMerge.current = null
-    setHistory((h) => (h.past.length ? { past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] } : h))
+    setHistory(undoHistory)
   }, [])
 
   const redo = useCallback(() => {
     lastMerge.current = null
-    setHistory((h) => (h.future.length ? { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) } : h))
+    setHistory(redoHistory)
   }, [])
 
   /** 履歴の index 番目（0 が一番古い。past の長さが今）へ行く（操作履歴の一覧から） */
   const goto = useCallback((index: number) => {
     lastMerge.current = null
-    setHistory((h) => {
-      const all = [...h.past, h.present, ...h.future]
-      if (index < 0 || index >= all.length) return h
-      return { past: all.slice(0, index), present: all[index], future: all.slice(index + 1) }
-    })
+    setHistory((h) => gotoHistory(h, index))
   }, [])
 
   /** 開いたプロジェクトに入れ替える（履歴は消す） */
   const replace = useCallback((p: Project, label: MessageKey = 'history.open') => {
     lastMerge.current = null
-    setHistory({ past: [], present: { project: p, selected: [], label }, future: [] })
+    setHistory(newHistory({ project: p, selected: [], label }))
   }, [])
 
   /** 録った音を、指定したトラックの start 秒に波形ブロックとして置く */
@@ -511,7 +499,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     selected: history.present.selected,
     select,
     /** 操作履歴（古い順の名前と、今の位置） */
-    steps: [...history.past, history.present, ...history.future].map((s) => s.label),
+    steps: historySteps(history).map((s) => s.label),
     stepIndex: history.past.length,
     goto,
     canUndo: history.past.length > 0,
