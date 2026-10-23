@@ -21,9 +21,12 @@ import { hasClipboard, useRollEdit } from './useRollEdit'
 import { usePinch } from './usePinch'
 import { useRollWheel } from './useRollWheel'
 import { hitNote, hitVel } from './hit'
+import { useLaneHeight } from './useLaneHeight'
+import { usePlayBeat } from './usePlayBeat'
+import { dragDelta, movedNotes, notesInBox, sizedNotes } from './gesture'
 import { curveOf, hitPoint, lanePoints, valueAt, withPoints, type Lane } from './laneEdit'
 import { curveRange } from '../midiCurves'
-import { EDGE, KEYS, ROW_MIN, SCALES, type ScaleKind, VEL, VEL_MAX, VEL_MIN, clampView, laneSpace, laneTop, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
+import { EDGE, KEYS, ROW_MIN, SCALES, type ScaleKind, VEL, VEL_MAX, VEL_MIN, clampView, laneSpace, laneTop, rollHeight, rowPitch, rowsOf, stepOf, visibleBeats, xBeat } from './view'
 
 type Drag =
   | { kind: 'move'; start: Note[]; beat0: number; pitch0: number; merge: string }
@@ -100,21 +103,7 @@ export default function PianoRoll(p: PianoRollProps) {
   // 下のレーン（強さ、ピッチベンド、CC）
   const [lane, setLane] = useState<Lane>('vel')
   // 帯の高さ（0 なら隠す）。覚えておく
-  const [velH, setVelH] = useState(() => {
-    try {
-      return Math.max(0, Math.min(VEL_MAX, Number(localStorage.getItem('studio.rollLane') ?? VEL)))
-    } catch {
-      return VEL
-    }
-  })
-  const setLaneHeight = (h: number) => {
-    setVelH(h)
-    try {
-      localStorage.setItem('studio.rollLane', String(h))
-    } catch {
-      // 保存できなくても使う
-    }
-  }
+  const [velH, setLaneHeight] = useLaneHeight()
   const points = lanePoints(block.curves, lane)
   const laneInfo = curveOf(lane)
   // 音の確認（鳴らすか）と、スケールの強調
@@ -126,7 +115,6 @@ export default function PianoRoll(p: PianoRollProps) {
   const foldRef = useRef<number[]>([])
   const [scale, setScale] = useState<{ root: number; kind: ScaleKind }>({ root: 0, kind: 'none' })
   const [frame, setFrame] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
-  const [play, setPlay] = useState<number | null>(null)
   // 鳴らしている音（鍵盤の色付け）
   const [held, setHeld] = useState<number | null>(null)
   const drag = useRef<Drag | null>(null)
@@ -143,6 +131,8 @@ export default function PianoRoll(p: PianoRollProps) {
   const map = projectBeatMap(p.project)
   const len = blockBeats(map, block)
   const fit = Math.max(1, (width - KEYS) / Math.max(len, step * 4))
+  // 再生位置の線（再生中は毎フレーム、ブロックの頭からの拍にして描き直す）
+  const play = usePlayBeat({ playing: p.playing, position: p.position, project: p.project, block, len })
   // 折りたたみ: 音符のある高さの行だけを見せる（ドラッグの間は、行がずれないよう、始めたときの並びのまま）
   if (!drag.current || !foldRef.current.length) foldRef.current = [...new Set(block.notes.map((n) => n.pitch))].sort((a, b) => b - a)
   const folded = fold && foldRef.current.length ? foldRef.current : null
@@ -204,19 +194,6 @@ export default function PianoRoll(p: PianoRollProps) {
   }, [block.id, height > 0])
   // 閉じるとき、鳴らしている音を離す
   useEffect(() => () => sound(null), [])
-  // 再生位置の線（再生中は毎フレーム、ブロックの頭からの拍にして描き直す）
-  useEffect(() => {
-    if (!p.playing) return setPlay(null)
-    let id = 0
-    const tick = () => {
-      const m = projectBeatMap(p.project)
-      const b = m.toBeat(p.position()) - m.toBeat(block.start)
-      setPlay(b >= 0 && b <= len ? b : null)
-      id = requestAnimationFrame(tick)
-    }
-    id = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(id)
-  }, [p.playing, block.start, len])
 
   useRollWheel(canvas, viewRef, { zoom: setZoom, left: setLeft, row: setRow, low: setLow })
 
@@ -379,17 +356,7 @@ export default function PianoRoll(p: PianoRollProps) {
     }
     if (d.kind === 'box') {
       setFrame({ x0: d.x0, y0: d.y0, x1: x, y1: y })
-      const [xa, xb] = [Math.min(d.x0, x), Math.max(d.x0, x)]
-      const [ya, yb] = [Math.min(d.y0, y), Math.max(d.y0, y)]
-      setSel(
-        block.notes.flatMap((n) => {
-          const ny = pitchY(view, n.pitch)
-          if (ny === -Infinity) return []
-          const nx0 = KEYS + (n.t - view.left) * view.ppb
-          const nx1 = nx0 + Math.max(3, n.dur * view.ppb)
-          return nx1 >= xa && nx0 <= xb && ny + view.row >= ya && ny <= yb ? [n.id] : []
-        }),
-      )
+      setSel(notesInBox(block.notes, view, d.x0, d.y0, x, y))
       return
     }
     if (d.kind === 'point') {
@@ -405,26 +372,13 @@ export default function PianoRoll(p: PianoRollProps) {
       setVelocity(sel.includes(d.id) ? sel : [d.id], velAt(y), d.merge)
       return
     }
-    const notes = block.notes.map((n) => ({ ...n }))
-    // 選んでいる音符の、動かし始めたときの並びでの番号
-    const ix = d.start.flatMap((n, i) => (sel.includes(n.id) ? [i] : []))
-    if (!ix.length) return
-    if (d.kind === 'move') {
-      // 選んだものが全部収まる範囲で動かす（時間は、グリッドに合わせた差で）
-      const ds = snap(xBeat(view, x) - d.beat0, e.altKey)
-      const dp = rowPitch(view, y) - d.pitch0
-      const s = Math.max(Math.max(...ix.map((i) => -d.start[i].t)), Math.min(Math.min(...ix.map((i) => len - d.start[i].dur - d.start[i].t)), ds))
-      const pp = Math.max(Math.max(...ix.map((i) => -d.start[i].pitch)), Math.min(Math.min(...ix.map((i) => 127 - d.start[i].pitch)), dp))
-      for (const i of ix) notes[i] = { ...d.start[i], t: d.start[i].t + s, pitch: d.start[i].pitch + pp }
-      sound(notes[ix[0]].pitch, notes[ix[0]].vel)
-    } else {
-      const dd = snap(xBeat(view, x) - d.beat0, e.altKey)
-      for (const i of ix) {
-        const n = d.start[i]
-        notes[i] = { ...n, dur: Math.max(step, Math.min(len - n.t, n.dur + dd)) }
-      }
-      lastDur.current = notes[ix[0]].dur
-    }
+    // 選んでいる音符を、動かし始めたときの並びから動かす（時間は、グリッドに合わせた差で）
+    const { dBeat, dPitch } = dragDelta(view, x, y, d.beat0, d.kind === 'move' ? d.pitch0 : 0, (beat) => snap(beat, e.altKey))
+    const notes = d.kind === 'move' ? movedNotes(block.notes, d.start, sel, dBeat, dPitch, len) : sizedNotes(block.notes, d.start, sel, dBeat, len, step)
+    const first = d.start.findIndex((n) => sel.includes(n.id))
+    if (first < 0) return
+    if (d.kind === 'move') sound(notes[first].pitch, notes[first].vel)
+    else lastDur.current = notes[first].dur
     p.onChange(notes, d.merge)
   }
 
