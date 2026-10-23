@@ -13,7 +13,6 @@ import type { Clip } from 'wevocal-lib'
 import { videoLook, type VideoLook } from 'wevocalconverter/host'
 import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { kanaHost, videoHost } from './addons'
-import type { Range } from 'wevocal-lib'
 import { ExportDialog, FxChainDialog, MarkerTempoDialog, PitchToolText, SamplerDialog, SynthDialog, VibratoDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
 import { addClipTrack, midiBlocks } from './project'
@@ -49,7 +48,6 @@ export default function AppDialogs(p: {
   doc: ReturnType<typeof useProject>
   fileName: string
   onRenameProject: (name: string) => void
-  range: Range | null
   onExport: (s: ExportSettings, win?: Window | null) => void
   onOptimize: (o: OptimizeOptions) => void
   onVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void
@@ -64,7 +62,6 @@ export default function AppDialogs(p: {
   onRepeat: (repeat: boolean) => void
   /** 編集位置と範囲選択を変える（メインの時間軸と同じもの） */
   onSeek: (time: number) => void
-  onRange: (r: Range | null) => void
   /** 再生位置（秒。ピアノロールの再生位置の線） */
   position: () => number
   /** 音を作る処理の負荷（0〜1。測れなければ null） */
@@ -115,7 +112,7 @@ export default function AppDialogs(p: {
         baseName={p.fileName}
         sourceRate={48000}
         sourceChannels={2}
-        hasSelection={!!p.range}
+        hasSelection={!!doc.range}
         trackCount={1}
         busy={false}
         progress={0}
@@ -133,11 +130,11 @@ export default function AppDialogs(p: {
       <PitchToolText.Provider value={t}>
         <VibratoDialog
           open={dialogs.isOpen('vibrato')}
-          hasSelection={!!p.range}
+          hasSelection={!!doc.range}
           bpm={project.tempo.bpm}
           onClose={dialogs.closer('vibrato')}
           onRun={(o) => {
-            doc.apply((current) => vibratoBlocks(current, dialogs.arg<string[]>('vibrato') ?? [], p.range, o))
+            doc.apply((current) => vibratoBlocks(current, dialogs.arg<string[]>('vibrato') ?? [], doc.range, o))
             dialogs.close('vibrato')
           }}
         />
@@ -201,8 +198,8 @@ export default function AppDialogs(p: {
               onPlayBlock={(loop) => p.onPlayRange(block.start, block.start + block.length, loop)}
               cursor={p.cursor}
               onCursor={p.onSeek}
-              range={p.range}
-              onRange={p.onRange}
+              range={doc.range}
+              onRange={doc.setRange}
               onLength={(beats, merge) => {
                 const map = projectBeatMap(doc.project)
                 const b0 = map.toBeat(block.start)
@@ -352,7 +349,7 @@ export default function AppDialogs(p: {
           open
           onClose={dialogs.closer('video')}
           baseName={p.fileName}
-          hasSelection={!!p.range}
+          hasSelection={!!doc.range}
           trackCount={1}
           busy={false}
           progress={0}
