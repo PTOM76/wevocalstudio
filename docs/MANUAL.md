@@ -650,6 +650,7 @@ Windows の VST2 のプラグイン（DLL）を、エミュレーターで動か
 | 範囲に合わせて拡大 | Ctrl+8 |
 | 切り取り、コピー、貼り付け | Ctrl+X、Ctrl+C、Ctrl+V |
 | 複製 | Ctrl+D |
+| トラックを追加 | Ctrl+T |
 | すべて選択 | Ctrl+A |
 | 分割 | S |
 | 範囲の両端で分割 | Shift+S |
