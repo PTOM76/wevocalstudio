@@ -71,7 +71,9 @@ src/
   Transport.tsx  再生のボタン一式（先頭へ、停止、再生と一時停止、録音、リピート、末尾へ）、時間の表示、マスターのメーター、テンポとグリッド。部品は WeVocalSynth のツールバーと同じ
   useActions.ts  操作の表（キーとメニューから行うもの）を作るフック。選択とコピーの状態を持ち、表（commands/table.ts）とメニュー（commands/menus.ts）に渡し、キーを受ける
   useAddonFolder.tsx  追加機能の保存先のフォルダー（試験的）。許可の通知と、設定と自動保存した作業の写しは PevenMUI の useAddonFolderSync（WeVocalSynth と同じ）
+  useAppSetup.ts  アプリを開いているあいだ、設定を音の出力とデバッグ表示に反映する（出力先、リミッター、再生のセッション、Ctrl+Shift+D）
   useAutosave.ts  起動時に前回の作業を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
+  useBlockJobs.ts  時間のかかる、波形ブロックとトラックの確定（現在の音にして置き換える）と、トラックのフリーズ（書き出した音で鳴らす）。進み具合は PevenMUI のジョブで見せ、取り消せる
   useDialogs.ts  ダイアログの開閉と、開くときに渡す値（PevenMUI の useDialogs。WeVocalSynth と同じ）
   useExtract.tsx  ボーカル抽出と楽器ごとの分離、和音の分離（手順は extractor の host.ts。WeVocalSynth と共通）。選んだ波形ブロックの音を分けて、新しいトラックに並べる
   useMidiInput.ts  MIDI 入力（キーボードなどの接続。ブラウザの Web MIDI。Chrome、Edge。Safari は非対応）。つないだ入力すべての、鳴らす、離すを onNote に渡す
@@ -82,6 +84,7 @@ src/
   useTempoDetect.ts  テンポの解析（選んだ波形ブロックから。WeVocalSynth と同じ解析）と、BPM、1 拍目の位置の設定
   useTransport.ts  再生と編集カーソル。再生（Player）、再生中か、編集カーソル（押した所、貼り付ける所）、再生カーソル、一時停止の位置、繰り返しを持ち、再生、一時停止、停止、移動の操作を渡す
   vibratoEnv.ts  選んだ波形ブロックに、ビブラートをピッチのエンベロープとして足す。範囲があれば、その中だけ（波形ブロックの外は触らない）。画面を知らない
+  viewToggles.ts  表示と道具の ON / OFF（設定の値）を、コマンドの文脈（ActionContext）の形にする。切り替えは設定を変えるだけ
   wvspExport.ts  プロジェクトを WeVocalSynth のプロジェクト（.wvsp）にする。波形ブロックがあるトラックを 1 本ずつ描画して wvsp のトラックにする（memo/wvsp-export.md）
 
 src/commands/

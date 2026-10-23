@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faAnglesLeft, faAnglesRight } from '@fortawesome/free-solid-svg-icons'
 import { useT } from './i18n'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
-import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam, type AutoPoint } from 'wevocal-lib'
+import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam } from 'wevocal-lib'
 import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette, usePanelWidth } from 'pevenmui'
 import { markActivity, countRender } from 'pevenmui/debug'
 import { allLanes, hitAutoPoint, laneAt } from './autoLane'
@@ -18,7 +18,7 @@ import { ENVELOPES, envelopeRange, hitEnvLine, hitEnvPoint, type EnvKind } from 
 import { snapGrid, snapToStep, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { RULER, drawCursors, drawTimeline, topOf, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
-import type { Block, MidiBlock, Project, Track } from './project'
+import type { Block, MidiBlock, Project } from './project'
 import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
 
@@ -94,7 +94,6 @@ export default function Timeline(p: {
   /** トラックの欄を閉じているか、開閉する */
   headerCollapsed: boolean
   onToggleHeader: () => void
-  onTrackChange: (id: string, patch: Partial<Track>, merge?: string) => void
   onDropFiles: (files: File[], at?: DropAt) => void
   /** 波形ブロックの右クリック（画面の座標） */
   onBlockMenu: (id: string, x: number, y: number) => void
@@ -148,8 +147,6 @@ export default function Timeline(p: {
   pitchEnvelopeRange: PitchEnvelopeRange
   /** オートメーションを編集する（FX のダイアログで選んだつまみのレーンの点を、足す、動かす、消す） */
   autoEdit: boolean
-  /** オートメーションの点を変えた（トラックの id か 'master'、FX の項目、つまみ、点。merge はドラッグ中にまとめる履歴のキー） */
-  onAutoChange: (target: string, slot: number, param: string, points: AutoPoint[], merge?: string) => void
   /** MIDI ブロックのダブルクリック（ピアノロールを開く） */
   onMidiEdit: (id: string) => void
   onView: (fn: (v: TimelineView) => TimelineView) => void
@@ -467,7 +464,7 @@ export default function Timeline(p: {
     if (p.autoEdit && y >= RULER) {
       const lane = laneAt(p.project, y)
       const i = lane ? hitAutoPoint(lane, x, y, view.scroll, view.pps) : -1
-      if (lane && i >= 0) return p.onAutoChange(lane.target, lane.lane.slot, lane.lane.param, lane.points.filter((_, k) => k !== i))
+      if (lane && i >= 0) return doc.setAutoPoints(lane.target, lane.lane.slot, lane.lane.param, lane.points.filter((_, k) => k !== i))
     }
     if (y > TOP) {
       const hit = hitBlock(p.project, x, y, toTime, view.pps)
@@ -622,7 +619,7 @@ export default function Timeline(p: {
           const t = Math.max(0, gridAt(x, e.shiftKey))
           index = pts.filter((pt) => pt.t <= t).length
           pts.splice(index, 0, { t, v: fracToParam(lane.def, (y - lane.top) / lane.h) })
-          p.onAutoChange(lane.target, lane.lane.slot, lane.lane.param, pts, merge)
+          doc.setAutoPoints(lane.target, lane.lane.slot, lane.lane.param, pts, merge)
         }
         e.currentTarget.setPointerCapture(e.pointerId)
         autoDrag.current = { target: lane.target, index, merge }
@@ -808,7 +805,7 @@ export default function Timeline(p: {
       const lo = pts[ad.index - 1]?.t ?? 0
       const hi = pts[ad.index + 1]?.t ?? Infinity
       pts[ad.index] = { t: Math.max(lo, Math.min(hi, gridAt(x, e.shiftKey))), v: fracToParam(lane.def, (y - lane.top) / lane.h) }
-      return p.onAutoChange(lane.target, lane.lane.slot, lane.lane.param, pts, ad.merge)
+      return doc.setAutoPoints(lane.target, lane.lane.slot, lane.lane.param, pts, ad.merge)
     }
     const ed = envDrag.current
     if (ed) {
@@ -948,7 +945,7 @@ export default function Timeline(p: {
             onPointerMove={(e) => {
               const resizing = trackResizeRef.current
               if (resizing) {
-                p.onTrackChange(resizing.id, { height: Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, resizing.height + e.clientY - resizing.y)) }, resizing.merge)
+                doc.changeTrack(resizing.id, { height: Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, resizing.height + e.clientY - resizing.y)) }, resizing.merge)
                 return
               }
               if (!trackDragRef.current) return
@@ -1013,7 +1010,7 @@ export default function Timeline(p: {
                       doc.selectTracks([...ids.slice(i0, i1 + 1).filter((x) => x !== p.selectedTrack), p.selectedTrack])
                     } else if (!sel.includes(track.id)) p.onSelectTrack(track.id)
                   }}
-                  onChange={(patch, merge) => p.onTrackChange(track.id, patch, merge)}
+                  onChange={(patch, merge) => doc.changeTrack(track.id, patch, merge)}
                   onEndMerge={doc.endMerge}
                   onFx={() => p.onFx(track.id)}
                   meter={p.meter && (() => p.meter!(track.id))}

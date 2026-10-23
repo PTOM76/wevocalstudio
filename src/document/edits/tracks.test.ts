@@ -1,7 +1,7 @@
 // edits/tracks.ts のテスト
 import { describe, expect, it } from 'vitest'
 import { fillBlock, newProject, type Block, type MidiBlock, type Project, type Source, type Track } from '../../project'
-import { addSubtrack, addTrackAfter, duplicateTrack, indentTrack, insertTrack, outdentTrack, patchTrack, patchTracks, placeSource, removeTrack, reorderTrack } from './tracks'
+import { addSubtrack, addTrackAfter, duplicateTrack, indentTrack, insertTrack, outdentTrack, patchTrack, patchTracks, placeSource, removeTrack, reorderTrack, setAutoPoints, spreadTrackPatch } from './tracks'
 
 const track = (id: string, patch: Partial<Track> = {}): Track => ({ id, name: id, volume: 0, pan: 0, mute: false, solo: false, ...patch })
 const source = (id: string): Source => ({ id, name: id, clip: { sampleRate: 100, channels: [new Float32Array(100)] }, duration: 1 })
@@ -128,5 +128,47 @@ describe('placeSource', () => {
     const q = placeSource(p, source('n'), 'voice', undefined, 0, defaults, 0.01)
     expect(q.tracks).toHaveLength(2)
     expect(q.tracks[1].name).toBe('voice')
+  })
+})
+
+describe('spreadTrackPatch', () => {
+  const p = project([track('a', { volume: -6 }), track('b', { volume: 0 }), track('c')])
+
+  it('選んだトラックの 1 つの音量を変えたら、全部に同じだけ掛ける', () => {
+    const q = spreadTrackPatch(p, ['a', 'b'], 'a', { volume: -3 })
+    expect(q).toEqual({ a: { volume: -3 }, b: { volume: 3 } })
+  })
+
+  it('範囲を超えず、パンも差分で掛ける', () => {
+    expect(spreadTrackPatch(p, ['a', 'b'], 'a', { volume: 12 })?.b.volume).toBe(12)
+    const pan = project([track('a', { pan: -0.5 }), track('b', { pan: 0.8 })])
+    expect(spreadTrackPatch(pan, ['a', 'b'], 'a', { pan: 0.5 })).toEqual({ a: { pan: 0.5 }, b: { pan: 1 } })
+  })
+
+  it('1 つだけ、選んでいないトラック、名前と FX の変更は掛けない', () => {
+    expect(spreadTrackPatch(p, ['a'], 'a', { volume: -3 })).toBeNull()
+    expect(spreadTrackPatch(p, ['a', 'b'], 'c', { volume: -3 })).toBeNull()
+    expect(spreadTrackPatch(p, ['a', 'b'], 'a', { name: 'x' })).toBeNull()
+    expect(spreadTrackPatch(p, ['a', 'b'], 'a', { fx: [] })).toBeNull()
+  })
+})
+
+describe('setAutoPoints', () => {
+  const slot = { plugin: 'x', values: {} } as never
+  const pts = [{ t: 0, v: 1 }] as never
+
+  it('トラックの FX の項目のオートメーションを入れ替える', () => {
+    const p = project([track('a', { fx: [slot] })])
+    const q = setAutoPoints(p, 'a', 0, 'gain', pts)
+    expect(q.tracks[0].fx?.[0].auto).toEqual({ gain: pts })
+  })
+
+  it('マスターも同じ。項目がなければそのまま', () => {
+    const base = project([track('a')])
+    const p = { ...base, master: { ...base.master, fx: [slot] } }
+    expect(setAutoPoints(p, 'master', 0, 'gain', pts).master.fx?.[0].auto).toEqual({ gain: pts })
+    expect(setAutoPoints(p, 'master', 3, 'gain', pts)).toBe(p)
+    expect(setAutoPoints(p, 'none', 0, 'gain', pts)).toBe(p)
+    expect(setAutoPoints(p, 'a', 0, 'gain', pts)).toBe(p)
   })
 })

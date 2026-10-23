@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useHistory } from 'wevocal-lib/react'
 import { ProjectDocument } from './document/ProjectDocument'
 import { keepFrozen } from './freeze'
-import { decodeFile, historySteps, type Clip, type Range } from 'wevocal-lib'
+import { decodeFile, historySteps, type AutoPoint, type Clip, type Range } from 'wevocal-lib'
 import { defaultInstrument } from './midiImport'
 import * as edit from './document/edits/blocks'
 import * as projectEdit from './document/edits/project'
@@ -201,6 +201,18 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   /** 複数のトラックを一度に変える（選んだトラックをまとめて） */
   const updateTracks = useCallback((patches: Record<string, Partial<Track>>, merge?: string) => change((p) => trackEdit.patchTracks(p, patches), merge), [change])
 
+  /** トラックを 1 つ変える。選んでいるトラックの一つなら、選んだもの全部に同じだけ掛ける（音量、パン、高さは差分で） */
+  const changeTrack = useCallback(
+    (id: string, patch: Partial<Track>, merge?: string) => {
+      const patches = trackEdit.spreadTrackPatch(doc.project, doc.selectedTracks, id, patch)
+      return patches ? updateTracks(patches, merge) : updateTrack(id, patch, merge)
+    },
+    [doc, updateTrack, updateTracks],
+  )
+
+  /** FX の項目（トラックの id か 'master'、何番目か）のつまみのオートメーションの点を入れ替える */
+  const setAutoPoints = useCallback((target: string, slot: number, param: string, points: AutoPoint[], merge?: string) => change((p) => trackEdit.setAutoPoints(p, target, slot, param, points), merge), [change])
+
   const updateBlock = useCallback((id: string, patch: Partial<Block>, merge?: string) => change((p) => edit.patchBlocks(p, { [id]: patch }), merge), [change])
 
   /** 複数の波形ブロックを一度に変える（まとめて動かすとき）。id → 変える値 */
@@ -305,6 +317,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     updateMaster,
     updateTrack,
     updateTracks,
+    changeTrack,
+    setAutoPoints,
     updateBlock,
     updateBlocks,
     removeBlocks,

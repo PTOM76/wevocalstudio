@@ -1,5 +1,6 @@
 // トラックを変える処理（足す、複製、貼り付け、消す、階層、並べ替え）。プロジェクトを受け取って新しいプロジェクトを返す純粋な関数で、React を使わない
-import { midiBlocks, newBlock, newId, newTrack, subtreeEnd, type Block, type PitchDefaults, type Project, type Source, type Track } from '../../project'
+import type { AutoPoint, FxSlot } from 'wevocal-lib'
+import { TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, midiBlocks, newBlock, newId, newTrack, subtreeEnd, trackHeight, type Block, type PitchDefaults, type Project, type Source, type Track } from '../../project'
 
 /** after のすぐ下（子孫の後ろ。なければ一番下）に、空のトラック track を足す。名前は Track N */
 export function addTrackAfter(p: Project, track: Track, after?: string | null): Project {
@@ -98,4 +99,33 @@ export function placeSource(p: Project, source: Source, name: string, at: string
     tracks = empty ? tracks.map((t) => (t.id === named.id ? named : t)) : [...tracks, named]
   }
   return { ...p, sources: [...p.sources, source], tracks, blocks: [...p.blocks, newBlock(track.id, source, start, defaults, defaultFade)] }
+}
+
+/**
+ * 選んでいるトラックの 1 つを変えたとき、選んだもの全部に同じだけ掛ける（音量、パン、高さは差分で。選んだトラックの違いは保つ）。
+ * 掛けないとき（1 つだけ、選んでいないトラック、名前と FX の変更）は null
+ */
+export function spreadTrackPatch(p: Project, selectedTracks: string[], id: string, patch: Partial<Track>): Record<string, Partial<Track>> | null {
+  if (selectedTracks.length < 2 || !selectedTracks.includes(id) || 'name' in patch || 'fx' in patch) return null
+  const base = p.tracks.find((tr) => tr.id === id)
+  if (!base) return null
+  return Object.fromEntries(
+    p.tracks
+      .filter((tr) => selectedTracks.includes(tr.id))
+      .map((tr) => {
+        const q: Partial<Track> = { ...patch }
+        if (patch.volume !== undefined) q.volume = Math.max(-60, Math.min(12, tr.volume + patch.volume - base.volume))
+        if (patch.pan !== undefined) q.pan = Math.max(-1, Math.min(1, tr.pan + patch.pan - base.pan))
+        if (patch.height !== undefined) q.height = Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, trackHeight(tr) + patch.height - trackHeight(base)))
+        return [tr.id, q]
+      }),
+  )
+}
+
+/** FX の項目（target はトラックの id か 'master'、slot は何番目か）のつまみ param のオートメーションの点を入れ替える。項目がなければそのまま */
+export function setAutoPoints(p: Project, target: string, slot: number, param: string, points: AutoPoint[]): Project {
+  const put = (fx: FxSlot[] | undefined) => fx?.map((s, i) => (i === slot ? { ...s, auto: { ...s.auto, [param]: points } } : s))
+  if (target === 'master') return p.master.fx?.[slot] ? { ...p, master: { ...p.master, fx: put(p.master.fx) } } : p
+  const t = p.tracks.find((x) => x.id === target)
+  return t?.fx?.[slot] ? patchTrack(p, target, { fx: put(t.fx) }) : p
 }

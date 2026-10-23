@@ -1,13 +1,13 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Box } from '@mui/material'
-import { DockArea, EmptyState, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
+import { DockArea, EmptyState, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette } from 'pevenmui'
 import StatusBar from './StatusBar'
 import { useAddonFolder } from './useAddonFolder'
 import AppHeader from './AppHeader'
 import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
 import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web'
-import { configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
+import { configurePlayback } from 'wevocal-lib'
 import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
 import { Minimap } from 'wevocal-lib/react'
 import { faFolderOpen, faMicrophone, faWaveSquare } from '@fortawesome/free-solid-svg-icons'
@@ -18,6 +18,9 @@ import { DocContext } from './DocContext'
 import { useDialogs } from './useDialogs'
 import type { TimelineView } from './drawTimeline'
 import { useTransport } from './useTransport'
+import { useBlockJobs } from './useBlockJobs'
+import { viewToggles } from './viewToggles'
+import { useAppSetup } from './useAppSetup'
 import { buildOverview } from './overview'
 import { useT } from './i18n'
 import { setKeyOverrides } from './keymap'
@@ -28,7 +31,7 @@ import { snapGrid } from './grid'
 import { buildMidi } from './midiExport'
 import { emitNote } from './pianoRoll/noteBus'
 import { readMidi } from './midiImport'
-import { addWvspTracks, midiBlocks, newProject, songEnd, trackHeight, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, visibleTracks, type Track } from './project'
+import { addWvspTracks, midiBlocks, newProject, songEnd, visibleTracks } from './project'
 import Timeline, { useHeaderWidth } from './Timeline'
 import Toolbar from './Toolbar'
 import Transport from './Transport'
@@ -39,8 +42,6 @@ import { useTempoDetect } from './useTempoDetect'
 import { useExtract } from './useExtract'
 import BlockEditBar from './BlockEditBar'
 import { CONVERTER_ADDON } from 'wevocalconverter/host'
-import { applyBaked, bakeBlocks } from './bake'
-import { freezeTrack, unfreezeTrack } from './freeze'
 import { useMidiInput } from './useMidiInput'
 import { useRecorder } from './useRecorder'
 import { useAutosave } from './useAutosave'
@@ -65,26 +66,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   setKeyOverrides(p.settings.keymap, p.settings.ctrlS)
   const mobile = useMobileLayout()
   const { width: header, bar: headerBar, collapsed: headerCollapsed, toggle: toggleHeader } = useHeaderWidth()
-  // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
-  const { suspendWhenStopped, playbackSession } = p.settings
-  useEffect(() => void configurePlayback({ suspendWhenStopped, playbackSession, report: reportAudioContext }), [suspendWhenStopped, playbackSession])
-  useEffect(() => setOutputDevice(p.settings.outputDevice), [p.settings.outputDevice])
-  useEffect(() => setOutputLimit(p.settings.outputLimit ? p.settings.outputLimitDb : null), [p.settings.outputLimit, p.settings.outputLimitDb])
+  useAppSetup(p.settings, p.onSettingsChange)
   const addonFolderNotice = useAddonFolder(p.settings.addonFolder)
-  // Ctrl+Shift+D でデバッグ表示を切り替える（WeVocalSynth と同じ）
-  const settingsRef = useRef(p.settings)
-  settingsRef.current = p.settings
-  const { onSettingsChange } = p
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyD') {
-        e.preventDefault()
-        onSettingsChange({ showDebug: !settingsRef.current.showDebug })
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onSettingsChange])
   const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit, defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0, defaultBpm: p.settings.defaultBpm })
   const { project, selected } = doc
   const setSelected = doc.select
@@ -152,37 +135,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 追加機能の導入の確かめ（動画の書き出し。PevenMUI）
   const addonInstall = useAddonInstall()
   // ボーカル抽出と楽器ごとの分離（extractor の host.ts。WeVocalSynth と共通）
-  /** 選んだ波形ブロックを確定する（今の音にして、元の音を置き換える） */
-  const bake = async (ids: string[]) => {
-    const controller = new AbortController()
-    const job = startJob('bake', t('bake.job'), () => controller.abort())
-    try {
-      const baked = await bakeBlocks(doc.project, ids, (v) => job.update(v), 'all', controller.signal)
-      doc.apply((pr) => applyBaked(pr, baked))
-      setNotice(t('toast.baked'))
-    } catch (e) {
-      if (!(e instanceof DOMException && e.name === 'AbortError')) fail(e)
-    } finally {
-      job.end()
-    }
-  }
-  /** トラックのフリーズと解除（src/freeze.ts） */
-  const freeze = async (id: string, withFx = false) => {
-    if (project.tracks.find((tr) => tr.id === id)?.frozen) return doc.apply((pr) => unfreezeTrack(pr, id))
-    const controller = new AbortController()
-    const job = startJob('freeze', t('freeze.job'), () => controller.abort())
-    try {
-      const frozen = await freezeTrack(doc.project, id, withFx, controller.signal)
-      const f = frozen.tracks.find((tr) => tr.id === id)?.frozen
-      const src = f && frozen.sources.find((s) => s.id === f.source)
-      // 描画している間の変更は残し、書き出した音とトラックの印だけを足す
-      if (f && src) doc.apply((pr) => (pr.tracks.some((tr) => tr.id === id) ? { ...pr, sources: [...pr.sources, src], tracks: pr.tracks.map((tr) => (tr.id === id ? { ...tr, frozen: f } : tr)) } : pr))
-    } catch (e) {
-      if (!(e instanceof DOMException && e.name === 'AbortError')) fail(e)
-    } finally {
-      job.end()
-    }
-  }
+  const { bake, freeze } = useBlockJobs({ doc, t, fail, notify: setNotice })
   const extract = useExtract({ doc, settings: p.settings, fail, notify: setNotice })
   // テンポの解析（候補、BPM の設定）
   const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice })
@@ -344,29 +297,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     openExport: () => dialogs.open('export'),
     openSettings: () => dialogs.open('settings'),
     openHistory: () => dialogs.open('history'),
-    snap: p.settings.snap,
-    toggleSnap: () => p.onSettingsChange({ snap: !p.settings.snap }),
-    follow: p.settings.followPlayhead,
-    envelope: p.settings.envelope,
-    // 音量とピッチのエンベロープは、どちらか一方だけを出す
-    toggleEnvelope: () => p.onSettingsChange({ envelope: !p.settings.envelope, pitchEnvelope: false, autoEdit: false }),
-    pitchEnvelope: p.settings.pitchEnvelope,
-    pitchEnvelopeRange: p.settings.pitchEnvelopeRange,
-    envelopeRange: p.settings.envelopeRange,
-    togglePitchEnvelope: () => p.onSettingsChange({ pitchEnvelope: !p.settings.pitchEnvelope, envelope: false, autoEdit: false }),
-    autoEdit: p.settings.autoEdit,
-    toggleAutoEdit: () => p.onSettingsChange({ autoEdit: !p.settings.autoEdit, envelope: false, pitchEnvelope: false }),
-    toggleFollow: () => p.onSettingsChange({ followPlayhead: !p.settings.followPlayhead }),
-    beatGrid: p.settings.grid === 'beats',
-    toggleGrid: () => p.onSettingsChange({ grid: p.settings.grid === 'beats' ? 'time' : 'beats' }),
-    showAnalysis: p.settings.showAnalysis,
-    toggleAnalysis: () => p.onSettingsChange({ showAnalysis: !p.settings.showAnalysis }),
-    showMeters: p.settings.showMeters,
-    toggleMeters: () => p.onSettingsChange({ showMeters: !p.settings.showMeters }),
-    showMinimap: p.settings.showMinimap,
-    toggleMinimap: () => p.onSettingsChange({ showMinimap: !p.settings.showMinimap }),
-    showStatusBar: p.settings.showStatusBar,
-    toggleStatusBar: () => p.onSettingsChange({ showStatusBar: !p.settings.showStatusBar }),
+    ...viewToggles(p.settings, p.onSettingsChange),
     help: {
       guide: () => openExternal(`${app.repository}/blob/main/docs/MANUAL.md`),
       shortcuts: () => dialogs.open('shortcuts'),
@@ -487,26 +418,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         headerCollapsed={headerCollapsed}
         wheelZoom={p.settings.wheelZoom}
         onToggleHeader={toggleHeader}
-        onTrackChange={(id, patch, merge) => {
-          // 選んでいるトラックの一つを変えたら、選んだもの全部に同じだけ掛ける（音量、パン、高さは差分で）
-          if (selectedTracks.length < 2 || !selectedTracks.includes(id) || 'name' in patch || 'fx' in patch) return doc.updateTrack(id, patch, merge)
-          const base = project.tracks.find((tr) => tr.id === id)!
-          doc.updateTracks(
-            Object.fromEntries(
-              project.tracks
-                .filter((tr) => selectedTracks.includes(tr.id))
-                .map((tr) => {
-                  const q: Partial<Track> = { ...patch }
-                  if (patch.volume !== undefined) q.volume = Math.max(-60, Math.min(12, tr.volume + patch.volume - base.volume))
-                  if (patch.pan !== undefined) q.pan = Math.max(-1, Math.min(1, tr.pan + patch.pan - base.pan))
-                  // 高さも差分で（選んだトラックの高さの違いは保ったまま、同じだけ広げ縮めする）
-                  if (patch.height !== undefined) q.height = Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, trackHeight(tr) + patch.height - trackHeight(base)))
-                  return [tr.id, q]
-                }),
-            ),
-            merge,
-          )
-        }}
         onDropFiles={(list, at) => (list.some(isProjectLike) ? files.openFiles(list) : void load(list, at))}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         onEmptyMenu={(kind, time, track, x, y, marker) => setEmptyAt({ kind, time, track, x, y, marker })}
@@ -535,13 +446,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         pitchEnvelopeRange={p.settings.pitchEnvelopeRange}
         autoEdit={p.settings.autoEdit}
         onMidiEdit={(id) => dialogs.open('pianoRoll', id)}
-        onAutoChange={(target, slot, param, points, merge) => {
-          const fx = target === 'master' ? project.master.fx : project.tracks.find((tr) => tr.id === target)?.fx
-          if (!fx?.[slot]) return
-          const next = fx.map((s, i) => (i === slot ? { ...s, auto: { ...s.auto, [param]: points } } : s))
-          if (target === 'master') doc.updateMaster({ fx: next }, merge)
-          else doc.updateTrack(target, { fx: next }, merge)
-        }}
         onView={setView}
         onWidth={setTimelineWidth}
         madeVersion={madeVersion}
