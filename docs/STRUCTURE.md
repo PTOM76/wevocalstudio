@@ -55,6 +55,7 @@ src/
   project.ts  プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
   projectFile.ts  プロジェクトファイル（.wvst）の読み書き。先頭に JSON（トラック、波形ブロック、元の音の形）、そのあとに元の音の PCM を並べる
   rangeEdit.ts  範囲選択（全トラックにかかる時間の範囲）への編集。範囲だけ残す、範囲を消して詰める、無音を挿入する（WeVocalSynth の編集メニューと同じ操作）
+  reverse.ts  選んだ波形ブロックの逆再生。元の音は書き換えず、ブロックが使っている部分を逆にした新しい元の音を足して、ブロックをそちらに向ける。画面を知らない
   sampler.ts  選んだ波形ブロックを MIDI の音符に並べる、一音ずつに分ける（どちらも波形ブロックを写して位置、ピッチ、長さを決める。音は処理しないので、あとから直せる）
   SendDialog.tsx  トラックのセンド（このトラックの音を、ほかのトラックの入口へ送る。フェーダーのあとの音を、送る量だけ。リバーブなどを共有するバスに使う）
   ShortcutsDialog.tsx  ショートカットの一覧のダイアログ（部品は PevenMUI の ShortcutsDialog。WeVocalSynth と同じ）
@@ -76,7 +77,12 @@ src/
   useProjectFile.ts  プロジェクトの開く、保存（上書きと名前を付けて）、書き出し、最近使用したファイル、OS から開く、閉じる前の確認（WeVocalSynth と同じ PevenMUI の fileAccess）
   useRecorder.ts  録音（再生位置から、ほかのトラックを鳴らしながら録り、録った音を波形ブロックとして置く。wevocal-lib の録音）
   useTempoDetect.ts  テンポの解析（選んだ波形ブロックから。WeVocalSynth と同じ解析）と、BPM、1 拍目の位置の設定
+  vibratoEnv.ts  選んだ波形ブロックに、ビブラートをピッチのエンベロープとして足す。範囲があれば、その中だけ（波形ブロックの外は触らない）。画面を知らない
   wvspExport.ts  プロジェクトを WeVocalSynth のプロジェクト（.wvsp）にする。波形ブロックがあるトラックを 1 本ずつ描画して wvsp のトラックにする（memo/wvsp-export.md）
+
+src/document/edits/
+  blocks.test.ts  edits/blocks.ts のテスト
+  blocks.ts  波形ブロックと MIDI ブロックを変える処理。プロジェクトを受け取って、新しいプロジェクトを返す純粋な関数（React を使わないので、そのまま試せる）
 
 src/dsp/
   pitch.ts  wasm の処理の窓口。波形ブロックのピッチと速度を音に反映し（作ったものはキャッシュ）、テンポを解析する。
@@ -97,7 +103,7 @@ src/pianoRoll/
   noteBus.ts  MIDI キーボードの弾いた音を、開いているピアノロールに渡す（ステップ入力で使う）。App が弾いた音を流し、ピアノロールが受ける
   NoteMenu.tsx  ピアノロールで音符を長押ししたときのメニュー（削除、コピー、複製）
   PianoRoll.tsx  ピアノロールの本体（MIDI ブロックの音符を編集する）。ダイアログの枠は PianoRollDialog.tsx。
-  RollRuler.tsx  ピアノロールの目盛り（小節と拍の数字）と、ブロックの終わりの旗。旗をドラッグすると、ブロックの範囲を広げたり狭めたりできる。再生位置の線も出す
+  RollRuler.tsx  ピアノロールの目盛り（小節と拍の数字）と、ブロックの終わりの旗。旗をドラッグすると、ブロックの範囲を広げたり狭めたりできる。再生位置と編集位置の線、範囲選択も出す。
   ScreenKeyboard.tsx  画面の鍵盤（2 オクターブ。押している間鳴る。MIDI キーボードがない端末と、ステップ入力で使う）。左右のボタンで 1 オクターブずつずらす
   Toolbar.tsx  ピアノロールの上の部分（メニューバーとツールバー）。ダイアログと別のウィンドウに出したときに使う（PevenMUI の MenuBar を embedded で置く）。
   usePinch.ts  ピアノロールの 2 本指のつまみ（拡大と縮小、なぞって縦横にスクロール）。触れている指の位置を覚える
@@ -129,6 +135,9 @@ src/storage/
   autosaveWorker.ts  自動保存の書き込みと読み出しをする Worker。数十〜百 MB の元の音の複製と保存を画面のスレッドから外す（WeVocalSynth と同じ）
   dataFolder.ts  設定と自動保存した作業を、指定したフォルダーにも写す（PWA を消しても戻せるように。処理は PevenMUI。WeVocalSynth と同じ）。画面と自動保存の Worker の両方から使う
   idb.ts  このアプリの IndexedDB（PevenMUI の createIdb。WeVocalSynth と同じ）。画面と自動保存の Worker の両方から使う
+
+src/test/
+  setup.ts  テストの前に、ブラウザにしかない型の代わりを入れる（wevocal-lib の入口が WAM の SDK を読み込むため。音は鳴らさない）
 
 dsp/src/
   lib.rs  WeVocal Studio の wasm。wevocal-lib のピッチ変更とピッチカーブ（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。

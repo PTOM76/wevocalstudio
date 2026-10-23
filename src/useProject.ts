@@ -1,15 +1,13 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
 import { keepFrozen } from './freeze'
-import { DEFAULT_SILENCE, commitHistory, decodeFile, findSounds, gotoHistory, historySteps, newHistory, redoHistory, undoHistory, type Clip, type FxSlot, type History } from 'wevocal-lib'
+import { commitHistory, decodeFile, gotoHistory, historySteps, newHistory, redoHistory, undoHistory, type Clip, type FxSlot, type History } from 'wevocal-lib'
 import { describeChange } from './history'
 import { defaultInstrument } from './midiImport'
 import type { MessageKey } from './i18n'
 import { projectBeatMap } from './beats'
-import { BLOCK_LIMITS, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, splitBlock, splitMidiBlock, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
-
-/** ピッチの範囲（半音）。大きく変えるときは wasm が 24 半音ずつに分けて処理する */
-const PITCH_MAX = 256
+import * as edit from './document/edits/blocks'
+import { BLOCK_LIMITS, fitBlock, newBlock, subtreeEnd, newId, newProject, newTrack, type Block, type Marker, type Master, type MidiBlock, type PitchDefaults, type Project, type Source, type Tempo, type Track } from './project'
 
 /** 置く場所（トラックと時刻）。省略したときは空いているトラックか、新しいトラック */
 export interface DropAt {
@@ -391,31 +389,19 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     [change],
   )
 
-  const updateBlock = useCallback(
-    (id: string, patch: Partial<Block>, merge?: string) => change((p) => ({ ...p, blocks: p.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }), merge),
-    [change],
-  )
+  const updateBlock = useCallback((id: string, patch: Partial<Block>, merge?: string) => change((p) => edit.patchBlocks(p, { [id]: patch }), merge), [change])
 
   /** 複数の波形ブロックを一度に変える（まとめて動かすとき）。id → 変える値 */
-  const updateBlocks = useCallback(
-    (patches: Record<string, Partial<Block>>, merge?: string) => change((p) => ({ ...p, blocks: p.blocks.map((b) => (patches[b.id] ? { ...b, ...patches[b.id] } : b)) }), merge),
-    [change],
-  )
+  const updateBlocks = useCallback((patches: Record<string, Partial<Block>>, merge?: string) => change((p) => edit.patchBlocks(p, patches), merge), [change])
 
-  const removeBlocks = useCallback((ids: string[]) => change((p) => ({ ...p, blocks: p.blocks.filter((b) => !ids.includes(b.id)), ...(p.midi ? { midi: p.midi.filter((b) => !ids.includes(b.id)) } : {}) })), [change])
+  const removeBlocks = useCallback((ids: string[]) => change((p) => edit.removeBlocks(p, ids)), [change])
 
   /** トラックの time 秒に、2 小節の空の MIDI ブロックを足す。音源がなければ標準のシンセを付ける。足したブロックの id（トラックがなければ null） */
   const addMidiAt = useCallback(
     (trackId: string | undefined, time: number): string | null => {
       if (!trackId) return null
       const id = newId()
-      change((p) => {
-        const t = p.tracks.find((x) => x.id === trackId)
-        if (!t) return p
-        const length = (p.tempo.beatsPerBar * 60 * 2) / p.tempo.bpm
-        const block: MidiBlock = { id, track: trackId, start: Math.max(0, time), length, unit: 'beat', notes: [], mute: false }
-        return { ...p, tracks: p.tracks.map((x) => (x === t && !t.instrument ? { ...x, instrument: defaultInstrument() } : x)), midi: [...(p.midi ?? []), block] }
-      })
+      change((p) => edit.addEmptyMidi(p, id, trackId, time, defaultInstrument))
       return id
     },
     [change],
@@ -430,69 +416,30 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     [change],
   )
   /** MIDI ブロックをまとめて変える（id → 変える項目） */
-  const updateMidiBlocks = useCallback(
-    (patches: Record<string, Partial<MidiBlock>>, merge?: string) => change((p) => ({ ...p, midi: (p.midi ?? []).map((b) => (patches[b.id] ? { ...b, ...patches[b.id] } : b)) }), merge),
-    [change],
-  )
+  const updateMidiBlocks = useCallback((patches: Record<string, Partial<MidiBlock>>, merge?: string) => change((p) => edit.patchMidiBlocks(p, patches), merge), [change])
   /** MIDI ブロックを足す */
-  const addMidiBlock = useCallback((block: MidiBlock) => change((p) => ({ ...p, midi: [...(p.midi ?? []), block] })), [change])
+  const addMidiBlock = useCallback((block: MidiBlock) => change((p) => edit.addMidiBlocks(p, [block])), [change])
   /** MIDI ブロックを変える（ドラッグ中は merge で 1 回分にまとめる） */
-  const updateMidiBlock = useCallback((id: string, patch: Partial<MidiBlock>, merge?: string) => change((p) => ({ ...p, midi: (p.midi ?? []).map((b) => (b.id === id ? { ...b, ...patch } : b)) }), merge), [change])
+  const updateMidiBlock = useCallback((id: string, patch: Partial<MidiBlock>, merge?: string) => change((p) => edit.patchMidiBlocks(p, { [id]: patch }), merge), [change])
 
   /** 波形ブロックの写しを置き、新しい id を返す（複製、貼り付け）。元の音がもう無いものは置かない */
   const insertBlocks = useCallback(
     (blocks: Block[]) => {
       const copies = blocks.map((b) => ({ ...b, id: newId() }))
-      change((p) => ({ ...p, blocks: [...p.blocks, ...copies.filter((b) => p.sources.some((s) => s.id === b.source))] }))
+      change((p) => edit.insertBlocks(p, copies))
       return copies.map((b) => b.id)
     },
     [change],
   )
 
-  /** ピッチを delta 半音だけ変える。delta が null なら 0 に戻す。小数の誤差は 0.01 半音（1 セント）に丸める */
-  const nudgePitch = useCallback(
-    (ids: string[], delta: number | null) =>
-      change((p) => ({
-        ...p,
-        blocks: p.blocks.map((b) => (ids.includes(b.id) ? { ...b, pitch: delta === null ? 0 : Math.max(-PITCH_MAX, Math.min(PITCH_MAX, Math.round((b.pitch + delta) * 100) / 100)) } : b)),
-      })),
-    [change],
-  )
+  /** ピッチを delta 半音だけ変える。delta が null なら 0 に戻す */
+  const nudgePitch = useCallback((ids: string[], delta: number | null) => change((p) => edit.nudgePitch(p, ids, delta)), [change])
 
-  /** 無音で区切り、音のある所だけを残す（WeVocalSynth の「無音で区切る」と同じ判定。-40dB、200ms） */
-  const splitBySilence = useCallback(
-    (ids: string[]) =>
-      change((p) => ({
-        ...p,
-        blocks: p.blocks.flatMap((b) => {
-          const source = p.sources.find((s) => s.id === b.source)
-          if (!ids.includes(b.id) || !source) return [b]
-          const { clip } = source
-          const from = Math.floor(b.offset * clip.sampleRate)
-          const to = Math.min(clip.channels[0].length, from + Math.ceil(b.length * b.rate * clip.sampleRate))
-          const part = { sampleRate: clip.sampleRate, channels: clip.channels.map((c) => c.subarray(from, to)) }
-          const sounds = findSounds(part, DEFAULT_SILENCE)
-          if (!sounds.length) return [b]
-          // 範囲は元の音の上の秒。時間軸の上では速度で割る
-          return sounds.map((r, i) => {
-            const length = (r.end - r.start) / b.rate
-            return { ...b, id: i ? newId() : b.id, start: b.start + r.start / b.rate, offset: b.offset + r.start, length, fadeIn: Math.min(defaultsRef.current.defaultFade, length / 2), fadeOut: Math.min(defaultsRef.current.defaultFade, length / 2) }
-          })
-        }),
-      })),
-    [change],
-  )
+  /** 無音で区切り、音のある所だけを残す */
+  const splitBySilence = useCallback((ids: string[]) => change((p) => edit.splitBySilence(p, ids, defaultsRef.current.defaultFade)), [change])
 
   /** 位置 t で分ける。ids が空なら、t にかかる波形ブロックを全部分ける */
-  const split = useCallback(
-    (t: number, ids: string[] = []) =>
-      change((p) => ({
-        ...p,
-        blocks: p.blocks.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitBlock(b, t, defaultsRef.current.defaultFade) ?? [b]))),
-        ...(p.midi ? { midi: p.midi.flatMap((b) => (ids.length && !ids.includes(b.id) ? [b] : (splitMidiBlock(b, t, projectBeatMap(p)) ?? [b]))) } : {}),
-      })),
-    [change],
-  )
+  const split = useCallback((t: number, ids: string[] = []) => change((p) => edit.splitAt(p, t, ids, defaultsRef.current.defaultFade)), [change])
 
   return {
     project: history.present.project,

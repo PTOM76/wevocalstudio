@@ -412,8 +412,11 @@ export function flowsTo(p: Project, from: string, to: string): boolean {
 /** track から送れるトラック（送ると音が輪になるものと、自分は除く） */
 export const sendTargets = (p: Project, track: string): Track[] => p.tracks.filter((x) => x.id !== track && !flowsTo(p, x.id, track))
 
+/** MIDI ブロック（無いプロジェクトでは空） */
+export const midiBlocks = (p: Project): MidiBlock[] => p.midi ?? []
+
 /** 全部のブロック（波形ブロックと MIDI ブロック） */
-export const allBlocks = (p: Project): AnyBlock[] => [...p.blocks, ...(p.midi ?? [])]
+export const allBlocks = (p: Project): AnyBlock[] => [...p.blocks, ...midiBlocks(p)]
 
 /** 最後の波形ブロックの終わり（秒） */
 export const projectEnd = (p: Project) => Math.max(p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0), (p.midi ?? []).reduce((m, b) => Math.max(m, b.start + b.length), 0))
