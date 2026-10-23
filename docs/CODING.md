@@ -23,6 +23,7 @@ WeVocalSynth の docs/CODING.md と同じ決まりを使う。ここには Studi
 | コマンド | 内容 |
 | --- | --- |
 | `npm run build` | 型チェックとビルド |
+| `npm test` | 単体テスト（vitest）。プロジェクトを変える関数と文書、wevocal-lib の履歴を試す。ブラウザは使わない |
 | `npm run build:wasm` | `dsp/` を wasm にビルドし、`src/dsp/dsp.wasm` を作る（wevocal-lib の処理を変えたときも作り直してコミットする） |
 
 ## コミット
