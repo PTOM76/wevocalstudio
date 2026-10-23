@@ -5,15 +5,16 @@ import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { fracToParam } from 'wevocal-lib'
 import { useDoubleTap, useLongPress } from 'pevenmui'
 import { allLanes, hitAutoPoint, laneAt } from '../autoLane'
-import { hitMidi, type MidiDragKind } from '../midiBlocks'
+import { hitMidi } from '../midiBlocks'
 import { projectEnd, midiBlocks } from '../project'
 import { ENVELOPES, envelopeRange, hitEnvLine, hitEnvPoint } from '../envelopes'
 import { snapGrid, snapToStep } from '../grid'
-import { CURSOR, hitBlock, type Drag } from '../blockDrag'
+import { CURSOR, hitBlock } from '../blockDrag'
 import { RULER, type TimelineView } from '../drawTimeline'
-import type { Block, MidiBlock, Track } from '../project'
+import type { Block, Track } from '../project'
 import { localPos } from '../timeline/geometry'
 import { menuHandlers } from './menuHandlers'
+import { useGestures } from './gesture'
 import { blockDragPatches, marqueeIds, midiDragPatch, movedAutoPoints, movedEnvPoints, rangeSelectIds } from './dragMath'
 import type { TimelineProps } from '../Timeline'
 
@@ -48,21 +49,10 @@ export function useTimelinePointer(o: {
   const { p, canvasRef, view, setView, vs, vscroll, setVscroll, maxRef, top: TOP, width, height, trackResizeRef, geo } = o
   const { cy, trackAt, rowDelta, slotAt, toTime, blockGeom } = geo
   const doc = useDoc()
-  const drag = useRef<Drag | null>(null)
-  // 範囲選択のドラッグを始めた時刻と位置
-  const rangeDrag = useRef<{ t: number; x: number } | null>(null)
-  // 目盛りの上で押している間は、再生位置が付いてくる（範囲選択にしない。WeVocalSynth と同じ）
-  const scrub = useRef(false)
-  // エンベロープの点をドラッグしている所
-  const envDrag = useRef<{ block: string; index: number; merge: string } | null>(null)
-  // ドラッグしているオートメーションの点（レーンの target と点の番号）
-  const autoDrag = useRef<{ target: string; index: number; merge: string } | null>(null)
-  // ドラッグしている MIDI ブロック（つかんだ所の、ブロックの左端からの px）
-  const midiDrag = useRef<{ id: string; kind: MidiDragKind; grabPx: number; merge: string; orig: MidiBlock; alt: boolean } | null>(null)
   // Shift+クリックの起点（前に押した波形ブロック）
+  // 操作中の状態は 1 つ（gesture.ts）。操作を始めると前の操作は終わる
+  const { drag, rangeDrag, scrub, envDrag, autoDrag, midiDrag, marquee, pan } = useGestures()
   const anchor = useRef<string | null>(null)
-  // 右ドラッグの枠で選ぶ。moved なら右クリックのメニューは出さない
-  const marquee = useRef<{ x: number; y: number; moved: boolean } | null>(null)
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const dragCount = useRef(0)
   const [cursor, setCursor] = useState('default')
@@ -150,7 +140,6 @@ export function useTimelinePointer(o: {
   // 空いている所を 1 本指でなぞったときのスクロール（始めた位置と、そのときの表示）
   // 長押しでメニューを開いたあと（指を離しても、再生位置を移さない）
   const longPressed = useRef(false)
-  const pan = useRef<{ x0: number; y0: number; scroll0: number; v0: number } | null>(null)
   // 長押しから始めた範囲選択（動かさずに離したら、メニューを出す）
   const touchRange = useRef<{ x: number; oy: number; cx: number; cy: number; moved: boolean } | null>(null)
 
