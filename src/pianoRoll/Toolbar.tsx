@@ -69,7 +69,7 @@ export interface RollToolbarProps {
   /** ステップ入力 */
   stepInput: boolean
   onStepInput: () => void
-  /** 元に戻す、やり直し（メインの操作履歴。欄に置いているときはメインのバーにあるので出さない） */
+  /** 元に戻す、やり直し（メインの操作履歴。欄に置いているときはメインのバーにあるので出さない。メニューバーの行の右端に出す） */
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
@@ -151,13 +151,6 @@ export default function RollToolbar(p: RollToolbarProps) {
 
   const buttons = (
     <>
-        {!p.host && (
-          <>
-            {btn(t('menu.undo'), faRotateLeft, p.onUndo, { disabled: !p.canUndo })}
-            {btn(t('menu.redo'), faRotateRight, p.onRedo, { disabled: !p.canRedo })}
-            <ToolbarDivider gap />
-          </>
-        )}
         {tool('select', t('roll.toolSelect'), faArrowPointer)}
         {tool('pen', t('roll.toolPen'), faPencil)}
         {tool('erase', t('roll.toolErase'), faEraser)}
@@ -249,6 +242,10 @@ export default function RollToolbar(p: RollToolbarProps) {
     <Box ref={root} sx={{ flexShrink: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', px: 0.5, py: 0.25, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
         <MenuBar menus={menus} embedded />
+        <Box sx={{ flex: 1 }} />
+        {/* 別の窓では、「欄に置く」ボタンの右に並ぶ（PianoRollDialog の dockInset） */}
+        {btn(t('menu.undo'), faRotateLeft, p.onUndo, { disabled: !p.canUndo })}
+        {btn(t('menu.redo'), faRotateRight, p.onRedo, { disabled: !p.canRedo })}
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.25, minHeight: 40, px: 1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
         {buttons}
