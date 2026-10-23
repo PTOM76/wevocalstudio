@@ -126,6 +126,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('uiScale')}
         {S('showMeters')}
         {S('minimapPlayhead')}
+        {S('dockWindowSnap')}
         {S('envelopeRange')}
         {S('pitchEnvelopeRange')}
         {S('editBar')}

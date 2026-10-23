@@ -366,6 +366,8 @@
   "settings.playbackSession": "Play with iOS silent switch on",
   "settings.playbackSessionHelp": "Sets the audio session to playback. Off = previous behavior",
   "settings.groupPitch": "Pitch (voice) analysis",
+  "settings.dockWindowSnap": "Dock a separate window when dropped at an edge",
+  "settings.dockWindowSnapHelp": "Drop a dialog shown in a separate window at an edge of the main window to dock it there.",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",

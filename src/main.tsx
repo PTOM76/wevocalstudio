@@ -35,7 +35,7 @@ function Root() {
       <ThemeSync theme={settings.theme} />
       {/* 追加機能（ボーカル抽出）。導入と読み込みは PevenMUI（WeVocalSynth と同じ） */}
       <AddonsContext.Provider value={addonsContext}>
-        <AppDock>
+        <AppDock windowSnap={settings.dockWindowSnap}>
           <App settings={settings} onSettingsChange={update} />
         </AppDock>
       </AddonsContext.Provider>

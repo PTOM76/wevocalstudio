@@ -366,6 +366,8 @@
   "settings.playbackSession": "iOSの消音スイッチONでも再生する",
   "settings.playbackSessionHelp": "オーディオセッションを再生用にする",
   "settings.groupPitch": "ピッチ（声の高さ）の解析",
+  "settings.dockWindowSnap": "別の窓を端に寄せて離したら、欄に置く",
+  "settings.dockWindowSnapHelp": "別の窓（ポップアップ）に出したダイアログを、本体の窓の端に寄せて離すと、その端の欄に置きます。",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

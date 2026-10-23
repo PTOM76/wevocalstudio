@@ -12,6 +12,6 @@ export default defineConfig({
   test: {
     environment: 'node',
     setupFiles: ['src/test/setup.ts'],
-    include: ['src/**/*.test.ts', '../wevocalsynth/wevocal-lib/web/src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', '../wevocalsynth/wevocal-lib/web/src/**/*.test.ts', '../wevocalsynth/pevenmui/src/**/*.test.ts'],
   },
 })

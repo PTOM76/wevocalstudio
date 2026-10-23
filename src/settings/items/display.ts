@@ -30,6 +30,8 @@ export const display = defineItems('display', {
   }),
   showMeters: check(true, { label: 'settings.showMeters', help: 'settings.showMetersHelp' }),
   // ミニマップに再生位置の線を表示する（WeVocalSynth と同じ）
+  // 別の窓（ポップアップ）に出したダイアログを、本体の窓の端に寄せて離したら、その端の欄に置く（ドック）
+  dockWindowSnap: check(true, { label: 'settings.dockWindowSnap', help: 'settings.dockWindowSnapHelp' }),
   minimapPlayhead: check(true, { label: 'menu.minimapPlayhead', help: 'settings.minimapPlayheadHelp' }),
   envelopeRange: choice<VolumeEnvelopeRange>(60, { label: 'settings.envelopeRange', help: 'settings.envelopeRangeHelp', values: [...VOLUME_ENV_RANGES], format: (n) => `−${n} ～ +12 dB` }),
   pitchEnvelopeRange: choice<(typeof PITCH_ENV_RANGES)[number]>(3, { label: 'settings.pitchEnvelopeRange', help: 'settings.pitchEnvelopeRangeHelp', values: [...PITCH_ENV_RANGES], format: (n) => `±${n} st` }),

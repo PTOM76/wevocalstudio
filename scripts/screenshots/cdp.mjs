@@ -30,7 +30,7 @@ let nextPort = 9400
 export async function launch({ width = 1440, height = 860, mobile = false, scale = 1 } = {}) {
   const port = nextPort++
   const profile = mkdtempSync(join(tmpdir(), 'wvs-shot-'))
-  const chrome = spawn(chromePath(), ['--headless=new', `--window-size=${width},${height}`, `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--hide-scrollbars', 'about:blank'])
+  const chrome = spawn(chromePath(), ['--headless=new', `--window-size=${width},${height}`, `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--hide-scrollbars', ...(process.env.CHROME_ARGS?.split(' ').filter(Boolean) ?? []), 'about:blank'])
   let list = null
   for (let i = 0; i < 50 && !list; i++) {
     await sleep(200)
