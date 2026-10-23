@@ -175,6 +175,9 @@ src/storage/
 src/test/
   setup.ts  テストの前に、ブラウザにしかない型の代わりを入れる（wevocal-lib の入口が WAM の SDK を読み込むため。音は鳴らさない）
 
+src/timeline/
+  TrackColumn.tsx  時間軸の左のトラックの欄（マスターと各トラックの音量、パン、ミュート、ソロ、FX など）。欄の並べ替え（ドラッグ）と高さの変更もここで受ける。縦のスクロールは時間軸と同じだけずらす
+
 dsp/src/
   lib.rs  WeVocal Studio の wasm。wevocal-lib のピッチ変更とピッチカーブ（WeVocalSynth と同じ処理方式）とテンポの解析を、Worker から呼べる C ABI で公開するだけ。
 ```

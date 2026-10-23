@@ -1,10 +1,7 @@
 // 時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useDoc } from './DocContext'
-import { Box, IconButton } from '@mui/material'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faAnglesLeft, faAnglesRight } from '@fortawesome/free-solid-svg-icons'
-import { useT } from './i18n'
+import { Box } from '@mui/material'
 import { useEdgeScroll, useTouchGestures } from 'wevocal-lib/react'
 import { SELECTION_DARK, SELECTION_LIGHT, alpha, fracToParam } from 'wevocal-lib'
 import { ScrollBar, useDoubleTap, useBoxSize, useLongPress, useMobileLayout, usePalette, usePanelWidth } from 'pevenmui'
@@ -13,14 +10,14 @@ import { allLanes, hitAutoPoint, laneAt } from './autoLane'
 import { hitMidi, trimLeft, type MidiDragKind } from './midiBlocks'
 import { blockBeats, projectBeatMap } from './beats'
 import { layoutRows } from './overlap'
-import { depthOf, projectEnd, songEnd, masterHeight, trackHeight, TRACK_HEIGHT_DEFAULT, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN, type PitchEnvelopeRange, type VolumeEnvelopeRange, midiBlocks } from './project'
+import { projectEnd, songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, type PitchEnvelopeRange, type VolumeEnvelopeRange, midiBlocks } from './project'
 import { ENVELOPES, envelopeRange, hitEnvLine, hitEnvPoint, type EnvKind } from './envelopes'
 import { snapGrid, snapToStep, type GridDivision, type GridMode } from './grid'
 import { CURSOR, dragPatch, hitBlock, slipPatch, snapDelta, snapTargets, type Drag } from './blockDrag'
 import { RULER, drawCursors, drawTimeline, topOf, totalTrackHeight, trackTop, type LiveBlock, type TimelineView } from './drawTimeline'
 import type { Block, MidiBlock, Project } from './project'
-import TrackHeader, { MasterHeader } from './TrackHeader'
 import type { DropAt } from './useProject'
+import TrackColumn from './timeline/TrackColumn'
 
 /** 左のトラックの欄の幅（解析の欄もそろえる） */
 /** トラックの欄の幅（スマホは時間軸を広く取るため狭くする） */
@@ -71,7 +68,7 @@ function fitCanvas(canvas: HTMLCanvasElement, width: number, height: number) {
   if (canvas.height !== h) canvas.height = h
 }
 
-export default function Timeline(p: {
+export interface TimelineProps {
   project: Project
   /** 編集カーソル */
   cursor: number
@@ -156,10 +153,11 @@ export default function Timeline(p: {
   madeVersion: number
   /** 作り直している波形ブロックに出す文字（「処理中」） */
   pendingLabel: string
-}) {
+}
+
+export default function Timeline(p: TimelineProps) {
   countRender('Timeline')
   const doc = useDoc()
-  const t = useT()
   // theme.palette は常にライトの値なので、今の配色は usePalette で取る（Synth の docs/CODING.md）
   const { dark, pal } = usePalette()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -215,56 +213,10 @@ export default function Timeline(p: {
     return best
   }
 
-  // トラックのドラッグ並び替え
-  const headerContainerRef = useRef<HTMLDivElement | null>(null)
-  const trackDragRef = useRef<{ id: string } | null>(null)
+  // トラックの高さのドラッグ（欄の側が使う。Esc の取り消しはここから merge を読む）
   const trackResizeRef = useRef<{ id: string; y: number; height: number; merge: string } | null>(null)
-  const [draggingTrackId, setDraggingTrackId] = useState<string | null>(null)
-  const [dropSlot, setDropSlot] = useState<number | null>(null)
-  const vsRef = useRef(0)
-  vsRef.current = vs
-  const slotAtRef = useRef(slotAt)
-  slotAtRef.current = slotAt
-
-  // 並び替え中は、どこにいても「つかんでいる手」にする（始める前は普通のカーソルのまま）
-  useEffect(() => {
-    if (!draggingTrackId) return
-    const prev = document.body.style.cursor
-    document.body.style.cursor = 'grabbing'
-    return () => {
-      document.body.style.cursor = prev
-    }
-  }, [draggingTrackId])
-
-  // 並び替えのドラッグ中、欄の上下の端に近づいたら縦にスクロールする（落とす位置の線も追従）
-  const dragYRef = useRef(0)
-  const maxVRef = useRef(0)
   const wheelZoomRef = useRef(p.wheelZoom)
   wheelZoomRef.current = p.wheelZoom
-  useEffect(() => {
-    if (!draggingTrackId) return
-    const EDGE = 40
-    let id = 0
-    const tick = () => {
-      const el = headerContainerRef.current
-      if (el) {
-        const rect = el.getBoundingClientRect()
-        const y = dragYRef.current
-        const speed = y < rect.top + EDGE ? -Math.min(1, (rect.top + EDGE - y) / EDGE) : y > rect.bottom - EDGE ? Math.min(1, (y - (rect.bottom - EDGE)) / EDGE) : 0
-        if (speed) {
-          const next = Math.max(0, Math.min(maxVRef.current, vsRef.current + speed * 14))
-          if (next !== vsRef.current) {
-            vsRef.current = next
-            setVscroll(next)
-            setDropSlot(slotAtRef.current(y - rect.top + next + TOP))
-          }
-        }
-      }
-      id = requestAnimationFrame(tick)
-    }
-    id = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(id)
-  }, [draggingTrackId])
 
   // 幅を App に知らせる
   const { onWidth } = p
@@ -372,7 +324,6 @@ export default function Timeline(p: {
   }, [setView])
   const maxRef = useRef(0)
   maxRef.current = maxV
-  maxVRef.current = maxV
 
   const toTime = (x: number) => view.scroll + x / view.pps
   /** 波形ブロックの画面の上の位置（重なって段に分けたときはその段。エンベロープの線を描く所と同じ） */
@@ -928,109 +879,7 @@ export default function Timeline(p: {
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
-        <Box sx={{ width: header, flexShrink: 0, borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          {p.headerBar}
-          <Box sx={{ height: RULER, borderBottom: 1, borderColor: 'divider', boxSizing: 'border-box', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: p.headerCollapsed ? 'center' : 'flex-end', pr: p.headerCollapsed ? 0 : 0.5 }}>
-            <IconButton size="small" aria-label={t(p.headerCollapsed ? 'track.openHeader' : 'track.closeHeader')} title={t(p.headerCollapsed ? 'track.openHeader' : 'track.closeHeader')} onClick={p.onToggleHeader} sx={{ p: 0.25 }}>
-              <FontAwesomeIcon icon={p.headerCollapsed ? faAnglesRight : faAnglesLeft} size="xs" />
-            </IconButton>
-          </Box>
-          {!p.headerCollapsed && <MasterHeader master={p.project.master} height={masterHeight(p.project.master)} onFx={() => p.onFx('master')} onChange={doc.updateMaster} onEndMerge={doc.endMerge} meter={p.masterMeter} />}
-          {/* トラックの欄は、時間軸と同じだけ縦にずらす（ホイールでもスクロール） */}
-          <Box
-            hidden={p.headerCollapsed}
-            ref={headerContainerRef as React.RefObject<HTMLDivElement>}
-            sx={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
-            onWheel={(e) => setVscroll((v) => Math.max(0, Math.min(maxV, v + e.deltaY)))}
-            onPointerMove={(e) => {
-              const resizing = trackResizeRef.current
-              if (resizing) {
-                doc.changeTrack(resizing.id, { height: Math.max(TRACK_HEIGHT_MIN, Math.min(TRACK_HEIGHT_MAX, resizing.height + e.clientY - resizing.y)) }, resizing.merge)
-                return
-              }
-              if (!trackDragRef.current) return
-              dragYRef.current = e.clientY
-              const rect = e.currentTarget.getBoundingClientRect()
-              // slotAt は時間軸と同じ座標（目盛りとマスターの分 TOP を含む）なので足す
-              const y = e.clientY - rect.top + vsRef.current + TOP
-              setDropSlot(slotAt(y))
-            }}
-            onPointerUp={() => {
-              if (trackDragRef.current && dropSlot !== null) p.onMoveTrack(trackDragRef.current.id, dropSlot)
-              if (trackResizeRef.current) doc.endMerge()
-              trackResizeRef.current = null
-              trackDragRef.current = null
-              setDraggingTrackId(null)
-              setDropSlot(null)
-            }}
-            onPointerCancel={() => { trackResizeRef.current = null; trackDragRef.current = null; setDraggingTrackId(null); setDropSlot(null) }}
-          >
-            <Box sx={{ transform: `translateY(${-vs}px)`, position: 'relative' }}>
-              {/* ドロップ位置の線 */}
-              {dropSlot !== null && (
-                <Box sx={{ position: 'absolute', left: 0, right: 0, top: (dropSlot >= p.project.tracks.length ? totalTrackHeight(p.project) : trackTop(p.project, dropSlot) - TOP) - 1, height: 2, bgcolor: 'primary.main', zIndex: 10, pointerEvents: 'none' }} />
-              )}
-              {p.project.tracks.map((track) => {
-                const i = p.project.tracks.findIndex((t) => t.id === track.id)
-                return (
-                <TrackHeader
-                  key={track.id}
-                  track={track}
-                  height={trackHeight(track)}
-                  selected={doc.selectedTracks.includes(track.id)}
-                  selectMode={p.selectMode}
-                  dragging={draggingTrackId === track.id}
-                  onReorderStart={(e) => {
-                    const el = headerContainerRef.current
-                    if (!el) return
-                    el.setPointerCapture(e.nativeEvent.pointerId)
-                    trackDragRef.current = { id: track.id }
-                    dragYRef.current = e.clientY
-                    setDraggingTrackId(track.id)
-                    setDropSlot(i)
-                  }}
-                  onResizeStart={(e) => {
-                    const el = headerContainerRef.current
-                    if (!el) return
-                    el.setPointerCapture(e.nativeEvent.pointerId)
-                    trackResizeRef.current = { id: track.id, y: e.clientY, height: trackHeight(track), merge: `track:${track.id}:height` }
-                  }}
-                  onSelect={(e) => {
-                    // トラックの欄を押したらトラックだけを選ぶ（Ctrl+C でトラックをコピーできるように）。
-                    // Ctrl で足し引き、Shift で前に選んだトラックからの範囲。選んでいるものを押したら選択はそのまま（まとめて音量を動かせるように）
-                    doc.select([])
-                    const ids = p.project.tracks.map((tr) => tr.id)
-                    const sel = doc.selectedTracks
-                    if (p.selectMode) {
-                      doc.setRange(null)
-                      doc.selectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
-                    } else if (e.ctrlKey || e.metaKey) doc.selectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
-                    else if (e.shiftKey && p.selectedTrack) {
-                      const [i0, i1] = [ids.indexOf(p.selectedTrack), ids.indexOf(track.id)].sort((x, y) => x - y)
-                      doc.selectTracks([...ids.slice(i0, i1 + 1).filter((x) => x !== p.selectedTrack), p.selectedTrack])
-                    } else if (!sel.includes(track.id)) p.onSelectTrack(track.id)
-                  }}
-                  onChange={(patch, merge) => doc.changeTrack(track.id, patch, merge)}
-                  onEndMerge={doc.endMerge}
-                  onFx={() => p.onFx(track.id)}
-                  meter={p.meter && (() => p.meter!(track.id))}
-                  depth={depthOf(p.tree, track)}
-                  hasChildren={p.tree.tracks.some((t) => t.parent === track.id)}
-                  onAddSubtrack={() => p.onTrackOp('addSubtrack', track.id)}
-                  onIndent={() => p.onTrackOp('indent', track.id)}
-                  onOutdent={() => p.onTrackOp('outdent', track.id)}
-                  onMoveUp={() => i > 0 && p.onMoveTrack(track.id, i - 1)}
-                  onMoveDown={() => i < p.project.tracks.length - 1 && p.onMoveTrack(track.id, i + 2)}
-                  onDuplicate={() => doc.duplicateTrack(track.id)}
-                  onFreeze={(withFx) => p.onFreezeTrack(track.id, withFx)}
-                  onSends={() => p.onSends(track.id)}
-                  onProperties={() => p.onTrackProperties(doc.selectedTracks.includes(track.id) ? doc.selectedTracks : [track.id])}
-                  onRemove={() => p.onRemoveTrack(track.id)}
-                />
-              )})}
-            </Box>
-          </Box>
-        </Box>
+        <TrackColumn p={p} vs={vs} maxV={maxV} top={TOP} setVscroll={setVscroll} slotAt={slotAt} resizeRef={trackResizeRef} />
         <Box ref={boxRef} sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
           {box && (
             <Box
