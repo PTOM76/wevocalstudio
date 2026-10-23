@@ -80,6 +80,10 @@ src/
   vibratoEnv.ts  選んだ波形ブロックに、ビブラートをピッチのエンベロープとして足す。範囲があれば、その中だけ（波形ブロックの外は触らない）。画面を知らない
   wvspExport.ts  プロジェクトを WeVocalSynth のプロジェクト（.wvsp）にする。波形ブロックがあるトラックを 1 本ずつ描画して wvsp のトラックにする（memo/wvsp-export.md）
 
+src/document/
+  ProjectDocument.test.ts  ProjectDocument.ts のテスト
+  ProjectDocument.ts  1 つのプロジェクトの文書。プロジェクトと選んだブロックを履歴のストアに持ち、変更を通す（React を使わない。画面は useHistory で読む）
+
 src/document/edits/
   blocks.test.ts  edits/blocks.ts のテスト
   blocks.ts  波形ブロックと MIDI ブロックを変える処理。プロジェクトを受け取って、新しいプロジェクトを返す純粋な関数（React を使わないので、そのまま試せる）
