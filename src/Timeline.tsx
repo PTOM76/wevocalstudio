@@ -840,7 +840,7 @@ export default function Timeline(p: {
     const d = drag.current
     if (!d) {
       // つまめる所でカーソルの形を変える
-      const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
+      const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) ?? hitMidi(p.project, x, y, toTime, view.pps) : null
       setCursor(hit ? CURSOR[hit.kind] : 'default')
       return
     }

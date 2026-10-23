@@ -58,6 +58,9 @@ export interface PianoRollProps {
   onTogglePlay: () => void
   /** 再生する（メインの再生と同じ。編集位置か範囲がブロックの中にあればそこから、なければブロックを。loop なら繰り返す） */
   onPlayBlock: (loop: boolean) => void
+  /** 繰り返しの切り替え（メインの繰り返しと同じもの。再生中に押しても反映される） */
+  loop: boolean
+  onLoop: (loop: boolean) => void
   /** 編集位置（秒。メインの時間軸と同じもの）と、範囲選択（秒）。ここで変えると、メインにも反映される */
   cursor: number
   onCursor: (sec: number) => void
@@ -115,7 +118,6 @@ export default function PianoRoll(p: PianoRollProps) {
   const [kb, setKb] = useState(() => !!window.matchMedia?.('(pointer: coarse)').matches)
   const [kbBase, setKbBase] = useState(48)
   const [fold, setFold] = useState(false)
-  const [loopPlay, setLoopPlay] = useState(false)
   const foldRef = useRef<number[]>([])
   const [scale, setScale] = useState<{ root: number; kind: ScaleKind }>({ root: 0, kind: 'none' })
   const [frame, setFrame] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
@@ -496,9 +498,9 @@ export default function PianoRoll(p: PianoRollProps) {
           edit={edit}
           canPaste={hasClipboard()}
           playing={p.playing}
-          onTogglePlay={() => (p.playing ? p.onTogglePlay() : p.onPlayBlock(loopPlay))}
-          loopPlay={loopPlay}
-          onLoopPlay={() => setLoopPlay((v) => !v)}
+          onTogglePlay={() => (p.playing ? p.onTogglePlay() : p.onPlayBlock(p.loop))}
+          loopPlay={p.loop}
+          onLoopPlay={() => p.onLoop(!p.loop)}
           onSelectAll={() => setSel(block.notes.map((n) => n.id))}
           onZoom={zoomBy}
           onFit={() => (setZoom(null), setLeft(0))}

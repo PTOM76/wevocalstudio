@@ -59,6 +59,9 @@ export default function AppDialogs(p: {
   onTogglePlay: () => void
   /** start〜end 秒だけを再生する（loop なら繰り返す） */
   onPlayRange: (start: number, end: number, loop: boolean) => void
+  /** 繰り返し（メインの時間軸と同じもの） */
+  repeat: boolean
+  onRepeat: (repeat: boolean) => void
   /** 編集位置と範囲選択を変える（メインの時間軸と同じもの） */
   onSeek: (time: number) => void
   onRange: (r: Range | null) => void
@@ -189,6 +192,8 @@ export default function AppDialogs(p: {
               playing={p.playing}
               position={p.position}
               onTogglePlay={p.onTogglePlay}
+              loop={p.repeat}
+              onLoop={p.onRepeat}
               onPlayBlock={(loop) => p.onPlayRange(block.start, block.start + block.length, loop)}
               cursor={p.cursor}
               onCursor={p.onSeek}
