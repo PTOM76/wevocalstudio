@@ -17,6 +17,7 @@ import { useDialogs } from './useDialogs'
 import type { TimelineView } from './drawTimeline'
 import { useTransport } from './useTransport'
 import { useTouchHint } from './useTouchHint'
+import AnalysisDock from './AnalysisDock'
 import { useMidiFiles } from './useMidiFiles'
 import OverviewMinimap from './OverviewMinimap'
 import EmptyProject from './EmptyProject'
@@ -27,7 +28,6 @@ import { buildOverview } from './overview'
 import { useT } from './i18n'
 import { setKeyOverrides } from './keymap'
 import type { Settings } from './settings/settings'
-import AnalysisPanel from './AnalysisPanel'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
 import { emitNote } from './pianoRoll/noteBus'
@@ -433,7 +433,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       </Box>
       {!mobile && <DockArea edge="bottom" />}
       {p.settings.showAnalysis && (
-        <AnalysisPanel
+        <AnalysisDock
+          onClose={() => p.onSettingsChange({ showAnalysis: false })}
           f0MinHz={p.settings.f0MinHz}
           f0MaxHz={p.settings.f0MaxHz}
           flattenStrength={p.settings.flattenStrength}

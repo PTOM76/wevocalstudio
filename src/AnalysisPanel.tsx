@@ -14,7 +14,9 @@ import type { TimelineView } from './drawTimeline'
 import { useT } from './i18n'
 import { CURVE_HOP, type Block, type PitchCurve, type Source } from './project'
 
-const HEIGHT = 160
+/** スペクトログラムを描く高さ（px） */
+export const ANALYSIS_HEIGHT = 160
+const HEIGHT = ANALYSIS_HEIGHT
 /** スペクトログラムの下の端の周波数（Analyzer の SPEC_MIN_HZ と同じ） */
 const MIN_HZ = 50
 
