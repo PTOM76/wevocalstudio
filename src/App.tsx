@@ -594,6 +594,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           )
         }}
         onEndMerge={doc.endMerge}
+        onCancelMerge={doc.cancelMerge}
         onDropFiles={(list, at) => (list.some(isProjectLike) ? files.openFiles(list) : void load(list, at))}
         onBlockChange={doc.updateBlock}
         onBlocksChange={doc.updateBlocks}

@@ -34,7 +34,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   // 読み込みの途中で設定が変わっても、最新の既定値を使う
   const defaultsRef = useRef(defaults)
   defaultsRef.current = defaults
-  const { change, select, selectTracks, selectRange, endMerge, undo, redo, goto, replace, setFxState } = doc
+  const { change, select, selectTracks, selectRange, endMerge, cancelMerge, undo, redo, goto, replace, setFxState } = doc
 
   /** 録った音を、指定したトラックの start 秒に波形ブロックとして置く */
   const addClip = useCallback(
@@ -271,6 +271,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     apply: change,
     redo,
     endMerge,
+    cancelMerge,
     replace,
     addFiles,
     addClip,

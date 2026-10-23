@@ -105,6 +105,8 @@ export default function Timeline(p: {
   onTrackChange: (id: string, patch: Partial<Track>, merge?: string) => void
   /** 続けての変更（ドラッグ、スライダー）の履歴のまとまりを切る */
   onEndMerge: () => void
+  /** ドラッグ中の Esc: その merge の続けての変更を取り消す */
+  onCancelMerge: (merge: string) => void
   onDropFiles: (files: File[], at?: DropAt) => void
   onBlockChange: (id: string, patch: Partial<Block>, merge?: string) => void
   onBlocksChange: (patches: Record<string, Partial<Block>>, merge?: string) => void
@@ -420,6 +422,43 @@ export default function Timeline(p: {
   // ドラッグを始めたときの左端の時刻と、最後に動かした位置（流れている間は指が止まっていても、ブロックが付いてくるように使う）
   const dragScroll0 = useRef(0)
   const lastMove = useRef<{ x: number; y: number; altKey: boolean; shiftKey: boolean } | null>(null)
+
+  // ドラッグ中に Esc を押したら、そのドラッグでの変更をまとめて取り消す（始める前に戻る）。毎回の描画で最新の関数に差し替える
+  const cancelDrag = () => {
+    const merges = [drag.current?.merge, midiDrag.current?.merge, envDrag.current?.merge, autoDrag.current?.merge, trackResizeRef.current?.merge].filter((m): m is string => !!m)
+    // 範囲のドラッグ（App の setRange の merge）と、右ドラッグの枠
+    if (rangeDrag.current) merges.push('range')
+    const mq = marquee.current
+    if (mq) merges.push(`marquee${mq.x},${mq.y}`)
+    if (!merges.length) return false
+    for (const m of merges) p.onCancelMerge(m)
+    rangeDrag.current = null
+    touchRange.current = null
+    marquee.current = null
+    setBox(null)
+    drag.current = null
+    midiDrag.current = null
+    envDrag.current = null
+    autoDrag.current = null
+    trackResizeRef.current = null
+    lastMove.current = null
+    edge.stop()
+    blockEdge.stop()
+    return true
+  }
+  const cancelDragRef = useRef(cancelDrag)
+  cancelDragRef.current = cancelDrag
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // キーの割り当て（選択の解除など）より先に受け取り、取り消したときはそちらを動かさない
+      if (e.key === 'Escape' && cancelDragRef.current()) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
 
   const snapping = { mode: p.grid, division: p.division, tempo: p.project.tempo, markers: p.project.markers, pps: view.pps }
   /** 編集カーソルと範囲選択の端は、スナップが入っていればいちばん近いグリッドの線に合わせる（Shift で外す） */

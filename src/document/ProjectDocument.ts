@@ -104,6 +104,9 @@ export class ProjectDocument {
   /** 続けての変更のまとまりを切る（ドラッグを離したとき） */
   endMerge = () => this.store.endMerge()
 
+  /** merge の続けての変更を取り消す（ドラッグ中の Esc。選択も始める前に戻る） */
+  cancelMerge = (merge: string) => this.store.cancelMerge(merge)
+
   /** ドラッグやスライダーの途中の変更を 1 つの操作にまとめる。cancel で始める前（選択も）に戻る */
   begin(): ProjectTransaction {
     const tx = this.store.begin()
