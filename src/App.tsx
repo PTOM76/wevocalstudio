@@ -1,5 +1,5 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Box } from '@mui/material'
 import { DockArea, EmptyState, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, usePalette, startJob } from 'pevenmui'
 import StatusBar from './StatusBar'
@@ -17,7 +17,7 @@ import AppDialogs from './AppDialogs'
 import { DocContext } from './DocContext'
 import { useDialogs } from './useDialogs'
 import type { TimelineView } from './drawTimeline'
-import { Player } from './engine'
+import { useTransport } from './useTransport'
 import { buildOverview } from './overview'
 import { useT } from './i18n'
 import { setKeyOverrides } from './keymap'
@@ -88,38 +88,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit, defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0, defaultBpm: p.settings.defaultBpm })
   const { project, selected } = doc
   const setSelected = doc.select
-  const player = useRef(new Player())
-  // 音を作る処理の負荷（FX のダイアログに出す）
-  const [renderLoad, setRenderLoad] = useState<number | null>(null)
-  useEffect(() => {
-    player.current.onLoad = setRenderLoad
-    // プラグインが保存したい状態を、FX の項目に入れる（操作ではないので履歴には積まない）
-    player.current.onFxState = doc.setFxState
-  }, [doc.setFxState])
-  // 重いプラグインを先に計算して鳴らすか（設定）
-  player.current.anticipative = p.settings.anticipativeFx
-  player.current.chunkCacheMb = p.settings.anticipativeCacheMb
-  player.current.offsetMs = p.settings.playbackOffsetMs
-  const [playing, setPlaying] = useState(false)
-  // 編集カーソル（押した所、貼り付ける所。再生では動かない）と、再生カーソル（再生中と一時停止中だけ。 2 本）
-  const [cursor, setCursor] = useState(0)
-  const [playPos, setPlayPos] = useState<number | null>(null)
-  // 一時停止した位置（編集カーソルを動かしたら消す）
-  const [paused, setPaused] = useState<number | null>(null)
-  // 止めている間に、鳴らし始める位置から先の FX の音を先に作っておく（最後の操作から少し待つ。memo/fx-cache.md）
-  useEffect(() => {
-    if (playing) return
-    const h = setTimeout(() => void player.current.warm(project, paused ?? cursor), 1500)
-    return () => clearTimeout(h)
-  }, [project, cursor, paused, playing, p.settings.anticipativeFx])
-  // 再生中の位置は状態に入れず、描く所が毎フレーム読む（画面全体を毎フレーム描き直さないように。WeVocalSynth と同じ）
-  const livePos = useCallback(() => (player.current.playing ? player.current.position() : playPos), [playPos])
   // 選んでいるトラック（複数。最後に選んだものが「選んでいるトラック」で、貼り付けや録音の先）
   const { selectedTracks, selectTracks: setSelectedTracks, range, setRange } = doc
   const [selectMode, setSelectMode] = useState(false)
   const selectedTrack = selectedTracks[selectedTracks.length - 1] ?? null
   const setSelectedTrack = (id: string | null) => setSelectedTracks(id ? [id] : [])
-  const [repeat, setRepeat] = useState(false)
   const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
   const [timelineWidth, setTimelineWidth] = useState(0)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
@@ -161,35 +134,21 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
 
   const fail = (e: unknown) => setError(String(e))
 
-  const play = () => {
-    // 範囲選択があれば、その中だけを鳴らす（外にいたら範囲の頭から）
-    // 一時停止していたらそこから。範囲選択があれば、その中だけを鳴らす（外にいたら範囲の頭から）
-    const at = paused ?? cursor
-    const from = range && (at < range.start || at >= range.end) ? range.start : at
-    setPaused(null)
-    setPlayPos(from)
-    void player.current.play(project, from).then(() => player.current.playing && setPlaying(true)).catch(fail)
-  }
-  /** start〜end 秒だけを再生する（ピアノロールの再生）。範囲として選び、loop なら繰り返す */
-  const playRange = (start: number, end: number, loop: boolean, from = start) => {
-    setRange({ start, end })
-    setRepeat(loop)
-    setPaused(null)
-    setPlayPos(from)
-    void player.current.play(project, from).then(() => player.current.playing && setPlaying(true)).catch(fail)
-  }
-  /**
-   * ピアノロールの再生。メインの再生と同じく、範囲選択か編集位置がそのブロックの中にあれば、そこから鳴らす（範囲があれば範囲の中だけ）。
-   * なければ、ブロックの範囲を鳴らす。loop なら繰り返す
-   */
-  const playRoll = (start: number, end: number, loop: boolean) => {
-    const inRange = !!range && range.end > start && range.start < end
-    if (!inRange && !(cursor >= start && cursor < end)) return playRange(start, end, loop)
-    // 編集位置から繰り返すときは、ブロックの範囲を選んで（終わりで折り返すため）編集位置から鳴らす
-    if (loop && !inRange) return playRange(start, end, true, cursor)
-    setRepeat(loop)
-    play()
-  }
+  // 再生と編集カーソル（src/useTransport.ts）。録音の側が play を使うので、録音を止める手段はあとから入れる
+  const recorderRef = useRef<{ recording: boolean; stop: () => void } | null>(null)
+  const { player, playing, setPlaying, cursor, setCursor, playPos, setPlayPos, repeat, setRepeat, livePos, startAt, play, playRoll, pause, stop, moveCursor, seek } = useTransport({ project, range, setRange, fail, anticipativeFx: p.settings.anticipativeFx, recorder: recorderRef })
+  // 音を作る処理の負荷（FX のダイアログに出す）
+  const [renderLoad, setRenderLoad] = useState<number | null>(null)
+  useEffect(() => {
+    player.current.onLoad = setRenderLoad
+    // プラグインが保存したい状態を、FX の項目に入れる（操作ではないので履歴には積まない）
+    player.current.onFxState = doc.setFxState
+  }, [doc.setFxState])
+  // 重いプラグインを先に計算して鳴らすか（設定）
+  player.current.anticipative = p.settings.anticipativeFx
+  player.current.chunkCacheMb = p.settings.anticipativeCacheMb
+  player.current.offsetMs = p.settings.playbackOffsetMs
+
   // 追加機能の導入の確かめ（動画の書き出し。PevenMUI）
   const addonInstall = useAddonInstall()
   // ボーカル抽出と楽器ごとの分離（extractor の host.ts。WeVocalSynth と共通）
@@ -232,6 +191,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const { recording: audioRecording, midiRec, onMidiNote, live, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), position: () => player.current.position(), fail })
   // 音を録っているか、弾いた音符（MIDI）を録っているか
   const recording = audioRecording ?? (midiRec ? true : null)
+  recorderRef.current = { recording: !!recording, stop: () => void stopRecord() }
 
   // MIDI キーボード: 弾いた音を、録音待機（なければ選んでいる、音源のある最初の）トラックの音源で鳴らす。録音中は MIDI ブロックに録る
   useMidiInput({
@@ -253,36 +213,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     },
     fail,
   })
-
-  /** 一時停止。再生カーソルはその場に残す */
-  const pause = () => {
-    const pos = player.current.position()
-    player.current.stop()
-    setPaused(pos)
-    setPlayPos(pos)
-    setPlaying(false)
-  }
-  /** 停止。再生カーソルを消す（編集カーソルはそのまま。次の再生はそこから） */
-  const stop = () => {
-    if (recording) return void stopRecord()
-    player.current.stop()
-    setPlaying(false)
-    setPaused(null)
-    setPlayPos(null)
-  }
-  /** 編集カーソルだけを動かす（波形ブロックを押したとき、コピー、貼り付け） */
-  const moveCursor = (time: number) => {
-    setCursor(time)
-    setPaused(null)
-  }
-  /** 編集カーソルを動かし、再生中なら再生もそこへ（目盛りと空いている所） */
-  const seek = (time: number) => {
-    moveCursor(time)
-    if (playing) {
-      void player.current.play(project, time).catch(fail)
-      setPlayPos(time)
-    } else setPlayPos(null)
-  }
 
   // 何もない状態で最初に読み込んだ音からは、テンポを自動で解析する（設定）
   const load = (files: File[], at?: DropAt) => {
@@ -361,9 +291,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     },
     playAt: (at) => {
       setCursor(at)
-      setPaused(null)
-      setPlayPos(at)
-      void player.current.play(project, at).then(() => player.current.playing && setPlaying(true)).catch(fail)
+      startAt(at)
     },
     end,
     openDialog: (id, arg) => dialogs.open(id, arg),
