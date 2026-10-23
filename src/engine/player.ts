@@ -1,6 +1,7 @@
 // 再生。位置は AudioContext の時計から求め、グラフを組んで鳴らす（先に作った音、鍵盤の音の試聴を含む）
+import { FADE, IOS, MIN_REBUILD, MIN_SEEK, MONITOR_MIN, fxLists, instrumentIds, maxTrackLatency } from './params'
 import { renderTrackChunk } from './render'
-import { FADE, Graph, IOS, MIN_REBUILD, MIN_SEEK, MONITOR_MIN, fxLists, instrumentIds, maxTrackLatency } from './graph'
+import { Graph } from './graph'
 import { AHEAD, anticipated, CHUNK, signature } from '../anticipate'
 import { ChunkCache, chunkKey } from '../fxCache'
 import { preloadInstruments } from 'wevocal-lib'

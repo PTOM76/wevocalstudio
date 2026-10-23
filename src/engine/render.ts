@@ -1,5 +1,6 @@
 // 書き出し用の描画（全体、1 本のトラック、先に作って鳴らすためのかたまり）。再生と同じミキサーとグラフで作る
-import { Graph, fxLists, instrumentIds } from './graph'
+import { fxLists, instrumentIds } from './params'
+import { Graph } from './graph'
 import { PREROLL } from '../anticipate'
 import { preloadInstruments } from 'wevocal-lib'
 import { preloadFx, renderWithProgress, type Clip } from 'wevocal-lib'

@@ -99,7 +99,10 @@ src/dsp/
   worker.ts  wasm の処理（ピッチと速度の変更、テンポの解析、和音の分離）を画面のスレッドの外で行う Worker
 
 src/engine/
+  engine.test.ts  engine/midiEvents.ts と params.ts の純粋な関数のテスト
   graph.ts  再生と書き出しの音のグラフ。トラックごとのミキサー、FX の列、パン、メーター、マスターをつなぎ、プロジェクトの変更に合わせて組み替える
+  midiEvents.ts  MIDI ブロックの音符とコントロールを、音源へ渡す形（AudioContext の時刻）に並べる純粋な関数。zero は曲の 0 秒が AudioContext の何秒か
+  params.ts  音のグラフと再生で共通に使う定数と補助の関数（つなぎの時間、遅れ、つまみへの書き込み、音量エンベロープの展開）
   player.ts  再生。位置は AudioContext の時計から求め、グラフを組んで鳴らす（先に作った音、鍵盤の音の試聴を含む）
   render.ts  書き出し用の描画（全体、1 本のトラック、先に作って鳴らすためのかたまり）。再生と同じミキサーとグラフで作る
 
