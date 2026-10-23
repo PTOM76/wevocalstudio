@@ -171,12 +171,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     void player.current.play(project, from).then(() => player.current.playing && setPlaying(true)).catch(fail)
   }
   /** start〜end 秒だけを再生する（ピアノロールの再生）。範囲として選び、loop なら繰り返す */
-  const playRange = (start: number, end: number, loop: boolean) => {
+  const playRange = (start: number, end: number, loop: boolean, from = start) => {
     setRange({ start, end })
     setRepeat(loop)
     setPaused(null)
-    setPlayPos(start)
-    void player.current.play(project, start).then(() => player.current.playing && setPlaying(true)).catch(fail)
+    setPlayPos(from)
+    void player.current.play(project, from).then(() => player.current.playing && setPlaying(true)).catch(fail)
   }
   /**
    * ピアノロールの再生。メインの再生と同じく、範囲選択か編集位置がそのブロックの中にあれば、そこから鳴らす（範囲があれば範囲の中だけ）。
@@ -185,6 +185,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const playRoll = (start: number, end: number, loop: boolean) => {
     const inRange = !!range && range.end > start && range.start < end
     if (!inRange && !(cursor >= start && cursor < end)) return playRange(start, end, loop)
+    // 編集位置から繰り返すときは、ブロックの範囲を選んで（終わりで折り返すため）編集位置から鳴らす
+    if (loop && !inRange) return playRange(start, end, true, cursor)
     setRepeat(loop)
     play()
   }
