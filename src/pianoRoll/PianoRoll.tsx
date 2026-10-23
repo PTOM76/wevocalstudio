@@ -23,7 +23,7 @@ import { useRollWheel } from './useRollWheel'
 import { hitNote, hitVel } from './hit'
 import { curveOf, hitPoint, lanePoints, valueAt, withPoints, type Lane } from './laneEdit'
 import { curveRange } from '../midiCurves'
-import { EDGE, GAP, KEYS, ROW_MIN, SCALES, type ScaleKind, VEL, clampView, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
+import { EDGE, KEYS, ROW_MIN, SCALES, type ScaleKind, VEL, VEL_MAX, VEL_MIN, clampView, laneSpace, laneTop, rollHeight, rowPitch, rowsOf, pitchY, stepOf, visibleBeats, xBeat } from './view'
 
 type Drag =
   | { kind: 'move'; start: Note[]; beat0: number; pitch0: number; merge: string }
@@ -32,6 +32,7 @@ type Drag =
   | { kind: 'point'; index: number; merge: string }
   | { kind: 'box'; x0: number; y0: number }
   | { kind: 'key' }
+  | { kind: 'laneSize'; y0: number; h0: number }
   /** 指 1 本で空いている所をなぞる: スクロール（動かさずに離すと音符を足し、長押しすると枠で選ぶ） */
   | { kind: 'pan'; x: number; y: number; cx: number; cy: number; left0: number; low0: number; t0: number; moved: boolean; timer: number }
   | { kind: 'erase'; merge: string }
@@ -90,6 +91,22 @@ export default function PianoRoll(p: PianoRollProps) {
   const [tool, setTool] = useState<Tool>('select')
   // 下のレーン（強さ、ピッチベンド、CC）
   const [lane, setLane] = useState<Lane>('vel')
+  // 帯の高さ（0 なら隠す）。覚えておく
+  const [velH, setVelH] = useState(() => {
+    try {
+      return Math.max(0, Math.min(VEL_MAX, Number(localStorage.getItem('studio.rollLane') ?? VEL)))
+    } catch {
+      return VEL
+    }
+  })
+  const setLaneHeight = (h: number) => {
+    setVelH(h)
+    try {
+      localStorage.setItem('studio.rollLane', String(h))
+    } catch {
+      // 保存できなくても使う
+    }
+  }
   const points = lanePoints(block.curves, lane)
   const laneInfo = curveOf(lane)
   // 音の確認（鳴らすか）と、スケールの強調
@@ -123,8 +140,8 @@ export default function PianoRoll(p: PianoRollProps) {
   if (!drag.current || !foldRef.current.length) foldRef.current = [...new Set(block.notes.map((n) => n.pitch))].sort((a, b) => b - a)
   const folded = fold && foldRef.current.length ? foldRef.current : null
   // 行を高くして、画面を使う（高くしすぎない）
-  const rowPx = folded ? Math.max(ROW_MIN, Math.min(Math.max(row, 36), Math.floor((height - GAP - VEL) / folded.length))) : row
-  const view = clampView({ left, ppb: zoom ?? fit, low, row: rowPx, fold: folded, w: width, h: height }, len)
+  const rowPx = folded ? Math.max(ROW_MIN, Math.min(Math.max(row, 36), Math.floor((height - laneSpace({ vel: velH })) / folded.length))) : row
+  const view = clampView({ left, ppb: zoom ?? fit, low, row: rowPx, fold: folded, vel: velH, w: width, h: height }, len)
   const viewRef = useRef(view)
   viewRef.current = view
   // 編集位置と範囲選択は、メインの時間軸と同じもの（秒）を、このブロックの頭からの拍にして使う
@@ -200,7 +217,10 @@ export default function PianoRoll(p: PianoRollProps) {
   const edit = useRollEdit({ notes: block.notes, selected: sel, setSelected: setSel, len, step, left: view.left, onChange: p.onChange, setTool })
   const { remove, onKey } = edit
   const pos = (e: { clientX: number; clientY: number }) => localPoint(canvas.current!, e.clientX, e.clientY)
-  const velAt = (y: number) => Math.max(0.02, Math.min(1, 1 - (y - rollHeight(view) - GAP) / VEL))
+  const inLane = (y: number) => view.vel > 0 && y >= laneTop(view)
+  // 音符の部分と帯の境目（帯の上の端）。ここをドラッグして帯の高さを変える
+  const onLaneEdge = (y: number) => view.vel > 0 && y >= rollHeight(view) && y < laneTop(view) + 3
+  const velAt = (y: number) => Math.max(0.02, Math.min(1, 1 - (y - laneTop(view)) / view.vel))
   const setVelocity = (ids: string[], v: number, merge: string) => p.onChange(block.notes.map((n) => (ids.includes(n.id) ? { ...n, vel: v } : n)), merge)
 
   const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -216,6 +236,10 @@ export default function PianoRoll(p: PianoRollProps) {
       sound(null)
       return
     }
+    if (onLaneEdge(y)) {
+      drag.current = { kind: 'laneSize', y0: y, h0: velH }
+      return
+    }
     // 鍵盤: 押している間鳴らし、なぞると続けて鳴らす
     if (x < KEYS) {
       if (y < rollHeight(view)) {
@@ -226,7 +250,7 @@ export default function PianoRoll(p: PianoRollProps) {
     }
     const merge = `roll${count.current++}`
     // 曲線のレーン: 点を押してドラッグ、空いている所を押して点を足す（右クリックで消す）
-    if (y >= rollHeight(view) + GAP && laneInfo) {
+    if (inLane(y) && laneInfo) {
       let pts = points
       let index = hitPoint(pts, view, lane, x, y)
       if (index < 0) {
@@ -239,7 +263,7 @@ export default function PianoRoll(p: PianoRollProps) {
       return
     }
     // 強さの帯
-    if (y >= rollHeight(view) + GAP) {
+    if (inLane(y)) {
       const i = hitVel(block.notes, view, x)
       if (i < 0) return
       const id = block.notes[i].id
@@ -310,8 +334,15 @@ export default function PianoRoll(p: PianoRollProps) {
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (pinch.move(e, view)) return
     const d = drag.current
-    if (!d) return
+    if (!d) {
+      if (e.pointerType === 'mouse') e.currentTarget.style.cursor = onLaneEdge(pos(e).y) ? 'row-resize' : ''
+      return
+    }
     const { x, y } = pos(e)
+    if (d.kind === 'laneSize') {
+      setLaneHeight(Math.max(VEL_MIN, Math.min(VEL_MAX, Math.round(d.h0 - (y - d.y0)))))
+      return
+    }
     if (d.kind === 'pan') {
       const dx = e.clientX - d.cx
       const dy = e.clientY - d.cy
@@ -433,7 +464,7 @@ export default function PianoRoll(p: PianoRollProps) {
       sound(null)
       return setNoteMenu({ x: e.clientX, y: e.clientY })
     }
-    if (laneInfo && y >= rollHeight(view) + GAP) {
+    if (laneInfo && inLane(y)) {
       const i = hitPoint(points, view, lane, x, y)
       if (i >= 0) p.onCurves(withPoints(block.curves, lane, points.filter((_, k) => k !== i)))
       return
@@ -484,7 +515,10 @@ export default function PianoRoll(p: PianoRollProps) {
         />
       )}
       <NoteMenu position={noteMenu} onClose={() => setNoteMenu(null)} edit={edit} selected={sel} />
-      <InfoLine notes={block.notes} selected={sel} len={len} step={step} onChange={p.onChange} lane={lane} laneLabel={laneLabel} onLane={setLane} />
+      <InfoLine hidden={velH === 0} onToggleLane={() => setLaneHeight(velH === 0 ? VEL : 0)} notes={block.notes} selected={sel} len={len} step={step} onChange={p.onChange} lane={lane} laneLabel={laneLabel} onLane={(l) => {
+          setLane(l)
+          if (velH === 0) setLaneHeight(VEL)
+        }} />
       <Box sx={{ mx: 1.5 }}>
         <RollRuler
           view={view}

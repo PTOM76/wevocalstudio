@@ -1024,6 +1024,7 @@
   "roll.selectAll": "Select all",
   "roll.lane": "Lane: {name}",
   "roll.laneBend": "Pitch bend",
+  "roll.laneHide": "Hide",
   "roll.cc1": "Modulation (CC1)",
   "roll.cc7": "Volume (CC7)",
   "roll.cc10": "Pan (CC10)",

@@ -1,7 +1,7 @@
 // ピアノロールの下のレーン（強さ、ピッチベンド、CC）の曲線の編集。点の判定と、曲線の入れ替え。画面を知らない
 import { curveRange, sameCurve, sortPoints } from '../midiCurves'
 import type { MidiCurve } from '../project'
-import { GAP, VEL, beatX, rollHeight, type View } from './view'
+import { beatX, laneTop, type View } from './view'
 
 /** レーン: 強さ、ピッチベンド、CC（番号付き） */
 export type Lane = 'vel' | 'bend' | `cc${number}`
@@ -39,8 +39,8 @@ const range = (lane: Lane) => curveRange({ kind: lane === 'bend' ? 'bend' : 'cc'
 /** 帯の上（y）の位置から値。ピッチベンドの真ん中の近くは 0 に吸い付く */
 export function valueAt(v: View, lane: Lane, y: number): number {
   const [lo, hi] = range(lane)
-  const top = rollHeight(v) + GAP
-  const val = lo + (1 - (y - top) / VEL) * (hi - lo)
+  const top = laneTop(v)
+  const val = lo + (1 - (y - top) / v.vel) * (hi - lo)
   const clamped = Math.max(lo, Math.min(hi, val))
   return lane === 'bend' && Math.abs(clamped) < 0.04 ? 0 : clamped
 }
@@ -48,7 +48,7 @@ export function valueAt(v: View, lane: Lane, y: number): number {
 /** 値から、帯の上（y）の位置 */
 export function valueY(v: View, lane: Lane, value: number): number {
   const [lo, hi] = range(lane)
-  return rollHeight(v) + GAP + VEL * (1 - (value - lo) / (hi - lo))
+  return laneTop(v) + v.vel * (1 - (value - lo) / (hi - lo))
 }
 
 /** 押した所の点の番号（なければ -1） */

@@ -2,8 +2,10 @@
 
 /** 鍵盤の列の幅（px） */
 export const KEYS = 64
-/** 下の強さの帯の高さと、上との間（px） */
+/** 下の強さの帯の高さ（既定、最小、最大）と、上との間（px） */
 export const VEL = 64
+export const VEL_MIN = 32
+export const VEL_MAX = 240
 export const GAP = 6
 /** 音符の右端をつかめる幅（px） */
 export const EDGE = 6
@@ -23,15 +25,21 @@ export interface View {
   row: number
   /** 折りたたみ: 見せる音の高さ（上から下へ）。なければ、low から続けて見せる */
   fold?: number[] | null
+  /** 下の帯の高さ（px）。0 なら帯を出さない */
+  vel: number
   /** 全体の大きさ（px） */
   w: number
   h: number
 }
 
+/** 下の帯が取る高さ（上との間を含む）。帯がなければ 0 */
+export const laneSpace = (v: { vel: number }) => (v.vel > 0 ? GAP + v.vel : 0)
 /** 音の高さを書く行の数 */
-export const rowsOf = (v: View) => (v.fold?.length ? v.fold.length : Math.max(1, Math.floor((v.h - GAP - VEL) / v.row)))
+export const rowsOf = (v: View) => (v.fold?.length ? v.fold.length : Math.max(1, Math.floor((v.h - laneSpace(v)) / v.row)))
 /** 音符を置く部分の高さ（px） */
 export const rollHeight = (v: View) => rowsOf(v) * v.row
+/** 下の帯の上端（px） */
+export const laneTop = (v: View) => rollHeight(v) + (v.vel > 0 ? GAP : 0)
 export const beatX = (v: View, beat: number) => KEYS + (beat - v.left) * v.ppb
 export const xBeat = (v: View, x: number) => (x - KEYS) / v.ppb + v.left
 /** 上から r 番めの行の音の高さ（折りたたみで行がなければ -1） */

@@ -1024,6 +1024,7 @@
   "roll.selectAll": "すべて選択",
   "roll.lane": "レーン: {name}",
   "roll.laneBend": "ピッチベンド",
+  "roll.laneHide": "非表示",
   "roll.cc1": "モジュレーション（CC1）",
   "roll.cc7": "音量（CC7）",
   "roll.cc10": "パン（CC10）",

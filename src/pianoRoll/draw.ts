@@ -1,6 +1,6 @@
 // ピアノロールを描く（鍵盤、グリッド、音符、再生位置、強さの帯）。画面の部品は持たない
 import type { Note } from '../project'
-import { BLACK, GAP, KEYS, NAMES, VEL, beatX, pitchOfRow, pitchY, rollHeight, rowsOf, type View } from './view'
+import { BLACK, KEYS, NAMES, beatX, laneTop, pitchOfRow, pitchY, rollHeight, rowsOf, type View } from './view'
 
 /** 描くときの色（MUI のパレットから） */
 export interface RollColors {
@@ -142,41 +142,43 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
     g.globalAlpha = 1
   }
   g.restore()
-  // 強さの帯
-  const top = roll + GAP
-  g.fillStyle = c.hover
-  g.fillRect(KEYS, top, v.w - KEYS, VEL)
-  g.fillStyle = c.textSecondary
-  g.fillText(o.curve?.label ?? o.velLabel, 4, top + 10)
-  if (o.curve) {
-    const { points, lo, hi } = o.curve
-    const yOf = (val: number) => top + VEL * (1 - (val - lo) / (hi - lo))
-    // ピッチベンドは、真ん中（0）に線を引く
-    if (lo < 0) {
-      g.fillStyle = c.divider
-      g.fillRect(KEYS, yOf(0), v.w - KEYS, 1)
-    }
-    g.save()
-    g.beginPath()
-    g.rect(KEYS, top, v.w - KEYS, VEL)
-    g.clip()
-    g.strokeStyle = c.note
-    g.lineWidth = 1.5
-    g.beginPath()
-    points.forEach((pt, i) => (i ? g.lineTo(beatX(v, pt.t), yOf(pt.v)) : g.moveTo(beatX(v, pt.t), yOf(pt.v))))
-    // 最後の点から先は、同じ値で続く
-    if (points.length) g.lineTo(beatX(v, o.len), yOf(points[points.length - 1].v))
-    g.stroke()
-    g.fillStyle = c.noteSelected
-    for (const pt of points) g.fillRect(beatX(v, pt.t) - 3, yOf(pt.v) - 3, 6, 6)
-    g.restore()
-  } else
-    for (const n of o.notes) {
-      const x = beatX(v, n.t)
-      if (x < KEYS || x > v.w) continue
-      g.fillStyle = o.selected.includes(n.id) ? c.noteSelected : c.note
-      g.fillRect(x, top + VEL * (1 - n.vel), 3, VEL * n.vel)
-    }
+  // 強さの帯（高さ 0 なら出さない）
+  if (v.vel > 0) {
+    const top = laneTop(v)
+    g.fillStyle = c.hover
+    g.fillRect(KEYS, top, v.w - KEYS, v.vel)
+    g.fillStyle = c.textSecondary
+    g.fillText(o.curve?.label ?? o.velLabel, 4, top + 10)
+    if (o.curve) {
+      const { points, lo, hi } = o.curve
+      const yOf = (val: number) => top + v.vel * (1 - (val - lo) / (hi - lo))
+      // ピッチベンドは、真ん中（0）に線を引く
+      if (lo < 0) {
+        g.fillStyle = c.divider
+        g.fillRect(KEYS, yOf(0), v.w - KEYS, 1)
+      }
+      g.save()
+      g.beginPath()
+      g.rect(KEYS, top, v.w - KEYS, v.vel)
+      g.clip()
+      g.strokeStyle = c.note
+      g.lineWidth = 1.5
+      g.beginPath()
+      points.forEach((pt, i) => (i ? g.lineTo(beatX(v, pt.t), yOf(pt.v)) : g.moveTo(beatX(v, pt.t), yOf(pt.v))))
+      // 最後の点から先は、同じ値で続く
+      if (points.length) g.lineTo(beatX(v, o.len), yOf(points[points.length - 1].v))
+      g.stroke()
+      g.fillStyle = c.noteSelected
+      for (const pt of points) g.fillRect(beatX(v, pt.t) - 3, yOf(pt.v) - 3, 6, 6)
+      g.restore()
+    } else
+      for (const n of o.notes) {
+        const x = beatX(v, n.t)
+        if (x < KEYS || x > v.w) continue
+        g.fillStyle = o.selected.includes(n.id) ? c.noteSelected : c.note
+        g.fillRect(x, top + v.vel * (1 - n.vel), 3, v.vel * n.vel)
+      }
+  }
   if (o.loopAt) {
     const x = beatX(v, o.loopAt)
     if (x >= KEYS && x <= v.w) {

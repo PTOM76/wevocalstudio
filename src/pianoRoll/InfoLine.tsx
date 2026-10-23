@@ -24,6 +24,9 @@ export default function InfoLine(p: {
   step: number
   onChange: (notes: Note[], merge?: string) => void
   lane: Lane
+  /** 帯を隠しているか */
+  hidden: boolean
+  onToggleLane: () => void
   laneLabel: (lane: Lane) => string
   onLane: (lane: Lane) => void
 }) {
@@ -46,9 +49,9 @@ export default function InfoLine(p: {
       {lead && <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{`${NAMES[lead.pitch % 12]}${Math.floor(lead.pitch / 12) - 1}`}</Typography>}
       <Box sx={{ flex: 1 }} />
       <Button size="small" color="inherit" endIcon={<FontAwesomeIcon icon={faCaretDown} />} onClick={(e) => setMenu({ x: e.currentTarget.getBoundingClientRect().left, y: e.currentTarget.getBoundingClientRect().bottom })}>
-        {t('roll.lane', { name: p.laneLabel(p.lane) })}
+        {t('roll.lane', { name: p.hidden ? t('roll.laneHide') : p.laneLabel(p.lane) })}
       </Button>
-      <ContextMenu position={menu} entries={LANES.map((l) => ({ label: p.laneLabel(l), checked: p.lane === l, onClick: () => p.onLane(l) }))} onClose={() => setMenu(null)} />
+      <ContextMenu position={menu} entries={[...LANES.map((l) => ({ label: p.laneLabel(l), checked: !p.hidden && p.lane === l, onClick: () => p.onLane(l) })), { label: t('roll.laneHide'), checked: p.hidden, onClick: p.onToggleLane }]} onClose={() => setMenu(null)} />
     </Box>
   )
 }
