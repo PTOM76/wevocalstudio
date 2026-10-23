@@ -241,9 +241,9 @@ export function useActions(c: ActionContext) {
       },
     },
     // 選択の解除（範囲と波形ブロック）
-    clearRange: { enabled: !!c.range || any, run: () => (c.setRange(null), c.select([])) },
+    clearRange: { enabled: !!c.range || any, run: () => doc.apply((p) => p, undefined, { range: null, selected: [] }) },
     trimRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => cropToRange(p, c.range!, c.defaultFade)) },
-    deleteRange: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => deleteRange(p, c.range!, c.defaultFade)), c.setRange(null)) },
+    deleteRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => deleteRange(p, c.range!, c.defaultFade), undefined, { range: null }) },
     insertSilence: { enabled: !!c.range, run: () => c.range && (doc.apply((p) => insertSilence(p, c.range!.start, c.range!.end - c.range!.start, c.defaultFade)), c.seekAfterInsert && c.moveCursor(c.range.end)) },
     repeatRange: { enabled: !!c.range, run: () => c.range && doc.apply((p) => repeatRange(p, c.range!, 1, newId, c.defaultFade)) },
     normalize: { enabled: anyWave, run: () => doc.apply((p) => normalizeBlocks(p, ids)) },

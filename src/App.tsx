@@ -114,11 +114,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 再生中の位置は状態に入れず、描く所が毎フレーム読む（画面全体を毎フレーム描き直さないように。WeVocalSynth と同じ）
   const livePos = useCallback(() => (player.current.playing ? player.current.position() : playPos), [playPos])
   // 選んでいるトラック（複数。最後に選んだものが「選んでいるトラック」で、貼り付けや録音の先）
-  const [selectedTracks, setSelectedTracks] = useState<string[]>([])
+  const { selectedTracks, selectTracks: setSelectedTracks, range, selectRange } = doc
+  // 範囲のドラッグや、続けての範囲の変更は、履歴の 1 段にまとめる
+  const setRange = (r: Range | null) => selectRange(r, 'range')
   const [selectMode, setSelectMode] = useState(false)
   const selectedTrack = selectedTracks[selectedTracks.length - 1] ?? null
   const setSelectedTrack = (id: string | null) => setSelectedTracks(id ? [id] : [])
-  const [range, setRange] = useState<Range | null>(null)
   const [repeat, setRepeat] = useState(false)
   const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
   const [timelineWidth, setTimelineWidth] = useState(0)
