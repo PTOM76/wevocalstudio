@@ -88,10 +88,11 @@ GitHub Pages へは、main に push すると GitHub Actions（`.github/workflow
 
 ## コードの場所
 - 画面: `src/`
-  - 組み立ては `src/App.tsx`、状態と操作は `src/hooks/useEditor.ts`
-  - 言語ファイル: `src/i18n/`
-- 音声処理（Rust）: `dsp/src/`
-  - テスト: `dsp/src/tests/`
+  - 組み立ては `src/App.tsx`、文書と履歴は `src/document/`、再生と書き出しは `src/engine.ts`
+  - 言語ファイル: `src/lang/`
+- 音声処理（Rust）: `dsp/`（wevocal-lib の処理を wasm で公開する）
+
+どこに何があるかは `npm run map` で一覧できる（[ファイル構成](docs/STRUCTURE.md)）。
 
 ## ドキュメント
 <!-- - Wiki: https://doku.wikichree.com/wevocalstudio/start -->
@@ -100,19 +101,17 @@ GitHub Pages へは、main に push すると GitHub Actions（`.github/workflow
 | --- | --- |
 | 使い方（利用者向け） | [docs/MANUAL.md](docs/MANUAL.md) |
 | 開発環境構築 | [docs/SETUP.md](docs/SETUP.md) |
-<!-- | 要件定義 | [docs/REQUIREMENT.md](docs/REQUIREMENT.md) | -->
-<!-- | 決定事項 | [docs/DECISIONS.md](docs/DECISIONS.md) | -->
+| 要件定義 | [docs/REQUIREMENT.md](docs/REQUIREMENT.md) |
+| 決定事項 | [docs/DECISIONS.md](docs/DECISIONS.md) |
 | コーディング規約 | [docs/CODING.md](docs/CODING.md) |
 | アーキテクチャ設計 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | ファイル構成 | [docs/STRUCTURE.md](docs/STRUCTURE.md) |
-<!-- | 機能の仕組み | [docs/INTERNALS.md](docs/INTERNALS.md) | -->
-<!-- | プロジェクトファイルの形式 | [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md) | -->
+| 機能の仕組み | [docs/INTERNALS.md](docs/INTERNALS.md) |
+| プロジェクトファイルの形式 | [docs/PROJECT_FORMAT.md](docs/PROJECT_FORMAT.md) |
 | アルゴリズム | [docs/ALGORITHM.md](docs/ALGORITHM.md) |
-<!-- | 速さの計測 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | -->
-<!-- | 追加機能とボーカル抽出 | [docs/EXTRACTOR.md](docs/EXTRACTOR.md) | -->
+| 速さの改善 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) |
 | バージョン履歴 | [docs/VERSION.md](docs/VERSION.md) |
-<!-- | ドキュメントの書き方 | [docs/WRITING.md](docs/WRITING.md) | -->
-<!-- | 小ネタ | [docs/TIPS.md](docs/TIPS.md) | -->
+| ドキュメントの書き方 | [docs/WRITING.md](docs/WRITING.md) |
 
 ## License
 This project is licensed under the MIT License.

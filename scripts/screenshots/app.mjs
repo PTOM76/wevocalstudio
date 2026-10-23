@@ -61,7 +61,7 @@ const fakeAddons = (ids) => `(() => {
 })()`
 
 /**
- * 手元（public/addons）にないモデルの大きさ（MB。docs/EXTRACTOR.md の表）。設定の「追加機能」の画面で
+ * 手元（public/addons）にないモデルの大きさ（MB。WeVocalSynth の docs/EXTRACTOR.md の表）。設定の「追加機能」の画面で
  * 「配信先から情報を取得できません」と写らないよう、マニフェストが無いときだけこの大きさの仮のものを返す
  */
 const MODEL_MB = { 'spleeter-fp16': 38, 'spleeter-int8': 50, 'spleeter-fp32': 75, 'uvr-mdx-voc-ft': 64, 'uvr-mdx-inst-hq4': 64, 'uvr-mdx-kara2': 53 }
