@@ -22,11 +22,13 @@ import { usePinch } from './usePinch'
 import { useRollWheel } from './useRollWheel'
 import { hitNote, hitVel } from './hit'
 import { useLaneHeight } from './useLaneHeight'
+import { useRollView } from './useRollView'
+import { undoRedoKey } from './rollKeys'
 import { usePlayBeat } from './usePlayBeat'
 import { dragDelta, movedNotes, notesInBox, sizedNotes } from './gesture'
 import { curveOf, hitPoint, lanePoints, valueAt, withPoints, type Lane } from './laneEdit'
 import { curveRange } from '../midiCurves'
-import { EDGE, KEYS, ROW_MIN, SCALES, type ScaleKind, VEL, VEL_MAX, VEL_MIN, clampView, laneSpace, laneTop, rollHeight, rowPitch, rowsOf, stepOf, visibleBeats, xBeat } from './view'
+import { EDGE, KEYS, SCALES, type ScaleKind, VEL, VEL_MAX, VEL_MIN, laneTop, rollHeight, rowPitch, stepOf, visibleBeats, xBeat } from './view'
 
 type Drag =
   | { kind: 'move'; start: Note[]; beat0: number; pitch0: number; merge: string }
@@ -90,12 +92,6 @@ export default function PianoRoll(p: PianoRollProps) {
   const box = useRef<HTMLDivElement>(null)
   const { width, height } = useBoxSize(box)
   const { block } = p
-  // 表示の位置: 左端の拍、1 拍の幅（null はブロック全体が収まる幅）、一番下の音、1 行の高さ
-  const [left, setLeft] = useState(0)
-  const [zoom, setZoom] = useState<number | null>(null)
-  const [low, setLow] = useState(48)
-  // 指で操作する端末では、行を高くする
-  const [row, setRow] = useState(() => (window.matchMedia?.('(pointer: coarse)').matches ? 24 : 14))
   const [sel, setSel] = useState<string[]>([])
   // グリッドに合わせる（Alt を押している間は逆）
   const [snapOn, setSnapOn] = useState(true)
@@ -104,6 +100,11 @@ export default function PianoRoll(p: PianoRollProps) {
   const [lane, setLane] = useState<Lane>('vel')
   // 帯の高さ（0 なら隠す）。覚えておく
   const [velH, setLaneHeight] = useLaneHeight()
+  const drag = useRef<Drag | null>(null)
+  const step = stepOf(p.division)
+  const map = projectBeatMap(p.project)
+  const len = blockBeats(map, block)
+  const { view, viewRef, setLeft, setZoom, setLow, setRow, fold, setFold, zoomBy } = useRollView({ block, len, step, width, height, velH, dragging: () => !!drag.current })
   const points = lanePoints(block.curves, lane)
   const laneInfo = curveOf(lane)
   // 音の確認（鳴らすか）と、スケールの強調
@@ -111,13 +112,10 @@ export default function PianoRoll(p: PianoRollProps) {
   // 画面の鍵盤（指で操作する端末では最初から出す）と、その一番左の C
   const [kb, setKb] = useState(() => !!window.matchMedia?.('(pointer: coarse)').matches)
   const [kbBase, setKbBase] = useState(48)
-  const [fold, setFold] = useState(false)
-  const foldRef = useRef<number[]>([])
   const [scale, setScale] = useState<{ root: number; kind: ScaleKind }>({ root: 0, kind: 'none' })
   const [frame, setFrame] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   // 鳴らしている音（鍵盤の色付け）
   const [held, setHeld] = useState<number | null>(null)
-  const drag = useRef<Drag | null>(null)
   // 指の操作: 今の指か（右端をつかめる幅を広げる）、触れている指の位置、2 本指のつまみ
   const touch = useRef(false)
   const pinch = usePinch(canvas, { zoom: setZoom, left: setLeft, low: setLow })
@@ -127,20 +125,8 @@ export default function PianoRoll(p: PianoRollProps) {
   const lastDur = useRef(0)
   // 今鳴らしている音（動かして高さが変わったら、離して鳴らし直す）
   const sounding = useRef<number | null>(null)
-  const step = stepOf(p.division)
-  const map = projectBeatMap(p.project)
-  const len = blockBeats(map, block)
-  const fit = Math.max(1, (width - KEYS) / Math.max(len, step * 4))
   // 再生位置の線（再生中は毎フレーム、ブロックの頭からの拍にして描き直す）
   const play = usePlayBeat({ playing: p.playing, position: p.position, project: p.project, block, len })
-  // 折りたたみ: 音符のある高さの行だけを見せる（ドラッグの間は、行がずれないよう、始めたときの並びのまま）
-  if (!drag.current || !foldRef.current.length) foldRef.current = [...new Set(block.notes.map((n) => n.pitch))].sort((a, b) => b - a)
-  const folded = fold && foldRef.current.length ? foldRef.current : null
-  // 行を高くして、画面を使う（高くしすぎない）
-  const rowPx = folded ? Math.max(ROW_MIN, Math.min(Math.max(row, 36), Math.floor((height - laneSpace({ vel: velH })) / folded.length))) : row
-  const view = clampView({ left, ppb: zoom ?? fit, low, row: rowPx, fold: folded, vel: velH, w: width, h: height }, len)
-  const viewRef = useRef(view)
-  viewRef.current = view
   // 編集位置と範囲選択は、メインの時間軸と同じもの（秒）を、このブロックの頭からの拍にして使う
   const origin = map.toBeat(block.start)
   const cursorBeat = p.cursor >= block.start - 1e-6 && map.toBeat(p.cursor) - origin <= len + 1e-6 ? map.toBeat(p.cursor) - origin : null
@@ -183,15 +169,6 @@ export default function PianoRoll(p: PianoRollProps) {
       colors: { background: pal.background.default, paper: pal.background.paper, hover: pal.action.hover, divider: pal.divider, text: pal.text.primary, textSecondary: pal.text.secondary, note: pal.primary.main, noteSelected: pal.primary.light, play: pal.error.main, cursor: '#e53935', range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18), whiteKey: '#e9e9e9', blackKey: '#2b2b2b', keyLine: '#9a9a9a' },
     })
   })
-  // 開いたとき、音符のある高さが見えるように縦の位置を決める（音符がなければ C4 の辺り）
-  const placed = useRef('')
-  useLayoutEffect(() => {
-    if (height < 1 || placed.current === block.id) return
-    placed.current = block.id
-    const ps = block.notes.map((n) => n.pitch)
-    const mid = ps.length ? Math.round((Math.min(...ps) + Math.max(...ps)) / 2) : 60
-    setLow(mid - Math.floor(rowsOf({ ...viewRef.current, h: height }) / 2))
-  }, [block.id, height > 0])
   // 閉じるとき、鳴らしている音を離す
   useEffect(() => () => sound(null), [])
 
@@ -433,27 +410,10 @@ export default function PianoRoll(p: PianoRollProps) {
     const h = hitNote(block.notes, view, x, y)
     if (h.index >= 0) remove([block.notes[h.index].id])
   }
-  /** 横の拡大と縮小（見えている中央を動かさない） */
-  const zoomBy = (f: number) => {
-    const ppb = Math.max(2, Math.min(2000, view.ppb * f))
-    const mid = view.left + visibleBeats(view) / 2
-    setZoom(ppb)
-    setLeft(Math.max(0, mid - visibleBeats({ ...view, ppb }) / 2))
-  }
-  /** 別の窓のときだけ、Ctrl+Z と Ctrl+Y（Ctrl+Shift+Z）で戻す、やり直す（同じ窓ではメインのキーが受ける）。扱ったら true */
-  const rollUndoKey = (e: React.KeyboardEvent) => {
-    if (e.currentTarget.ownerDocument === document || !(e.ctrlKey || e.metaKey)) return false
-    const key = e.key.toLowerCase()
-    if (key !== 'z' && key !== 'y') return false
-    e.preventDefault()
-    if (key === 'y' || e.shiftKey) p.onRedo()
-    else p.onUndo()
-    return true
-  }
   /** ステップ入力を始める位置: 選んでいる音符の終わり（なければ頭） */
   const stepStart = () => (sel.length ? selectionEnd(block.notes, sel) : 0)
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={(e) => (e.key === 'Escape' && p.range ? p.onRange(null) : rollUndoKey(e) || onKey(e))}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} onKeyDown={(e) => (e.key === 'Escape' && p.range ? p.onRange(null) : undoRedoKey(e, p.onUndo, p.onRedo) || onKey(e))}>
       {p.toolbar !== false && (
         <RollToolbar
           host={p.chromeHost}
