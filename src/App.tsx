@@ -363,6 +363,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} multiple hidden onChange={(e) => void load(Array.from(e.target.files ?? []), importTarget.current).finally(() => (e.target.value = ''))} />
       {files.picker.input}
 
+      {/* ドックの欄は、上、左、右、下の端に置ける。左と右は、中央（時間軸、下の欄、解析の欄、ミニマップ）と同じ高さで並べる */}
+      {!mobile && <DockArea edge="top" />}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
+      {!mobile && <DockArea edge="left" />}
+      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <Timeline
         project={shown}
@@ -426,7 +431,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         <EmptyProject headerWidth={header} onChoose={commands.import.run} onSynth={commands.synth.run} onRecord={commands.record.run} recent={files.recent} />
       )}
       </Box>
-      {!mobile && <DockArea />}
+      {!mobile && <DockArea edge="bottom" />}
       {p.settings.showAnalysis && (
         <AnalysisPanel
           f0MinHz={p.settings.f0MinHz}
@@ -440,6 +445,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       {overview && project.blocks.length > 0 && (
         <OverviewMinimap overview={overview} view={view} width={timelineWidth} range={range} scrollTo={(start) => setView((v) => ({ ...v, scroll: Math.max(0, start) }))} position={playPos ?? cursor} livePosition={() => livePos() ?? cursor} playing={playing} showPlayhead={p.settings.minimapPlayhead} />
       )}
+      </Box>
+      {!mobile && <DockArea edge="right" />}
+      </Box>
       {touchLike && editBar}
       <Transport
         playing={playing}

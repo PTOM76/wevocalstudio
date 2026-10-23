@@ -1,7 +1,7 @@
 // 波形ブロックのプロパティ。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
 import { useEffect, useState } from 'react'
 import { Box, Button, Checkbox, ListItemText, DialogActions, DialogContent, FormControlLabel, MenuItem, Slider, Stack, TextField, Typography } from '@mui/material'
-import { PresetMenu, WindowDialog, enterToSubmit, type Preset } from 'pevenmui'
+import { PresetMenu, WindowDialog, enterToSubmit, type Preset, useMobileLayout } from 'pevenmui'
 import { visibleAlgorithms, type Algorithm } from 'wevocal-lib'
 import { useT, type MessageKey } from './i18n'
 import { BLOCK_LIMITS, type Block, type Source } from './project'
@@ -57,6 +57,8 @@ export default function BlockDialog(p: {
   showLegacy: boolean
 }) {
   const t = useT()
+  // 画面の端の欄に置ける（スマホは欄がないので、ダイアログのまま）
+  const mobile = useMobileLayout()
   const [edit, setEdit] = useState<BlockEdit>({})
   const [add, setAdd] = useState<BlockAdd>({})
   const [text, setText] = useState<Partial<Record<NumberKey, string>>>({})
@@ -154,6 +156,7 @@ export default function BlockDialog(p: {
       onClose={p.onClose}
       title={many ? t('block.propertiesMany', { n: p.blocks.length }) : t('block.properties')}
       name="blockProperties"
+      dockable={!mobile}
       width={480}
       height={many ? 600 : 680}
       onKeyDown={enterToSubmit(apply)}

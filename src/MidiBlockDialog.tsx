@@ -1,11 +1,13 @@
 // MIDI ブロックのプロパティ（位置、長さ、ミュート）。音符はピアノロールで編集する
 import { Box, Button, DialogActions, DialogContent, FormControlLabel, Switch, TextField, Typography } from '@mui/material'
-import { NumberInput, WindowDialog, pevenFont } from 'pevenmui'
+import { NumberInput, WindowDialog, pevenFont, useMobileLayout } from 'pevenmui'
 import { useT } from './i18n'
 import type { MidiBlock } from './project'
 
 export default function MidiBlockDialog(p: { open: boolean; block: MidiBlock | null; onChange: (patch: Partial<MidiBlock>, merge?: string) => void; onPianoRoll: () => void; onClose: () => void }) {
   const t = useT()
+  // 画面の端の欄に置ける（スマホは欄がないので、ダイアログのまま）
+  const mobile = useMobileLayout()
   const b = p.block
   const row = (label: string, value: number, key: 'start' | 'length', min: number) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -14,7 +16,7 @@ export default function MidiBlockDialog(p: { open: boolean; block: MidiBlock | n
     </Box>
   )
   return (
-    <WindowDialog open={p.open} onClose={p.onClose} title={t('midiProps.title')} name="midiProps" width={380} height={350} dialogProps={{ fullWidth: true, maxWidth: 'xs' }}>
+    <WindowDialog open={p.open} onClose={p.onClose} title={t('midiProps.title')} name="midiProps" dockable={!mobile} width={380} height={350} dialogProps={{ fullWidth: true, maxWidth: 'xs' }}>
       <DialogContent>
         {b && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>

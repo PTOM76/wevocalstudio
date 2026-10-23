@@ -1,6 +1,6 @@
 // トラックの音源（MIDI ブロックの音符を鳴らすプラグイン）の選択とつまみ。サンプラーは音色にする元の音（プロジェクトの元の音から）も選ぶ
 import { Box, Button, DialogActions, DialogContent, Typography } from '@mui/material'
-import { WindowDialog, pevenFont } from 'pevenmui'
+import { WindowDialog, pevenFont, useMobileLayout } from 'pevenmui'
 import { FxParams, LabeledSelect as Choice } from 'wevocal-lib/react'
 import { availableInstruments, defaultValues, findInstrument, fxDescription, fxText, migrateValues } from 'wevocal-lib'
 import { i18n, useT } from './i18n'
@@ -8,6 +8,8 @@ import type { InstrumentSlot, Project } from './project'
 
 export default function InstrumentDialog(p: { open: boolean; project: Project; track: string; onChange: (instrument: InstrumentSlot | undefined) => void; onClose: () => void }) {
   const t = useT()
+  // 画面の端の欄に置ける（スマホは欄がないので、ダイアログのまま）
+  const mobile = useMobileLayout()
   const lang = i18n.useLang()
   const track = p.project.tracks.find((x) => x.id === p.track)
   const slot = track?.instrument
@@ -16,7 +18,7 @@ export default function InstrumentDialog(p: { open: boolean; project: Project; t
   const list = availableInstruments()
   const values = plugin && slot ? migrateValues(plugin.manifest, slot.values) : {}
   return (
-    <WindowDialog open={p.open} onClose={p.onClose} title={t('instrument.title', { name: track?.name ?? '' })} name="instrument" width={560} height={520} dialogProps={{ fullWidth: true, maxWidth: 'sm' }}>
+    <WindowDialog open={p.open} onClose={p.onClose} title={t('instrument.title', { name: track?.name ?? '' })} name="instrument" dockable={!mobile} width={560} height={520} dialogProps={{ fullWidth: true, maxWidth: 'sm' }}>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary' }}>{t('instrument.help')}</Typography>

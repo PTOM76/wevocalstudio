@@ -1,7 +1,7 @@
 // 選択中のトラックの共通プロパティをまとめて編集する
 import { useEffect, useState } from 'react'
 import { Checkbox, DialogActions, DialogContent, FormControlLabel, Stack, TextField, Typography, Button } from '@mui/material'
-import { WindowDialog, enterToSubmit } from 'pevenmui'
+import { WindowDialog, enterToSubmit, useMobileLayout } from 'pevenmui'
 import { useT, type MessageKey } from './i18n'
 import type { Track } from './project'
 
@@ -31,6 +31,8 @@ export default function TrackPropertiesDialog(p: {
   onApply: (edit: TrackPropertyEdit, add: TrackPropertyAdd) => void
 }) {
   const t = useT()
+  // 画面の端の欄に置ける（スマホは欄がないので、ダイアログのまま）
+  const mobile = useMobileLayout()
   const [edit, setEdit] = useState<TrackPropertyEdit>({})
   const [add, setAdd] = useState<TrackPropertyAdd>({})
   const [text, setText] = useState<Partial<Record<NumberKey, string>>>({})
@@ -109,6 +111,7 @@ export default function TrackPropertiesDialog(p: {
       onClose={p.onClose}
       title={p.tracks.length > 1 ? t('track.propertiesMany', { n: p.tracks.length }) : t('track.properties')}
       name="trackProperties"
+      dockable={!mobile}
       width={400}
       height={390}
       onKeyDown={enterToSubmit(apply)}

@@ -1082,8 +1082,12 @@
   "midiImport.atStart": "先頭",
   "midiImport.run": "読み込む",
 
-  "dock.dock": "画面の下の欄に置く",
+  "dock.dock": "欄に置く",
   "dock.undock": "ダイアログにする",
+  "dock.edgeBottom": "下に置く",
+  "dock.edgeLeft": "左に置く",
+  "dock.edgeRight": "右に置く",
+  "dock.edgeTop": "上に置く",
 
   "hint.touch": "ブロックはダブルタップでプロパティ、長押しでメニューを開けます。トラックの欄は « で閉じられます",
 
