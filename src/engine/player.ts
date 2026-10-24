@@ -291,7 +291,10 @@ export class Player {
   private async tick() {
     const ant = this.ant
     const p = this.project
-    if (!ant || !p || !this.graph || ant.busy) return
+    if (!ant || !p || !this.graph) return
+    // ゲージは、かたまりを作っている途中でも周期ごとに更新する
+    this.showAhead(ant, p)
+    if (ant.busy) return
     const now = this.position()
     const end = songEnd(p)
     ant.busy = true
@@ -307,12 +310,24 @@ export class Player {
         this.graph.playChunk(id, buf, k * CHUNK)
         ant.next.set(id, k + 1)
       }
-      // 再生位置からどこまでできているか
-      for (const [id, k] of ant.next) this.gauge.setAhead(id, p.tracks.find((t) => t.id === id)?.name ?? id, (k * CHUNK - this.position()) / AHEAD)
     } catch {
       // 作れなかったら、次の周期でもう一度試す（続けて間に合わなければ release になる）
     } finally {
       ant.busy = false
+    }
+  }
+
+  /**
+   * 再生位置から先に、途切れずに作ってあるかたまりが何秒分あるかを、トラックごとにゲージに出す（AHEAD 秒で満タン）。
+   * 音を出す側へ渡したかたまりの先は、置き場にあるかで見る（止めている間に作った分も数える）
+   */
+  private showAhead(ant: NonNullable<Player['ant']>, p: Project) {
+    if (!this.gauge.label) return
+    const now = this.position()
+    for (const [id, next] of ant.next) {
+      let k = next
+      while (k * CHUNK < now + AHEAD && this.chunks.has(chunkKey(p, id, k))) k++
+      this.gauge.setAhead(id, p.tracks.find((t) => t.id === id)?.name ?? id, (k * CHUNK - now) / AHEAD)
     }
   }
 
