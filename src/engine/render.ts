@@ -2,6 +2,7 @@
 import { fxLists, instrumentIds } from './params'
 import { Graph } from './graph'
 import { PREROLL, subtree } from '../anticipate'
+import { markActivity } from 'pevenmui/debug'
 import { preloadInstruments } from 'wevocal-lib'
 import { preloadFx, renderWithProgress, type Clip } from 'wevocal-lib'
 import { loadMixer } from '../mixer/mixer'
@@ -70,16 +71,21 @@ export async function renderTrackChunk(p: Project, trackId: string, start: numbe
     blocks: p.blocks.filter((b) => ids.has(b.track)),
     midi: midiBlocks(p).filter((b) => ids.has(b.track)),
   }
+  markActivity('anticipate: pitch')
   await preparePitch(q)
   const length = Math.max(128, Math.ceil((lead + dur) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
+  markActivity('anticipate: load fx')
   await Promise.all([loadMixer(ctx), preloadFx(ctx, ...fxLists(q)), preloadInstruments(ctx, instrumentIds(q))])
   const graph = new Graph(ctx, -t0)
   try {
+    markActivity('anticipate: build graph')
     graph.sync(q, false)
     await graph.flush()
     scheduleAutomation(ctx, graph, length, sampleRate, t0)
+    markActivity('anticipate: render')
     const out = await ctx.startRendering()
+    markActivity('anticipate: copy')
     const from = Math.round(lead * sampleRate)
     return [out.getChannelData(0).slice(from), out.getChannelData(1).slice(from)]
   } finally {
