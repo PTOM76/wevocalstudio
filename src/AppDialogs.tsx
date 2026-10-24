@@ -5,7 +5,7 @@ import KanaCutDialog from 'wevocalanalyzer/KanaCutDialog'
 import { placeMorae } from './sampler'
 import { segmentOf } from './useExtract'
 import { Link } from '@mui/material'
-import { AUDIO_ACCEPT, segmentAt, tempoSegments } from 'wevocal-lib'
+import { AUDIO_ACCEPT, segmentAt, tempoSegments, type TempoChangeSection } from 'wevocal-lib'
 import BlockDialog from './BlockDialog'
 import type { Dialogs } from './useDialogs'
 import { AboutDialog, HistoryDialog, LicensesDialog, RenameDialog } from 'pevenmui'
@@ -13,7 +13,7 @@ import type { Clip } from 'wevocal-lib'
 import { videoLook, type VideoLook } from 'wevocalconverter/host'
 import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { kanaHost, videoHost } from './addons'
-import { ExportDialog, FxChainDialog, MarkerTempoDialog, MissingPluginsDialog, PitchToolText, SamplerDialog, SynthDialog, VibratoDialog, type ExportSettings } from 'wevocal-lib/react'
+import { ExportDialog, FxChainDialog, MarkerTempoDialog, MissingPluginsDialog, TempoChangeDialog, PitchToolText, SamplerDialog, SynthDialog, VibratoDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
 import { addClipTrack, midiBlocks } from './project'
 import { AppIcon } from './AppHeader'
@@ -423,6 +423,15 @@ export default function AppDialogs(p: {
         current={tempoMarker ? segmentAt(tempoSegments(project.tempo, project.markers.filter((m) => m.id !== tempoMarker.id)), tempoMarker.time) ?? project.tempo : project.tempo}
         onClose={dialogs.closer('markerTempo')}
         onChange={(tempo) => tempoMarker && doc.updateMarker(tempoMarker.id, { tempo })}
+      />
+      {/* 自動解析で見つけたテンポの変化。採用すると曲の頭のテンポとテンポのマーカーにする（WeVocalSynth と同じ） */}
+      <TempoChangeDialog
+        t={t}
+        open={dialogs.isOpen('tempoChange')}
+        sections={dialogs.arg<TempoChangeSection[]>('tempoChange') ?? []}
+        onSeek={p.onSeek}
+        onAdopt={() => doc.adoptTempoChanges(dialogs.arg<TempoChangeSection[]>('tempoChange') ?? [])}
+        onClose={dialogs.closer('tempoChange')}
       />
       <BlockDialog
         blocks={project.blocks.filter((b) => editing.includes(b.id))}

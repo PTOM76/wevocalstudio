@@ -137,7 +137,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const { bake, freeze } = useBlockJobs({ doc, t, fail, notify: setNotice })
   const extract = useExtract({ doc, settings: p.settings, fail, notify: setNotice })
   // テンポの解析（候補、BPM の設定）
-  const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice })
+  const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice, tempoChange: p.settings.tempoChange, onTempoChanges: (sections) => dialogs.open('tempoChange', sections) })
 
   // 録音（再生位置から、ほかのトラックを鳴らしながら録る）
   const { recording: audioRecording, midiRec, onMidiNote, live, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), position: () => player.current.position(), fail })

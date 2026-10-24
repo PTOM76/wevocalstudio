@@ -194,6 +194,9 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   /** テンポを変える。MIDI ブロックは拍の位置を保つよう、位置と長さ（秒）を直す */
   const updateTempo = useCallback((patch: Partial<Tempo>, merge?: string) => change((p) => projectEdit.patchTempo(p, patch), merge), [change])
 
+  /** 見つけたテンポの変化を採用する（曲の頭のテンポと、テンポを持つマーカー。1 回で元に戻せる） */
+  const adoptTempoChanges = useCallback((sections: { time: number; bpm: number; offset: number }[]) => change((p) => projectEdit.adoptTempoChanges(p, sections)), [change])
+
   const updateMaster = useCallback((patch: Partial<Master>, merge?: string) => change((p) => projectEdit.patchMaster(p, patch), merge), [change])
 
   const updateTrack = useCallback((id: string, patch: Partial<Track>, merge?: string) => change((p) => trackEdit.patchTrack(p, id, patch), merge), [change])
@@ -311,6 +314,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     reorderTrack,
     insertTrack,
     updateTempo,
+    adoptTempoChanges,
     addMarker,
     setEnd,
     setFxState,

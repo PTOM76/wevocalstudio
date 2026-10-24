@@ -1,5 +1,5 @@
 // 「処理」（ピッチの処理方式）と時間軸の線の項目
-import type { Algorithm } from 'wevocal-lib'
+import type { Algorithm, TempoChangeSensitivity } from 'wevocal-lib'
 import type { StemModel, VocalModel } from 'wevocalextractor/host'
 import type { GridDivision, GridMode } from '../../grid'
 import { check, choice, defineItems, number, value } from './define'
@@ -28,6 +28,16 @@ export const analysis = defineItems('pitch', {
 export const tempo = defineItems('tempo', {
   // 音声を最初に読み込んだとき、テンポを自動解析して BPM と 1 拍目の位置を入れる
   autoTempo: check(true, { label: 'settings.autoTempo', help: 'settings.autoTempoHelp' }),
+  // 自動解析で、途中でテンポが変わるかも調べる感度（変わっていたらダイアログで尋ね、採用するとテンポのマーカーを置く。wevocal-lib の tempoChange.ts）
+  tempoChange: choice<TempoChangeSensitivity>('low', {
+    label: 'settings.tempoChange',
+    help: 'settings.tempoChangeHelp',
+    options: [
+      ['off', 'settings.tempoChangeOff'],
+      ['low', 'settings.tempoChangeLow'],
+      ['normal', 'settings.tempoChangeNormal'],
+    ],
+  }),
   // 新しいプロジェクトの BPM
   defaultBpm: number(120, { label: 'settings.defaultBpm', help: 'settings.defaultBpmHelp', min: 20, max: 300, step: 1, unit: 'BPM', round: (v) => Math.round(v * 100) / 100 }),
 })

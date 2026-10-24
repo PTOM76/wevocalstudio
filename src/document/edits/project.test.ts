@@ -1,7 +1,7 @@
 // edits/project.ts のテスト
 import { describe, expect, it } from 'vitest'
 import { newProject, type MidiBlock } from '../../project'
-import { addMarker, patchMarker, patchMaster, patchTempo, removeMarker, setEnd } from './project'
+import { addMarker, adoptTempoChanges, patchMarker, patchMaster, patchTempo, removeMarker, setEnd } from './project'
 
 describe('マーカー', () => {
   it('時刻の順に並べ、同じ位置には足さない', () => {
@@ -47,5 +47,22 @@ describe('patchTempo', () => {
 describe('patchMaster', () => {
   it('マスターを変える', () => {
     expect(patchMaster(newProject(), { volume: -6 }).master.volume).toBe(-6)
+  })
+})
+
+describe('adoptTempoChanges', () => {
+  it('最初の区間を曲の頭のテンポにし、続く区間にテンポのマーカーを置く', () => {
+    const p = adoptTempoChanges(addMarker(newProject(), 30), [
+      { time: 0, bpm: 100, offset: 0.7 },
+      { time: 30, bpm: 140, offset: 30 },
+      { time: 60, bpm: 90, offset: 60 },
+    ])
+    expect(p.tempo.bpm).toBe(100)
+    expect(p.tempo.beatOffset).toBeCloseTo(0.1)
+    // 同じ位置のマーカーはテンポを持たせるだけ
+    expect(p.markers.map((m) => [m.time, m.tempo?.bpm])).toEqual([
+      [30, 140],
+      [60, 90],
+    ])
   })
 })

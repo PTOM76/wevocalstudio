@@ -31,4 +31,19 @@ export function patchTempo(p: Project, patch: Partial<Tempo>): Project {
   }
 }
 
+/** 見つけたテンポの変化を採用する。最初の区間は曲の頭のテンポにし、続く区間の位置にテンポを持つマーカーを置く（同じ位置のマーカーにはテンポを持たせる） */
+export function adoptTempoChanges(p: Project, sections: { time: number; bpm: number; offset: number }[]): Project {
+  const [first, ...rest] = sections
+  if (!first) return p
+  const beat = 60 / first.bpm
+  let next = patchTempo(p, { bpm: first.bpm, beatOffset: ((first.offset % beat) + beat) % beat })
+  const { beatsPerBar } = next.tempo
+  for (const s of rest) {
+    const same = next.markers.find((m) => Math.abs(m.time - s.time) < 1e-3)
+    const tempo = { bpm: s.bpm, beatsPerBar }
+    next = same ? patchMarker(next, same.id, { tempo }) : { ...next, markers: [...next.markers, { id: newId(), time: s.time, name: `M${next.markers.length + 1}`, tempo }].sort((a, b) => a.time - b.time) }
+  }
+  return next
+}
+
 export const patchMaster = (p: Project, patch: Partial<Master>): Project => ({ ...p, master: { ...p.master, ...patch } })

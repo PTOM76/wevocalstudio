@@ -385,6 +385,11 @@
   "settings.fastMathHelp": "Uses approximations. Turn off for standard math (for comparison)",
   "settings.showExperimentalAlgorithms": "Use experimental methods",
   "settings.showExperimentalAlgorithmsHelp": "Show Specraw, still in development, in the method list",
+  "settings.tempoChange": "Detect tempo changes",
+  "settings.tempoChangeHelp": "Checks whether the tempo changes partway through during automatic analysis. If a change is detected, you will be asked whether to use it",
+  "settings.tempoChangeOff": "Off",
+  "settings.tempoChangeLow": "Conservative",
+  "settings.tempoChangeNormal": "Normal",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
@@ -1119,5 +1124,10 @@
   "empty.showLess": "Show less",
 
   "tabs.close": "Close",
-  "tabs.add": "New project"
+  "tabs.add": "New project",
+
+  "tempoChange.title": "Tempo change detected",
+  "tempoChange.message": "The tempo may change at the following positions. If you use them, tempo markers will be placed. Select a row to move to that position",
+  "tempoChange.keep": "Keep constant tempo",
+  "tempoChange.adopt": "Use"
 }

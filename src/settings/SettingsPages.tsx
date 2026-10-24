@@ -156,6 +156,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
     tempo: (
       <Group title={t('settings.groupTempo')}>
         {S('autoTempo')}
+        {S('tempoChange')}
         {S('defaultBpm')}
       </Group>
     ),

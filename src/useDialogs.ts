@@ -28,6 +28,8 @@ export type DialogId =
   | 'kanaCut'
   // 開いたプロジェクトに入っていないプラグイン（id の一覧）
   | 'missingPlugins'
+  // 自動解析で見つけたテンポの変化（区間の一覧）
+  | 'tempoChange'
 
 export const useDialogs = () => usePevenDialogs<DialogId>()
 export type Dialogs = PevenDialogs<DialogId>

@@ -385,6 +385,11 @@
   "settings.fastMathHelp": "近似式で高速に計算する。OFFで標準の計算",
   "settings.showExperimentalAlgorithms": "試験的な処理方式を使用する",
   "settings.showExperimentalAlgorithmsHelp": "開発中のSpecrawを選択肢に表示する",
+  "settings.tempoChange": "テンポの変化の検出",
+  "settings.tempoChangeHelp": "自動解析で、途中でテンポが変わるかを調べます。変化が検出された場合は、採用するかどうかを確認します",
+  "settings.tempoChangeOff": "検出しない",
+  "settings.tempoChangeLow": "控えめ",
+  "settings.tempoChangeNormal": "標準",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
@@ -1119,5 +1124,10 @@
   "empty.showLess": "閉じる",
 
   "tabs.close": "閉じる",
-  "tabs.add": "新しいプロジェクト"
+  "tabs.add": "新しいプロジェクト",
+
+  "tempoChange.title": "テンポの変化が検出されました",
+  "tempoChange.message": "次の位置でテンポが変わっている可能性があります。採用すると、テンポのマーカーが配置されます。行を選択すると、その位置へ移動します",
+  "tempoChange.keep": "一定のテンポにする",
+  "tempoChange.adopt": "採用する"
 }
