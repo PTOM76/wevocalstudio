@@ -3,14 +3,19 @@ import { startJob, useAddonInstall, useConfirm } from 'pevenmui'
 import { isMobile } from 'pevenmui/web'
 import type { Clip } from 'wevocal-lib'
 import { splitVoices } from './dsp/pitch'
-import { createHost, LEAD_MODEL, prepareExtract, resolveModel, STEM_MODELS, STEM_ORDER, VOCAL_MODELS, type ExtractOptions } from 'wevocalextractor/host'
+import { createHost, LEAD_MODEL, prepareExtract, resolveModel, STEM_MODELS, STEM_ORDER, VOCAL_MODELS, type ExtractOptions, type HostIO } from 'wevocalextractor/host'
+import { diagnoseExtract as runDiagnose } from 'wevocalextractor/diagnose'
 import { addonFileUrl, installedManifest, loadAddon } from './addons'
 import { useT, type MessageKey } from './i18n'
 import type { Block, Project } from './project'
 import type { Settings } from './settings/settings'
 import type { useProject } from './useProject'
 
-const host = createHost({ loadAddon: (id) => loadAddon(id), installedManifest, addonFileUrl, isMobile })
+const io: HostIO = { loadAddon: (id) => loadAddon(id), installedManifest, addonFileUrl, isMobile }
+const host = createHost(io)
+
+/** 抽出の診断（設定の開発者向け。WeVocalSynth と同じ Extractor の hostDiagnose.ts） */
+export const diagnoseExtract = (o: ExtractOptions, log: (line: string) => void) => runDiagnose(host, io, o, log)
 
 /** 波形ブロックが使っている元の音の範囲（分けるのはこの範囲だけ） */
 export function segmentOf(p: Project, b: Block): Clip | null {

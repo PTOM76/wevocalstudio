@@ -395,6 +395,12 @@
   "settings.f0Normal": "標準",
   "settings.f0Loose": "緩め（かすれた声も検出する）",
   "settings.f0SilenceDb": "無音とみなす音量",
+  "settings.cat.diagnose": "診断",
+  "settings.groupDiagnose": "ボーカル抽出の診断",
+  "settings.extractDiagnose": "ボーカル抽出の診断",
+  "settings.extractDiagnoseHelp": "抽出がメモリ不足になる原因を、この端末で確かめる。結果を選んでコピーし、報告に貼る",
+  "settings.extractDiagnoseRun": "診断する",
+  "settings.extractDiagnoseRunning": "診断中…",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

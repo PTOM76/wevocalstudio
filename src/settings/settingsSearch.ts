@@ -7,9 +7,9 @@ import { GROUPS } from './items'
 import { searchKeys, type AnyItem } from './items/define'
 
 /** 設定画面の分類 */
-export type Category = 'project' | 'general' | 'edit' | 'keys' | 'file' | 'display' | 'process' | 'pitch' | 'tempo' | 'vocal' | 'addons' | 'plugins' | 'data' | 'debug' | 'debugAudio' | 'experimental'
+export type Category = 'project' | 'general' | 'edit' | 'keys' | 'file' | 'display' | 'process' | 'pitch' | 'tempo' | 'vocal' | 'addons' | 'plugins' | 'data' | 'debug' | 'debugAudio' | 'experimental' | 'diagnose'
 /** 並び順と親子（親のない分類と、その下のサブアイテム） */
-const TREE: [Category, Category?][] = [['project'], ['general'], ['edit', 'general'], ['keys', 'general'], ['file', 'general'], ['display'], ['process'], ['pitch', 'process'], ['tempo', 'process'], ['vocal', 'process'], ['addons'], ['plugins'], ['data'], ['debug'], ['debugAudio', 'debug'], ['experimental', 'debug']]
+const TREE: [Category, Category?][] = [['project'], ['general'], ['edit', 'general'], ['keys', 'general'], ['file', 'general'], ['display'], ['process'], ['pitch', 'process'], ['tempo', 'process'], ['vocal', 'process'], ['addons'], ['plugins'], ['data'], ['debug'], ['debugAudio', 'debug'], ['experimental', 'debug'], ['diagnose', 'debug']]
 
 /** 検索の対象のうち、定義（items/）にないもの: グループ名と、自前の画面の項目の訳文キー */
 const INDEX: Record<Category, MessageKey[]> = {
@@ -29,6 +29,7 @@ const INDEX: Record<Category, MessageKey[]> = {
   debug: ['settings.groupDebug', 'settings.dialogWindow'],
   debugAudio: ['settings.groupDebugAudio'],
   experimental: ['settings.groupExperimental'],
+  diagnose: ['settings.groupDiagnose', 'settings.extractDiagnose', 'settings.extractDiagnoseHelp'],
 }
 
 /** 分類の検索の対象（手で書いたものと、定義から集めたもの） */

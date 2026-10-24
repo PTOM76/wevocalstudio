@@ -36,6 +36,7 @@ export default defineConfig({
       { find: /^pevenmui\/debug$/, replacement: resolve(pevenmui, 'src/debug/index.ts') },
       { find: /^wevocalextractor\/host$/, replacement: resolve(extractor, 'src/host.ts') },
       { find: /^wevocalextractor\/compat$/, replacement: resolve(extractor, 'src/compat.ts') },
+      { find: /^wevocalextractor\/diagnose$/, replacement: resolve(extractor, 'src/hostDiagnose.ts') },
       { find: /^wevocalconverter\/host$/, replacement: resolve(converter, 'src/host.ts') },
       { find: /^wevocalanalyzer\/kanaCut$/, replacement: resolve(analyzer, 'src/kanaCut.ts') },
       { find: /^wevocalanalyzer\/KanaCutDialog$/, replacement: resolve(analyzer, 'src/KanaCutDialog.tsx') },

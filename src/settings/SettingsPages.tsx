@@ -3,10 +3,11 @@ import { canMidiInput } from '../useMidiInput'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Box, Button, Typography } from '@mui/material'
 import { listInputDevices, visibleAlgorithms, type Algorithm, type InputDevice } from 'wevocal-lib'
-import { AddonFolderRow, AddonSection, addonFolderSupported, Check, Choice, Group, KeymapEditor, Row, pevenFont, type WindowMode } from 'pevenmui'
+import { AddonFolderRow, AddonSection, addonFolderSupported, Check, Choice, Group, KeymapEditor, LogRunRow, Row, pevenFont, type WindowMode } from 'pevenmui'
 import { EXTRACT_MODELS, isMdxModel, resolveModel, type VocalModel } from 'wevocalextractor/host'
 import { backendAllowed } from 'wevocalextractor/compat'
 import { ADDONS } from '../addons'
+import { diagnoseExtract } from '../useExtract'
 import { UpdateSection } from 'pevenmui/pwa'
 import { OutputDeviceRow } from 'wevocal-lib/react'
 import { i18n, type LangSetting, type MessageKey } from '../i18n'
@@ -271,6 +272,17 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {/* 追加機能の保存先のフォルダー（Chrome、Edge だけ） */}
         {addonFolderSupported() && S('addonFolder')}
         {addonFolderSupported() && draft.addonFolder && <AddonFolderRow />}
+      </Group>
+    ),
+    diagnose: (
+      <Group title={t('settings.groupDiagnose')}>
+        <LogRunRow
+          label={t('settings.extractDiagnose')}
+          help={t('settings.extractDiagnoseHelp')}
+          runLabel={t('settings.extractDiagnoseRun')}
+          runningLabel={t('settings.extractDiagnoseRunning')}
+          run={(log) => diagnoseExtract({ model: draft.vocalModel, gpu: draft.vocalGpu, keepHighBand: draft.vocalKeepHighBand, memoryMb: draft.vocalMemoryMb, threads: draft.vocalThreads }, log)}
+        />
       </Group>
     ),
   }

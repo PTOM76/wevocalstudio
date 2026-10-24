@@ -23,6 +23,7 @@
       "wevocalconverter/VideoExportDialog": ["../wevocalsynth/converter/src/VideoExportDialog.tsx", "./converter/src/VideoExportDialog.tsx"],
       "wevocalextractor/compat": ["../wevocalsynth/extractor/src/compat.ts", "./extractor/src/compat.ts"],
       "wevocalextractor/host": ["../wevocalsynth/extractor/src/host.ts", "./extractor/src/host.ts"],
+      "wevocalextractor/diagnose": ["../wevocalsynth/extractor/src/hostDiagnose.ts", "./extractor/src/hostDiagnose.ts"],
       "wevocalanalyzer": ["../wevocalsynth/analyzer/src/index.ts", "./analyzer/src/index.ts"],
       "wevocal-lib/react": ["../wevocalsynth/wevocal-lib/web/src/react/index.ts", "./wevocal-lib/web/src/react/index.ts"],
       "wevocal-lib": ["../wevocalsynth/wevocal-lib/web/src/index.ts", "./wevocal-lib/web/src/index.ts"]

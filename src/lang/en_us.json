@@ -395,6 +395,12 @@
   "settings.f0Normal": "Normal",
   "settings.f0Loose": "Loose (picks up breathy voice)",
   "settings.f0SilenceDb": "Silence below",
+  "settings.cat.diagnose": "Diagnostics",
+  "settings.groupDiagnose": "Vocal extraction diagnostics",
+  "settings.extractDiagnose": "Vocal extraction diagnostics",
+  "settings.extractDiagnoseHelp": "Checks on this device why extraction runs out of memory. Select and copy the result to report it",
+  "settings.extractDiagnoseRun": "Run",
+  "settings.extractDiagnoseRunning": "Running…",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
