@@ -93,6 +93,11 @@ export class ChunkCache {
     }
   }
 
+  /** 取ってあるか（作っている途中のものは含めない） */
+  has(key: string | null) {
+    return key !== null && this.map.has(key)
+  }
+
   /** 全部捨てる */
   clear() {
     this.map.clear()

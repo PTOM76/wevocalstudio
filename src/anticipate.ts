@@ -21,13 +21,14 @@ function heavy(t: Track): boolean {
 export const subtree = (p: Project, t: Track): Track[] => [t, ...descendants(p, t)]
 
 /**
- * 部分木（トラックと子孫）が外と音でつながっていない理由。つながっていなければ null。
- * 外へ送るセンド、外から入るセンド、サイドチェーンで外を聞く FX があると、部分木だけを先に作れない
+ * 部分木（トラックと子孫）が外と音でつながっている理由。つながっていなければ null。
+ * 子孫から外へ送るセンド、外から入るセンド（入った音が FX を通らずに鳴ってしまう）、サイドチェーンで外を聞く子孫の FX があると、部分木だけを先に作れない
  */
 function linked(p: Project, t: Track): string | null {
   const ids = new Set(subtree(p, t).map((x) => x.id))
   const sends = (x: Track) => (x.sends ?? []).filter((s) => s.db > SEND_MIN)
-  if ([...ids].some((id) => sends(p.tracks.find((x) => x.id === id)!).some((s) => !ids.has(s.to)))) return 'sends out'
+  // 親自身のセンドは FX のあとの音から送るので、作った音でも送れる。子孫から外へのセンドは、作った音に入らないので外す
+  if (descendants(p, t).some((x) => sends(x).some((s) => !ids.has(s.to)))) return 'sends out'
   if (p.tracks.some((x) => !ids.has(x.id) && sends(x).some((s) => ids.has(s.to)))) return 'sends in'
   if (descendants(p, t).some((x) => x.fx?.some((s) => s.on && s.sidechain))) return 'sidechain in child'
   return null

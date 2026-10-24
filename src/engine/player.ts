@@ -187,7 +187,7 @@ export class Player {
     const g = this.graph ?? this.monitor
     const state = this.playing ? 'playing' : this.starting ? 'starting' : this.monitor ? 'monitor' : 'stopped'
     const load = renderLoad()
-    return [`player ${state}${this.ant ? ` anticipating ${this.ant.next.size}` : ''} processors ${liveProcessors()}${load !== undefined ? ` load ${Math.round(load * 100)}%` : ''}`, `fx cache ${this.chunks.describe()} (anticipate ${this.antInfo})`, ...(g?.debugLines() ?? [])]
+    return [`player ${state}${this.ant ? ` anticipating ${this.ant.next.size}` : ''} processors ${liveProcessors()}${load !== undefined ? ` load ${Math.round(load * 100)}%` : ''}`, `fx cache ${this.chunks.describe()} (anticipate ${this.antInfo})`, `warm ${this.warmInfo}`, ...(g?.debugLines() ?? [])]
   }
 
   /** 音を作る処理の負荷を測り始める（wevocal-lib の startRenderLoad。1 秒ごと） */
@@ -220,9 +220,15 @@ export class Player {
    */
   async warm(p: Project, from: number) {
     const id = ++this.warmSeq
-    if (!this.anticipative || !this.warmWhileStopped || this.playing || this.starting || this.chunks.limit <= 0) return
+    if (!this.anticipative || !this.warmWhileStopped || this.playing || this.starting || this.chunks.limit <= 0) {
+      this.warmInfo = !this.anticipative || !this.warmWhileStopped ? 'off' : this.chunks.limit <= 0 ? 'no cache' : 'skipped (playing)'
+      return
+    }
     const targets = p.tracks.filter((t) => anticipated(p, t))
-    if (!targets.length) return
+    if (!targets.length) {
+      this.warmInfo = 'no target track'
+      return
+    }
     // 一度も再生していなくても作れるように、AudioContext を作っておく（止まったままで音は出ない。作った音の大きさとサンプルレートを決めるのに使う）
     this.ctx ??= new AudioContext()
     const k0 = Math.floor(from / CHUNK)
@@ -233,14 +239,24 @@ export class Player {
     const total = Math.max(0, Math.ceil(end / CHUNK) - k0) * targets.length
     const job = this.gauge.warm(total ? targets.map((t) => t.name) : [])
     let done = 0
+    let cached = 0
+    let failed = 0
+    const info = (state: string) => (this.warmInfo = `${state} ${done}/${total} from ${k0 * CHUNK}s (cached ${cached}, failed ${failed})`)
+    info('running')
     try {
       for (let k = k0; k * CHUNK < end; k++) {
         for (const t of targets) {
-          if (id !== this.warmSeq || this.playing || this.starting) return
-          await this.makeChunk(p, t.id, k).catch(() => {})
+          if (id !== this.warmSeq || this.playing || this.starting) return info('stopped')
+          if (this.chunks.has(chunkKey(p, t.id, k))) cached++
+          await this.makeChunk(p, t.id, k).catch((e: unknown) => {
+            failed++
+            console.warn('anticipate (warm):', e)
+          })
           job.update(++done / total)
+          info('running')
         }
       }
+      info('done')
     } finally {
       job.end()
     }
@@ -248,6 +264,8 @@ export class Player {
 
   /** 先読みの状態（デバッグ表示。off、対象のトラックの数、作れなかった理由） */
   private antInfo = '-'
+  /** 止めている間の準備の状態（デバッグ表示） */
+  private warmInfo = '-'
   /** 先に作った音の置き場 */
   private readonly chunks = new ChunkCache()
   /** 置き場の上限（MB。設定。0 で取っておかない） */
