@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
-const NS = process.argv[2] ?? '';
+const NS = process.argv[2] ?? 'studio';
 const SRC = 'docs/wiki';
 const MANUAL = 'docs/MANUAL.md';
 // MANUAL.md 以外から wiki に写すページ（docs のファイル → wiki のページ名）。docs の目次への「関連:」の行は外す
