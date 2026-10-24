@@ -2,7 +2,7 @@
 import { FADE, IOS, MIN_REBUILD, MIN_SEEK, MONITOR_MIN, fxLists, instrumentIds, maxTrackLatency } from './params'
 import { renderTrackChunk } from './render'
 import { Graph } from './graph'
-import { AHEAD, anticipated, CHUNK, excludedReason, signature } from '../anticipate'
+import { AHEAD, anticipated, CHUNK, excludedReason, signature, subtree } from '../anticipate'
 import { AntGauge } from './antGauge'
 import { ChunkCache, chunkKey } from '../fxCache'
 import { preloadInstruments } from 'wevocal-lib'
@@ -115,7 +115,8 @@ export class Player {
     this.graph.onFxState = this.onFxState
     // 最初のかたまりができたトラックだけを先読みにする（できなかったトラックは今までどおりノードで鳴らす）
     const ok = first.filter((_, i) => primed[i])
-    this.graph.setAnticipated(ok.map((t) => t.id))
+    // 子孫の音は、親の FX を通した形で、親の作った音に入っている。子孫をノードでも鳴らすと二重になるので、ノードでは鳴らさない（memo/anticipate-parent.md）
+    this.graph.setAnticipated(ok.flatMap((t) => subtree(p, t).map((x) => x.id)))
     this.automation = setInterval(() => {
       this.graph?.automate()
       this.graph?.pumpMidi()
@@ -211,15 +212,19 @@ export class Player {
 
   private warmSeq = 0
   /**
-   * 止めている間に、from 秒から AHEAD 秒先まで、先に計算するトラックのかたまりを作って取っておく（memo/fx-cache.md の 3）。
+   * 止めている間に、from 秒から曲の終わりまで、先に計算するトラックのかたまりを作って取っておく（memo/fx-cache.md の 3）。
+   * 置き場の上限の 9 割に収まる数まで（超えると作ったばかりの先頭が捨てられる）。
    * 再生を始めたら、次のかたまりから作らない（作っている途中のものは、再生が同じかたまりを待って使う）
    */
   async warm(p: Project, from: number) {
     const id = ++this.warmSeq
     if (!this.anticipative || !this.ctx || this.playing || this.starting || this.chunks.limit <= 0) return
     const targets = p.tracks.filter((t) => anticipated(p, t))
-    const end = Math.min(songEnd(p), from + AHEAD)
     const k0 = Math.floor(from / CHUNK)
+    // 置き場に収まるかたまりの数（ステレオの 32 ビット）
+    const fit = Math.floor((this.chunks.limit * 0.9) / (CHUNK * this.ctx.sampleRate * 2 * 4))
+    const perTrack = targets.length ? Math.max(1, Math.floor(fit / targets.length)) : 0
+    const end = Math.min(songEnd(p), (k0 + perTrack) * CHUNK)
     const total = Math.max(0, Math.ceil(end / CHUNK) - k0) * targets.length
     const job = this.gauge.warm(total ? targets.map((t) => t.name) : [])
     let done = 0
@@ -248,6 +253,9 @@ export class Player {
 
   /** 先読みをやめる（編集したとき、先読みが間に合わなかったとき） */
   private release(id: string) {
+    // 子孫もノードで鳴らす側に戻す（作った音は親にだけある）
+    const t = this.project?.tracks.find((x) => x.id === id)
+    for (const x of t && this.project ? subtree(this.project, t).slice(1) : []) this.graph?.release(x.id, false)
     this.graph?.release(id)
     this.ant?.sigs.delete(id)
     this.ant?.next.delete(id)

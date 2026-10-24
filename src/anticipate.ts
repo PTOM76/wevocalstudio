@@ -1,7 +1,7 @@
 // 先に計算して鳴らす（Anticipative FX processing）。重いプラグインを持つトラックの音を、再生位置より先に別のスレッド（OfflineAudioContext の描画）で作っておき、
 // 音を出すスレッドは、できた音を読むだけにする。判断（どのトラックか、作り直しが要るか）だけをここに置く。描画と再生は engine.ts
 import { findPlugin } from 'wevocal-lib'
-import { bakedTracks, type Project, type Track } from './project'
+import { ancestors, bakedTracks, descendants, SEND_MIN, type Project, type Track } from './project'
 
 /** 一度に作る長さ（秒）。再生位置からこの先まで作っておく */
 export const CHUNK = 4
@@ -17,12 +17,28 @@ function heavy(t: Track): boolean {
   })
 }
 
+/** トラックと子孫（親を先に計算するときは、子孫の音もまとめて作る。memo/anticipate-parent.md） */
+export const subtree = (p: Project, t: Track): Track[] => [t, ...descendants(p, t)]
+
 /**
- * 先に計算して鳴らすトラックか。子のトラックの音が入るもの（その音は先に計算できない）、フリーズ中、
- * サイドチェーンで聞かれるだけなら問題ないが、自分が聞くもの（ほかのトラックの音が要る）は除く
+ * 部分木（トラックと子孫）が外と音でつながっていない理由。つながっていなければ null。
+ * 外へ送るセンド、外から入るセンド、サイドチェーンで外を聞く FX があると、部分木だけを先に作れない
+ */
+function linked(p: Project, t: Track): string | null {
+  const ids = new Set(subtree(p, t).map((x) => x.id))
+  const sends = (x: Track) => (x.sends ?? []).filter((s) => s.db > SEND_MIN)
+  if ([...ids].some((id) => sends(p.tracks.find((x) => x.id === id)!).some((s) => !ids.has(s.to)))) return 'sends out'
+  if (p.tracks.some((x) => !ids.has(x.id) && sends(x).some((s) => ids.has(s.to)))) return 'sends in'
+  if (descendants(p, t).some((x) => x.fx?.some((s) => s.on && s.sidechain))) return 'sidechain in child'
+  return null
+}
+
+/**
+ * 先に計算して鳴らすトラックか。フリーズ中、サイドチェーンで聞く FX、外と音でつながっている部分木は除く。
+ * 子のトラックがあれば、子孫の音もまとめて作る。先祖が対象なら、その音に入っているので自分は対象にしない
  */
 export function anticipated(p: Project, t: Track): boolean {
-  return heavy(t) && !bakedTracks(p).has(t.id) && !p.tracks.some((x) => x.parent === t.id)
+  return heavy(t) && !bakedTracks(p).has(t.id) && !linked(p, t) && !ancestors(p, t).some((a) => anticipated(p, a))
 }
 
 /** 外から足したプラグイン（processor 方式）がオンなのに、先に計算しない理由。対象のトラックか、そういうプラグインが無ければ null（デバッグ表示） */
@@ -30,31 +46,35 @@ export function excludedReason(p: Project, t: Track): string | null {
   if (!t.fx?.some((s) => s.on && !!findPlugin(s.plugin)?.preload)) return null
   if (!heavy(t)) return 'sidechain or not anticipative'
   if (bakedTracks(p).has(t.id)) return 'frozen'
-  if (p.tracks.some((x) => x.parent === t.id)) return 'has child tracks'
+  const link = linked(p, t)
+  if (link) return link
+  if (ancestors(p, t).some((a) => anticipated(p, a))) return 'in anticipated parent'
   return null
 }
 
 /** 前に作った識別（トラック、波形ブロックの並び、元の音の並び、テンポが同じなら同じ。どれも書き換えずに作り直すので、参照で比べられる） */
-const sigCache = new WeakMap<Track, { blocks: Project['blocks']; sources: Project['sources']; bpm: number; sig: string }>()
+const sigCache = new WeakMap<Track, { tracks: Project['tracks']; blocks: Project['blocks']; sources: Project['sources']; bpm: number; sig: string }>()
 
 /** そのトラックの音を決めるものの識別。変わったら、先に作った音は捨てる（音量、パン以外、FX、波形ブロック、元の音の長さ、テンポ） */
 export function signature(p: Project, t: Track): string {
   const c = sigCache.get(t)
-  if (c && c.blocks === p.blocks && c.sources === p.sources && c.bpm === p.tempo.bpm) return c.sig
+  if (c && c.tracks === p.tracks && c.blocks === p.blocks && c.sources === p.sources && c.bpm === p.tempo.bpm) return c.sig
   const sig = makeSignature(p, t)
-  sigCache.set(t, { blocks: p.blocks, sources: p.sources, bpm: p.tempo.bpm, sig })
+  sigCache.set(t, { tracks: p.tracks, blocks: p.blocks, sources: p.sources, bpm: p.tempo.bpm, sig })
   return sig
 }
 
 function makeSignature(p: Project, t: Track): string {
-  const blocks = p.blocks.filter((b) => b.track === t.id)
+  const ids = new Set(subtree(p, t).map((x) => x.id))
+  const blocks = p.blocks.filter((b) => ids.has(b.track))
   const sources = [...new Set(blocks.map((b) => b.source))].map((id) => {
     const s = p.sources.find((x) => x.id === id)
     return `${id}:${s?.duration ?? 0}:${s?.clip.channels[0]?.length ?? 0}`
   })
-  // 選択、レーンの表示、パンは音のこの段階に関係しない
+  // 選択、レーンの表示、パンは音のこの段階に関係しない（子孫は、音量、パン、ミュートも親に入る音に効くので含める）
   const { pan: _pan, autoLane: _lane, sends: _sends, name: _name, height: _height, collapsed: _collapsed, armed: _armed, mute: _mute, solo: _solo, ...rest } = t
   // プラグインが保存する状態（state）は、再生中に変わるので含めない
   const fx = rest.fx?.map(({ state: _state, ...s }) => s)
-  return JSON.stringify([{ ...rest, fx }, blocks, sources, p.tempo.bpm])
+  const kids = descendants(p, t).map(({ name: _n, height: _h, collapsed: _c, armed: _a, autoLane: _l, solo: _s, ...k }) => ({ ...k, fx: k.fx?.map(({ state: _st, ...x }) => x) }))
+  return JSON.stringify([{ ...rest, fx }, kids, blocks, sources, p.tempo.bpm])
 }

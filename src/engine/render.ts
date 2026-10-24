@@ -1,7 +1,7 @@
 // 書き出し用の描画（全体、1 本のトラック、先に作って鳴らすためのかたまり）。再生と同じミキサーとグラフで作る
 import { fxLists, instrumentIds } from './params'
 import { Graph } from './graph'
-import { PREROLL } from '../anticipate'
+import { PREROLL, subtree } from '../anticipate'
 import { preloadInstruments } from 'wevocal-lib'
 import { preloadFx, renderWithProgress, type Clip } from 'wevocal-lib'
 import { loadMixer } from '../mixer/mixer'
@@ -60,12 +60,15 @@ export async function renderTrackChunk(p: Project, trackId: string, start: numbe
   if (!track) throw new Error('track not found')
   const t0 = Math.max(0, start - PREROLL)
   const lead = start - t0
+  // 子孫のトラックも入れて、親の FX の列を通した音にする（子孫の音量、パン、ミュートは含める。ソロは見ない。memo/anticipate-parent.md）
+  const kids = subtree(p, track).slice(1)
+  const ids = new Set([trackId, ...kids.map((x) => x.id)])
   const q: Project = {
     ...p,
     master: { volume: 0, pan: 0, mute: false },
-    tracks: [{ ...track, parent: undefined, pan: 0, mute: false, solo: false, sends: [], autoLane: undefined }],
-    blocks: p.blocks.filter((b) => b.track === trackId),
-    midi: midiBlocks(p).filter((b) => b.track === trackId),
+    tracks: [{ ...track, parent: undefined, pan: 0, mute: false, solo: false, sends: [], autoLane: undefined }, ...kids.map((x) => ({ ...x, solo: false, autoLane: undefined }))],
+    blocks: p.blocks.filter((b) => ids.has(b.track)),
+    midi: midiBlocks(p).filter((b) => ids.has(b.track)),
   }
   await preparePitch(q)
   const length = Math.max(128, Math.ceil((lead + dur) * sampleRate))

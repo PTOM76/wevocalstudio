@@ -1,6 +1,6 @@
 // 先に作った FX の音（anticipate.ts のかたまり）を、再生をまたいで取っておく。同じトラックの同じ音、同じ位置なら描かずに使う（memo/fx-cache.md）
 import { midiBlocks } from './project'
-import { CHUNK, PREROLL } from './anticipate'
+import { CHUNK, PREROLL, subtree } from './anticipate'
 import type { Project, Track } from './project'
 
 /** 短い文字のハッシュ（プラグインが保存する状態は長いので、キーには縮めて入れる） */
@@ -30,17 +30,21 @@ function settingsOf(t: Track) {
 export function chunkKey(p: Project, trackId: string, k: number): string | null {
   const t = p.tracks.find((x) => x.id === trackId)
   if (!t) return null
+  // 子孫のトラックの音もかたまりに入る（memo/anticipate-parent.md）
+  const tree = subtree(p, t)
+  const ids = new Set(tree.map((x) => x.id))
   const from = k * CHUNK - PREROLL
   const to = (k + 1) * CHUNK
   const within = (b: { start: number; length: number }) => b.start < to && b.start + b.length > from
-  const blocks = p.blocks.filter((b) => b.track === trackId && within(b))
-  const midi = midiBlocks(p).filter((b) => b.track === trackId && within(b))
+  const blocks = p.blocks.filter((b) => ids.has(b.track) && within(b))
+  const midi = midiBlocks(p).filter((b) => ids.has(b.track) && within(b))
   const sources = [...new Set(blocks.map((b) => b.source))].map((id) => {
     const s = p.sources.find((x) => x.id === id)
     return `${id}:${s?.duration ?? 0}:${s?.clip.channels[0]?.length ?? 0}`
   })
-  const states = (t.fx ?? []).map((s) => (s.state ? hash(s.state) : '')).join(',')
-  return `${trackId}|${settingsOf(t)}|${hash(JSON.stringify([blocks, midi, sources, p.tempo, p.markers]))}|${states}|${k}`
+  const states = tree.flatMap((x) => (x.fx ?? []).map((s) => (s.state ? hash(s.state) : ''))).join(',')
+  const kids = tree.slice(1).map((x) => `${x.id}:${settingsOf(x)}:${x.volume}:${x.pan}:${x.mute ? 1 : 0}`).join(';')
+  return `${trackId}|${settingsOf(t)}|${hash(JSON.stringify([blocks, midi, sources, p.tempo, p.markers, kids]))}|${states}|${k}`
 }
 
 const bytesOf = (b: AudioBuffer) => b.length * b.numberOfChannels * 4
