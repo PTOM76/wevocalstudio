@@ -152,6 +152,7 @@ export default function AppDialogs(p: {
       <SettingsDialog
         open={dialogs.isOpen('settings')}
         onClose={dialogs.closer('settings')}
+        focusSignal={dialogs.openCount('settings')}
         settings={p.settings}
         onChange={p.onSettingsChange}
         project={{ name: p.fileName, tempo: doc.project.tempo, onRename: p.onRenameProject, onTempoChange: doc.updateTempo }}

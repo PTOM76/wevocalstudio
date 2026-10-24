@@ -1,7 +1,7 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Box } from '@mui/material'
-import { DockArea, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, DocumentTabs } from 'pevenmui'
+import { DockArea, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowFocusContext, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, DocumentTabs } from 'pevenmui'
 import StatusBar from './StatusBar'
 import { useAddonFolder } from './useAddonFolder'
 import AppHeader from './AppHeader'
@@ -13,7 +13,7 @@ import { AUDIO_ACCEPT, readWvsp } from 'wevocal-lib'
 import { app } from './appConfig'
 import AppDialogs from './AppDialogs'
 import { DocContext } from './DocContext'
-import { useDialogs } from './useDialogs'
+import { useDialogs, type DialogId } from './useDialogs'
 import type { TimelineView } from './drawTimeline'
 import { useTransport } from './useTransport'
 import { useTouchHint } from './useTouchHint'
@@ -299,6 +299,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   return (
     // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）
     <WindowModeContext.Provider value={p.settings.dialogWindow === 'auto' ? autoWindowMode() : p.settings.dialogWindow}>
+    {/* 開いている窓をもう一度開こうとしたら手前に出す（窓の名前はダイアログの名前と同じ。道具と解析は tool- を付ける） */}
+    <WindowFocusContext.Provider value={(name) => dialogs.openCount(name.replace(/^tool-/, '') as DialogId)}>
     <SliderResetContext.Provider value={p.settings.sliderDoubleClickReset}>
     <DocContext.Provider value={doc}>
     <Box
@@ -496,6 +498,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     </Box>
     </DocContext.Provider>
     </SliderResetContext.Provider>
+    </WindowFocusContext.Provider>
     </WindowModeContext.Provider>
   )
 }

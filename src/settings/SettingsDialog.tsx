@@ -10,12 +10,13 @@ import type { ProjectSettings } from './ProjectSection'
  * 設定画面。PC は左の分類から選んで右で変え、「OK」「適用」で反映、保存し、「キャンセル」なら捨てる。
  * スマホは分類の一覧から各画面へ進み、変更はその場で反映する
  */
-export default function SettingsDialog(p: { open: boolean; onClose: () => void; settings: Settings; onChange: (patch: Partial<Settings>) => void; project: ProjectSettings }) {
+export default function SettingsDialog(p: { open: boolean; onClose: () => void; settings: Settings; onChange: (patch: Partial<Settings>) => void; project: ProjectSettings; /** 変わるたびに、別の窓の設定画面を手前に出す */ focusSignal?: number }) {
   const t = useT()
   return (
     <PevenSettingsDialog
       open={p.open}
       onClose={p.onClose}
+      focusSignal={p.focusSignal}
       title={t('settings.title')}
       settings={p.settings}
       defaults={DEFAULT_SETTINGS}
