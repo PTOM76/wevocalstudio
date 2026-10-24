@@ -2,7 +2,8 @@
 import { FADE, IOS, MIN_REBUILD, MIN_SEEK, MONITOR_MIN, fxLists, instrumentIds, maxTrackLatency } from './params'
 import { renderTrackChunk } from './render'
 import { Graph } from './graph'
-import { AHEAD, anticipated, CHUNK, signature } from '../anticipate'
+import { AHEAD, anticipated, CHUNK, excludedReason, signature } from '../anticipate'
+import { AntGauge } from './antGauge'
 import { ChunkCache, chunkKey } from '../fxCache'
 import { preloadInstruments } from 'wevocal-lib'
 import { liveProcessors, renderLoad } from 'wevocal-lib'
@@ -25,6 +26,8 @@ export class Player {
   private monitorOn = new Map<string, number>()
   /** 重いプラグインを持つトラックの音を、先に作って鳴らす（設定。anticipate.ts） */
   anticipative = false
+  /** 先に計算した量を状態バーのゲージに出す（設定。label が null なら出さない） */
+  readonly gauge = new AntGauge()
   /** 先に作って鳴らしているトラック（id → 音を決めるものの識別、次に作るかたまりの番号） */
   private ant: { sigs: Map<string, string>; next: Map<string, number>; busy: boolean; timer: ReturnType<typeof setInterval> } | null = null
   /** オートメーションを反映し続ける間隔の ID */
@@ -86,6 +89,12 @@ export class Player {
     // 先に作って鳴らすトラックは、最初のかたまりができてから始める（作っている間は、ほかの音も待つ）
     const first = this.anticipative ? p.tracks.filter((t) => anticipated(p, t)) : []
     this.antInfo = !this.anticipative ? 'off' : first.length ? `${first.length} tracks` : 'no target track'
+    // 重いプラグインがあるのに対象にならなかったトラックと、その理由
+    const skipped = p.tracks.flatMap((t) => {
+      const why = this.anticipative ? excludedReason(p, t) : null
+      return why ? [`${t.name}: ${why}`] : []
+    })
+    if (skipped.length) this.antInfo += ` / skipped ${skipped.join(', ')}`
     const k0 = Math.floor(from / CHUNK)
     const primed = await Promise.all(
       first.map((t) =>
@@ -156,6 +165,7 @@ export class Player {
     this.seq++
     if (this.ant) clearInterval(this.ant.timer)
     this.ant = null
+    this.gauge.clearAll()
     if (this.automation) clearInterval(this.automation)
     this.automation = null
     this.starting = false
@@ -209,11 +219,20 @@ export class Player {
     if (!this.anticipative || !this.ctx || this.playing || this.starting || this.chunks.limit <= 0) return
     const targets = p.tracks.filter((t) => anticipated(p, t))
     const end = Math.min(songEnd(p), from + AHEAD)
-    for (let k = Math.floor(from / CHUNK); k * CHUNK < end; k++) {
-      for (const t of targets) {
-        if (id !== this.warmSeq || this.playing || this.starting) return
-        await this.makeChunk(p, t.id, k).catch(() => {})
+    const k0 = Math.floor(from / CHUNK)
+    const total = Math.max(0, Math.ceil(end / CHUNK) - k0) * targets.length
+    const job = this.gauge.warm(total ? targets.map((t) => t.name) : [])
+    let done = 0
+    try {
+      for (let k = k0; k * CHUNK < end; k++) {
+        for (const t of targets) {
+          if (id !== this.warmSeq || this.playing || this.starting) return
+          await this.makeChunk(p, t.id, k).catch(() => {})
+          job.update(++done / total)
+        }
       }
+    } finally {
+      job.end()
     }
   }
 
@@ -232,6 +251,7 @@ export class Player {
     this.graph?.release(id)
     this.ant?.sigs.delete(id)
     this.ant?.next.delete(id)
+    this.gauge.clear(id)
     // ノードの列に戻すので、今のプロジェクトで組み直す
     if (this.project) this.graph?.sync(this.project, true)
   }
@@ -256,6 +276,8 @@ export class Player {
         this.graph.playChunk(id, buf, k * CHUNK)
         ant.next.set(id, k + 1)
       }
+      // 再生位置からどこまでできているか
+      for (const [id, k] of ant.next) this.gauge.setAhead(id, p.tracks.find((t) => t.id === id)?.name ?? id, (k * CHUNK - this.position()) / AHEAD)
     } catch {
       // 作れなかったら、次の周期でもう一度試す（続けて間に合わなければ release になる）
     } finally {

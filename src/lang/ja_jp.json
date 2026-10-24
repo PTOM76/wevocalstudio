@@ -403,6 +403,8 @@
   "settings.extractDiagnoseRunning": "診断中…",
   "settings.tempoStretch": "テンポ変更時に全体を伸縮する",
   "settings.tempoStretchHelp": "BPMを入力したとき、全トラックをそのテンポに合わせて伸縮する",
+  "settings.showAnticipateGauge": "先に計算した量を表示する",
+  "settings.showAnticipateGaugeHelp": "「重いプラグインを先に計算して鳴らす」の進み具合を、状態バーのゲージに表示する。止めている間は準備の進み、再生中はトラックごとに、再生位置から先にできている量を表示する",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
@@ -612,6 +614,9 @@
   "job.update": "更新中",
   "job.freeze": "フリーズ中",
   "job.bake": "確定中",
+  "job.anticipate": "先に計算中",
+  "job.anticipateWarm": "{track} を先に計算中",
+  "job.anticipateAhead": "{track} の先読み（12 秒に対する量）",
 
   "file.projectType": "WeVocal Studio プロジェクト",
   "file.wvspType": "WeVocalSynth プロジェクト",

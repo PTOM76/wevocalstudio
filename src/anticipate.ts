@@ -25,6 +25,15 @@ export function anticipated(p: Project, t: Track): boolean {
   return heavy(t) && !bakedTracks(p).has(t.id) && !p.tracks.some((x) => x.parent === t.id)
 }
 
+/** 外から足したプラグイン（processor 方式）がオンなのに、先に計算しない理由。対象のトラックか、そういうプラグインが無ければ null（デバッグ表示） */
+export function excludedReason(p: Project, t: Track): string | null {
+  if (!t.fx?.some((s) => s.on && !!findPlugin(s.plugin)?.preload)) return null
+  if (!heavy(t)) return 'sidechain or not anticipative'
+  if (bakedTracks(p).has(t.id)) return 'frozen'
+  if (p.tracks.some((x) => x.parent === t.id)) return 'has child tracks'
+  return null
+}
+
 /** 前に作った識別（トラック、波形ブロックの並び、元の音の並び、テンポが同じなら同じ。どれも書き換えずに作り直すので、参照で比べられる） */
 const sigCache = new WeakMap<Track, { blocks: Project['blocks']; sources: Project['sources']; bpm: number; sig: string }>()
 

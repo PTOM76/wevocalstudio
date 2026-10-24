@@ -403,6 +403,8 @@
   "settings.extractDiagnoseRunning": "Running…",
   "settings.tempoStretch": "Stretch all tracks when tempo changes",
   "settings.tempoStretchHelp": "When you enter a BPM, all tracks are stretched to that tempo",
+  "settings.showAnticipateGauge": "Show precomputed amount",
+  "settings.showAnticipateGaugeHelp": "Shows the progress of \"Precompute heavy plugins\" as gauges in the status bar: preparation while stopped, and for each track during playback, how much audio is ready ahead of the playhead",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
@@ -612,6 +614,9 @@
   "job.update": "Updating",
   "job.freeze": "Freezing",
   "job.bake": "Committing",
+  "job.anticipate": "Precomputing",
+  "job.anticipateWarm": "Precomputing {track}",
+  "job.anticipateAhead": "{track} buffered ahead (of 12 s)",
 
   "file.projectType": "WeVocal Studio project",
   "file.wvspType": "WeVocalSynth project",

@@ -267,6 +267,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('showVoiceSplit')}
         {S('showVst')}
         {S('autoBypass')}
+        {S('showAnticipateGauge')}
         {S('showDevPlugins')}
         {S('anticipativeFx')}
         {S('anticipativeCacheMb')}

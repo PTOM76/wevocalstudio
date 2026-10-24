@@ -77,7 +77,7 @@ src/
   Transport.tsx  再生のボタン一式（先頭へ、停止、再生と一時停止、録音、リピート、末尾へ）、時間の表示、マスターのメーター、テンポとグリッド。部品は WeVocalSynth のツールバーと同じ
   useActions.ts  操作の表（キーとメニューから行うもの）を作るフック。選択とコピーの状態を持ち、表（commands/table.ts）とメニュー（commands/menus.ts）に渡し、キーを受ける
   useAddonFolder.tsx  追加機能の保存先のフォルダー（試験的）。許可の通知と、設定と自動保存した作業の写しは PevenMUI の useAddonFolderSync（WeVocalSynth と同じ）
-  useAppSetup.ts  アプリを開いているあいだ、設定を音の出力とデバッグ表示に反映する（出力先、リミッター、再生のセッション、Ctrl+Shift+D）
+  useAppSetup.ts  アプリを開いているあいだ、設定を音の出力とデバッグ表示に反映する（出力先、リミッター、再生のセッション、重いプラグインの素通し、処理の開発者向けの設定、Ctrl+Shift+D）
   useAutosave.ts  起動時に前回の作業（開いていたタブすべて）を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
   useBlockJobs.ts  時間のかかる、波形ブロックとトラックの確定（現在の音にして置き換える）と、トラックのフリーズ（書き出した音で鳴らす）。進み具合は PevenMUI のジョブで見せ、取り消せる
   useDialogs.ts  ダイアログの開閉と、開くときに渡す値（PevenMUI の useDialogs。WeVocalSynth と同じ）
@@ -120,6 +120,7 @@ src/dsp/
   worker.ts  wasm の処理（ピッチと速度の変更、テンポの解析、和音の分離）を画面のスレッドの外で行う Worker
 
 src/engine/
+  antGauge.ts  先に計算して鳴らす（anticipate.ts）の進み具合を、状態バーのゲージ（PevenMUI の jobs）に出す。設定の「先に計算した量を表示する」がオンのときだけ
   engine.test.ts  engine/midiEvents.ts と params.ts の純粋な関数のテスト
   graph.ts  再生と書き出しの音のグラフ。トラックごとのミキサー、FX の列、パン、メーター、マスターをつなぎ、プロジェクトの変更に合わせて組み替える
   midiEvents.ts  MIDI ブロックの音符とコントロールを、音源へ渡す形（AudioContext の時刻）に並べる純粋な関数。zero は曲の 0 秒が AudioContext の何秒か
@@ -166,7 +167,7 @@ src/settings/
   settingsSearch.ts  設定画面の分類の並びと、検索の対象（WeVocalSynth と同じ形）
 
 src/settings/items/
-  debug.ts  「開発者向け」の項目（名前と既定値は WeVocalSynth と同じ。devUpdates だけ開発中なので既定でオン）
+  debug.ts  「開発者向け」「音声」「試験的機能」の項目（名前と既定値は WeVocalSynth と同じ。devUpdates だけ開発中なので既定でオン）
   define.ts  設定の項目を定義する関数（check、choice、number、value）。仕組みは PevenMUI の settingItems（WeVocalSynth と共通）。ここは訳文のキーと分類の型を決めるだけ
   display.ts  「表示」の項目と、表示メニューとツールバーで切り替えるもの（名前と既定値は WeVocalSynth と同じ）
   general.ts  「全般」「編集」「キーとマウス」「ファイル」の項目（名前と既定値は WeVocalSynth と同じ）
