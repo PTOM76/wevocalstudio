@@ -218,8 +218,11 @@ export class Player {
    */
   async warm(p: Project, from: number) {
     const id = ++this.warmSeq
-    if (!this.anticipative || !this.ctx || this.playing || this.starting || this.chunks.limit <= 0) return
+    if (!this.anticipative || this.playing || this.starting || this.chunks.limit <= 0) return
     const targets = p.tracks.filter((t) => anticipated(p, t))
+    if (!targets.length) return
+    // 一度も再生していなくても作れるように、AudioContext を作っておく（止まったままで音は出ない。作った音の大きさとサンプルレートを決めるのに使う）
+    this.ctx ??= new AudioContext()
     const k0 = Math.floor(from / CHUNK)
     // 置き場に収まるかたまりの数（ステレオの 32 ビット）
     const fit = Math.floor((this.chunks.limit * 0.9) / (CHUNK * this.ctx.sampleRate * 2 * 4))
