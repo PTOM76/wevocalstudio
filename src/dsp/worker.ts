@@ -13,6 +13,7 @@ interface DspExports {
   analyze_tempo(input: number, frames: number, sampleRate: number): number
   split_voices_planar(input: number, frames: number, channels: number, sampleRate: number, by: number): number
   output_ptr(): number
+  set_fast_math(on: number): void
 }
 
 export interface PitchRequest {
@@ -28,6 +29,8 @@ export interface PitchRequest {
   preserveFormant: boolean
   /** フォルマントのずらし量（半音。preserveFormant のときだけ効く） */
   formantSemitones: number
+  /** フォルマント補正で速い近似を使うか（設定の開発者向け） */
+  fastMath: boolean
   /** ピッチカーブ（hopSamples おきのピッチ比）。あれば semitones の代わりにこれを使う */
   ratios?: Float32Array
   hopSamples?: number
@@ -95,6 +98,7 @@ function process(dsp: DspExports, r: PitchRequest): Float32Array[] {
   const len = frames * r.channels.length
   const ptr = dsp.alloc_f32(len)
   try {
+    dsp.set_fast_math(r.fastMath ? 1 : 0)
     r.channels.forEach((c, i) => new Float32Array(dsp.memory.buffer, ptr, len).set(c, i * frames))
     let n: number
     if (r.ratios) {

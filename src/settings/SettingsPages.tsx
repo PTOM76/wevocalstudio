@@ -143,19 +143,21 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
           </Row>
           {S('showLegacyAlgorithms')}
           {S('preserveFormant')}
-          {S('anticipativeFx')}
-          {S('anticipativeCacheMb')}
-        </Group>
-        <Group title={t('settings.groupTempo')}>
-          {S('autoTempo')}
-          {S('defaultBpm')}
-        </Group>
-        <Group title={t('settings.groupPitch')}>
-          {S('f0MinHz')}
-          {S('f0MaxHz')}
-          {S('flattenStrength')}
         </Group>
       </>
+    ),
+    pitch: (
+      <Group title={t('settings.groupPitch')}>
+        {S('f0MinHz')}
+        {S('f0MaxHz')}
+        {S('flattenStrength')}
+      </Group>
+    ),
+    tempo: (
+      <Group title={t('settings.groupTempo')}>
+        {S('autoTempo')}
+        {S('defaultBpm')}
+      </Group>
     ),
     vocal: (
       <>
@@ -231,15 +233,6 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
       <Group title={t('settings.groupDebug')}>
         {S('showDebug')}
         {S('devUpdates')}
-        {S('showVoiceSplit')}
-        {S('showVst')}
-        {S('autoBypass')}
-        {S('showDevPlugins')}
-        {S('suspendWhenStopped')}
-        {S('playbackSession')}
-        {/* 追加機能の保存先のフォルダー（Chrome、Edge だけ） */}
-        {addonFolderSupported() && S('addonFolder')}
-        {addonFolderSupported() && draft.addonFolder && <AddonFolderRow />}
         {S('filePicker')}
         <Row label={t('settings.dialogWindow')}>
           <Choice<WindowMode | 'auto'>
@@ -254,6 +247,27 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
             ]}
           />
         </Row>
+      </Group>
+    ),
+    debugAudio: (
+      <Group title={t('settings.groupDebugAudio')}>
+        {S('fastMath')}
+        {S('suspendWhenStopped')}
+        {S('playbackSession')}
+      </Group>
+    ),
+    experimental: (
+      <Group title={t('settings.groupExperimental')}>
+        {S('showExperimentalAlgorithms')}
+        {S('showVoiceSplit')}
+        {S('showVst')}
+        {S('autoBypass')}
+        {S('showDevPlugins')}
+        {S('anticipativeFx')}
+        {S('anticipativeCacheMb')}
+        {/* 追加機能の保存先のフォルダー（Chrome、Edge だけ） */}
+        {addonFolderSupported() && S('addonFolder')}
+        {addonFolderSupported() && draft.addonFolder && <AddonFolderRow />}
       </Group>
     ),
   }

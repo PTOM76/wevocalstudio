@@ -117,7 +117,6 @@ pub unsafe extern "C" fn process_planar(
     let all = std::slice::from_raw_parts(input, frames * channels);
     let chans: Vec<&[f32]> = all.chunks(frames.max(1)).take(channels).collect();
     let formant = if preserve_formant != 0 { Formant::Shift(formant_semitones) } else { Formant::Follow };
-    formant::set_fast_math(true);
     let out = process_steps(&chans, sample_rate, semitones, stretch, Algorithm::from_id(algorithm), formant);
     let out_frames = out.first().map_or(0, |c| c.len());
     OUTPUT.with(|o| {
@@ -153,7 +152,6 @@ pub unsafe extern "C" fn process_curve_planar(
     let chans: Vec<&[f32]> = all.chunks(frames.max(1)).take(channels).collect();
     let ratios = std::slice::from_raw_parts(ratios, ratio_count);
     let formant = if preserve_formant != 0 { Formant::Shift(formant_semitones) } else { Formant::Follow };
-    formant::set_fast_math(true);
     let algorithm = Algorithm::from_id(algorithm);
     let share = if (stretch - 1.0).abs() > 1e-9 { 0.7 } else { 1.0 };
     let mut out = curve::process(&chans, sample_rate, ratios, hop, algorithm, formant, &mut |p| host_progress(p * share));
@@ -185,6 +183,12 @@ pub unsafe extern "C" fn analyze_tempo(input: *const f32, frames: usize, sample_
     let n = out.len();
     OUTPUT.with(|o| *o.borrow_mut() = out);
     n
+}
+
+/// フォルマント補正で速い対数と指数の近似を使うか（0 で標準の関数。設定の開発者向け。WeVocalSynth と同じ）
+#[no_mangle]
+pub extern "C" fn set_fast_math(on: u32) {
+    formant::set_fast_math(on != 0);
 }
 
 /// 長い音を区間に分けて別々の Worker で作るときの、区間の数（WeVocalSynth と同じ wevocal-lib の segment）

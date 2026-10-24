@@ -107,12 +107,20 @@ function curveKey(b: Block) {
 }
 
 /** 波形ブロックごとの paramsOf（Block は書き換えずに作り直すので、同じオブジェクトなら同じ値。描画と同期のたびにカーブ全体をハッシュしないように） */
-const paramsCache = new WeakMap<Block, string>()
+let paramsCache = new WeakMap<Block, string>()
+
+/** フォルマント補正で速い近似を使うか（設定の開発者向け。変えたら作る音のキーも変わり、作り直す） */
+let fastMath = true
+export function setFastMath(on: boolean) {
+  if (on === fastMath) return
+  fastMath = on
+  paramsCache = new WeakMap()
+}
 
 /** 範囲のほかに、作る音を決める値 */
 function paramsOf(b: Block) {
   let v = paramsCache.get(b)
-  if (v === undefined) paramsCache.set(b, (v = `${b.source}|${b.pitch}|${b.rate}|${b.formant}|${b.algorithm}|${b.preserveFormant}|${curveKey(b)}`))
+  if (v === undefined) paramsCache.set(b, (v = `${b.source}|${b.pitch}|${b.rate}|${b.formant}|${b.algorithm}|${b.preserveFormant}|${fastMath ? '' : 'exact'}|${curveKey(b)}`))
   return v
 }
 
@@ -266,6 +274,7 @@ async function processChunk(w: Want): Promise<Made> {
       algorithm: ALGORITHM_ID[w.preview ? 'sola' : b.algorithm],
       preserveFormant: !w.preview && (b.preserveFormant || b.formant !== 0),
       formantSemitones: w.preview ? 0 : b.formant,
+      fastMath,
       ...(b.curve || b.pitchEnvelope?.length ? ratiosOf(b, z - a, sr, a / sr) : {}),
     },
     (p) => {

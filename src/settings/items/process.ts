@@ -13,19 +13,19 @@ export const pitch = defineItems('process', {
   showLegacyAlgorithms: check(false, { label: 'settings.showLegacyAlgorithms', help: 'settings.showLegacyAlgorithmsHelp' }),
   // 新しい波形ブロックでフォルマント（声の響き）を保つか
   preserveFormant: check(true, { label: 'settings.preserveFormant' }),
-  // 重いプラグインを持つトラックの音を、再生位置より先に作って鳴らす（試験的。音を出すスレッドの負担が減り、音が途切れにくい。再生を始めるまで少し待つ）
-  anticipativeFx: check(false, { label: 'settings.anticipativeFx', help: 'settings.anticipativeFxHelp' }),
-  // 先に計算した音を、再生をまたいで取っておく量（MB。0 で取っておかない。memo/fx-cache.md）
-  anticipativeCacheMb: number(256, { label: 'settings.anticipativeCacheMb', help: 'settings.anticipativeCacheMbHelp', min: 0, max: 2048, step: 64, unit: 'MB' }),
 })
 
-/** 「ピッチ」「テンポ」（名前と既定値は WeVocalSynth と同じ） */
-export const analysis = defineItems('process', {
+/** 「処理」→「ピッチ」（名前と既定値は WeVocalSynth と同じ） */
+export const analysis = defineItems('pitch', {
   // 解析の欄の F0 を探す音の範囲（Hz）
   f0MinHz: number(60, { label: 'settings.f0MinHz', min: 40, max: 400, step: 1, unit: 'Hz' }),
   f0MaxHz: number(1000, { label: 'settings.f0MaxHz', min: 200, max: 2000, step: 10, unit: 'Hz' }),
   // 「平らにする」の強さ（1 未満なら元の揺れを少し残す）
   flattenStrength: choice<number>(1, { label: 'settings.flattenStrength', help: 'settings.flattenStrengthHelp', values: [1, 0.75, 0.5, 0.25], format: (s) => Math.round(s * 100) + '%' }),
+})
+
+/** 「処理」→「テンポ」（名前と既定値は WeVocalSynth と同じ） */
+export const tempo = defineItems('tempo', {
   // 音声を最初に読み込んだとき、テンポを自動解析して BPM と 1 拍目の位置を入れる
   autoTempo: check(true, { label: 'settings.autoTempo', help: 'settings.autoTempoHelp' }),
   // 新しいプロジェクトの BPM
