@@ -1,7 +1,7 @@
 // edits/project.ts のテスト
 import { describe, expect, it } from 'vitest'
 import { newProject, type MidiBlock } from '../../project'
-import { addMarker, adoptTempoChanges, patchMarker, patchMaster, patchTempo, removeMarker, setEnd } from './project'
+import { addMarker, adoptTempoChanges, patchMarker, patchMaster, patchTempo, removeMarker, setEnd, stretchToTempo } from './project'
 
 describe('マーカー', () => {
   it('時刻の順に並べ、同じ位置には足さない', () => {
@@ -64,5 +64,16 @@ describe('adoptTempoChanges', () => {
       [30, 140],
       [60, 90],
     ])
+  })
+})
+
+describe('stretchToTempo', () => {
+  it('波形ブロックの位置、長さ、速度とマーカーを旧 BPM ÷ 新 BPM 倍にする', () => {
+    const base = addMarker(newProject(120), 4)
+    const p0 = { ...base, blocks: [{ id: 'b', track: base.tracks[0].id, source: 's', start: 2, length: 4, offset: 1, rate: 1, gain: 0, pitch: 0, algorithm: 'sola3' as const, preserveFormant: true, formant: 0, fadeIn: 0.01, fadeOut: 0.02, mute: false }] }
+    const p = stretchToTempo(p0, 60)
+    expect(p.tempo.bpm).toBe(60)
+    expect(p.blocks[0]).toMatchObject({ start: 4, length: 8, rate: 0.5, offset: 1, fadeIn: 0.02, fadeOut: 0.04 })
+    expect(p.markers[0].time).toBe(8)
   })
 })

@@ -54,6 +54,8 @@ export const tempo = defineItems('tempo', {
   }),
   // 新しいプロジェクトの BPM
   defaultBpm: number(120, { label: 'settings.defaultBpm', help: 'settings.defaultBpmHelp', min: 20, max: 300, step: 1, unit: 'BPM', round: (v) => Math.round(v * 100) / 100 }),
+  // BPM を手で変えたら、曲全体をそのテンポに合わせて伸縮する（ピッチは変えない。波形ブロックの速度を変える。edits/project.ts の stretchToTempo）
+  tempoStretch: check(false, { label: 'settings.tempoStretch', help: 'settings.tempoStretchHelp' }),
 })
 
 /** 時間軸の線（「編集」に出す） */

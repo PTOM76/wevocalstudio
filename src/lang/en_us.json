@@ -401,6 +401,8 @@
   "settings.extractDiagnoseHelp": "Checks on this device why extraction runs out of memory. Select and copy the result to report it",
   "settings.extractDiagnoseRun": "Run",
   "settings.extractDiagnoseRunning": "Running…",
+  "settings.tempoStretch": "Stretch all tracks when tempo changes",
+  "settings.tempoStretchHelp": "When you enter a BPM, all tracks are stretched to that tempo",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",

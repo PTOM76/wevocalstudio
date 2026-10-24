@@ -477,7 +477,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
           tracks={project.tracks.length}
           range={range}
           onRange={setRange}
-          tempo={<TempoField bpm={project.tempo.bpm} candidates={tempo.candidates} analyzing={tempo.analyzing} onChange={tempo.setBpm} onAnalyze={() => void tempo.detect()} labels={{ tap: t('tempo.tap'), tapHint: t('tempo.tapHint'), candidates: t('tempo.candidates'), analyze: t('tempo.analyze'), analyzing: t('tempo.analyzing') }} />}
+          tempo={<TempoField bpm={project.tempo.bpm} candidates={tempo.candidates} analyzing={tempo.analyzing} onChange={tempo.setBpm} onInput={(bpm) => (p.settings.tempoStretch ? doc.stretchTempo(bpm) : tempo.setBpm(bpm))} onAnalyze={() => void tempo.detect()} labels={{ tap: t('tempo.tap'), tapHint: t('tempo.tapHint'), candidates: t('tempo.candidates'), analyze: t('tempo.analyze'), analyzing: t('tempo.analyzing') }} />}
           bpm={project.tempo.bpm}
         />
       )}

@@ -401,6 +401,8 @@
   "settings.extractDiagnoseHelp": "抽出がメモリ不足になる原因を、この端末で確かめる。結果を選んでコピーし、報告に貼る",
   "settings.extractDiagnoseRun": "診断する",
   "settings.extractDiagnoseRunning": "診断中…",
+  "settings.tempoStretch": "テンポ変更時に全体を伸縮する",
+  "settings.tempoStretchHelp": "BPMを入力したとき、全トラックをそのテンポに合わせて伸縮する",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

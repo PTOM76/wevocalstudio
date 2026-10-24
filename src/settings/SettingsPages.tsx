@@ -161,6 +161,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('autoTempo')}
         {S('tempoChange')}
         {S('defaultBpm')}
+        {S('tempoStretch')}
       </Group>
     ),
     vocal: (
