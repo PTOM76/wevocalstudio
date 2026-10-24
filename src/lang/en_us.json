@@ -373,6 +373,8 @@
   "settings.groupPitch": "Pitch (voice) analysis",
   "settings.dockWindowSnap": "Dock a separate window when dropped at an edge",
   "settings.dockWindowSnapHelp": "Drop a dialog shown in a separate window at an edge of the main window to dock it there.",
+  "settings.autoBypass": "Bypass heavy plugins automatically",
+  "settings.autoBypassHelp": "When a plugin keeps failing to keep up, bypass it so the sound does not keep breaking up. When off, the plugin stays on even if the sound breaks up. A plugin that stops or outputs broken audio is always bypassed",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",

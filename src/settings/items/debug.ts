@@ -13,6 +13,8 @@ export const debug = defineItems('debug', {
   showVoiceSplit: check(false, { label: 'settings.showVoiceSplit', help: 'settings.showVoiceSplitHelp' }),
   // 試験的機能の VST（Windows の DLL をエミュレーターで動かす。書き出しのときだけ掛かる）を、設定のプラグインから導入できるようにする
   showVst: check(false, { label: 'settings.showVst', help: 'settings.showVstHelp' }),
+  // 重いプラグイン（VST など）を、再生中に自動で素通しにする（WeVocalSynth と同じ。オフなら途切れても掛け続ける。止まったときと出力が壊れたときは常に素通し）
+  autoBypass: check(true, { label: 'settings.autoBypass', help: 'settings.autoBypassHelp' }),
   // 開発者向けのプラグイン（雛形）を FX の追加の一覧に出す
   showDevPlugins: check(false, { label: 'settings.showDevPlugins', help: 'settings.showDevPluginsHelp' }),
   // 止めている間は AudioContext を一時停止する（iOS で音が出ないときの切り分け用。WeVocalSynth と同じ）

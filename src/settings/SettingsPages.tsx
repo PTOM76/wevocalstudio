@@ -233,6 +233,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('devUpdates')}
         {S('showVoiceSplit')}
         {S('showVst')}
+        {S('autoBypass')}
         {S('showDevPlugins')}
         {S('suspendWhenStopped')}
         {S('playbackSession')}

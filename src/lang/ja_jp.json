@@ -373,6 +373,8 @@
   "settings.groupPitch": "ピッチ（声の高さ）の解析",
   "settings.dockWindowSnap": "別の窓を端に寄せて離したら、欄に置く",
   "settings.dockWindowSnapHelp": "別の窓（ポップアップ）に出したダイアログを、本体の窓の端に寄せて離すと、その端の欄に置きます。",
+  "settings.autoBypass": "重いプラグインを自動で素通しにする",
+  "settings.autoBypassHelp": "処理が間に合わない状態が続いたとき、そのプラグインを素通しにして音の途切れを防ぐ。オフにすると、音が途切れても掛け続ける。プラグインが止まったときと、出力が壊れたときは、この設定によらず素通しになる",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

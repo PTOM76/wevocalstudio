@@ -1,15 +1,16 @@
-// アプリを開いているあいだ、設定を音の出力とデバッグ表示に反映する（出力先、リミッター、再生のセッション、Ctrl+Shift+D）
+// アプリを開いているあいだ、設定を音の出力とデバッグ表示に反映する（出力先、リミッター、再生のセッション、重いプラグインの素通し、Ctrl+Shift+D）
 import { useEffect, useRef } from 'react'
-import { configurePlayback, setOutputDevice, setOutputLimit } from 'wevocal-lib'
+import { configurePlayback, setAutoBypass, setOutputDevice, setOutputLimit } from 'wevocal-lib'
 import { reportAudioContext } from 'pevenmui/debug'
 import type { Settings } from './settings/settings'
 
 export function useAppSetup(settings: Settings, onSettingsChange: (patch: Partial<Settings>) => void) {
   // 出力先とリミッター（wevocal-lib。WeVocalSynth と同じ）
-  const { suspendWhenStopped, playbackSession, outputDevice, outputLimit, outputLimitDb } = settings
+  const { suspendWhenStopped, playbackSession, outputDevice, outputLimit, outputLimitDb, autoBypass } = settings
   useEffect(() => void configurePlayback({ suspendWhenStopped, playbackSession, report: reportAudioContext }), [suspendWhenStopped, playbackSession])
   useEffect(() => setOutputDevice(outputDevice), [outputDevice])
   useEffect(() => setOutputLimit(outputLimit ? outputLimitDb : null), [outputLimit, outputLimitDb])
+  useEffect(() => setAutoBypass(autoBypass), [autoBypass])
   // Ctrl+Shift+D でデバッグ表示を切り替える（WeVocalSynth と同じ）
   const settingsRef = useRef(settings)
   settingsRef.current = settings
