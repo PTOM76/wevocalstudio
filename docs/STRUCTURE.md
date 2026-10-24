@@ -66,6 +66,7 @@ src/
   reverse.ts  選んだ波形ブロックの逆再生。元の音は書き換えず、ブロックが使っている部分を逆にした新しい元の音を足して、ブロックをそちらに向ける。画面を知らない
   sampler.ts  選んだ波形ブロックを MIDI の音符に並べる、一音ずつに分ける（どちらも波形ブロックを写して位置、ピッチ、長さを決める。音は処理しないので、あとから直せる）
   SendDialog.tsx  トラックのセンド（このトラックの音を、ほかのトラックの入口へ送る。フェーダーのあとの音を、送る量だけ。リバーブなどを共有するバスに使う）
+  ShapeIcon.tsx  エンベロープの形状の見本図（メニューとダイアログで、形状を見た目で選べるようにする）
   ShortcutsDialog.tsx  ショートカットの一覧のダイアログ（部品は PevenMUI の ShortcutsDialog。WeVocalSynth と同じ）
   StatusBar.tsx  PC の下のステータスバー（WeVocalSynth と同じ並び）。プロジェクト名、書き出しの形式、範囲選択、BPM、処理中のゲージ
   Timeline.tsx  時間軸。左にトラックの欄、右に波形ブロックを並べた canvas。波形ブロックはドラッグで動かし（ほかのトラックへも移せる）、端で長さ、上の角でフェードを変える
@@ -77,7 +78,7 @@ src/
   useActions.ts  操作の表（キーとメニューから行うもの）を作るフック。選択とコピーの状態を持ち、表（commands/table.ts）とメニュー（commands/menus.ts）に渡し、キーを受ける
   useAddonFolder.tsx  追加機能の保存先のフォルダー（試験的）。許可の通知と、設定と自動保存した作業の写しは PevenMUI の useAddonFolderSync（WeVocalSynth と同じ）
   useAppSetup.ts  アプリを開いているあいだ、設定を音の出力とデバッグ表示に反映する（出力先、リミッター、再生のセッション、Ctrl+Shift+D）
-  useAutosave.ts  起動時に前回の作業を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
+  useAutosave.ts  起動時に前回の作業（開いていたタブすべて）を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
   useBlockJobs.ts  時間のかかる、波形ブロックとトラックの確定（現在の音にして置き換える）と、トラックのフリーズ（書き出した音で鳴らす）。進み具合は PevenMUI のジョブで見せ、取り消せる
   useDialogs.ts  ダイアログの開閉と、開くときに渡す値（PevenMUI の useDialogs。WeVocalSynth と同じ）
   useExtract.tsx  ボーカル抽出と楽器ごとの分離、和音の分離（手順は extractor の host.ts。WeVocalSynth と共通）。選んだ波形ブロックの音を分けて、新しいトラックに並べる
@@ -88,6 +89,7 @@ src/
   useProjectFile.ts  プロジェクトの開く、保存（上書きと名前を付けて）、書き出し、最近使用したファイル、OS から開く、閉じる前の確認（WeVocalSynth と同じ PevenMUI の fileAccess）
   useProjectTabs.ts  プロジェクトのタブ（projectTabs.ts）。表示している 1 つは画面の状態、ほかは退避した記録。切り替えは、今の状態を退避して、選んだ記録を戻す
   useRecorder.ts  録音（再生位置から、ほかのトラックを鳴らしながら録り、録った音を波形ブロックとして置く。wevocal-lib の録音）
+  useScreensetMenu.tsx  名前を付けた配置（スクリーンセット。PevenMUI の useScreensets）の、表示メニューの項目と名前を入れるダイアログ。呼び出すと、欄に置いていた解析の欄も開き直す
   useTempoDetect.ts  テンポの解析（選んだ波形ブロックから。WeVocalSynth と同じ解析）と、BPM、1 拍目の位置の設定
   useTouchHint.ts  タッチの端末では、最初に波形ブロックを置いたときに、長押しとダブルタップの操作を一度だけ知らせる（見つけにくいため）
   useTransport.ts  再生と編集カーソル。再生（Player）、再生中か、編集カーソル（押した所、貼り付ける所）、再生カーソル、一時停止の位置、繰り返しを持ち、再生、一時停止、停止、移動の操作を渡す
@@ -134,7 +136,7 @@ src/pianoRoll/
   draw.ts  ピアノロールを描く（鍵盤、グリッド、音符、再生位置、強さの帯）。画面の部品は持たない
   edit.ts  ピアノロールの編集操作（移動、移調、長さ、クオンタイズ、コピーと貼り付け）。音符の並びを受けて、新しい並びを返す。画面を知らない
   gesture.test.ts  gesture.ts のテスト
-  gesture.ts  ピアノロールのドラッグで音符がどう変わるかの計算（動かす、長さを変える、枠で選ぶ）。状態に触れない純粋な関数で、PianoRoll が毎回の動きで呼ぶ
+  gesture.ts  ピアノロールの操作中の状態（RollGesture。同時に 1 つだけ）と、ドラッグで音符がどう変わるかの計算（動かす、長さを変える、枠で選ぶ）。計算は状態に触れない純粋な関数で、PianoRoll が毎回の動きで呼ぶ
   hit.ts  ピアノロールで押した所の判定（音符、右端、強さの棒）。画面を知らない
   InfoLine.tsx  ピアノロールの情報行: 選んだ音符の値（複数のときは先頭の値）を数値で見て直す。入れた値は選んだ全部に反映する。右端には、下のレーンの選択
   laneEdit.ts  ピアノロールの下のレーン（強さ、ピッチベンド、CC）の曲線の編集。点の判定と、曲線の入れ替え。画面を知らない
@@ -173,7 +175,7 @@ src/settings/items/
   SettingRow.tsx  項目の定義から設定画面の 1 行を作る（部品は PevenMUI の SettingRow。WeVocalSynth と同じ）
 
 src/storage/
-  autosave.ts  作業の自動保存と復元（IndexedDB）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く。書き込みは Worker
+  autosave.ts  作業の自動保存と復元（IndexedDB。開いているタブすべて）。元の音は書き換えないので 1 回だけ書き、トラックと波形ブロックは変わるたびに書く。書き込みは Worker
   autosaveWorker.ts  自動保存の書き込みと読み出しをする Worker。数十〜百 MB の元の音の複製と保存を画面のスレッドから外す（WeVocalSynth と同じ）
   dataFolder.ts  設定と自動保存した作業を、指定したフォルダーにも写す（PWA を消しても戻せるように。処理は PevenMUI。WeVocalSynth と同じ）。画面と自動保存の Worker の両方から使う
   idb.ts  このアプリの IndexedDB（PevenMUI の createIdb。WeVocalSynth と同じ）。画面と自動保存の Worker の両方から使う

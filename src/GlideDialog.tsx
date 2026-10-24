@@ -4,6 +4,7 @@ import { WindowDialog, enterToSubmit } from 'pevenmui'
 import { LabeledSelect as Choice } from 'wevocal-lib/react'
 import { useState } from 'react'
 import { useT } from './i18n'
+import { ShapeIcon } from './ShapeIcon'
 import { GLIDE_SECONDS, type GlideShape } from './glide'
 
 export default function GlideDialog(p: { open: boolean; onClose: () => void; onApply: (options: { seconds: number; shape: GlideShape; tension: number }) => void }) {
@@ -11,6 +12,13 @@ export default function GlideDialog(p: { open: boolean; onClose: () => void; onA
   const [duration, setDuration] = useState(String(GLIDE_SECONDS * 1000))
   const [shape, setShape] = useState<GlideShape>('linear')
   const [tension, setTension] = useState(0)
+  // 選択肢に形状の見本を添える（bezier は今の張り具合で描く）
+  const shaped = (s: GlideShape, text: string) => (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <ShapeIcon shape={s} tension={s === 'bezier' ? tension || 0.6 : undefined} />
+      <span>{text}</span>
+    </Stack>
+  )
   const milliseconds = Number(duration)
   const valid = Number.isFinite(milliseconds) && milliseconds > 0
   const run = () => {
@@ -35,12 +43,12 @@ export default function GlideDialog(p: { open: boolean; onClose: () => void; onA
             label={t('glide.shape')}
             value={shape}
             options={[
-              ['linear', t('glide.shapeLinear')],
-              ['square', t('glide.shapeSquare')],
-              ['slowStartEnd', t('glide.shapeSlowStartEnd')],
-              ['fastStart', t('glide.shapeFastStart')],
-              ['fastEnd', t('glide.shapeFastEnd')],
-              ['bezier', t('glide.shapeBezier')],
+              ['linear', shaped('linear', t('glide.shapeLinear'))],
+              ['square', shaped('square', t('glide.shapeSquare'))],
+              ['slowStartEnd', shaped('slowStartEnd', t('glide.shapeSlowStartEnd'))],
+              ['fastStart', shaped('fastStart', t('glide.shapeFastStart'))],
+              ['fastEnd', shaped('fastEnd', t('glide.shapeFastEnd'))],
+              ['bezier', shaped('bezier', t('glide.shapeBezier'))],
             ]}
             onChange={(value) => {
               if (value === 'linear' || value === 'square' || value === 'slowStartEnd' || value === 'fastStart' || value === 'fastEnd' || value === 'bezier') setShape(value)

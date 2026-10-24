@@ -1,5 +1,7 @@
 // メニューバーと、右クリック（波形ブロック、MIDI ブロック、エンベロープ、何もない所）のメニューの並び
 import { type MenuEntry, type MenuGroup } from 'pevenmui'
+import { createElement } from 'react'
+import { ShapeIcon } from '../ShapeIcon'
 import { keyLabel, type Action } from '../keymap'
 import { type Block, type EnvShape } from '../project'
 import { ENVELOPES, type EnvKind } from '../envelopes'
@@ -188,6 +190,7 @@ export function buildMenus(env: CommandEnv, commands: Record<Action, CommandView
     return choices.map(([shape, label, tension]) => ({
       label: t(label),
       checked: cur === shape,
+      icon: createElement(ShapeIcon, { shape, tension }),
       disabled: index >= pts.length - 1,
       onClick: () => doc.updateBlock(b.id, spec.patch(b, pts.map((p, i) => (i === index ? { ...p, shape, tension } : p)))),
     }))
