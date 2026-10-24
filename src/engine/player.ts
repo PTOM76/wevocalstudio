@@ -26,6 +26,8 @@ export class Player {
   private monitorOn = new Map<string, number>()
   /** 重いプラグインを持つトラックの音を、先に作って鳴らす（設定。anticipate.ts） */
   anticipative = false
+  /** 止めている間も先に作っておく（設定。オフなら再生中だけ） */
+  warmWhileStopped = true
   /** 先に計算した量を状態バーのゲージに出す（設定。label が null なら出さない） */
   readonly gauge = new AntGauge()
   /** 先に作って鳴らしているトラック（id → 音を決めるものの識別、次に作るかたまりの番号） */
@@ -218,7 +220,7 @@ export class Player {
    */
   async warm(p: Project, from: number) {
     const id = ++this.warmSeq
-    if (!this.anticipative || this.playing || this.starting || this.chunks.limit <= 0) return
+    if (!this.anticipative || !this.warmWhileStopped || this.playing || this.starting || this.chunks.limit <= 0) return
     const targets = p.tracks.filter((t) => anticipated(p, t))
     if (!targets.length) return
     // 一度も再生していなくても作れるように、AudioContext を作っておく（止まったままで音は出ない。作った音の大きさとサンプルレートを決めるのに使う）

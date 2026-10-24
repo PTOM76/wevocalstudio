@@ -129,6 +129,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   // 重いプラグインを先に計算して鳴らすか（設定）
   player.current.anticipative = p.settings.anticipativeFx
   player.current.chunkCacheMb = p.settings.anticipativeCacheMb
+  player.current.warmWhileStopped = p.settings.anticipateWhileStopped
   player.current.gauge.label = p.settings.showAnticipateGauge ? (kind, track) => t(kind === 'warm' ? 'job.anticipateWarm' : 'job.anticipateAhead', { track }) : null
   player.current.offsetMs = p.settings.playbackOffsetMs
 

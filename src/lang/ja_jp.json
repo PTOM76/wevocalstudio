@@ -405,6 +405,8 @@
   "settings.tempoStretchHelp": "BPMを入力したとき、全トラックをそのテンポに合わせて伸縮する",
   "settings.showAnticipateGauge": "先に計算した量を表示する",
   "settings.showAnticipateGaugeHelp": "「重いプラグインを先に計算して鳴らす」の進み具合を、状態バーのゲージに表示する。止めている間は準備の進み、再生中はトラックごとに、再生位置から先にできている量を表示する",
+  "settings.anticipateWhileStopped": "止めている間も先に計算する",
+  "settings.anticipateWhileStoppedHelp": "止めている間に、カーソルの位置から曲の終わりまで（置き場の量に収まる分）の音を作っておく。再生を始めたときに途切れにくくなるが、その間 CPU を使う。オフにすると、作るのは再生中だけになる",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

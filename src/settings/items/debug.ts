@@ -50,6 +50,8 @@ export const experimental = defineItems('experimental', {
   addonFolder: check(false, { label: 'settings.addonFolder', help: 'settings.addonFolderHelp' }),
   // 重いプラグインを持つトラックの音を、再生位置より先に作って鳴らす（試験的。音を出すスレッドの負担が減り、音が途切れにくい。再生を始めるまで少し待つ）
   anticipativeFx: check(false, { label: 'settings.anticipativeFx', help: 'settings.anticipativeFxHelp' }),
+  // 止めている間も、カーソルから先の音を作っておく（オフなら再生中だけ。CPU を使うので、電池を気にするとき用）
+  anticipateWhileStopped: check(true, { label: 'settings.anticipateWhileStopped', help: 'settings.anticipateWhileStoppedHelp' }),
   // 先に計算した音を、再生をまたいで取っておく量（MB。0 で取っておかない。memo/fx-cache.md）
   anticipativeCacheMb: number(256, { label: 'settings.anticipativeCacheMb', help: 'settings.anticipativeCacheMbHelp', min: 0, max: 2048, step: 64, unit: 'MB' }),
 })
