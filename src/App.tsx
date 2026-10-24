@@ -191,6 +191,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         .catch(fail),
     fail,
     notify: setNotice,
+    onMissingPlugins: (ids) => dialogs.open('missingPlugins', ids),
     onExported: () => dialogs.close('export'),
   })
 
@@ -282,7 +283,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   })
 
   // 起動時の復元と自動保存（WeVocalSynth と同じ）
-  useAutosave({ project, fileName, autoRestore: p.settings.autoRestore && slot !== null, tabs, fail, notify: setNotice, onRestored: () => setRestored(true), restored })
+  useAutosave({ project, fileName, autoRestore: p.settings.autoRestore && slot !== null, tabs, fail, notify: setNotice, onMissingPlugins: (ids) => dialogs.open('missingPlugins', ids), onRestored: () => setRestored(true), restored })
   // 再生中の同期（範囲の終わりで止める、変更の反映、ピッチを変えた音の準備と進み具合）
   usePlayerSync({ player: player.current, project, cursor, playing, range, repeat, end, setPlayPos, setPlaying, fail, onMade: () => setMadeVersion((v) => v + 1) })
 

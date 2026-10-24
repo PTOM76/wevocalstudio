@@ -47,7 +47,6 @@
   "menu.screensets": "Screensets",
   "menu.saveScreenset": "Save current screenset",
   "menu.deleteScreenset": "Delete screenset",
-  "screenset.defaultName": "Screenset {n}",
   "menu.guide": "Documentation",
   "menu.licenses": "Licenses",
   "menu.about": "About",
@@ -175,6 +174,8 @@
   "menu.copyRangeToTrack": "Copy selection to new track",
   "menu.moveRangeToTrack": "Move selection to new track",
   "menu.envelopeShape": "Shape",
+
+  "screenset.defaultName": "Screenset {n}",
 
   "settings.title": "Settings",
   "settings.general": "General",
@@ -511,7 +512,6 @@
   "toast.exported": "Exported",
   "toast.voicesSplit": "Split the harmony into two tracks",
   "toast.optimized": "Saved optimized (sources {before} → {after})",
-  "toast.missingPlugins": "Some plugins are not installed ({ids}). Add them in Settings, Plugins. Until then they are bypassed.",
 
   "bake.job": "Commit",
 
@@ -960,6 +960,10 @@
   "plugins.catalog.unsupported": "Not available in Studio",
   "plugins.catalog.installed": "Installed",
   "plugins.catalog.source": "Website",
+  "plugins.missing.title": "Missing plugins",
+  "plugins.missing.intro": "This project uses plugins that are not installed. Plugins you do not install are bypassed.",
+  "plugins.missing.notFound": "Not in the catalog",
+  "plugins.missing.close": "Close",
 
   "optimize.title": "Save Optimized",
   "optimize.help": "Saves a lighter copy of the project as a separate file. The current project is not changed",
@@ -1101,6 +1105,7 @@
   "empty.choose": "Choose a file",
   "empty.showMore": "Show more ({n})",
   "empty.showLess": "Show less",
+
   "tabs.close": "Close",
   "tabs.add": "New project"
 }

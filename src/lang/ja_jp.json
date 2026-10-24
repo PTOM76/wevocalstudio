@@ -47,7 +47,6 @@
   "menu.screensets": "配置",
   "menu.saveScreenset": "今の配置を保存",
   "menu.deleteScreenset": "配置を削除",
-  "screenset.defaultName": "配置 {n}",
   "menu.guide": "使い方",
   "menu.licenses": "ライセンス",
   "menu.about": "このアプリについて",
@@ -175,6 +174,8 @@
   "menu.copyRangeToTrack": "選択範囲を新しいトラックへコピー",
   "menu.moveRangeToTrack": "選択範囲を新しいトラックへ移動",
   "menu.envelopeShape": "形状",
+
+  "screenset.defaultName": "配置 {n}",
 
   "settings.title": "設定",
   "settings.general": "全般",
@@ -511,7 +512,6 @@
   "toast.exported": "書き出しました",
   "toast.voicesSplit": "和音を2つのトラックに分離しました",
   "toast.optimized": "最適化して保存しました（元の音 {before} → {after}）",
-  "toast.missingPlugins": "入っていないプラグインがあります（{ids}）。設定の「プラグイン」で追加してください。それまでは素通しになります",
 
   "bake.job": "確定",
 
@@ -960,6 +960,10 @@
   "plugins.catalog.unsupported": "このアプリでは使用できません",
   "plugins.catalog.installed": "インストール済み",
   "plugins.catalog.source": "作者サイト",
+  "plugins.missing.title": "インストールされていないプラグイン",
+  "plugins.missing.intro": "このプロジェクトで使用しているプラグインのうち、インストールされていないものがあります。インストールしないプラグインは素通しになります。",
+  "plugins.missing.notFound": "カタログにありません",
+  "plugins.missing.close": "閉じる",
 
   "optimize.title": "最適化して保存",
   "optimize.help": "プロジェクトを軽くして、別のファイルとして保存します。今のプロジェクトは変わりません",
@@ -1101,6 +1105,7 @@
   "empty.choose": "ファイルを選択",
   "empty.showMore": "もっと見る（あと{n}件）",
   "empty.showLess": "閉じる",
+
   "tabs.close": "閉じる",
   "tabs.add": "新しいプロジェクト"
 }

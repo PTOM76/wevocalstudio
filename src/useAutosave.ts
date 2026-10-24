@@ -13,6 +13,8 @@ export function useAutosave(o: {
   tabs: { key: string; snapshotAll: () => { tabs: SavedTab[]; active: number }; restoreAll: (list: SavedTab[], active: number) => void }
   fail: (e: unknown) => void
   notify: (m: string) => void
+  /** 復元したプロジェクトに入っていないプラグインがあったとき（id の一覧） */
+  onMissingPlugins: (ids: string[]) => void
   /** 復元が終わった（空のプロジェクトで前回の作業を上書きしないよう、それまでは書かない） */
   onRestored: () => void
   restored: boolean
@@ -32,7 +34,7 @@ export function useAutosave(o: {
         if (!r) return
         o.tabs.restoreAll(r.tabs, r.active)
         setNotice(t('toast.restored'))
-        void Promise.all(r.tabs.map((x) => missingFx(x.project))).then((all) => [...new Set(all.flat())]).then((ids) => ids.length && setNotice(t('toast.missingPlugins', { ids: ids.join(', ') })))
+        void Promise.all(r.tabs.map((x) => missingFx(x.project))).then((all) => [...new Set(all.flat())]).then((ids) => ids.length && o.onMissingPlugins(ids))
       })
       .catch(fail)
       .finally(() => setRestored(true))

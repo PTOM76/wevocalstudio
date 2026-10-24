@@ -26,6 +26,8 @@ export type DialogId =
   | 'video'
   // 一音ずつ切り出す（波形ブロックの id）
   | 'kanaCut'
+  // 開いたプロジェクトに入っていないプラグイン（id の一覧）
+  | 'missingPlugins'
 
 export const useDialogs = () => usePevenDialogs<DialogId>()
 export type Dialogs = PevenDialogs<DialogId>

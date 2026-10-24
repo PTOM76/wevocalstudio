@@ -42,6 +42,8 @@ export function useProjectFile(o: {
   /** 表示していないタブに、保存していない変更があるか（閉じる前の確認に足す） */
   anyDirty?: () => boolean
   notify: (message: string) => void
+  /** 開いたプロジェクトに入っていないプラグインがあったとき（id の一覧） */
+  onMissingPlugins: (ids: string[]) => void
 }) {
   const { t, settings } = o
   // 保存したとき（開いたとき）のプロジェクト。今と違えば変更あり（名前の後ろに *）
@@ -57,7 +59,7 @@ export function useProjectFile(o: {
     try {
       const p = await readProject(file)
       o.onOpened(p, file.name.replace(/\.[^.]+$/, ''), fileRefOf(file) ?? null)
-      void missingFx(p).then((ids) => ids.length && o.notify(t('toast.missingPlugins', { ids: ids.join(', ') })))
+      void missingFx(p).then((ids) => ids.length && o.onMissingPlugins(ids))
     } catch (e) {
       o.fail(e)
     }

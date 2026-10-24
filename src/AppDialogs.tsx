@@ -13,13 +13,14 @@ import type { Clip } from 'wevocal-lib'
 import { videoLook, type VideoLook } from 'wevocalconverter/host'
 import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { kanaHost, videoHost } from './addons'
-import { ExportDialog, FxChainDialog, MarkerTempoDialog, PitchToolText, SamplerDialog, SynthDialog, VibratoDialog, type ExportSettings } from 'wevocal-lib/react'
+import { ExportDialog, FxChainDialog, MarkerTempoDialog, MissingPluginsDialog, PitchToolText, SamplerDialog, SynthDialog, VibratoDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
 import { addClipTrack, midiBlocks } from './project'
 import { AppIcon } from './AppHeader'
 import { app } from './appConfig'
 import { i18n, useT } from './i18n'
 import SettingsDialog from './settings/SettingsDialog'
+import { PLUGIN_REGISTRY } from './settings/PluginsSection'
 import type { Settings } from './settings/settings'
 import OptimizeDialog from './OptimizeDialog'
 import GlideDialog from './GlideDialog'
@@ -96,6 +97,15 @@ export default function AppDialogs(p: {
   return (
     <>
       <ShortcutsDialog open={dialogs.isOpen('shortcuts')} onClose={dialogs.closer('shortcuts')} />
+      <MissingPluginsDialog
+        t={t}
+        lang={lang}
+        open={dialogs.isOpen('missingPlugins')}
+        ids={dialogs.arg<string[]>('missingPlugins') ?? []}
+        registryUrl={PLUGIN_REGISTRY}
+        vst={p.settings.showVst}
+        onClose={dialogs.closer('missingPlugins')}
+      />
       {/* 編集の履歴（PevenMUI の HistoryDialog。WeVocalSynth と同じ）。一番上は開いたとき */}
       <HistoryDialog
         open={dialogs.isOpen('history')}
