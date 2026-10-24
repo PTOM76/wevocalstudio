@@ -12,9 +12,15 @@ export class AntGauge {
 
   /** 止めている間の準備を始める。返すものの update で進み（0〜1）、end で終わりを知らせる */
   warm(tracks: string[]): Pick<Job, 'update' | 'end'> {
+    // 前の準備は、新しい準備が始まった時点で終わり（古い方は作りかけのかたまりが終わるまで抜けないので、ゲージだけ先に消す）
+    this.warming?.end()
+    this.warming = null
     if (!this.label || !tracks.length) return { update() {}, end() {} }
-    return startJob('anticipate', this.label('warm', tracks.join(', ')))
+    const job = startJob('anticipate', this.label('warm', tracks.join(', ')))
+    this.warming = job
+    return job
   }
+  private warming: Job | null = null
 
   /** 再生中に、トラックの音が再生位置からどこまでできているか（0〜1。AHEAD に対する割合）を出す */
   setAhead(id: string, track: string, ratio: number) {
