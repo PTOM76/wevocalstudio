@@ -5,6 +5,9 @@ import type { GridDivision, GridMode } from '../../grid'
 import { check, choice, defineItems, number, value } from './define'
 import { t } from '../../i18n'
 
+/** F0 の解析で、声とみなす判定の厳しさ（WeVocalSynth と同じ） */
+export type F0Voicing = 'strict' | 'normal' | 'loose'
+
 /** 「処理」 */
 export const pitch = defineItems('process', {
   // 新しい波形ブロックのピッチの処理方式（WeVocalSynth と同じ。既定は Synth の声と同じ Vesola）。設定画面は自前の行
@@ -20,8 +23,19 @@ export const analysis = defineItems('pitch', {
   // 解析の欄の F0 を探す音の範囲（Hz）
   f0MinHz: number(60, { label: 'settings.f0MinHz', min: 40, max: 400, step: 1, unit: 'Hz' }),
   f0MaxHz: number(1000, { label: 'settings.f0MaxHz', min: 200, max: 2000, step: 10, unit: 'Hz' }),
+  // 声とみなす判定の厳しさ（Analyzer の voicedLimit に直して渡す。settings.ts の f0Options）
+  f0Voicing: choice<F0Voicing>('normal', {
+    label: 'settings.f0Voicing',
+    options: [
+      ['strict', 'settings.f0Strict'],
+      ['normal', 'settings.f0Normal'],
+      ['loose', 'settings.f0Loose'],
+    ],
+  }),
   // 「平らにする」の強さ（1 未満なら元の揺れを少し残す）
   flattenStrength: choice<number>(1, { label: 'settings.flattenStrength', help: 'settings.flattenStrengthHelp', values: [1, 0.75, 0.5, 0.25], format: (s) => Math.round(s * 100) + '%' }),
+  // これより小さい音量（dB）は無音とみなす
+  f0SilenceDb: number(-50, { label: 'settings.f0SilenceDb', min: -80, max: -20, step: 1, unit: 'dB' }),
 })
 
 /** 「処理」→「テンポ」（名前と既定値は WeVocalSynth と同じ） */

@@ -63,9 +63,8 @@ export default function AnalysisPanel(p: {
   view: TimelineView
   headerWidth: number
   version: number
-  /** F0 を探す音の範囲（Hz）と、「平らにする」の強さ（設定） */
-  f0MinHz: number
-  f0MaxHz: number
+  /** F0 の解析の設定（探す範囲、声の判定、無音の音量）と、「平らにする」の強さ（設定） */
+  f0: { minHz: number; maxHz: number; voicedLimit: number; silenceRms: number }
   flattenStrength: number
 }) {
   countRender('AnalysisPanel')
@@ -112,13 +111,15 @@ export default function AnalysisPanel(p: {
     return () => ro.disconnect()
   }, [])
 
+  // F0 の設定を短い文字にする（解析し直す条件）
+  const f0Key = `${p.f0.minHz}|${p.f0.maxHz}|${p.f0.voicedLimit}|${p.f0.silenceRms}`
   // 元の音の F0 は、使う範囲が変わったときだけ解析する
-  const spanKey = block && source ? `${source.id}|${block.offset}|${block.length}|${block.rate}|${p.f0MinHz}|${p.f0MaxHz}` : ''
+  const spanKey = block && source ? `${source.id}|${block.offset}|${block.length}|${block.rate}|${f0Key}` : ''
   useEffect(() => {
     setOrig(null)
     if (!block || !source) return
     const ac = new AbortController()
-    analyzePitch(sourceSpan(block, source), { signal: ac.signal, minHz: p.f0MinHz, maxHz: p.f0MaxHz }).then(setOrig, () => {})
+    analyzePitch(sourceSpan(block, source), { signal: ac.signal, ...p.f0 }).then(setOrig, () => {})
     return () => ac.abort()
     // 範囲（spanKey）が変わったときだけ
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,7 +133,7 @@ export default function AnalysisPanel(p: {
     const ac = new AbortController()
     const id = setTimeout(() => {
       setBusy(true)
-      Promise.all([analyzeSpectrogram(target.clip, { signal: ac.signal }), analyzePitch(target.clip, { signal: ac.signal, minHz: p.f0MinHz, maxHz: p.f0MaxHz })])
+      Promise.all([analyzeSpectrogram(target.clip, { signal: ac.signal }), analyzePitch(target.clip, { signal: ac.signal, ...p.f0 })])
         .then(([s, f]) => {
           setSpec(s)
           setPitch(f)
@@ -145,7 +146,7 @@ export default function AnalysisPanel(p: {
       ac.abort()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, p.f0MinHz, p.f0MaxHz])
+  }, [target, f0Key])
 
   const maxHz = spec?.maxHz ?? 22050
   const yOfHz = (hz: number) => HEIGHT - (Math.log(hz / MIN_HZ) / Math.log(maxHz / MIN_HZ)) * HEIGHT

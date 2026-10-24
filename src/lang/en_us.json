@@ -390,6 +390,11 @@
   "settings.tempoChangeOff": "Off",
   "settings.tempoChangeLow": "Conservative",
   "settings.tempoChangeNormal": "Normal",
+  "settings.f0Voicing": "Voice detection",
+  "settings.f0Strict": "Strict (ignores noise)",
+  "settings.f0Normal": "Normal",
+  "settings.f0Loose": "Loose (picks up breathy voice)",
+  "settings.f0SilenceDb": "Silence below",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",

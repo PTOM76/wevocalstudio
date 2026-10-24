@@ -150,7 +150,9 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
       <Group title={t('settings.groupPitch')}>
         {S('f0MinHz')}
         {S('f0MaxHz')}
+        {S('f0Voicing')}
         {S('flattenStrength')}
+        {S('f0SilenceDb')}
       </Group>
     ),
     tempo: (

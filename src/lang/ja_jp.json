@@ -390,6 +390,11 @@
   "settings.tempoChangeOff": "検出しない",
   "settings.tempoChangeLow": "控えめ",
   "settings.tempoChangeNormal": "標準",
+  "settings.f0Voicing": "声とみなす判定",
+  "settings.f0Strict": "厳しめ（雑音を検出しにくい）",
+  "settings.f0Normal": "標準",
+  "settings.f0Loose": "緩め（かすれた声も検出する）",
+  "settings.f0SilenceDb": "無音とみなす音量",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

@@ -27,7 +27,7 @@ import { useAppSetup } from './useAppSetup'
 import { buildOverview } from './overview'
 import { useT } from './i18n'
 import { setKeyOverrides } from './keymap'
-import type { Settings } from './settings/settings'
+import { f0Options, type Settings } from './settings/settings'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
 import { emitNote } from './pianoRoll/noteBus'
@@ -427,8 +427,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       {p.settings.showAnalysis && (
         <AnalysisDock
           onClose={() => p.onSettingsChange({ showAnalysis: false })}
-          f0MinHz={p.settings.f0MinHz}
-          f0MaxHz={p.settings.f0MaxHz}
+          f0={f0Options(p.settings)}
           flattenStrength={p.settings.flattenStrength}
           view={view}
           headerWidth={header}

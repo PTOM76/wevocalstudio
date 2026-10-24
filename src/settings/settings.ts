@@ -6,6 +6,12 @@ import { DEFAULT_SETTINGS, type Settings } from './items'
 export { DEFAULT_SETTINGS, type Settings }
 export type { ThemeSetting } from './items/display'
 
+/** 判定の厳しさごとの、有声とみなす谷の深さの上限（WeVocalSynth と同じ値。wevocal-lib の f0::Params::voiced_limit） */
+const VOICED_LIMIT = { strict: 0.25, normal: 0.35, loose: 0.5 } as const
+
+/** 設定から、解析の欄の F0 の設定（Analyzer の PitchOptions）を作る */
+export const f0Options = (s: Settings) => ({ minHz: s.f0MinHz, maxHz: s.f0MaxHz, voicedLimit: VOICED_LIMIT[s.f0Voicing] ?? VOICED_LIMIT.normal, silenceRms: 10 ** (s.f0SilenceDb / 20) })
+
 /** 名前を変えた設定の、古い名前で保存した値を新しい名前に移す（起動時に 1 回） */
 function migrate(key: string) {
   try {
