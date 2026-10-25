@@ -169,17 +169,17 @@ export class Graph {
     }
     if (!plugin || !spec) return
     const live = this.ctx instanceof AudioContext
+    // フォルマント保持の音（作るのにも探すのにも手間がかかるので、1 回だけ求める）
+    const samples = pitchedSamples(p, t)
     if (!n.inst) {
       const src = spec.sample ? p.sources.find((s) => s.id === spec.sample) : undefined
       const sample = src ? { channels: src.clip.channels, sampleRate: src.clip.sampleRate } : null
-      const samples = pitchedSamples(p, t)
       const instance = createInstrument(this.ctx, plugin, spec.values, { events: live ? [] : noteEvents(p, t.id, -Infinity, Infinity, this.zero), controls: live ? [] : controlEvents(p, t.id, -Infinity, Infinity, this.zero), sample, samples })
       instance.output.connect(n.comp)
       n.inst = { key, instance, sig: midiSig(p, t.id), sentUntil: this.timeNow(), fsig: Object.keys(samples).join(',') }
     }
     n.inst.instance.update(spec.values)
     // フォルマント保持の音ができたら差し替える
-    const samples = pitchedSamples(p, t)
     const fsig = Object.keys(samples).join(',')
     if (fsig !== n.inst.fsig) {
       n.inst.instance.setSamples(samples)
