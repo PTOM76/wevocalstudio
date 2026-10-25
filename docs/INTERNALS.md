@@ -37,6 +37,10 @@
 - サブトラックの音は親を通ってからマスターへ行く。子は親のすぐ後ろに並べる
 - FX の列は WeVocal プラグイン（ホストは wevocal-lib の web/src/plugins/）。上から順に掛ける
 - 重いプラグインを持つトラックは、再生位置より先に OfflineAudioContext で音を作っておく（`src/anticipate.ts`）。作った音は再生をまたいで取っておく（`src/fxCache.ts`）
+- 先に作る方式を、同じプラグインを再生位置の少し先で途切れずに動かし続ける形（REAPER と同じ考え方）に移している途中。Worker の中に AudioWorklet の環境の代わりを置き、processor 方式のプラグインを 128 サンプルずつ直接呼ぶ（wevocal-lib の `plugins/stream/processorShim.ts`）。プラグインの形式ごとの見込みは次のとおり
+  - wevocal の processor: 対象（SDK の見本の processor がそのまま動くことをテストで確かめている）
+  - VST: つなぎ（vstbridge）は AudioWorklet 用に加工した processor で、中身は wasm と JavaScript だけなので、Worker でも動く見込みが高い。未確認
+  - WAM: SDK が AudioContext ごとにホストを作り、自分でノードを作るので、Worker では動かせない。今の OfflineAudioContext の方式のままにする
 - フリーズ（`src/freeze.ts`）は、トラックの波形ブロックの音を書き出して元の音として足し、波形ブロックの代わりに鳴らす
 
 ## プロジェクトのタブ
