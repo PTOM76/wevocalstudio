@@ -130,6 +130,8 @@ src/engine/
   render.ts  書き出し用の描画（全体、1 本のトラック、先に作って鳴らすためのかたまり）。再生と同じミキサーとグラフで作る
 
 src/mixer/
+  mixCore.test.ts  mixCore.ts のテスト（声を足す計算と、声の差し替え）
+  mixCore.ts  ミキサーの計算（声を 128 サンプルずつ足す）。音を出すスレッドのミキサー（mixer.worklet.ts）と、先を走る Worker で共通に使う。画面と Web Audio を知らない
   mixer.ts  ミキサー（AudioWorklet）の読み込みと、トラックごとのミキサー、音のデータの送り先、波形ブロックから声を作る
   mixer.worklet.ts  波形ブロックの音を足すミキサー（AudioWorklet。音を出すスレッドで 128 サンプルずつ、今かかっている声だけを読んで足す）
   types.ts  ミキサー（AudioWorklet）とやり取りする形。時刻はすべて AudioContext の秒（currentTime と同じ時計）
