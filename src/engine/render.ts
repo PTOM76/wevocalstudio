@@ -7,23 +7,37 @@ import { preloadInstruments } from 'wevocal-lib'
 import { preloadFx, renderWithProgress, type Clip } from 'wevocal-lib'
 import { loadMixer } from '../mixer/mixer'
 import { preparePitch } from '../dsp/pitch'
-import { ancestors, songEnd, type Project, midiBlocks } from '../project'
+import { ancestors, liveSlots, songEnd, type Project, midiBlocks } from '../project'
 /**
- * オートメーションがあれば、一定の間隔（128 サンプルの倍数の時刻）でレンダリングを止めて、つまみを動かす。
+ * オートメーションがあれば、つまみの値が変わる所（128 サンプルの倍数の時刻）でレンダリングを止めて、つまみを動かす。
+ * 値の違う点の間は一定の間隔で、ほかは点の時刻だけ止める（最初の点より前、最後の点より後ろ、同じ値の点の間は値が変わらない）。
  * offset は、描画の 0 秒が曲の何秒か（先に作る音は途中から描くので、その時刻の値にする）
  */
-export function scheduleAutomation(ctx: OfflineAudioContext, graph: Graph, length: number, sampleRate: number, offset: number) {
+export function scheduleAutomation(ctx: OfflineAudioContext, graph: Graph, p: Project, length: number, sampleRate: number, offset: number) {
   if (!graph.automated) return
   const step = 0.025
+  const end = length / sampleRate
   const done = new Set<number>()
-  for (let t = step; t < length / sampleRate; t += step) {
-    const q = Math.round((t * sampleRate) / 128) * 128
-    if (done.has(q) || q >= length) continue
+  const at = (sec: number) => {
+    const q = Math.round((sec * sampleRate) / 128) * 128
+    if (q <= 0 || q >= length || done.has(q)) return
     done.add(q)
     void ctx.suspend(q / sampleRate).then(() => {
       graph.automate(offset + q / sampleRate)
       void ctx.resume()
     })
+  }
+  for (const slot of [...(p.master.fx ?? []), ...p.tracks.flatMap((t) => liveSlots(t))]) {
+    if (!slot.on || !slot.auto) continue
+    for (const pts of Object.values(slot.auto)) {
+      pts.forEach((b, i) => {
+        at(b.t - offset)
+        const a = pts[i - 1]
+        if (!a || a.v === b.v) return
+        // 値が変わる区間は、今までどおり一定の間隔で動かす
+        for (let t = Math.max(a.t - offset, 0) + step; t < Math.min(b.t - offset, end); t += step) at(t)
+      })
+    }
   }
 }
 
@@ -43,7 +57,7 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000, onPro
     graph.sync(p, false)
     await graph.flush()
     signal?.throwIfAborted()
-    scheduleAutomation(ctx, graph, length, sampleRate, 0)
+    scheduleAutomation(ctx, graph, p, length, sampleRate, 0)
     const out = await renderWithProgress(ctx, onProgress, signal)
     return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
   } finally {
@@ -82,7 +96,7 @@ export async function renderTrackChunk(p: Project, trackId: string, start: numbe
     markActivity('anticipate: build graph')
     graph.sync(q, false)
     await graph.flush()
-    scheduleAutomation(ctx, graph, length, sampleRate, t0)
+    scheduleAutomation(ctx, graph, q, length, sampleRate, t0)
     markActivity('anticipate: render')
     const out = await ctx.startRendering()
     markActivity('anticipate: copy')
