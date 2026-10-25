@@ -8,11 +8,25 @@ const RATE = 1000
 
 /** 波形ブロックごとの振幅の列（Block は書き換えずに作り直すので、同じオブジェクトなら同じ値。変えたブロックだけ作り直す） */
 const perBlock = new WeakMap<Block, Float32Array>()
+/** 元の音と、使う範囲、速度、音量が同じなら同じ値（位置を動かしただけの波形ブロックは作り直さない）。元の音ごとに使った順に KEEP 個まで */
+const perClip = new WeakMap<Clip, Map<string, Float32Array>>()
+const KEEP = 32
 
 function blockLevels(b: Block, source: Source): Float32Array {
   let out = perBlock.get(b)
   if (out) return out
   const { clip } = source
+  let byKey = perClip.get(clip)
+  if (!byKey) perClip.set(clip, (byKey = new Map()))
+  const key = `${b.offset}|${b.length}|${b.rate}|${b.gain}`
+  out = byKey.get(key)
+  if (out) {
+    // 使った順の最後へ
+    byKey.delete(key)
+    byKey.set(key, out)
+    perBlock.set(b, out)
+    return out
+  }
   const gain = dbToGain(b.gain)
   // 1 点に入る元の音のサンプル数。波形と同じ前もって作ったピーク（peaks.ts）から大きさを取る（毎回サンプルを走査しない）
   const per = (clip.sampleRate * b.rate) / RATE
@@ -24,6 +38,9 @@ function blockLevels(b: Block, source: Source): Float32Array {
     out[k] = Math.max(pk.hi, -pk.lo) * gain
   }
   perBlock.set(b, out)
+  byKey.set(key, out)
+  // 長さを変えるドラッグなどで溜まらないよう、古いものから捨てる
+  if (byKey.size > KEEP) byKey.delete(byKey.keys().next().value!)
   return out
 }
 
