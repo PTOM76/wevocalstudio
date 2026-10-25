@@ -62,12 +62,18 @@ export function useActions(c: ActionContext) {
     const midi = midiClipboard.current
     if (!blocks.length && !midi.length) return
     const { tracks } = doc.project
+    // トラックが無ければ置く先が無い
+    if (!tracks.length) return
     // 波形ブロックと MIDI ブロックを合わせて、トラックと時間の並びを保つ
     const items = [...blocks, ...midi]
     const first = Math.min(...items.map((b) => b.start))
-    const top = Math.min(...items.map((b) => tracks.findIndex((tr) => tr.id === b.track)))
+    // コピーした後に消したトラックのものは、一番上のトラックのものとして扱う（-1 で並びがずれないように）
+    const rows = new Map(items.map((b) => [b.track, tracks.findIndex((tr) => tr.id === b.track)]))
+    const found = [...rows.values()].filter((i) => i >= 0)
+    const top = found.length ? Math.min(...found) : 0
+    const row = (b: { track: string }) => Math.max(top, rows.get(b.track)!)
     const target = Math.max(0, tracks.findIndex((tr) => tr.id === pasteTrack))
-    const at = (b: { track: string }) => tracks[Math.min(tracks.length - 1, target + tracks.findIndex((tr) => tr.id === b.track) - top)] ?? tracks[target]
+    const at = (b: { track: string }) => tracks[Math.min(tracks.length - 1, target + row(b) - top)]
     const ids = [
       ...doc.insertBlocks(blocks.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first })), clipSources.current),
       ...doc.insertMidi(midi.map((b) => ({ ...b, track: at(b).id, start: cursor + b.start - first }))),
