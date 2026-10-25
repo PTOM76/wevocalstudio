@@ -31,7 +31,7 @@ export function scheduleAutomation(ctx: OfflineAudioContext, graph: Graph, lengt
 /** until を渡すと、そこまでの長さにする（範囲選択が曲の終わりより後ろまであるとき） */
 export async function renderMix(p: Project, until = 0, sampleRate = 48000, onProgress?: (p: number) => void, signal?: AbortSignal): Promise<Clip> {
   signal?.throwIfAborted()
-  await preparePitch(p)
+  await preparePitch(p, 0, true)
   signal?.throwIfAborted()
   const length = Math.max(1, Math.ceil(Math.max(songEnd(p), until) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
@@ -72,7 +72,7 @@ export async function renderTrackChunk(p: Project, trackId: string, start: numbe
     midi: midiBlocks(p).filter((b) => ids.has(b.track)),
   }
   markActivity('anticipate: pitch')
-  await preparePitch(q)
+  await preparePitch(q, 0, true)
   const length = Math.max(128, Math.ceil((lead + dur) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
   markActivity('anticipate: load fx')

@@ -366,7 +366,7 @@ export class Player {
     if (ctx.state !== 'running') await startContext(ctx, 'player')
     // サンプラーのフォルマント保持: 押した高さの音を作り終えてから鳴らす（作っている間に離したら鳴らさない）
     if (on && wantSamplerPitch(q, track, pitch)) {
-      await preparePitch(q)
+      await preparePitch(q, 0, true)
       if (!this.monitorOn.has(id) || this.playing || !this.monitor) return
       this.monitor.sync(q, false)
     }

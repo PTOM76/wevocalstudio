@@ -342,8 +342,11 @@ const BEHIND = 4
 /** 鳴らない波形ブロック（ミュート、鳴らないトラック）の遠さに足す値（鳴るものを全部作ってから作る） */
 const SILENT = 1e6
 
-/** プロジェクトの波形ブロックの音を用意する（around は再生位置か編集カーソル。近い所から）。新しく作ったものがあれば true */
-export async function preparePitch(p: Project, around = 0) {
+/**
+ * プロジェクトの波形ブロックの音を用意する（around は再生位置か編集カーソル。近い所から）。新しく作ったものがあれば true。
+ * part は、一部だけのプロジェクト（書き出し、先に作るかたまり、鍵盤の試聴）。頼んであるほかの分を入れ替えず、使っていない音も捨てずに、この分を先に作って、できるまでだけ待つ
+ */
+export async function preparePitch(p: Project, around = 0, part = false) {
   markActivity('prepare pitch')
   const used = new Set<string>()
   const next = new Map<string, Want>()
@@ -382,8 +385,10 @@ export async function preparePitch(p: Project, around = 0) {
       if (!op || pd < op.distance) next.set(pkey, { key: pkey, b, source, k, distance: pd, preview: true })
     }
   }
+  const mine = [...next.values()].sort((x, y) => x.distance - y.distance)
+  if (part) return preparePart(mine)
   prune(used)
-  wanted = [...next.values()].sort((x, y) => x.distance - y.distance)
+  wanted = mine
   total = wanted.length + inflight.size
   doneCount = 0
   notify()
@@ -393,6 +398,40 @@ export async function preparePitch(p: Project, around = 0) {
   while (inflight.size) await (running ?? Promise.resolve())
   total = 0
   notify()
+  return madeCount > before
+}
+
+/** 一部だけの分を、頼んであるものの前に入れて、その分ができる（作れずに外れたものは諦める）まで待つ */
+async function preparePart(mine: Want[]) {
+  if (!mine.length) return false
+  const keys = new Set(mine.map((w) => w.key))
+  wanted = [...mine, ...wanted.filter((w) => !keys.has(w.key))]
+  total += mine.length
+  notify()
+  const before = madeCount
+  const pending = () => [...keys].some((k) => !made.has(k) && (inflight.has(k) || wanted.some((w) => w.key === k)))
+  const done = new Promise<void>((resolve) => {
+    const check = () => {
+      if (pending()) return
+      listeners.delete(check)
+      resolve()
+    }
+    listeners.add(check)
+    check()
+  })
+  // 作れなかったものがあれば、呼んだ側に伝える（書き出しを失敗にする）
+  let error: unknown = null
+  run().catch((e: unknown) => (error = e))
+  await done
+  // 失敗は、終わった知らせ（notify）より後に届くので、一度待ってから見る
+  await new Promise((r) => setTimeout(r, 0))
+  if (error && [...keys].some((k) => !made.has(k))) throw error
+  // ほかに頼まれているものがなければ、ゲージを閉じる
+  if (!wanted.length && !inflight.size) {
+    total = 0
+    doneCount = 0
+    notify()
+  }
   return madeCount > before
 }
 
