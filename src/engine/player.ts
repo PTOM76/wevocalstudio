@@ -5,7 +5,7 @@ import { Graph } from './graph'
 import { AHEAD, anticipated, CHUNK, excludedReason, signature, subtree } from '../anticipate'
 import { AntGauge } from './antGauge'
 import { ChunkCache, chunkKey } from '../fxCache'
-import { preloadInstruments } from 'wevocal-lib'
+import { externalPackage, findPlugin, preloadInstruments, vstSnapshot } from 'wevocal-lib'
 import { liveProcessors, renderLoad } from 'wevocal-lib'
 import { preloadFx, startContext, suspendContext, startRenderLoad } from 'wevocal-lib'
 import { loadMixer } from '../mixer/mixer'
@@ -289,6 +289,11 @@ export class Player {
    */
   async warm(p: Project, from: number) {
     const id = ++this.warmSeq
+    // VST は読み込みの済んだ写しを先に作っておく（設定によらず。ノードで鳴らすときも、先に作るときも、DLL を読み込み直さずに戻せる）
+    for (const s of fxLists(p).flatMap((l) => l ?? [])) {
+      const pkg = externalPackage(findPlugin(s.plugin))
+      if (pkg?.manifest.format === 'vst') void vstSnapshot(pkg)
+    }
     if (!this.anticipative || !this.warmWhileStopped || this.playing || this.starting || this.chunks.limit <= 0) {
       this.warmInfo = !this.anticipative || !this.warmWhileStopped ? 'off' : this.chunks.limit <= 0 ? 'no cache' : 'skipped (playing)'
       return
