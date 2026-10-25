@@ -108,6 +108,8 @@ export function useActions(c: ActionContext) {
   latest.current = commands
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // ピアノロールや FX の列などが先に受け取って処理したキーは、もう一度動かさない（Ctrl+Z で二度戻る、Delete で波形ブロックまで消える）
+      if (e.defaultPrevented) return
       // 文字を打つ欄にいるときと、日本語の変換中は奪わない。スライダーやチェックの input は文字を打たないので奪う
       // （スライダーを触ったあとにフォーカスが残り、Shift+0 などが効かなかった）
       const el = e.target
