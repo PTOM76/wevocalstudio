@@ -4,8 +4,8 @@ import type { ClipStore } from '../mixer/mixCore'
 import { TrackStream } from './trackStream'
 import type { ReaderMessage, StreamMessage } from './types'
 
-/** 再生位置からこの先まで作っておく（秒） */
-const AHEAD = 0.4
+/** 再生位置からこの先まで作っておく（秒）。Worker が少し止まっても足りなくならないように長めにする（編集は SAFE 先から作り直すので、長くしても遅れない） */
+const AHEAD = 1.5
 /** 編集したあと、作り直し始める位置の、再生位置からの余裕（秒。読む側に届くまでの分） */
 const SAFE = 0.08
 /** 1 回に送る長さ（サンプル。QUANTUM の倍数） */

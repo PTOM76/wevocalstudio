@@ -15,8 +15,10 @@ import readerUrl from './stream.reader.worklet.ts?worker&url'
 const POS_EVERY = 50
 /** 再生を始めてから、足りなかった知らせを数えない間（秒） */
 const GRACE = 0.3
-/** これより多く足りなければ（1 回の知らせのサンプル数）、このトラックはやめてノードで鳴らす */
-const GIVE_UP = 2048
+/** 足りない知らせ（約 0.25 秒ごと）がこの回数続いたら、このトラックはやめてノードで鳴らす（約 3 秒。少し足りないだけでは戻さない） */
+const GIVE_UP = 12
+/** 鳴らし始めてから、最初の分がこれより長く届かなければ（秒）、このトラックはやめてノードで鳴らす（助走が終わらないほど重いとき） */
+const FIRST_LIMIT = 5
 
 const loaded = new WeakMap<BaseAudioContext, Promise<void>>()
 const loadReader = (ctx: BaseAudioContext) => {
@@ -81,6 +83,8 @@ export class StreamHost {
   /** トラックごとに最後に送った値（同じなら送らない） */
   private readonly sent = new Map<string, { sig: string; states: string }>()
   private posTimer: ReturnType<typeof setInterval> | null = null
+  /** begin ごとの番号（止めたあとに、前の再生の見張りが動かないように） */
+  private session = 0
   private zero = 0
   /** 鳴らし始めた時刻（begin の前は Infinity。足りなかった知らせを数えない） */
   private startedAt = Infinity
@@ -118,7 +122,7 @@ export class StreamHost {
 
   /**
    * 曲の from 秒から作り始め（その前に余韻の長さだけ流す）、最初の分ができるまで（長くても wait ミリ秒）待つ。鳴らし始める時刻は begin で渡す。
-   * ids は先を走る方式で鳴らしたいトラック。間に合わなかったトラックは外す（今回はノードで鳴らす）
+   * ids は先を走る方式で鳴らしたいトラック。間に合わなかったトラックも外さず、届くまで無音で待つ（ノードに戻すと、重い VST が読み込みの間素通しになるため）
    */
   async prepare(p: Project, ids: string[], from: number, wait: number) {
     await loadReader(this.ctx)
@@ -132,7 +136,6 @@ export class StreamHost {
     this.post({ type: 'play', frame: Math.round(from * this.ctx.sampleRate) })
     await done
     this.onReady = null
-    for (const id of this.ids) if (!this.readyIds.has(id)) this.remove(id)
   }
 
   /** 鳴らし始める（zero は曲の 0 秒にあたる ctx の時刻）。読むだけのノードを、トラックの先に作った音の入口（cache）につなぐ */
@@ -144,6 +147,11 @@ export class StreamHost {
       if (d) node.connect(d)
       node.port.postMessage({ type: 'zero', zero } satisfies ReaderControl)
     }
+    const session = ++this.session
+    setTimeout(() => {
+      if (session !== this.session) return
+      for (const id of this.ids) if (!this.readyIds.has(id)) this.onGiveUp?.(id)
+    }, FIRST_LIMIT * 1000)
     const send = () => this.post({ type: 'pos', frame: Math.round((this.ctx.currentTime - this.zero) * this.ctx.sampleRate) })
     send()
     this.posTimer = setInterval(send, POS_EVERY)
@@ -166,6 +174,7 @@ export class StreamHost {
 
   /** 止める。Worker と processor は残す（次の再生で使い回す） */
   stop() {
+    this.session++
     if (this.posTimer) clearInterval(this.posTimer)
     this.posTimer = null
     this.startedAt = Infinity
@@ -202,10 +211,16 @@ export class StreamHost {
       const node = new AudioWorkletNode(this.ctx, 'stream-reader', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] })
       const channel = new MessageChannel()
       node.port.postMessage({ type: 'connect', port: channel.port1, zero: this.zero } satisfies ReaderControl, [channel.port1])
-      node.port.onmessage = (e: MessageEvent<ReaderEvent>) => {
-        // 始めたばかりの足りなさは数えない。続けて大きく足りなければ、ノードで鳴らす側に戻す
-        if (this.ctx.currentTime - this.startedAt > GRACE && e.data.frames > GIVE_UP) this.onGiveUp?.(id)
+      let lacking = 0
+      node.port.onmessage = (_e: MessageEvent<ReaderEvent>) => {
+        // 始めたばかりの足りなさは数えない。足りない知らせが続いたときだけ、ノードで鳴らす側に戻す（間が空けば数え直す）
+        if (this.ctx.currentTime - this.startedAt <= GRACE) return
+        const at = this.ctx.currentTime
+        lacking = at - lastLack < 0.6 ? lacking + 1 : 1
+        lastLack = at
+        if (lacking >= GIVE_UP) this.onGiveUp?.(id)
       }
+      let lastLack = -Infinity
       this.readers.set(id, node)
       port = channel.port2
     }
