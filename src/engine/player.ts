@@ -12,6 +12,8 @@ import { loadMixer } from '../mixer/mixer'
 import { preparePitch } from '../dsp/pitch'
 import { wantSamplerPitch } from '../dsp/samplerPitch'
 import { songEnd, type Project } from '../project'
+/** 再生中に先読みのかたまりを同時に作る数（トラックごとに 1 つ） */
+const ANT_PARALLEL = 2
 /** 再生を始めるときに、先に作る音の最初のかたまりを待つ長さ（ミリ秒）。これより遅いトラックはノードで鳴らし始める */
 const PRIME_WAIT = 150
 /** 再生。位置は AudioContext の時計から求める */
@@ -305,24 +307,30 @@ export class Player {
     const now = this.position()
     const end = songEnd(p)
     ant.busy = true
-    try {
-      for (const id of [...ant.next.keys()]) {
-        const k = ant.next.get(id)!
-        // 作ったかたまりの先頭に再生位置が追いついたら、間に合っていない
-        // ほかのトラックは続ける（ここで止めると、ほかのトラックまで遅れて先読みをやめることになる）
-        if (k * CHUNK < now) {
-          this.release(id)
-          continue
-        }
-        if (k * CHUNK > now + AHEAD || k * CHUNK > end) continue
+    // トラックごとに 1 つずつ作る。描画は別のスレッドで動くので ANT_PARALLEL 個まで並べる（多すぎると音を出す処理と取り合う）
+    const step = async (id: string) => {
+      const k = ant.next.get(id)
+      if (k === undefined) return
+      // 作ったかたまりの先頭に再生位置が追いついたら、間に合っていない（ほかのトラックは続ける）
+      if (k * CHUNK < now) return this.release(id)
+      if (k * CHUNK > now + AHEAD || k * CHUNK > end) return
+      try {
         const buf = await this.makeChunk(p, id, k)
         // 作っている間に再生が止まったか、先読みがやめられていたら、使わない
-        if (this.ant !== ant || !ant.next.has(id)) return
+        if (this.ant !== ant || !ant.next.has(id) || !this.graph) return
         this.graph.playChunk(id, buf, k * CHUNK)
         ant.next.set(id, k + 1)
+      } catch {
+        // 作れなかったら、次の周期でもう一度試す（続けて間に合わなければ release になる）
       }
-    } catch {
-      // 作れなかったら、次の周期でもう一度試す（続けて間に合わなければ release になる）
+    }
+    const queue = [...ant.next.keys()]
+    try {
+      await Promise.all(
+        Array.from({ length: Math.min(ANT_PARALLEL, queue.length) }, async () => {
+          for (let id = queue.shift(); id !== undefined; id = queue.shift()) await step(id)
+        }),
+      )
     } finally {
       ant.busy = false
     }
