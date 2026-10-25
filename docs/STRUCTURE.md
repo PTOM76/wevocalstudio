@@ -17,6 +17,7 @@ src/
   AppDock.tsx  ドック（画面の端の欄に、ダイアログを置けるようにする PevenMUI の DockProvider）に、アプリの訳文を渡す
   AppHeader.tsx  上部のバー（WeVocalSynth の AppHeader と同じ）。PC は低いメニューバー、スマホは上部バー。右端に元に戻す、やり直し
   appInfo.ts  アプリの定義。vite.config.ts からも読み込むので、ほかのファイルを import しない（画面からは appConfig.ts の app を使う）
+  audible.test.ts  project.ts の audible と ownAudible（ミュートとソロ）のテスト
   autoLane.ts  時間軸に出すオートメーションのレーン（トラックとマスターに重ねて描く折れ線）。位置の計算、描画、点を押したかの判定。画面を知らない
   bake.ts  波形ブロックの確定（今の速度、ピッチ、音量、フェード、エンベロープを音にして、新しい元の音に置き換える）
   beats.ts  秒と拍（4 分音符 = 1）の変換。テンポの区間（マーカーで変わる）をたどる。MIDI ブロックの音符は拍で持ち、鳴らすときと描くときに秒へ直す。画面を知らない

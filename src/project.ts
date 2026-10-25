@@ -362,6 +362,16 @@ export function songEnd(p: Project): number {
   return last + Math.max(chainTail(p.master.fx, p.tempo.bpm), ...p.tracks.map((t) => chainTail(t.fx, p.tempo.bpm)))
 }
 
+/** 近い先祖から順にたどって、ミュートに当たる前にソロの先祖に着くか（自分のミュートも見る） */
+function soloThrough(t: Track, anc: Track[]): boolean {
+  if (t.mute) return false
+  for (const a of anc) {
+    if (a.solo) return true
+    if (a.mute) return false
+  }
+  return false
+}
+
 /** トラックの並びごとの、鳴らすトラックとそのトラック自身の音を鳴らすトラック（描画や波形ブロックごとに先祖と子孫をたどり直さない） */
 const audibleCache = new WeakMap<Track[], { all: Set<string>; own: Set<string> }>()
 function audibleSets(p: Project) {
@@ -377,8 +387,8 @@ function audibleSets(p: Project) {
     const anc = ancestors(p, t)
     if (!solo) {
       if (!t.mute && !anc.some((a) => a.mute)) all.add(t.id), own.add(t.id)
-    } else if (t.solo || anc.some((a) => a.solo)) {
-      // 自分か先祖がソロなら鳴る
+    } else if (t.solo || soloThrough(t, anc)) {
+      // 自分か先祖がソロなら鳴る（先祖のソロの子は、自分かソロまでの途中がミュートなら鳴らさない）
       all.add(t.id)
       own.add(t.id)
     } else if (soloAncestors.has(t.id)) all.add(t.id)

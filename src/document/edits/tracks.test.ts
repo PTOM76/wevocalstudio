@@ -40,6 +40,21 @@ describe('duplicateTrack', () => {
     expect(q.blocks.map((b) => b.id)).not.toContain(q.blocks[1].track)
     expect(duplicateTrack(p, 'none')).toBe(p)
   })
+
+  it('サブトラックも、ブロックごと写して、写しの親につなぐ（元の子孫の後ろに置く）', () => {
+    const p = project([track('a'), track('b', { parent: 'a' }), track('c', { parent: 'b' }), track('d')], { blocks: [block('x', 'b'), block('y', 'c')] })
+    const q = duplicateTrack(p, 'a')
+    expect(q.tracks).toHaveLength(7)
+    expect(ids(q).slice(0, 3)).toEqual(['a', 'b', 'c'])
+    expect(q.tracks[6].id).toBe('d')
+    const [a2, b2, c2] = q.tracks.slice(3, 6)
+    expect(a2.name).toBe('a (2)')
+    expect(a2.parent).toBeUndefined()
+    expect(b2.parent).toBe(a2.id)
+    expect(c2.parent).toBe(b2.id)
+    expect(q.blocks.filter((b) => b.track === b2.id)).toHaveLength(1)
+    expect(q.blocks.filter((b) => b.track === c2.id)).toHaveLength(1)
+  })
 })
 
 describe('insertTrack', () => {

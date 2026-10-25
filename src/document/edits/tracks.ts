@@ -19,14 +19,22 @@ export function addSubtrack(p: Project, track: Track, parent: string): Project {
   return { ...p, tracks: [...p.tracks.slice(0, at), child, ...p.tracks.slice(at)].map((t) => (t.id === parent ? { ...t, collapsed: false } : t)) }
 }
 
-/** トラックを、波形ブロックと MIDI ブロックごと写して、すぐ下に置く */
+/** トラックを、子（サブトラック）と、波形ブロックと MIDI ブロックごと写して、元の子孫の後ろに置く。写しの子は写しの親につなぐ */
 export function duplicateTrack(p: Project, id: string): Project {
   const i = p.tracks.findIndex((t) => t.id === id)
   if (i < 0) return p
-  const copy = { ...p.tracks[i], id: newId(), name: `${p.tracks[i].name} (2)`, armed: false }
-  const blocks = p.blocks.filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
-  const midi = midiBlocks(p).filter((b) => b.track === id).map((b) => ({ ...b, id: newId(), track: copy.id }))
-  return { ...p, tracks: [...p.tracks.slice(0, i + 1), copy, ...p.tracks.slice(i + 1)], blocks: [...p.blocks, ...blocks], ...(midi.length ? { midi: [...midiBlocks(p), ...midi] } : {}) }
+  const end = subtreeEnd(p, i)
+  const ids = new Map(p.tracks.slice(i, end).map((t) => [t.id, newId()]))
+  const copies = p.tracks.slice(i, end).map((t, k) => ({
+    ...t,
+    id: ids.get(t.id)!,
+    ...(k === 0 ? { name: `${t.name} (2)` } : { parent: ids.get(t.parent ?? '') ?? t.parent }),
+    armed: false,
+  }))
+  const copyOf = <B extends { track: string }>(list: B[]) => list.filter((b) => ids.has(b.track)).map((b) => ({ ...b, id: newId(), track: ids.get(b.track)! }))
+  const blocks = copyOf(p.blocks)
+  const midi = copyOf(midiBlocks(p))
+  return { ...p, tracks: [...p.tracks.slice(0, end), ...copies, ...p.tracks.slice(end)], blocks: [...p.blocks, ...blocks], ...(midi.length ? { midi: [...midiBlocks(p), ...midi] } : {}) }
 }
 
 /** トラックの写し copy（新しい id のもの）を、after のすぐ下（なければ一番下）に波形ブロックごと置く。sources は、コピーしたときの元の音（足りなければ足す）。元の音がどこにも無いブロックは置かない */
