@@ -3,9 +3,10 @@
 import { findPlugin } from 'wevocal-lib'
 import { ancestors, bakedTracks, descendants, SEND_MIN, type Project, type Track } from './project'
 
-/** 一度に作る長さ（秒）。再生位置からこの先まで作っておく */
-export const CHUNK = 4
-export const AHEAD = 12
+/** 一度に作る長さ（秒）。かたまりごとに PREROLL の分と FX の読み込みが余計にかかるので、短くしすぎない */
+export const CHUNK = 8
+/** 再生位置からこの先まで作っておく（秒） */
+export const AHEAD = 16
 /** 作り始める前に先に流して状態（リバーブの余韻など）を作る長さ（秒） */
 export const PREROLL = 2
 
