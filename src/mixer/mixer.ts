@@ -45,6 +45,8 @@ export class Mixers {
   private readonly nodes = new Map<string, AudioWorkletNode>()
   /** トラックごとに最後に送った声の一覧（同じなら送らない。ドラッグ中は動かしたトラックだけを送る） */
   private readonly sent = new Map<string, string>()
+  /** 最後に送った声の並び（同じものなら比べるだけで済ませる） */
+  private readonly sentVoices = new Map<string, Voice[]>()
   private readonly ctx: BaseAudioContext
   private pings = 0
 
@@ -88,6 +90,10 @@ export class Mixers {
   }
 
   voices(trackId: string, voices: Voice[], smooth: boolean) {
+    // 声が全部前に送ったものと同じなら、識別の文字を作らずに済ませる（graph.ts は変わらない波形ブロックの声を使い回す）
+    const last = this.sentVoices.get(trackId)
+    if (last && last.length === voices.length && last.every((v, i) => v === voices[i]) && this.sent.has(trackId)) return
+    this.sentVoices.set(trackId, voices)
     const sig = voices.map((v) => v.key + '#' + v.sig).join('|')
     if (this.sent.get(trackId) === sig) return
     this.sent.set(trackId, sig)
@@ -102,6 +108,7 @@ export class Mixers {
     n.disconnect()
     this.nodes.delete(trackId)
     this.sent.delete(trackId)
+    this.sentVoices.delete(trackId)
   }
 
   /** 全部をフェードアウトして止める（ミキサーは止まったら処理をやめる） */
@@ -113,6 +120,7 @@ export class Mixers {
     for (const n of this.nodes.values()) n.disconnect()
     this.nodes.clear()
     this.sent.clear()
+    this.sentVoices.clear()
   }
 
   /** 送ったものを、すべてのミキサーが受け取るまで待つ（書き出しを始める前） */

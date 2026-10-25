@@ -7,8 +7,8 @@ import { createInstrument, findInstrument, type InstrumentInstance } from 'wevoc
 import { automatedSlots, createFxChain, hasAutomation, type ChainOptions, createLimitedOutput, type Clip, type FxChain } from 'wevocal-lib'
 import { clipId, Mixers, voicesOf } from '../mixer/mixer'
 import type { Voice } from '../mixer/types'
-import { piecesFor } from '../dsp/pitch'
-import { audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, liveSlots, type Project, type Track } from '../project'
+import { piecesFor, type Piece } from '../dsp/pitch'
+import { audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, liveSlots, type Block, type Project, type Track } from '../project'
 
 export interface TrackNodes {
   input: GainNode
@@ -418,9 +418,7 @@ export class Graph {
       const pieces = piecesFor(b, source)
       if (!pieces.length) continue
       for (const pc of pieces) used.set(clipId(pc.clip), pc.clip)
-      const t0 = this.zero + b.start
-      const env = volumeSteps(b.envelope ?? []).flatMap((pt) => [t0 + pt.t, dbToGain(pt.db)])
-      list.push(...voicesOf(b, pieces, this.zero, dbToGain(b.gain), env))
+      list.push(...this.blockVoices(b, pieces))
     }
     // FX の遅れ（秒）が違うトラックをそろえる: 波形ブロックから出口までの遅れが、どのトラックも同じになるように入口で遅らせる
     const late = new Map(p.tracks.map((t) => [t.id, trackLatency(p, t, this.ctx.sampleRate)]))
@@ -433,6 +431,18 @@ export class Graph {
     this.mixers.syncClips(used, new Set(p.sources.map((s) => clipId(s.clip))))
     for (const [id, list] of voices) this.mixers.voices(id, list, smooth)
   }
+
+  /** 波形ブロックの声。波形ブロック（書き換えずに作り直すので参照で比べる）、起点、片が前と同じなら前のものを使う（ドラッグ中は 50 ms ごとに全部の波形ブロックで呼ぶ） */
+  private blockVoices(b: Block, pieces: Piece[]): Voice[] {
+    const c = this.voiceCache.get(b)
+    if (c && c.zero === this.zero && c.pieces.length === pieces.length && c.pieces.every((x, i) => x.clip === pieces[i].clip && x.a === pieces[i].a && x.z === pieces[i].z && x.from === pieces[i].from)) return c.voices
+    const t0 = this.zero + b.start
+    const env = volumeSteps(b.envelope ?? []).flatMap((pt) => [t0 + pt.t, dbToGain(pt.db)])
+    const voices = voicesOf(b, pieces, this.zero, dbToGain(b.gain), env)
+    this.voiceCache.set(b, { zero: this.zero, pieces, voices })
+    return voices
+  }
+  private voiceCache = new WeakMap<Block, { zero: number; pieces: Piece[]; voices: Voice[] }>()
 
   /** ミキサーが送ったものを受け取るまで待つ（書き出しを始める前） */
   flush() {
