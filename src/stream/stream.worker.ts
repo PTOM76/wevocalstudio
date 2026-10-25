@@ -49,7 +49,10 @@ function rewind(t: Track) {
   t.port.postMessage({ type: 'drop', from } satisfies ReaderMessage)
 }
 
-/** 再生位置の AHEAD 先まで作る。追いついたら少し待ってまた見る（助走の間は長めに回す） */
+/**
+ * 再生位置の AHEAD 先まで作る。追いついたら少し待ってまた見る（助走の間は長めに回す）。
+ * トラックを順に BLOCK ずつ作る（1 本を作り切ってから次へ進むと、前のトラックが重いとき、後ろのトラックが足りなくなる）
+ */
 function pump() {
   timer = null
   if (!playing) return
@@ -58,16 +61,18 @@ function pump() {
   const budget = [...tracks.values()].some((t) => !t.ready) ? 100 : 20
   const qL = new Float32Array(QUANTUM)
   const qR = new Float32Array(QUANTUM)
-  for (const [id, t] of tracks) {
-    // 助走（プラグインの余韻などの状態を作る。送らない）
-    while (t.write < t.discard && performance.now() - started < budget) {
-      t.stream.render(t.write, qL, qR)
-      t.write += QUANTUM
-    }
-    if (t.write < t.discard) continue
-    // 遅れていれば、今の位置から（過ぎた所は作っても鳴らない）
-    if (t.write < now()) t.write = align(now())
-    while (t.write < until && performance.now() - started < budget) {
+  for (let more = true; more && performance.now() - started < budget; ) {
+    more = false
+    for (const [id, t] of tracks) {
+      // 助走（プラグインの余韻などの状態を作る。送らない）
+      if (t.write < t.discard) {
+        for (const z = Math.min(t.discard, t.write + BLOCK); t.write < z; t.write += QUANTUM) t.stream.render(t.write, qL, qR)
+        more = true
+        continue
+      }
+      // 遅れていれば、今の位置から（過ぎた所は作っても鳴らない）
+      if (t.write < now()) t.write = align(now())
+      if (t.write >= until) continue
       const L = new Float32Array(BLOCK)
       const R = new Float32Array(BLOCK)
       for (let i = 0; i < BLOCK; i += QUANTUM) {
@@ -77,6 +82,7 @@ function pump() {
       }
       t.port.postMessage({ type: 'block', frame: t.write, L, R } satisfies ReaderMessage, [L.buffer, R.buffer])
       t.write += BLOCK
+      more = true
       if (!t.ready) {
         t.ready = true
         // 最初の分を送った（メインは、これを待ってから鳴らし始める）
