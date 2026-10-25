@@ -309,7 +309,11 @@ export class Player {
       for (const id of [...ant.next.keys()]) {
         const k = ant.next.get(id)!
         // 作ったかたまりの先頭に再生位置が追いついたら、間に合っていない
-        if (k * CHUNK < now) return this.release(id)
+        // ほかのトラックは続ける（ここで止めると、ほかのトラックまで遅れて先読みをやめることになる）
+        if (k * CHUNK < now) {
+          this.release(id)
+          continue
+        }
         if (k * CHUNK > now + AHEAD || k * CHUNK > end) continue
         const buf = await this.makeChunk(p, id, k)
         // 作っている間に再生が止まったか、先読みがやめられていたら、使わない
