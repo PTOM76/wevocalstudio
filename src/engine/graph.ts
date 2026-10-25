@@ -144,6 +144,11 @@ export class Graph {
     }
   }
 
+  /** 先に作った音を入れる所（音量と FX の列の後、パンの前） */
+  cacheInput(trackId: string): AudioNode | null {
+    return this.tracks.get(trackId)?.cache ?? null
+  }
+
   /** 先に作った音をやめ、ノードの FX の列と波形ブロックの声で鳴らす（編集したときと、先読みが間に合わなかったとき） */
   release(trackId: string, fade = true) {
     const now = this.ctx.currentTime

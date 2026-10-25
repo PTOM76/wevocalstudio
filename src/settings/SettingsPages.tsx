@@ -271,6 +271,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('showDevPlugins')}
         {S('anticipativeFx')}
         {draft.anticipativeFx && S('anticipateWhileStopped')}
+        {draft.anticipativeFx && S('anticipateStream')}
         {S('anticipativeCacheMb')}
         {/* 追加機能の保存先のフォルダー（Chrome、Edge だけ） */}
         {addonFolderSupported() && S('addonFolder')}

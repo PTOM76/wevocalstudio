@@ -131,6 +131,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   player.current.anticipative = p.settings.anticipativeFx
   player.current.chunkCacheMb = p.settings.anticipativeCacheMb
   player.current.warmWhileStopped = p.settings.anticipateWhileStopped
+  player.current.anticipativeStream = p.settings.anticipateStream
   player.current.gauge.label = p.settings.showAnticipateGauge ? (kind, track) => t(kind === 'warm' ? 'job.anticipateWarm' : 'job.anticipateAhead', { track, sec: AHEAD }) : null
   player.current.offsetMs = p.settings.playbackOffsetMs
 

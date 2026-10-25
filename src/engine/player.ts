@@ -12,6 +12,7 @@ import { loadMixer } from '../mixer/mixer'
 import { preparePitch } from '../dsp/pitch'
 import { wantSamplerPitch } from '../dsp/samplerPitch'
 import { songEnd, type Project } from '../project'
+import { StreamHost, streamable } from '../stream/streamHost'
 /** 再生中に先読みのかたまりを同時に作る数（トラックごとに 1 つ） */
 const ANT_PARALLEL = 2
 /** 再生を始めるときに、先に作る音の最初のかたまりを待つ長さ（ミリ秒）。これより遅いトラックはノードで鳴らし始める */
@@ -30,6 +31,10 @@ export class Player {
   private monitorOn = new Map<string, number>()
   /** 重いプラグインを持つトラックの音を、先に作って鳴らす（設定。anticipate.ts） */
   anticipative = false
+  /** 先に計算するトラックのうち、できるものは、同じプラグインを途切れずに先で動かし続ける方式にする（試験的。memo/anticipate-stream.md） */
+  anticipativeStream = false
+  /** 先を走る方式の Worker と、読むだけのノード（使うときに作り、止めても残す） */
+  private stream: StreamHost | null = null
   /** 止めている間も先に作っておく（設定。オフなら再生中だけ） */
   warmWhileStopped = true
   /** 先に計算した量を状態バーのゲージに出す（設定。label が null なら出さない） */
@@ -70,7 +75,7 @@ export class Player {
   /** from 秒から鳴らす（鳴っていれば、古い音を消して新しく始める） */
   private async start(p: Project, from: number) {
     // 鳴っていて、先読みの音がなければ、グラフはそのまま、起点だけを付け替える
-    if (this.playing && this.graph && this.ctx && !this.ant) {
+    if (this.playing && this.graph && this.ctx && !this.ant && !this.stream?.ids.length) {
       this.from = from
       this.startedAt = this.ctx.currentTime + 0.01
       this.fxLatency = maxTrackLatency(p, this.ctx.sampleRate)
@@ -102,20 +107,29 @@ export class Player {
     })
     if (skipped.length) this.antInfo += ` / skipped ${skipped.join(', ')}`
     const k0 = Math.floor(from / CHUNK)
-    const primed = await Promise.all(
-      first.map((t) =>
-        Promise.race([
-          this.makeChunk(p, t.id, k0).catch((e: unknown) => {
-            // 作れなかったトラックはノードで鳴らす。理由はデバッグ表示とコンソールに出す
-            this.antInfo = `failed: ${String(e)}`
-            console.warn('anticipate:', e)
-            return null
-          }),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), PRIME_WAIT)),
-        ]),
+    // 先を走る方式にできるトラックは、そちらで作り始める（かたまりは作らない）
+    const ctx = this.ctx
+    const streamed = this.anticipativeStream ? first.filter((t) => streamable(p, t, ctx.sampleRate)) : []
+    const chunked = first.filter((t) => !streamed.includes(t))
+    if (streamed.length) this.antInfo += ` / stream ${streamed.length}`
+    const streaming = streamed.length ? this.streamHost(ctx).prepare(p, streamed.map((t) => t.id), from, PRIME_WAIT) : null
+    const [primed] = await Promise.all([
+      Promise.all(
+        chunked.map((t) =>
+          Promise.race([
+            this.makeChunk(p, t.id, k0).catch((e: unknown) => {
+              // 作れなかったトラックはノードで鳴らす。理由はデバッグ表示とコンソールに出す
+              this.antInfo = `failed: ${String(e)}`
+              console.warn('anticipate:', e)
+              return null
+            }),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), PRIME_WAIT)),
+          ]),
+        ),
       ),
-    )
-    const late = first.filter((_, i) => !primed[i]).length
+      streaming,
+    ])
+    const late = chunked.filter((_, i) => !primed[i]).length
     if (late) this.antInfo += ` / live ${late} (not ready)`
     if (id !== this.seq) return
     this.starting = false
@@ -125,9 +139,9 @@ export class Player {
     this.graph = new Graph(this.ctx, this.startedAt - from)
     this.graph.onFxState = this.onFxState
     // 最初のかたまりができたトラックだけを先読みにする（できなかったトラックは今までどおりノードで鳴らす）
-    const ok = first.filter((_, i) => primed[i])
+    const ok = chunked.filter((_, i) => primed[i])
     // 子孫の音は、親の FX を通した形で、親の作った音に入っている。子孫をノードでも鳴らすと二重になるので、ノードでは鳴らさない（memo/anticipate-parent.md）
-    this.graph.setAnticipated(ok.flatMap((t) => subtree(p, t).map((x) => x.id)))
+    this.graph.setAnticipated([...ok.flatMap((t) => subtree(p, t).map((x) => x.id)), ...(this.stream?.ids ?? [])])
     this.automation = setInterval(() => {
       this.graph?.automate()
       this.graph?.pumpMidi()
@@ -138,9 +152,12 @@ export class Player {
     }
     this.graph.sync(p, false)
     this.playing = true
+    this.project = p
+    // 先を走る方式のトラックは、読むだけのノードをつないで鳴らし始める
+    if (this.stream?.ids.length) this.stream.begin(this.startedAt - from, (tid) => this.graph?.cacheInput(tid) ?? null)
     if (ok.length) {
       this.ant = { sigs: new Map(ok.map((t) => [t.id, signature(p, t)])), next: new Map(ok.map((t) => [t.id, k0 + 1])), busy: false, timer: setInterval(() => void this.tick(), 250) }
-      for (const [i, t] of first.entries()) if (primed[i]) this.graph.playChunk(t.id, primed[i]!, k0 * CHUNK)
+      for (const [i, t] of chunked.entries()) if (primed[i]) this.graph.playChunk(t.id, primed[i]!, k0 * CHUNK)
       this.project = p
       this.fxLatency = maxTrackLatency(p, this.ctx!.sampleRate)
     }
@@ -153,6 +170,8 @@ export class Player {
     if (!this.playing || !this.graph) return
     // 先に作った音の元が変わったトラックは、先読みをやめてノードで鳴らす（次に再生を始めるまで）
     this.project = p
+    // 先を走る方式のトラックは、変えたものを送るだけ（作ってある先を作り直す。ノードには戻さない）
+    this.stream?.update(p)
     for (const [id, sig] of this.ant?.sigs ?? []) {
       const t = p.tracks.find((x) => x.id === id)
       if (!t || signature(p, t) !== sig) this.release(id)
@@ -181,9 +200,26 @@ export class Player {
     if (this.automation) clearInterval(this.automation)
     this.automation = null
     this.starting = false
+    this.stream?.stop()
     this.graph?.stopAll()
     this.graph = null
     this.playing = false
+  }
+
+  /** 先を走る方式の管理（初めて使うときに作る）。続けられなくなったトラックは、ノードで鳴らす側に戻す */
+  private streamHost(ctx: AudioContext) {
+    if (!this.stream) {
+      const host = new StreamHost(ctx)
+      host.onGiveUp = (id) => {
+        host.remove(id)
+        this.antInfo += ` / stream gave up ${id}`
+        if (!this.graph || !this.project) return
+        this.graph.release(id)
+        this.graph.sync(this.project, true)
+      }
+      this.stream = host
+    }
+    return this.stream
   }
 
   /** トラックのレベルメーター（鳴らしていなければ null） */

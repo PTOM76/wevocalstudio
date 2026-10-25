@@ -50,6 +50,8 @@ export const experimental = defineItems('experimental', {
   addonFolder: check(false, { label: 'settings.addonFolder', help: 'settings.addonFolderHelp' }),
   // 重いプラグインを持つトラックの音を、再生位置より先に作って鳴らす（試験的。音を出すスレッドの負担が減り、音が途切れにくい。再生を始めるまで少し待つ）
   anticipativeFx: check(false, { label: 'settings.anticipativeFx', help: 'settings.anticipativeFxHelp' }),
+  // 先に計算するトラックのうち、FX が外から足した wevocal の processor だけのものは、同じプラグインを途切れずに再生位置の少し先で動かし続ける（試験的。memo/anticipate-stream.md）
+  anticipateStream: check(false, { label: 'settings.anticipateStream', help: 'settings.anticipateStreamHelp' }),
   // 止めている間も、カーソルから先の音を作っておく（オフなら再生中だけ。CPU を使うので、電池を気にするとき用）
   anticipateWhileStopped: check(true, { label: 'settings.anticipateWhileStopped', help: 'settings.anticipateWhileStoppedHelp' }),
   // 先に計算した音を、再生をまたいで取っておく量（MB。0 で取っておかない。memo/fx-cache.md）

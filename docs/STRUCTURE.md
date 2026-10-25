@@ -185,8 +185,12 @@ src/storage/
   idb.ts  このアプリの IndexedDB（PevenMUI の createIdb。WeVocalSynth と同じ）。画面と自動保存の Worker の両方から使う
 
 src/stream/
+  stream.reader.worklet.ts  読むだけのノード（AudioWorklet）。先を走る Worker が作った音を、曲の今の位置の所だけ出す。足りなければ無音にして、メインに知らせる
+  stream.worker.ts  先を走る Worker。トラックごとに TrackStream を持ち、再生位置の AHEAD 先まで作り続けて、読むだけのノード（stream.reader.worklet.ts）へ送る（memo/anticipate-stream.md）
+  streamHost.ts  先を走る方式のメインスレッドの側。Worker（stream.worker.ts）と、トラックごとの読むだけのノードを組み、プロジェクトの変更を送る（memo/anticipate-stream.md）
   trackStream.test.ts  trackStream.ts のテスト（SDK の見本の processor を通した 1 本のトラックの計算）
   trackStream.ts  先を走る Worker の中の、1 本のトラックの計算（声を足す → 音量 → processor の列）。128 サンプルずつ、曲の時刻で進める。Web Audio を知らない（memo/anticipate-stream.md）
+  types.ts  先を走る Worker（stream.worker.ts）と、読むだけのノード（stream.reader.worklet.ts）とのやり取りの形。時刻は曲のサンプル位置
 
 src/test/
   setup.ts  テストの前に、ブラウザにしかない型の代わりを入れる（wevocal-lib の入口が WAM の SDK を読み込むため。音は鳴らさない）

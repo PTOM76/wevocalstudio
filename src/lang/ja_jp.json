@@ -317,6 +317,8 @@
   "settings.groupDefaultAlgorithm": "処理方式",
   "settings.anticipativeFx": "重いプラグインを先に計算して鳴らす（試験的）",
   "settings.anticipativeFxHelp": "重いプラグインを持つトラックの音を、再生位置より先に別のスレッドで作っておく。音が途切れにくくなるが、再生を始めるまで少し待つ。再生中にそのトラックを編集すると、次の再生までは通常の処理に戻る",
+  "settings.anticipateStream": "途切れずに先を計算する",
+  "settings.anticipateStreamHelp": "外から追加したプラグイン（WeVocal の形式）だけを使うトラックは、かたまりに分けず、同じプラグインを再生位置の少し先で動かし続けます。編集しても先に計算したまま反映されます",
   "settings.midiInput": "MIDI キーボードを使う",
   "settings.midiInputHelp": "つないだ MIDI キーボードの音を、音源のあるトラック（録音待機のトラック、なければ選択中のトラック）で鳴らす。録音すると、弾いた音符を MIDI ブロックに録る。Chrome、Edge で使用できる",
   "settings.showVst": "VST（Windows のプラグイン）を読み込めるようにする（試験的）",
