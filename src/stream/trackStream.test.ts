@@ -47,6 +47,35 @@ describe('TrackStream', () => {
     expect(run(s, SR / 2).L[0]).toBeCloseTo(0.25)
   })
 
+  it('プラグインが知らせた状態を伝え、変わった状態だけをプラグインに渡す', async () => {
+    loadProcessorSource(`
+      class St extends AudioWorkletProcessor {
+        constructor(o) {
+          super(o)
+          this.port.onmessage = (e) => this.port.postMessage({ __wevocalState: 'got:' + e.data.__wevocalSetState })
+          this.port.postMessage({ __wevocalState: 'hello' })
+        }
+        process() { return true }
+      }
+      registerProcessor('state-proc', St)
+    `)
+    const s = new TrackStream(SR, clips)
+    const got: [number, string][] = []
+    s.onState = (i, st) => got.push([i, st])
+    const st = (state?: string) => slot({ key: 'st@1', name: 'state-proc', params: [], values: {}, options: { state } })
+    s.setSlots([st('a')])
+    await new Promise((r) => setTimeout(r, 20))
+    expect(got).toEqual([[0, 'hello']])
+    // プラグインが知らせた値が戻ってきただけなら渡さない
+    s.setSlots([st('hello')])
+    s.setSlots([st('b')])
+    await new Promise((r) => setTimeout(r, 20))
+    expect(got).toEqual([
+      [0, 'hello'],
+      [0, 'got:b'],
+    ])
+  })
+
   it('オフにすると、ならしながら素通しになる。同じ並びなら processor を作り直さない', () => {
     const s = new TrackStream(SR, clips)
     s.setVoices([voice], 0, false)

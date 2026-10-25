@@ -21,6 +21,8 @@ class StreamReader extends AudioWorkletProcessor {
   private reportedAt = 0
   /** 外したら処理をやめる */
   private stopped = false
+  /** 一度でも届いたか（届く前の足りなさは知らせない。助走の間） */
+  private got = false
 
   constructor() {
     super()
@@ -41,6 +43,7 @@ class StreamReader extends AudioWorkletProcessor {
       // 作り直した分は、同じ位置の古いものを置き換える
       this.blocks = this.blocks.filter((b) => b.frame + b.L.length <= m.frame || b.frame >= m.frame + m.L.length)
       this.blocks.push({ frame: m.frame, L: m.L, R: m.R })
+      this.got = true
       this.blocks.sort((a, b) => a.frame - b.frame)
     }
   }
@@ -67,7 +70,7 @@ class StreamReader extends AudioWorkletProcessor {
       got += z - a
     }
     const lack = n - Math.min(n, got + Math.max(0, -start))
-    if (lack > 0) {
+    if (lack > 0 && this.got) {
       this.missing += lack
       if (currentTime - this.reportedAt > REPORT) {
         this.reportedAt = currentTime

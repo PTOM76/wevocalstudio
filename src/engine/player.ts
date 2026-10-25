@@ -13,6 +13,8 @@ import { preparePitch } from '../dsp/pitch'
 import { wantSamplerPitch } from '../dsp/samplerPitch'
 import { songEnd, type Project } from '../project'
 import { StreamHost, streamable } from '../stream/streamHost'
+/** 先を走る方式で、最初の分（助走のあと）を待つ長さ（ミリ秒）。助走があるので、かたまりより長めに待つ。間に合わないトラックは今回はノードで鳴らす */
+const STREAM_WAIT = 400
 /** 再生中に先読みのかたまりを同時に作る数（トラックごとに 1 つ） */
 const ANT_PARALLEL = 2
 /** 再生を始めるときに、先に作る音の最初のかたまりを待つ長さ（ミリ秒）。これより遅いトラックはノードで鳴らし始める */
@@ -112,7 +114,7 @@ export class Player {
     const streamed = this.anticipativeStream ? first.filter((t) => streamable(p, t, ctx.sampleRate)) : []
     const chunked = first.filter((t) => !streamed.includes(t))
     if (streamed.length) this.antInfo += ` / stream ${streamed.length}`
-    const streaming = streamed.length ? this.streamHost(ctx).prepare(p, streamed.map((t) => t.id), from, PRIME_WAIT) : null
+    const streaming = streamed.length ? this.streamHost(ctx).prepare(p, streamed.map((t) => t.id), from, STREAM_WAIT) : null
     const [primed] = await Promise.all([
       Promise.all(
         chunked.map((t) =>
@@ -210,6 +212,8 @@ export class Player {
   private streamHost(ctx: AudioContext) {
     if (!this.stream) {
       const host = new StreamHost(ctx)
+      // Worker の中のプラグインが保存したい状態も、ノードのプラグインと同じく FX の項目に入れる
+      host.onState = (id, index, state) => this.onFxState?.(id, index, state)
       host.onGiveUp = (id) => {
         host.remove(id)
         this.antInfo += ` / stream gave up ${id}`

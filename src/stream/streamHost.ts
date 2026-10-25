@@ -1,6 +1,7 @@
 // 先を走る方式のメインスレッドの側。Worker（stream.worker.ts）と、トラックごとの読むだけのノードを組み、プロジェクトの変更を送る（memo/anticipate-stream.md）
 import { externalPackage, findPlugin, migrateValues, type Clip } from 'wevocal-lib'
 import { processorName } from 'wevocal-lib/stream'
+import { prerollOf } from '../anticipate'
 import { piecesFor } from '../dsp/pitch'
 import { clipId, voicesOf } from '../mixer/mixer'
 import type { Voice } from '../mixer/types'
@@ -73,14 +74,18 @@ export class StreamHost {
   private readonly readers = new Map<string, AudioWorkletNode>()
   private readonly sentClips = new Set<number>()
   /** トラックごとに最後に送った値（同じなら送らない） */
-  private readonly sent = new Map<string, string>()
+  private readonly sent = new Map<string, { sig: string; states: string }>()
   private posTimer: ReturnType<typeof setInterval> | null = null
   private zero = 0
   /** 鳴らし始めた時刻（begin の前は Infinity。足りなかった知らせを数えない） */
   private startedAt = Infinity
-  private ready: (() => void) | null = null
+  /** 再生を始めてから、最初の分が届いたトラック */
+  private readyIds = new Set<string>()
+  private onReady: (() => void) | null = null
   /** このトラックをやめて、ノードで鳴らす側に戻してほしい（作れなかった、間に合わなかった） */
   onGiveUp: ((id: string) => void) | null = null
+  /** プラグインが状態を保存したいとき（トラックの id、FX の項目の番号、base64） */
+  onState: ((id: string, index: number, state: string) => void) | null = null
 
   constructor(ctx: AudioContext) {
     this.ctx = ctx
@@ -94,7 +99,10 @@ export class StreamHost {
     if (this.worker) return
     this.worker = new Worker(new URL('./stream.worker.ts', import.meta.url), { type: 'module' })
     this.worker.onmessage = (e: MessageEvent<StreamEvent>) => {
-      if (e.data.type === 'ready') this.ready?.()
+      if (e.data.type === 'ready') {
+        this.readyIds.add(e.data.id)
+        this.onReady?.()
+      } else if (e.data.type === 'state') this.onState?.(e.data.id, e.data.index, e.data.state)
       else if (e.data.type === 'failed') {
         console.warn('anticipate (stream):', e.data.error)
         this.onGiveUp?.(e.data.id)
@@ -104,20 +112,22 @@ export class StreamHost {
   }
 
   /**
-   * 曲の from 秒から作り始め、最初の分ができるまで（長くても wait ミリ秒）待つ。鳴らし始める時刻は begin で渡す。
-   * ids は先を走る方式で鳴らすトラック
+   * 曲の from 秒から作り始め（その前に余韻の長さだけ流す）、最初の分ができるまで（長くても wait ミリ秒）待つ。鳴らし始める時刻は begin で渡す。
+   * ids は先を走る方式で鳴らしたいトラック。間に合わなかったトラックは外す（今回はノードで鳴らす）
    */
   async prepare(p: Project, ids: string[], from: number, wait: number) {
     await loadReader(this.ctx)
     this.ensureWorker()
     for (const id of ids) this.syncTrack(p, id, false)
+    this.readyIds.clear()
     const done = new Promise<void>((resolve) => {
-      this.ready = resolve
+      this.onReady = () => this.ids.every((id) => this.readyIds.has(id)) && resolve()
       setTimeout(resolve, wait)
     })
     this.post({ type: 'play', frame: Math.round(from * this.ctx.sampleRate) })
     await done
-    this.ready = null
+    this.onReady = null
+    for (const id of this.ids) if (!this.readyIds.has(id)) this.remove(id)
   }
 
   /** 鳴らし始める（zero は曲の 0 秒にあたる ctx の時刻）。読むだけのノードを、トラックの先に作った音の入口（cache）につなぐ */
@@ -175,7 +185,9 @@ export class StreamHost {
         this.sentClips.add(cid)
       }
     const gain = audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0
+    // プラグインの状態は別に比べる（プラグインが知らせた状態が戻ってきただけで、作ってある先を捨てないように）
     const sig = JSON.stringify([gain, made.slots.map(({ options: _o, ...s }) => s), voices.map((v) => v.key + v.sig)])
+    const states = JSON.stringify(made.slots.map((s) => s.options.state ?? null))
     let port: MessagePort | undefined
     if (!this.readers.has(id)) {
       const node = new AudioWorkletNode(this.ctx, 'stream-reader', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] })
@@ -187,8 +199,10 @@ export class StreamHost {
       }
       this.readers.set(id, node)
       port = channel.port2
-    } else if (this.sent.get(id) === sig) return
-    this.sent.set(id, sig)
-    this.post({ type: 'track', id, gain, slots: made.slots, voices, smooth, port }, port ? [port] : [])
+    }
+    const last = this.sent.get(id)
+    if (!port && last?.sig === sig && last.states === states) return
+    this.sent.set(id, { sig, states })
+    this.post({ type: 'track', id, gain, slots: made.slots, voices, smooth, rewind: smooth && last?.sig !== sig, preroll: prerollOf(p, t), port }, port ? [port] : [])
   }
 }

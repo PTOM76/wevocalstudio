@@ -25,6 +25,8 @@ interface Stage {
   cur: Map<string, number>
   /** 素通しとの混ぜ具合（1 でオン） */
   mix: number
+  /** プラグインの状態（つまみ以外）の、知っている最後の値（同じなら渡さない） */
+  state?: string
 }
 
 export class TrackStream {
@@ -40,6 +42,8 @@ export class TrackStream {
   private readonly ramp = new Float32Array(QUANTUM)
 
   private readonly clips: ClipStore
+  /** プラグインが状態を保存したいとき（項目の番号、base64）。メインの FX の項目に入れてもらう */
+  onState: ((index: number, state: string) => void) | null = null
 
   constructor(sampleRate: number, clips: ClipStore) {
     this.sampleRate = sampleRate
@@ -61,10 +65,29 @@ export class TrackStream {
   setSlots(slots: StreamSlot[]) {
     const same = slots.length === this.stages.length && slots.every((s, i) => s.key === this.stages[i].slot.key)
     if (same) {
-      slots.forEach((s, i) => (this.stages[i].slot = s))
+      slots.forEach((s, i) => {
+        const st = this.stages[i]
+        st.slot = s
+        // 元に戻すなどで状態が変わったら、プラグインに渡す（プラグインが知らせた値が戻ってきただけなら渡さない）
+        const state = s.options.state as string | undefined
+        if (state !== st.state) {
+          st.state = state
+          st.runner.port.postMessage({ __wevocalSetState: state })
+        }
+      })
       return
     }
-    this.stages = slots.map((slot) => ({ slot, runner: new ProcessorRunner(slot.name, slot.options), cur: new Map(), mix: slot.on ? 1 : 0 }))
+    this.stages = slots.map((slot) => {
+      const st: Stage = { slot, runner: new ProcessorRunner(slot.name, slot.options), cur: new Map(), mix: slot.on ? 1 : 0, state: slot.options.state as string | undefined }
+      st.runner.port.onmessage = (e: MessageEvent<{ __wevocalState?: unknown }>) => {
+        const state = e.data?.__wevocalState
+        const index = this.stages.indexOf(st)
+        if (typeof state !== 'string' || index < 0) return
+        st.state = state
+        this.onState?.(index, state)
+      }
+      return st
+    })
   }
 
   /** 曲のサンプル位置 frame からの 128 サンプルを作る（out は左右。上書きする） */
