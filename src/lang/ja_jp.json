@@ -903,7 +903,7 @@
   "algorithm.solaHint": "短く重ねてつなぐ。にじみが少ない",
   "algorithm.psola2": "Pisol",
   "algorithm.psola2Hint": "声の周期ごとに切り貼り。かすれにくい",
-  "algorithm.psolad": "Pisol Direct",
+  "algorithm.psolad": "Vedict",
   "algorithm.psoladHint": "周期の並べ直しで高さを変える。声色が自然",
   "algorithm.psola": "Legacy Pisol",
   "algorithm.psolaHint": "声の周期ごとに切り貼り。声向け",

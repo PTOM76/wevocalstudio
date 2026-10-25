@@ -903,7 +903,7 @@
   "algorithm.solaHint": "Short crossfades. Less smearing",
   "algorithm.psola2": "Pisol",
   "algorithm.psola2Hint": "Splices at pitch periods. Less roughness",
-  "algorithm.psolad": "Pisol Direct",
+  "algorithm.psolad": "Vedict",
   "algorithm.psoladHint": "Repositions pitch periods without resampling. Natural formants",
   "algorithm.psola": "Legacy Pisol",
   "algorithm.psolaHint": "Splices at pitch periods. For voice",
