@@ -32,6 +32,7 @@ import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
 import { emitNote } from './pianoRoll/noteBus'
 import { addWvspTracks, midiBlocks, newProject, songEnd, visibleTracks } from './project'
+import { AHEAD } from './anticipate'
 import { isBlank } from './projectTabs'
 import { useProjectTabs } from './useProjectTabs'
 import Timeline, { useHeaderWidth } from './Timeline'
@@ -130,7 +131,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   player.current.anticipative = p.settings.anticipativeFx
   player.current.chunkCacheMb = p.settings.anticipativeCacheMb
   player.current.warmWhileStopped = p.settings.anticipateWhileStopped
-  player.current.gauge.label = p.settings.showAnticipateGauge ? (kind, track) => t(kind === 'warm' ? 'job.anticipateWarm' : 'job.anticipateAhead', { track }) : null
+  player.current.gauge.label = p.settings.showAnticipateGauge ? (kind, track) => t(kind === 'warm' ? 'job.anticipateWarm' : 'job.anticipateAhead', { track, sec: AHEAD }) : null
   player.current.offsetMs = p.settings.playbackOffsetMs
 
   // 追加機能の導入の確かめ（動画の書き出し。PevenMUI）

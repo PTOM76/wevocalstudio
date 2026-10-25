@@ -618,7 +618,7 @@
   "job.bake": "Committing",
   "job.anticipate": "Precomputing",
   "job.anticipateWarm": "Precomputing {track}",
-  "job.anticipateAhead": "{track} buffered ahead (of 12 s)",
+  "job.anticipateAhead": "{track} buffered ahead (of {sec} s)",
 
   "file.projectType": "WeVocal Studio project",
   "file.wvspType": "WeVocalSynth project",
