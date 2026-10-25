@@ -153,7 +153,7 @@ export function voicesOf(b: Block, pieces: Piece[], zero: number, level: number,
   const bt1 = bt0 + b.length
   const spanEnd = b.offset + b.length * b.rate
   // zero を入れる（再生位置を変えて起点が動いたら、声の時刻が変わるので送り直す）
-  const base = `${zero}|${b.start}|${b.offset}|${b.length}|${b.rate}|${level}|${b.fadeIn}|${b.fadeOut}|${env.join(',')}`
+  const base = `${zero}|${b.start}|${b.offset}|${b.length}|${b.rate}|${level}|${b.fadeIn}|${b.fadeOut}|${b.fadeInShape}|${b.fadeInTension}|${b.fadeOutShape}|${b.fadeOutTension}|${env.join(',')}`
   return pieces.map((pc, i) => {
     const joinA = i > 0 && pieces[i - 1].z >= pc.a - 1e-6
     const joinZ = i < pieces.length - 1 && pieces[i + 1].a <= pc.z + 1e-6
@@ -174,6 +174,8 @@ export function voicesOf(b: Block, pieces: Piece[], zero: number, level: number,
       bt1,
       fadeIn: b.fadeIn,
       fadeOut: b.fadeOut,
+      ...(b.fadeInShape ? { fadeInShape: b.fadeInShape, fadeInTension: b.fadeInTension } : {}),
+      ...(b.fadeOutShape ? { fadeOutShape: b.fadeOutShape, fadeOutTension: b.fadeOutTension } : {}),
       joinIn: joinA ? XFADE * 2 : 0,
       joinOut: joinZ ? XFADE * 2 : 0,
       level,

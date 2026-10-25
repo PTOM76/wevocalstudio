@@ -25,7 +25,7 @@ export function describeChange(before: Project, after: Project): MessageKey {
   if (keys.has('envelope')) return 'history.envelope'
   if (keys.has('rate')) return 'history.rate'
   if (keys.has('offset') || keys.has('length')) return 'history.trim'
-  if (keys.has('fadeIn') || keys.has('fadeOut')) return 'history.fade'
+  if (keys.has('fadeIn') || keys.has('fadeOut') || keys.has('fadeInShape') || keys.has('fadeInTension') || keys.has('fadeOutShape') || keys.has('fadeOutTension')) return 'history.fade'
   if (keys.has('start') || keys.has('track')) return 'history.move'
   return 'history.block'
 }

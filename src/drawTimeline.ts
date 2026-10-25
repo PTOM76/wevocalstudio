@@ -7,7 +7,7 @@ import { ENVELOPES, denseEnv, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
-import { bakedTracks, ENV_MAX, masterHeight, ownAudible, songEnd, trackHeight, type Block, type PitchEnvelopeRange, type Project, type Source, type VolumeEnvelopeRange } from './project'
+import { bakedTracks, ENV_MAX, fadeInGain, fadeOutGain, masterHeight, ownAudible, songEnd, trackHeight, type Block, type PitchEnvelopeRange, type Project, type Source, type VolumeEnvelopeRange } from './project'
 
 export const RULER = 24
 /** トラックの行が始まる位置（目盛りとマスタートラックの行の下） */
@@ -218,14 +218,18 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
       // フェード
       g.strokeStyle = c.text
       g.beginPath()
-      if (b.fadeIn > 0) {
-        g.moveTo(x, y + H - 3)
-        g.lineTo(x + b.fadeIn * view.pps, y + 2)
+      // 形状があれば曲線で描く（音量 1 が上、0 が下）
+      const fadeLine = (x0: number, w0: number, gain: (u: number) => number, shaped: boolean) => {
+        const steps = shaped ? 16 : 1
+        for (let i = 0; i <= steps; i++) {
+          const u = i / steps
+          const py = y + H - 3 - gain(u) * (H - 5)
+          if (i) g.lineTo(x0 + u * w0, py)
+          else g.moveTo(x0 + u * w0, py)
+        }
       }
-      if (b.fadeOut > 0) {
-        g.moveTo(x + bw - b.fadeOut * view.pps, y + 2)
-        g.lineTo(x + bw, y + H - 3)
-      }
+      if (b.fadeIn > 0) fadeLine(x, b.fadeIn * view.pps, (u) => fadeInGain(b.fadeInShape, u, b.fadeInTension), !!b.fadeInShape)
+      if (b.fadeOut > 0) fadeLine(x + bw - b.fadeOut * view.pps, b.fadeOut * view.pps, (u) => fadeOutGain(b.fadeOutShape, u, b.fadeOutTension), !!b.fadeOutShape)
       g.stroke()
       // 名前とピッチ、音量
       const name = b.name?.trim() || source?.name || ''

@@ -1,10 +1,9 @@
 // ピッチをつなぐ長さと、エンベロープの形状を選ぶダイアログ
-import { Button, DialogActions, DialogContent, Slider, Stack, TextField, Typography } from '@mui/material'
+import { Button, DialogActions, DialogContent, Stack, TextField, Typography } from '@mui/material'
 import { WindowDialog, enterToSubmit } from 'pevenmui'
-import { LabeledSelect as Choice } from 'wevocal-lib/react'
 import { useState } from 'react'
 import { useT } from './i18n'
-import { ShapeIcon } from './ShapeIcon'
+import { ShapeSelect } from './ShapeSelect'
 import { GLIDE_SECONDS, type GlideShape } from './glide'
 
 export default function GlideDialog(p: { open: boolean; onClose: () => void; onApply: (options: { seconds: number; shape: GlideShape; tension: number }) => void }) {
@@ -12,13 +11,6 @@ export default function GlideDialog(p: { open: boolean; onClose: () => void; onA
   const [duration, setDuration] = useState(String(GLIDE_SECONDS * 1000))
   const [shape, setShape] = useState<GlideShape>('linear')
   const [tension, setTension] = useState(0)
-  // 選択肢に形状の見本を添える（bezier は今の張り具合で描く）
-  const shaped = (s: GlideShape, text: string) => (
-    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-      <ShapeIcon shape={s} tension={s === 'bezier' ? tension || 0.6 : undefined} />
-      <span>{text}</span>
-    </Stack>
-  )
   const milliseconds = Number(duration)
   const valid = Number.isFinite(milliseconds) && milliseconds > 0
   const run = () => {
@@ -39,35 +31,15 @@ export default function GlideDialog(p: { open: boolean; onClose: () => void; onA
             slotProps={{ htmlInput: { min: 1, step: 1 } }}
           />
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('glide.durationHelp')}</Typography>
-          <Choice
+          <ShapeSelect
             label={t('glide.shape')}
-            value={shape}
-            options={[
-              ['linear', shaped('linear', t('glide.shapeLinear'))],
-              ['square', shaped('square', t('glide.shapeSquare'))],
-              ['slowStartEnd', shaped('slowStartEnd', t('glide.shapeSlowStartEnd'))],
-              ['fastStart', shaped('fastStart', t('glide.shapeFastStart'))],
-              ['fastEnd', shaped('fastEnd', t('glide.shapeFastEnd'))],
-              ['bezier', shaped('bezier', t('glide.shapeBezier'))],
-            ]}
-            onChange={(value) => {
-              if (value === 'linear' || value === 'square' || value === 'slowStartEnd' || value === 'fastStart' || value === 'fastEnd' || value === 'bezier') setShape(value)
+            shape={shape}
+            tension={tension}
+            onChange={(s, n) => {
+              setShape(s)
+              setTension(n)
             }}
           />
-          {shape === 'bezier' && (
-            <Stack spacing={0.5}>
-              <Typography variant="body2">{t('glide.tension', { n: tension.toFixed(2) })}</Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('glide.tensionHelp')}</Typography>
-              <Slider
-                value={tension}
-                min={-1}
-                max={1}
-                step={0.05}
-                valueLabelDisplay="auto"
-                onChange={(_, value) => typeof value === 'number' && setTension(value)}
-              />
-            </Stack>
-          )}
         </Stack>
       </DialogContent>
       <DialogActions>

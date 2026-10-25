@@ -1,4 +1,5 @@
 // ミキサーの計算（声を 128 サンプルずつ足す）。音を出すスレッドのミキサー（mixer.worklet.ts）と、先を走る Worker で共通に使う。画面と Web Audio を知らない
+import { fadeInGain, fadeOutGain } from '../envelopeCurve'
 import type { Voice } from './types'
 
 /** 消えた声、止めたときに 0 まで下げる長さ（秒） */
@@ -18,8 +19,8 @@ export function gainAt(l: Live, t: number): number {
   const v = l.v
   let g = v.level
   // 波形ブロックのフェード
-  if (v.fadeIn > 0 && t < v.bt0 + v.fadeIn) g *= Math.max(0, (t - v.bt0) / v.fadeIn)
-  if (v.fadeOut > 0 && t > v.bt1 - v.fadeOut) g *= Math.max(0, (v.bt1 - t) / v.fadeOut)
+  if (v.fadeIn > 0 && t < v.bt0 + v.fadeIn) g *= fadeInGain(v.fadeInShape, (t - v.bt0) / v.fadeIn, v.fadeInTension)
+  if (v.fadeOut > 0 && t > v.bt1 - v.fadeOut) g *= fadeOutGain(v.fadeOutShape, (t - (v.bt1 - v.fadeOut)) / v.fadeOut, v.fadeOutTension)
   // 片のつなぎ目（隣の片と XFADE ずつ重ねる）
   if (v.joinIn > 0 && t < v.t0 + v.joinIn) g *= Math.max(0, (t - v.t0) / v.joinIn)
   if (v.joinOut > 0 && t > v.t1 - v.joinOut) g *= Math.max(0, (v.t1 - t) / v.joinOut)

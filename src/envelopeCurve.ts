@@ -19,6 +19,20 @@ export function shapeProgress(shape: EnvShape | undefined, x: number, tension = 
   }
 }
 
+/** フェードの形状（フェードイン、フェードアウトで別々に持つ。省けば直線） */
+export interface FadeShapes {
+  fadeInShape?: EnvShape
+  fadeInTension?: number
+  fadeOutShape?: EnvShape
+  fadeOutTension?: number
+}
+
+/** フェードインの音量（線形。x はフェードの中の進み具合 0〜1）。形状は 0 から 1 への進み方 */
+export const fadeInGain = (shape: EnvShape | undefined, x: number, tension = 0) => shapeProgress(shape, Math.min(1, Math.max(0, x)), tension)
+
+/** フェードアウトの音量（線形。x はフェードの中の進み具合 0〜1）。形状は 1 から 0 への下がり方（フェードインを時間で裏返すと mirrorShape の形状になる） */
+export const fadeOutGain = (shape: EnvShape | undefined, x: number, tension = 0) => 1 - shapeProgress(shape, Math.min(1, Math.max(0, x)), tension)
+
 /** 点の並びを逆にしたときの、点に持たせる形状（区間の向きが逆になるので、速い始まりと速い終わりを入れ替え、張り具合の向きを変える） */
 export function mirrorShape(s: Shaped): Shaped {
   const shape: EnvShape | undefined = s.shape === 'fastStart' ? 'fastEnd' : s.shape === 'fastEnd' ? 'fastStart' : s.shape

@@ -1,5 +1,5 @@
 // プロジェクトの形（元の音声、トラック、波形ブロック）。音声は書き換えず、波形ブロックの値から再生と書き出しのたびに作る
-import { type EnvPoint, type PitchPoint, type VolumeEnvelopeRange, type PitchEnvelopeRange } from './envelopeCurve'
+import { type EnvPoint, type PitchPoint, type FadeShapes, type VolumeEnvelopeRange, type PitchEnvelopeRange } from './envelopeCurve'
 export * from './envelopeCurve'
 import { beatMap, type BeatMap } from './beats'
 import { splitCurves } from './midiCurves'
@@ -155,7 +155,7 @@ export interface Send {
 export const SEND_MIN = -60
 
 /** 波形ブロック。元の音のどこを、いつ、どう鳴らすか */
-export interface Block extends BaseBlock {
+export interface Block extends BaseBlock, FadeShapes {
   source: string
   /** 元の音の中での開始位置（秒） */
   offset: number
@@ -454,9 +454,13 @@ export function splitMidiBlock(b: MidiBlock, t: number, map: BeatMap): [MidiBloc
 export function splitBlock(b: Block, t: number, defaultFade = DEFAULT_FADE): [Block, Block] | null {
   const at = t - b.start
   if (at <= 0.001 || at >= b.length - 0.001) return null
+  // 切れ目の側のフェードは新しく付けるので、元の形状は持ち越さない
+  const { fadeInShape, fadeInTension, fadeOutShape, fadeOutTension, ...rest } = b
+  const keepIn = { ...(fadeInShape ? { fadeInShape } : {}), ...(fadeInTension ? { fadeInTension } : {}) }
+  const keepOut = { ...(fadeOutShape ? { fadeOutShape } : {}), ...(fadeOutTension ? { fadeOutTension } : {}) }
   return [
-    { ...b, length: at, fadeIn: Math.min(b.fadeIn, at), fadeOut: Math.min(defaultFade, at / 2) },
-    { ...b, id: newId(), start: t, offset: b.offset + at * b.rate, length: b.length - at, fadeIn: Math.min(defaultFade, (b.length - at) / 2), fadeOut: Math.min(b.fadeOut, b.length - at) },
+    { ...rest, ...keepIn, length: at, fadeIn: Math.min(b.fadeIn, at), fadeOut: Math.min(defaultFade, at / 2) },
+    { ...rest, ...keepOut, id: newId(), start: t, offset: b.offset + at * b.rate, length: b.length - at, fadeIn: Math.min(defaultFade, (b.length - at) / 2), fadeOut: Math.min(b.fadeOut, b.length - at) },
   ]
 }
 

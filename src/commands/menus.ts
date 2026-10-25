@@ -3,7 +3,8 @@ import { type MenuEntry, type MenuGroup } from 'pevenmui'
 import { createElement } from 'react'
 import { ShapeIcon } from '../ShapeIcon'
 import { keyLabel, type Action } from '../keymap'
-import { type Block, type EnvShape } from '../project'
+import { type Block } from '../project'
+import { SHAPE_CHOICES } from '../shapeChoices'
 import { ENVELOPES, type EnvKind } from '../envelopes'
 import type { CommandEnv, CommandView } from './types'
 
@@ -179,15 +180,7 @@ export function buildMenus(env: CommandEnv, commands: Record<Action, CommandView
     const spec = ENVELOPES[kind]
     const pts = spec.points(b)
     const cur = pts[index]?.shape ?? 'linear'
-    const choices: [EnvShape, Parameters<typeof t>[0], number?][] = [
-      ['linear', 'glide.shapeLinear'],
-      ['square', 'glide.shapeSquare'],
-      ['slowStartEnd', 'glide.shapeSlowStartEnd'],
-      ['fastStart', 'glide.shapeFastStart'],
-      ['fastEnd', 'glide.shapeFastEnd'],
-      ['bezier', 'glide.shapeBezier', 0.6],
-    ]
-    return choices.map(([shape, label, tension]) => ({
+    return SHAPE_CHOICES.map(([shape, label, tension]) => ({
       label: t(label),
       checked: cur === shape,
       icon: createElement(ShapeIcon, { shape, tension }),

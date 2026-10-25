@@ -1,4 +1,5 @@
 // ミキサー（AudioWorklet）とやり取りする形。時刻はすべて AudioContext の秒（currentTime と同じ時計）
+import type { EnvShape } from '../envelopeCurve'
 
 /** 声（波形ブロックの片 1 つ）。音量は level にフェード、つなぎ目、エンベロープを掛けたもの */
 export interface Voice {
@@ -17,6 +18,11 @@ export interface Voice {
   bt1: number
   fadeIn: number
   fadeOut: number
+  /** フェードの形状（なければ直線） */
+  fadeInShape?: EnvShape
+  fadeInTension?: number
+  fadeOutShape?: EnvShape
+  fadeOutTension?: number
   /** 片のつなぎ目のクロスフェード（秒。隣がなければ 0） */
   joinIn: number
   joinOut: number

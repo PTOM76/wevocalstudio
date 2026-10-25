@@ -1,6 +1,6 @@
 // envelopeCurve.ts のテスト
 import { describe, expect, it } from 'vitest'
-import { envAt, mirrorShape, pitchEnvAt, shapeProgress } from './envelopeCurve'
+import { envAt, fadeInGain, fadeOutGain, mirrorShape, pitchEnvAt, shapeProgress } from './envelopeCurve'
 
 describe('shapeProgress', () => {
   it('どの形も 0 で 0、1 で 1（矩形は 1 になる瞬間だけ 1）', () => {
@@ -57,5 +57,26 @@ describe('pitchEnvAt', () => {
     expect(pitchEnvAt(env, -1)).toBe(0)
     expect(pitchEnvAt(env, 1)).toBeCloseTo(2)
     expect(pitchEnvAt(env, 9)).toBe(4)
+  })
+})
+
+describe('フェードの形状', () => {
+  it('形状がなければ直線（フェードインは 0 から 1、フェードアウトは 1 から 0）', () => {
+    expect(fadeInGain(undefined, 0.25)).toBeCloseTo(0.25)
+    expect(fadeOutGain(undefined, 0.25)).toBeCloseTo(0.75)
+  })
+
+  it('範囲の外の進み具合は端に収める', () => {
+    expect(fadeInGain('fastStart', -1)).toBe(0)
+    expect(fadeOutGain('fastStart', 2)).toBe(0)
+  })
+
+  it('フェードインを時間で裏返すと、mirrorShape の形状のフェードアウトになる', () => {
+    for (const shape of ['fastStart', 'fastEnd', 'slowStartEnd', 'bezier'] as const) {
+      const m = mirrorShape({ shape, tension: 0.4 })
+      for (const x of [0.1, 0.3, 0.5, 0.9]) {
+        expect(fadeOutGain(m.shape, x, m.tension)).toBeCloseTo(fadeInGain(shape, 1 - x, 0.4))
+      }
+    }
   })
 })

@@ -16,12 +16,20 @@ function reversedBlock(b: Block, source: Source): Block {
   const segSec = b.length * b.rate
   // 元の音の時刻を、使う部分の終わりから数え直した時刻にする
   const flip = (s: number) => b.offset + segSec - s
+  // フェードの形状も入れ替える（向きが逆になるので mirrorShape で持たせ直す）
+  const { fadeInShape: _i, fadeInTension: _it, fadeOutShape: _o, fadeOutTension: _ot, ...rest } = b
+  const inShape = mirrorShape({ shape: b.fadeOutShape, tension: b.fadeOutTension })
+  const outShape = mirrorShape({ shape: b.fadeInShape, tension: b.fadeInTension })
   return {
-    ...b,
+    ...rest,
     source: source.id,
     offset: 0,
     fadeIn: b.fadeOut,
     fadeOut: b.fadeIn,
+    ...(inShape.shape ? { fadeInShape: inShape.shape } : {}),
+    ...(inShape.tension ? { fadeInTension: inShape.tension } : {}),
+    ...(outShape.shape ? { fadeOutShape: outShape.shape } : {}),
+    ...(outShape.tension ? { fadeOutTension: outShape.tension } : {}),
     envelope: flipPoints(b.envelope, (pt) => ({ ...pt, t: b.length - pt.t })),
     pitchEnvelope: flipPoints(b.pitchEnvelope, (pt) => ({ ...pt, s: flip(pt.s) })),
     curve: b.curve && { from: flip(b.curve.from + b.curve.st.length * CURVE_HOP), st: [...b.curve.st].reverse() },

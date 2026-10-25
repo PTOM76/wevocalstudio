@@ -6,6 +6,8 @@
   "block.pitch": "ピッチ (半音)",
   "block.fadeIn": "フェードイン (秒)",
   "block.fadeOut": "フェードアウト (秒)",
+  "block.fadeInShape": "フェードインの形状",
+  "block.fadeOutShape": "フェードアウトの形状",
   "block.mute": "ミュート",
   "block.algorithm": "処理方式",
   "block.preserveFormant": "フォルマントを保持",

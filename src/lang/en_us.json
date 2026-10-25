@@ -6,6 +6,8 @@
   "block.pitch": "Pitch (st)",
   "block.fadeIn": "Fade In (s)",
   "block.fadeOut": "Fade Out (s)",
+  "block.fadeInShape": "Fade in shape",
+  "block.fadeOutShape": "Fade out shape",
   "block.mute": "Mute",
   "block.algorithm": "Algorithm",
   "block.preserveFormant": "Preserve formants",

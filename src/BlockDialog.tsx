@@ -4,7 +4,8 @@ import { Box, Button, Checkbox, DialogActions, DialogContent, FormControlLabel, 
 import { PresetMenu, WindowDialog, enterToSubmit, type Preset, useMobileLayout } from 'pevenmui'
 import { AlgorithmSelect } from 'wevocal-lib/react'
 import { useT, type MessageKey } from './i18n'
-import { BLOCK_LIMITS, type Block, type Source } from './project'
+import { BLOCK_LIMITS, type Block, type FadeShapes, type Source } from './project'
+import { ShapeSelect } from './ShapeSelect'
 
 type NumberKey = 'start' | 'length' | 'offset' | 'rate' | 'gain' | 'pitch' | 'formant' | 'fadeIn' | 'fadeOut'
 
@@ -29,7 +30,7 @@ const SECTIONS: { title: MessageKey; keys: NumberKey[] }[] = [
 ]
 
 /** 変えた値（触った欄だけ） */
-export type BlockEdit = Partial<Pick<Block, NumberKey | 'algorithm' | 'preserveFormant' | 'mute' | 'source'>> & { name?: string | undefined }
+export type BlockEdit = Partial<Pick<Block, NumberKey | 'algorithm' | 'preserveFormant' | 'mute' | 'source' | keyof FadeShapes>> & { name?: string | undefined }
 
 /** 混在の欄に足し引きした値（+1、-1 のように入力した分。ブロックごとの今の値に足す） */
 export type BlockAdd = Partial<Record<NumberKey, number>>
@@ -138,6 +139,20 @@ export default function BlockDialog(p: {
     setEdit((e) => ({ ...e, [key]: Math.max(min, Math.min(max, n)) }))
     setAdd(drop)
   }
+  /** フェードの形状（直線は持たない。みんな違うときは直線の表示にして、選んだら全部に掛ける） */
+  const fadeShape = (side: 'In' | 'Out') => {
+    const shapeKey = `fade${side}Shape` as const
+    const tensionKey = `fade${side}Tension` as const
+    return (
+      <ShapeSelect
+        key={side}
+        label={t(side === 'In' ? 'block.fadeInShape' : 'block.fadeOutShape')}
+        shape={value(shapeKey) ?? 'linear'}
+        tension={value(tensionKey) ?? 0}
+        onChange={(shape, tension) => setEdit((e) => ({ ...e, [shapeKey]: shape === 'linear' ? undefined : shape, [tensionKey]: shape === 'bezier' && tension ? tension : undefined }))}
+      />
+    )
+  }
   const heading = (title: MessageKey) => (
     <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
       {t(title)}
@@ -158,7 +173,7 @@ export default function BlockDialog(p: {
       name="blockProperties"
       dockable={!mobile}
       width={480}
-      height={many ? 600 : 680}
+      height={many ? 760 : 840}
       onKeyDown={enterToSubmit(apply)}
       dialogProps={{ maxWidth: 'xs', fullWidth: true }}
     >
@@ -218,6 +233,7 @@ export default function BlockDialog(p: {
                   />
                 )}
                 <Box sx={grid}>{shown.map(field)}</Box>
+                {title === 'block.sectionVolume' && (['In', 'Out'] as const).map((side) => fadeShape(side))}
                 {title === 'block.sectionPitchSpeed' && (
                   <>
                     {/* 処理方式の一覧（wevocal-lib。WeVocalSynth と同じ名前と説明）。従来の方式は設定で表示したときか、今使っているときだけ */}
