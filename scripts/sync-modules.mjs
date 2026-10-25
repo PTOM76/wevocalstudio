@@ -54,8 +54,15 @@ for (const name of MODULES) {
     continue
   }
   // push 前のコミットでもそろえられるよう、隣の中から直接取る
-  git(name, 'fetch', '-q', sibling, sha)
+  git(name, 'fetch', '-q', '--no-recurse-submodules', sibling, sha)
   git(name, 'checkout', '-q', sha)
+  // 入れ子の submodule（wevocal-lib の plugin-sdk）も、隣の中から取ってそろえる（初期化していないものはそのまま。開発では隣のものを使う）
+  for (const line of git(sibling, 'submodule', 'status').split('\n').filter(Boolean)) {
+    const path = line.trim().split(/\s+/)[1]
+    if (!existsSync(resolve(name, path, '.git'))) continue
+    git(name, 'config', `submodule.${path}.url`, resolve(sibling, path))
+    git(name, '-c', 'protocol.file.allow=always', 'submodule', 'update', '--init', '-q', path)
+  }
   console.log(`${name} -> ${sha.slice(0, 7)}`)
 }
 if (errors.length) {
