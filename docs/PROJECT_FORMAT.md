@@ -49,7 +49,7 @@ WeVocal Studio の作業（元の音、トラック、波形ブロック、MIDI 
 | `id`、`name` | 見分けと名前 |
 | `volume`、`pan`、`mute`、`solo`、`invert` | 音量（dB）、パン（-1〜1）、ミュート、ソロ、位相の反転 |
 | `parent` | 親のトラック（サブトラック）。子は親のすぐ後ろに並ぶ |
-| `fx`、`sends`、`instrument` | FX の列、センド、音源（MIDI ブロックを鳴らすプラグイン） |
+| `fx`、`sends`、`instrument` | FX の列、センド、音源（MIDI ブロックを鳴らすプラグイン。`plugin`、つまみの値の `values`、サンプラーの音色の `sample`、サンプラーのフォルマント保持の処理方式の `algorithm`） |
 | `frozen` | フリーズ。書き出した音（`sources` の id）と、その頭の位置（秒） |
 
 `blocks`（波形ブロック）の主な項目:
@@ -58,7 +58,7 @@ WeVocal Studio の作業（元の音、トラック、波形ブロック、MIDI 
 | --- | --- |
 | `id`、`track`、`source` | 見分け、置いているトラック、元の音 |
 | `start`、`length`、`offset` | 時間軸での位置と長さ（秒）、元の音の中での開始位置（秒） |
-| `rate`、`pitch`、`formant`、`algorithm`、`preserveFormant` | 速度、ピッチ（半音）、フォルマントのずらし量、処理方式、フォルマントを保つか |
+| `rate`、`pitch`、`formant`、`algorithm`、`preserveFormant` | 速度、ピッチ（半音）、フォルマントのずらし量、処理方式、フォルマントを保持するか |
 | `gain`、`fadeIn`、`fadeOut`、`mute` | 音量（dB）、フェード（秒）、ミュート |
 | `curve`、`envelope`、`pitchEnvelope` | ピッチカーブ（元の音の時刻 `from` 秒から 10ms ごとの半音）、音量とピッチのエンベロープ |
 
