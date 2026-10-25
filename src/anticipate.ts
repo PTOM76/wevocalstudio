@@ -7,8 +7,26 @@ import { ancestors, bakedTracks, descendants, SEND_MIN, type Project, type Track
 export const CHUNK = 8
 /** 再生位置からこの先まで作っておく（秒） */
 export const AHEAD = 16
-/** 作り始める前に先に流して状態（リバーブの余韻など）を作る長さ（秒） */
+/** 作り始める前に先に流して状態（リバーブの余韻など）を作る長さ（秒）。余韻のわからないプラグイン（VST など）に使う */
 export const PREROLL = 2
+/** 余韻のないプラグイン（EQ、コンプなど）でも、フィルターの直前の値やコンプのかかり具合を作るために流す長さ（秒） */
+const PREROLL_MIN = 0.25
+/** 助走の上限（秒）。これより長い余韻は、つなぎ目で少し欠ける */
+const PREROLL_MAX = 6
+
+/** かたまりの前に流す長さ（秒）。トラックと子孫の FX の余韻（manifest.tail、値で変わるものは値から）の最大。余韻を出さないプラグインがあれば PREROLL */
+export function prerollOf(p: Project, t: Track): number {
+  const tails = subtree(p, t).flatMap((x) =>
+    (x.fx ?? [])
+      .filter((s) => s.on)
+      .map((s) => {
+        const pl = findPlugin(s.plugin)
+        if (pl?.tail) return pl.tail(s.values, p.tempo.bpm)
+        return pl?.manifest.tail ?? PREROLL
+      }),
+  )
+  return Math.min(PREROLL_MAX, Math.max(PREROLL_MIN, ...tails))
+}
 
 /** 外から足した、先に計算してよいプラグイン（processor 方式。anticipative が false のもの、サイドチェーンを使うものは除く）を持つか */
 function heavy(t: Track): boolean {

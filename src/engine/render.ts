@@ -1,7 +1,7 @@
 // 書き出し用の描画（全体、1 本のトラック、先に作って鳴らすためのかたまり）。再生と同じミキサーとグラフで作る
 import { fxLists, instrumentIds } from './params'
 import { Graph } from './graph'
-import { PREROLL, subtree } from '../anticipate'
+import { prerollOf, subtree } from '../anticipate'
 import { markActivity } from 'pevenmui/debug'
 import { preloadInstruments } from 'wevocal-lib'
 import { preloadFx, renderWithProgress, type Clip } from 'wevocal-lib'
@@ -54,12 +54,12 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000, onPro
 
 /**
  * 1 本のトラックの、曲の時刻 start から dur 秒の音（ステレオ。音量、位相の反転、FX の列まで。パンとミュート、ソロは含めない）。
- * 先に作って鳴らす（anticipate.ts）ためのもの。状態を作るため、PREROLL 秒前から流して、その分は捨てる
+ * 先に作って鳴らす（anticipate.ts）ためのもの。状態を作るため、FX の余韻の長さ（prerollOf）だけ前から流して、その分は捨てる
  */
 export async function renderTrackChunk(p: Project, trackId: string, start: number, dur: number, sampleRate: number): Promise<Float32Array[]> {
   const track = p.tracks.find((t) => t.id === trackId)
   if (!track) throw new Error('track not found')
-  const t0 = Math.max(0, start - PREROLL)
+  const t0 = Math.max(0, start - prerollOf(p, track))
   const lead = start - t0
   // 子孫のトラックも入れて、親の FX の列を通した音にする（子孫の音量、パン、ミュートは含める。ソロは見ない。memo/anticipate-parent.md）
   const kids = subtree(p, track).slice(1)

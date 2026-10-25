@@ -1,6 +1,6 @@
 // 先に作った FX の音（anticipate.ts のかたまり）を、再生をまたいで取っておく。同じトラックの同じ音、同じ位置なら描かずに使う（memo/fx-cache.md）
 import { midiBlocks } from './project'
-import { CHUNK, PREROLL, subtree } from './anticipate'
+import { CHUNK, prerollOf, subtree } from './anticipate'
 import type { Project, Track } from './project'
 
 /** 短い文字のハッシュ（プラグインが保存する状態は長いので、キーには縮めて入れる） */
@@ -23,7 +23,7 @@ function settingsOf(t: Track) {
 }
 
 /**
- * かたまりのキー。かたまり k の音は、k * CHUNK - PREROLL 秒から (k + 1) * CHUNK 秒までの波形ブロックと音符、トラックの設定、テンポで決まるので、
+ * かたまりのキー。かたまり k の音は、k * CHUNK - 助走（prerollOf）秒から (k + 1) * CHUNK 秒までの波形ブロックと音符、トラックの設定、テンポで決まるので、
  * その範囲にかかるものだけをキーに入れる（別の所の編集では、このかたまりは作り直さない）。
  * プラグインが保存する状態は再生中に変わるので設定には入れず、取っておくときだけ入れる（プラグインの画面で音を変えたあとに、前の音を鳴らさないように）
  */
@@ -33,7 +33,7 @@ export function chunkKey(p: Project, trackId: string, k: number): string | null 
   // 子孫のトラックの音もかたまりに入る（memo/anticipate-parent.md）
   const tree = subtree(p, t)
   const ids = new Set(tree.map((x) => x.id))
-  const from = k * CHUNK - PREROLL
+  const from = k * CHUNK - prerollOf(p, t)
   const to = (k + 1) * CHUNK
   const within = (b: { start: number; length: number }) => b.start < to && b.start + b.length > from
   const blocks = p.blocks.filter((b) => ids.has(b.track) && within(b))
