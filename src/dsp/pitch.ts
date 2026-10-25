@@ -332,12 +332,15 @@ export async function preparePitch(p: Project, around = 0) {
   markActivity('prepare pitch')
   const used = new Set<string>()
   const next = new Map<string, Want>()
+  // 元の音とトラックは先に引けるようにする（波形ブロックごとに全体を探さない）
+  const sources = new Map(p.sources.map((s) => [s.id, s]))
+  const tracks = new Map(p.tracks.map((t) => [t.id, t]))
   // サンプラーのフォルマント保持で作る音も、波形ブロックと同じように作る
   for (const b of [...p.blocks, ...samplerBlocks(p)]) {
-    const source = p.sources.find((s) => s.id === b.source)
+    const source = sources.get(b.source)
     if (!needsProcess(b) || !source) continue
     const params = paramsOf(b)
-    const track = p.tracks.find((t) => t.id === b.track)
+    const track = tracks.get(b.track)
     // フリーズしたトラックとそのサブトラックは作らない（書き出した音を鳴らす）
     if (track && bakedTracks(p).has(track.id)) continue
     const silent = b.mute || !track || !ownAudible(p, track) ? SILENT : 0
