@@ -51,6 +51,8 @@ export function useTimelineDraw(o: {
         master: alpha(pal.text.primary, 0.04),
         marker: '#ffb300',
         range: alpha(dark ? SELECTION_DARK : SELECTION_LIGHT, 0.18),
+        endFlag: pal.primary.main,
+        afterEnd: pal.action.hover,
       },
     )
   }, [p.project, view, doc.selected, doc.range, width, height, dark, pal, p.grid, p.division, p.madeVersion, p.pendingLabel, p.envKind, p.envelopeRange, p.pitchEnvelopeRange, p.autoEdit, vs, p.headerCollapsed])

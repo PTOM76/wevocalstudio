@@ -122,6 +122,13 @@ export function drawRoll(g: CanvasRenderingContext2D, o: RollDraw) {
     g.fillStyle = c.hover
     g.fillRect(end, 0, v.w - end, v.h)
   }
+  // 終わりの線（メインの時間軸の曲の終わりと同じ）
+  if (end >= KEYS && end <= v.w) {
+    g.fillStyle = c.text
+    g.globalAlpha = 0.5
+    g.fillRect(Math.round(end) - 1, 0, 2, v.h)
+    g.globalAlpha = 1
+  }
   // 音符（強さが弱いほど薄く）
   g.save()
   g.beginPath()

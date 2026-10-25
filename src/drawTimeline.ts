@@ -7,7 +7,7 @@ import { ENVELOPES, denseEnv, type EnvKind } from './envelopes'
 import { layoutRows } from './overlap'
 import { peakRange } from './peaks'
 import { blockReady } from './dsp/pitch'
-import { bakedTracks, ENV_MAX, masterHeight, ownAudible, trackHeight, type Block, type PitchEnvelopeRange, type Project, type Source, type VolumeEnvelopeRange } from './project'
+import { bakedTracks, ENV_MAX, masterHeight, ownAudible, songEnd, trackHeight, type Block, type PitchEnvelopeRange, type Project, type Source, type VolumeEnvelopeRange } from './project'
 
 export const RULER = 24
 /** トラックの行が始まる位置（目盛りとマスタートラックの行の下） */
@@ -69,6 +69,9 @@ export interface TimelineColors {
   marker: string
   /** 範囲選択の色 */
   range: string
+  /** 曲の終わりの旗と、終わりより先を暗くする色（ピアノロールと同じ） */
+  endFlag: string
+  afterEnd: string
 }
 
 /** 波形ブロックの中に元の音の波形を描く（1 列ごとの最小と最大） */
@@ -320,15 +323,26 @@ export function drawTimeline(canvas: HTMLCanvasElement, p: Project, view: Timeli
     g.fillText(label, x + 4, 6)
   }
 
-  // 曲の終わり（最後の波形ブロックの終わり。再生はここで止まる）
-  const last = p.blocks.reduce((m, b) => Math.max(m, b.start + b.length), 0)
+  // 曲の終わり（再生はここで止まる）。先を暗くし、目盛りに旗を立てる（ピアノロールのブロックの終わりと同じ）
+  const last = songEnd(p)
   if (last > 0) {
-    g.fillStyle = c.text
-    g.globalAlpha = 0.5
-    g.fillRect(Math.round(tx(last)), RULER, 2, h)
-    g.globalAlpha = 1
+    const x = Math.round(tx(last))
+    if (x < w) {
+      g.fillStyle = c.afterEnd
+      g.fillRect(Math.max(0, x), 0, w - Math.max(0, x), h)
+      g.fillStyle = c.text
+      g.globalAlpha = 0.5
+      g.fillRect(x - 1, RULER, 2, h)
+      g.globalAlpha = 1
+      g.fillStyle = c.endFlag
+      g.fillRect(x - 1, 0, 2, RULER)
+      g.beginPath()
+      g.moveTo(x, 0)
+      g.lineTo(x - 9, 0)
+      g.lineTo(x, 9)
+      g.fill()
+    }
   }
-
 }
 
 /** 録音中の波形ブロックの描き方（y と h はトラックの行、bars は録り始めからの秒と、その時の振幅） */
