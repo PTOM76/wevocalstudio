@@ -20,6 +20,9 @@ const GIVE_UP = 12
 /** 鳴らし始めてから、最初の分がこれより長く届かなければ（秒）、このトラックはやめてノードで鳴らす（助走が終わらないほど重いとき） */
 const FIRST_LIMIT = 5
 
+/** Worker の数（トラックを割り振る。1 つだと CPU のコアを 1 つしか使えず、重いトラックが 2 本あると足りなくなる） */
+const WORKERS = Math.max(1, Math.min(2, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 2) - 2))
+
 const loaded = new WeakMap<BaseAudioContext, Promise<void>>()
 const loadReader = (ctx: BaseAudioContext) => {
   let p = loaded.get(ctx)
@@ -75,11 +78,11 @@ function trackVoices(p: Project, t: Track, used: Map<number, Clip>): Voice[] {
 
 export class StreamHost {
   private readonly ctx: AudioContext
-  private worker: Worker | null = null
+  /** Worker ごとの、送ったプラグインのソースと元の音（Worker が残っている間は送り直さない） */
+  private readonly workers: { worker: Worker; sources: Set<string>; clips: Set<number>; tracks: number }[] = []
+  /** トラックを受け持つ Worker の番号 */
+  private readonly owner = new Map<string, number>()
   private readonly readers = new Map<string, AudioWorkletNode>()
-  private readonly sentClips = new Set<number>()
-  /** 送ったプラグインのソース（Worker が残っている間は送り直さない） */
-  private readonly sentSources = new Set<string>()
   /** トラックごとに最後に送った値（同じなら送らない） */
   private readonly sent = new Map<string, { sig: string; states: string }>()
   private posTimer: ReturnType<typeof setInterval> | null = null
@@ -100,24 +103,39 @@ export class StreamHost {
     this.ctx = ctx
   }
 
-  private post(m: StreamMessage, transfer: Transferable[] = []) {
-    this.worker?.postMessage(m, transfer)
+  /** 全部の Worker に送る（再生、位置、止める） */
+  private post(m: StreamMessage) {
+    for (const w of this.workers) w.worker.postMessage(m)
   }
 
   private ensureWorker() {
-    if (this.worker) return
-    this.worker = new Worker(new URL('./stream.worker.ts', import.meta.url), { type: 'module' })
-    this.worker.onmessage = (e: MessageEvent<StreamEvent>) => {
-      if (e.data.type === 'ready') {
-        this.readyIds.add(e.data.id)
-        this.onReady?.()
-      } else if (e.data.type === 'state') this.onState?.(e.data.id, e.data.index, e.data.state)
-      else if (e.data.type === 'failed') {
-        console.warn('anticipate (stream):', e.data.error)
-        this.onGiveUp?.(e.data.id)
+    if (this.workers.length) return
+    for (let k = 0; k < WORKERS; k++) {
+      const worker = new Worker(new URL('./stream.worker.ts', import.meta.url), { type: 'module' })
+      worker.onmessage = (e: MessageEvent<StreamEvent>) => {
+        if (e.data.type === 'ready') {
+          this.readyIds.add(e.data.id)
+          this.onReady?.()
+        } else if (e.data.type === 'state') this.onState?.(e.data.id, e.data.index, e.data.state)
+        else if (e.data.type === 'failed') {
+          console.warn('anticipate (stream):', e.data.error)
+          this.onGiveUp?.(e.data.id)
+        }
       }
+      worker.postMessage({ type: 'init', sampleRate: this.ctx.sampleRate } satisfies StreamMessage)
+      this.workers.push({ worker, sources: new Set(), clips: new Set(), tracks: 0 })
     }
-    this.post({ type: 'init', sampleRate: this.ctx.sampleRate })
+  }
+
+  /** トラックを受け持つ Worker（初めてなら、受け持ちの少ないものに割り振る） */
+  private workerOf(id: string) {
+    let k = this.owner.get(id)
+    if (k === undefined) {
+      k = this.workers.reduce((best, w, i) => (w.tracks < this.workers[best].tracks ? i : best), 0)
+      this.owner.set(id, k)
+      this.workers[k].tracks++
+    }
+    return this.workers[k]
   }
 
   /**
@@ -169,7 +187,12 @@ export class StreamHost {
     node?.disconnect()
     this.readers.delete(id)
     this.sent.delete(id)
-    this.post({ type: 'remove', id })
+    const k = this.owner.get(id)
+    if (k !== undefined) {
+      this.workers[k].worker.postMessage({ type: 'remove', id } satisfies StreamMessage)
+      this.workers[k].tracks--
+      this.owner.delete(id)
+    }
   }
 
   /** 止める。Worker と processor は残す（次の再生で使い回す） */
@@ -190,17 +213,18 @@ export class StreamHost {
     const t = p.tracks.find((x) => x.id === id)
     const made = t && streamSlots(t, this.ctx.sampleRate)
     if (!t || !made) return this.onGiveUp?.(id)
+    const w = this.workerOf(id)
     for (const [key, { source, assets }] of made.sources)
-      if (!this.sentSources.has(key)) {
-        this.post({ type: 'source', key, source, assets })
-        this.sentSources.add(key)
+      if (!w.sources.has(key)) {
+        w.worker.postMessage({ type: 'source', key, source, assets } satisfies StreamMessage)
+        w.sources.add(key)
       }
     const used = new Map<number, Clip>()
     const voices = trackVoices(p, t, used)
     for (const [cid, c] of used)
-      if (!this.sentClips.has(cid)) {
-        this.post({ type: 'clip', id: cid, sampleRate: c.sampleRate, channels: c.channels })
-        this.sentClips.add(cid)
+      if (!w.clips.has(cid)) {
+        w.worker.postMessage({ type: 'clip', id: cid, sampleRate: c.sampleRate, channels: c.channels } satisfies StreamMessage)
+        w.clips.add(cid)
       }
     const gain = audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0
     // プラグインの状態は別に比べる（プラグインが知らせた状態が戻ってきただけで、作ってある先を捨てないように）
@@ -227,6 +251,6 @@ export class StreamHost {
     const last = this.sent.get(id)
     if (!port && last?.sig === sig && last.states === states) return
     this.sent.set(id, { sig, states })
-    this.post({ type: 'track', id, gain, slots: made.slots, voices, smooth, rewind: smooth && last?.sig !== sig, preroll: prerollOf(p, t), port }, port ? [port] : [])
+    w.worker.postMessage({ type: 'track', id, gain, slots: made.slots, voices, smooth, rewind: smooth && last?.sig !== sig, preroll: prerollOf(p, t), port } satisfies StreamMessage, port ? [port] : [])
   }
 }
