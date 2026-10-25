@@ -1,7 +1,7 @@
 // 先に計算して鳴らす（Anticipative FX processing）。重いプラグインを持つトラックの音を、再生位置より先に別のスレッド（OfflineAudioContext の描画）で作っておき、
 // 音を出すスレッドは、できた音を読むだけにする。判断（どのトラックか、作り直しが要るか）だけをここに置く。描画と再生は engine.ts
 import { findPlugin } from 'wevocal-lib'
-import { ancestors, bakedTracks, descendants, SEND_MIN, type Project, type Track } from './project'
+import { ancestors, bakedTracks, descendants, midiBlocks, SEND_MIN, type Project, type Track } from './project'
 
 /** 一度に作る長さ（秒）。かたまりごとに PREROLL の分と FX の読み込みが余計にかかるので、短くしすぎない */
 export const CHUNK = 8
@@ -76,21 +76,23 @@ export function excludedReason(p: Project, t: Track): string | null {
   return null
 }
 
-/** 前に作った識別（トラック、波形ブロックの並び、元の音の並び、テンポが同じなら同じ。どれも書き換えずに作り直すので、参照で比べられる） */
-const sigCache = new WeakMap<Track, { tracks: Project['tracks']; blocks: Project['blocks']; sources: Project['sources']; bpm: number; sig: string }>()
+/** 前に作った識別（トラック、波形ブロックと MIDI ブロックの並び、元の音の並び、テンポとマーカーが同じなら同じ。どれも書き換えずに作り直すので、参照で比べられる） */
+const sigCache = new WeakMap<Track, { tracks: Project['tracks']; blocks: Project['blocks']; midi: Project['midi']; sources: Project['sources']; tempo: Project['tempo']; markers: Project['markers']; sig: string }>()
 
-/** そのトラックの音を決めるものの識別。変わったら、先に作った音は捨てる（音量、パン以外、FX、波形ブロック、元の音の長さ、テンポ） */
+/** そのトラックの音を決めるものの識別。変わったら、先に作った音は捨てる（音量、パン以外、FX、波形ブロック、MIDI ブロック、元の音の長さ、テンポ） */
 export function signature(p: Project, t: Track): string {
   const c = sigCache.get(t)
-  if (c && c.tracks === p.tracks && c.blocks === p.blocks && c.sources === p.sources && c.bpm === p.tempo.bpm) return c.sig
+  if (c && c.tracks === p.tracks && c.blocks === p.blocks && c.midi === p.midi && c.sources === p.sources && c.tempo === p.tempo && c.markers === p.markers) return c.sig
   const sig = makeSignature(p, t)
-  sigCache.set(t, { tracks: p.tracks, blocks: p.blocks, sources: p.sources, bpm: p.tempo.bpm, sig })
+  sigCache.set(t, { tracks: p.tracks, blocks: p.blocks, midi: p.midi, sources: p.sources, tempo: p.tempo, markers: p.markers, sig })
   return sig
 }
 
 function makeSignature(p: Project, t: Track): string {
   const ids = new Set(subtree(p, t).map((x) => x.id))
   const blocks = p.blocks.filter((b) => ids.has(b.track))
+  // 音源の音符（拍で持つので、テンポとマーカーが変わっても音が変わる）
+  const midi = midiBlocks(p).filter((b) => ids.has(b.track))
   const sources = [...new Set(blocks.map((b) => b.source))].map((id) => {
     const s = p.sources.find((x) => x.id === id)
     return `${id}:${s?.duration ?? 0}:${s?.clip.channels[0]?.length ?? 0}`
@@ -100,5 +102,5 @@ function makeSignature(p: Project, t: Track): string {
   // プラグインが保存する状態（state）は、再生中に変わるので含めない
   const fx = rest.fx?.map(({ state: _state, ...s }) => s)
   const kids = descendants(p, t).map(({ name: _n, height: _h, collapsed: _c, armed: _a, autoLane: _l, solo: _s, ...k }) => ({ ...k, fx: k.fx?.map(({ state: _st, ...x }) => x) }))
-  return JSON.stringify([{ ...rest, fx }, kids, blocks, sources, p.tempo.bpm])
+  return JSON.stringify([{ ...rest, fx }, kids, blocks, midi, sources, p.tempo, p.markers.filter((m) => m.tempo)])
 }
