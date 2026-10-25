@@ -5,7 +5,8 @@ import type { StreamSlot } from './trackStream'
 /** メイン → Worker */
 export type StreamMessage =
   | { type: 'init'; sampleRate: number }
-  | { type: 'source'; key: string; source: string }
+  /** プラグインごとに 1 回だけ送るもの（processor のソースと、processor に渡す大きいもの: wasm、VST の dll と写し） */
+  | { type: 'source'; key: string; source: string; assets: Record<string, unknown> }
   | { type: 'clip'; id: number; sampleRate: number; channels: Float32Array[] }
   | { type: 'unclip'; ids: number[] }
   /**

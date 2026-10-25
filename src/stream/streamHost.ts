@@ -1,5 +1,5 @@
 // 先を走る方式のメインスレッドの側。Worker（stream.worker.ts）と、トラックごとの読むだけのノードを組み、プロジェクトの変更を送る（memo/anticipate-stream.md）
-import { externalPackage, findPlugin, migrateValues, type Clip } from 'wevocal-lib'
+import { externalPackage, findPlugin, migrateValues, readySnapshot, type Clip } from 'wevocal-lib'
 import { processorName } from 'wevocal-lib/stream'
 import { prerollOf } from '../anticipate'
 import { piecesFor } from '../dsp/pitch'
@@ -25,16 +25,18 @@ const loadReader = (ctx: BaseAudioContext) => {
   return p
 }
 
-/** processor の列にできる FX の項目（外から足した wevocal の processor だけ。WAM と VST は今は対象外）。できなければ null */
-function streamSlots(t: Track, sampleRate: number): { slots: StreamSlot[]; sources: Map<string, string> } | null {
+/** processor の列にできる FX の項目（外から足した wevocal の processor と VST。WAM は Worker で動かせないので対象外）。できなければ null */
+function streamSlots(t: Track, sampleRate: number): { slots: StreamSlot[]; sources: Map<string, { source: string; assets: Record<string, unknown> }> } | null {
   const slots: StreamSlot[] = []
-  const sources = new Map<string, string>()
+  const sources = new Map<string, { source: string; assets: Record<string, unknown> }>()
   for (const s of liveSlots(t)) {
     const plugin = findPlugin(s.plugin)
     const pkg = externalPackage(plugin)
-    if (!plugin || !pkg || pkg.manifest.format !== 'wevocal' || !pkg.processor || s.sidechain) return null
+    const format = pkg?.manifest.format
+    if (!plugin || !pkg || (format !== 'wevocal' && format !== 'vst') || !pkg.processor || s.sidechain) return null
     const key = `${pkg.manifest.id}@${pkg.manifest.version}`
-    sources.set(key, pkg.processor)
+    // 大きいもの（wasm、dll、写し）はプラグインごとに 1 回だけ送る。項目には小さい値だけを持たせる
+    sources.set(key, { source: pkg.processor, assets: { wasm: pkg.wasm, dll: pkg.dll, snap: format === 'vst' ? readySnapshot(pkg) : null } })
     slots.push({
       key,
       name: processorName(pkg.manifest.id),
@@ -42,13 +44,14 @@ function streamSlots(t: Track, sampleRate: number): { slots: StreamSlot[]; sourc
       values: migrateValues(pkg.manifest, s.values),
       auto: s.auto,
       on: s.on,
-      options: { wasm: pkg.wasm, sampleRate, state: s.state, offline: false },
+      // offline: VST は途中を素通しにせず、最初に読み込みを済ませる（Worker なので画面は止まらない）
+      options: { sampleRate, state: s.state, offline: true },
     })
   }
   return { slots, sources }
 }
 
-/** 先を走る方式にできるトラックか（子のトラック、音源、MIDI ブロックがなく、FX が全部 wevocal の processor） */
+/** 先を走る方式にできるトラックか（子のトラック、音源、MIDI ブロックがなく、FX が全部 wevocal の processor か VST） */
 export function streamable(p: Project, t: Track, sampleRate: number): boolean {
   return !descendants(p, t).length && !t.instrument && !midiBlocks(p).some((b) => b.track === t.id) && !!streamSlots(t, sampleRate)?.slots.length
 }
@@ -73,6 +76,8 @@ export class StreamHost {
   private worker: Worker | null = null
   private readonly readers = new Map<string, AudioWorkletNode>()
   private readonly sentClips = new Set<number>()
+  /** 送ったプラグインのソース（Worker が残っている間は送り直さない） */
+  private readonly sentSources = new Set<string>()
   /** トラックごとに最後に送った値（同じなら送らない） */
   private readonly sent = new Map<string, { sig: string; states: string }>()
   private posTimer: ReturnType<typeof setInterval> | null = null
@@ -176,7 +181,11 @@ export class StreamHost {
     const t = p.tracks.find((x) => x.id === id)
     const made = t && streamSlots(t, this.ctx.sampleRate)
     if (!t || !made) return this.onGiveUp?.(id)
-    for (const [key, source] of made.sources) this.post({ type: 'source', key, source })
+    for (const [key, { source, assets }] of made.sources)
+      if (!this.sentSources.has(key)) {
+        this.post({ type: 'source', key, source, assets })
+        this.sentSources.add(key)
+      }
     const used = new Map<number, Clip>()
     const voices = trackVoices(p, t, used)
     for (const [cid, c] of used)

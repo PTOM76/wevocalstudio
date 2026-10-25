@@ -42,12 +42,15 @@ export class TrackStream {
   private readonly ramp = new Float32Array(QUANTUM)
 
   private readonly clips: ClipStore
+  /** プラグインごとの、processor に渡す大きいもの（key → wasm など） */
+  private readonly assets: ReadonlyMap<string, Record<string, unknown>>
   /** プラグインが状態を保存したいとき（項目の番号、base64）。メインの FX の項目に入れてもらう */
   onState: ((index: number, state: string) => void) | null = null
 
-  constructor(sampleRate: number, clips: ClipStore) {
+  constructor(sampleRate: number, clips: ClipStore, assets: ReadonlyMap<string, Record<string, unknown>> = new Map()) {
     this.sampleRate = sampleRate
     this.clips = clips
+    this.assets = assets
     this.k = 1 - Math.exp(-1 / (SMOOTH * sampleRate))
   }
 
@@ -77,8 +80,9 @@ export class TrackStream {
       })
       return
     }
+    this.dispose()
     this.stages = slots.map((slot) => {
-      const st: Stage = { slot, runner: new ProcessorRunner(slot.name, slot.options), cur: new Map(), mix: slot.on ? 1 : 0, state: slot.options.state as string | undefined }
+      const st: Stage = { slot, runner: new ProcessorRunner(slot.name, { ...this.assets.get(slot.key), ...slot.options }), cur: new Map(), mix: slot.on ? 1 : 0, state: slot.options.state as string | undefined }
       st.runner.port.onmessage = (e: MessageEvent<{ __wevocalState?: unknown }>) => {
         const state = e.data?.__wevocalState
         const index = this.stages.indexOf(st)
@@ -88,6 +92,17 @@ export class TrackStream {
       }
       return st
     })
+  }
+
+  /** processor を外す（VST は Worker の中の置き場に戻り、次に作る processor が使い回す） */
+  dispose() {
+    for (const st of this.stages) {
+      st.runner.port.postMessage({ __wevocalDispose: true })
+      // 外す知らせが届いてから閉じる
+      const port = st.runner.port
+      setTimeout(() => port.close(), 0)
+    }
+    this.stages = []
   }
 
   /** 曲のサンプル位置 frame からの 128 サンプルを作る（out は左右。上書きする） */

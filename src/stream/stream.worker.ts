@@ -15,7 +15,8 @@ const scope = self as unknown as { postMessage(m: unknown): void; onmessage: ((e
 
 let sampleRate = 48000
 const clips: ClipStore = new Map()
-const loaded = new Set<string>()
+/** 読み込んだプラグインと、その processor に渡す大きいもの */
+const assets = new Map<string, Record<string, unknown>>()
 interface Track {
   stream: TrackStream
   port: MessagePort
@@ -92,9 +93,9 @@ scope.onmessage = (e) => {
     sampleRate = m.sampleRate
     installScope(sampleRate)
   } else if (m.type === 'source') {
-    if (!loaded.has(m.key)) {
+    if (!assets.has(m.key)) {
       loadProcessorSource(m.source)
-      loaded.add(m.key)
+      assets.set(m.key, m.assets)
     }
   } else if (m.type === 'clip') clips.set(m.id, { sampleRate: m.sampleRate, channels: m.channels })
   else if (m.type === 'unclip') for (const id of m.ids) clips.delete(id)
@@ -103,7 +104,7 @@ scope.onmessage = (e) => {
     if (!t) {
       if (!m.port) return
       const id = m.id
-      t = { stream: new TrackStream(sampleRate, clips), port: m.port, write: align(now()), discard: 0, preroll: m.preroll, ready: false }
+      t = { stream: new TrackStream(sampleRate, clips, assets), port: m.port, write: align(now()), discard: 0, preroll: m.preroll, ready: false }
       t.stream.onState = (index, state) => scope.postMessage({ type: 'state', id, index, state })
       tracks.set(m.id, t)
     }
@@ -119,7 +120,10 @@ scope.onmessage = (e) => {
     t.stream.setGain(m.gain)
     t.stream.setVoices(m.voices, now() / sampleRate, m.smooth)
     if (m.rewind) rewind(t)
-  } else if (m.type === 'remove') tracks.delete(m.id)
+  } else if (m.type === 'remove') {
+    tracks.get(m.id)?.stream.dispose()
+    tracks.delete(m.id)
+  }
   else if (m.type === 'play') {
     pos = m.frame
     posAt = null

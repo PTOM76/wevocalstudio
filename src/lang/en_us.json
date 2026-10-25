@@ -318,7 +318,7 @@
   "settings.anticipativeFx": "Compute heavy plugins ahead of playback (experimental)",
   "settings.anticipativeFxHelp": "Renders tracks that have heavy added plugins on another thread ahead of the playback position. It reduces the load on the audio thread and makes dropouts less likely, but playback takes a moment to start. If you edit such a track during playback, it goes back to normal processing until the next playback.",
   "settings.anticipateStream": "Compute ahead continuously",
-  "settings.anticipateStreamHelp": "Tracks that use only added plugins (WeVocal format) keep the same plugins running slightly ahead of the playhead instead of rendering in chunks. Edits are applied without leaving anticipative processing",
+  "settings.anticipateStreamHelp": "Tracks that use only added plugins (WeVocal format and VST) keep the same plugins running slightly ahead of the playhead instead of rendering in chunks. Edits are applied without leaving anticipative processing",
   "settings.midiInput": "Use a MIDI keyboard",
   "settings.midiInputHelp": "Plays a connected MIDI keyboard through the instrument of a track (the armed track, or the selected track). Recording captures the notes into a MIDI block. Available in Chrome and Edge.",
   "settings.showVst": "Allow loading VST plugins (experimental)",
