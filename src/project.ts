@@ -355,18 +355,36 @@ export function songEnd(p: Project): number {
   return last + Math.max(chainTail(p.master.fx, p.tempo.bpm), ...p.tracks.map((t) => chainTail(t.fx, p.tempo.bpm)))
 }
 
-/** 鳴らすトラックか（ソロがあればソロだけ、なければミュート以外） */
-export function audible(p: Project, track: Track) {
-  if (!p.tracks.some((t) => t.solo)) return !track.mute && !ancestors(p, track).some((t) => t.mute)
-  // ソロのとき: 自分か先祖がソロなら鳴る。子孫がソロなら、その音を通すために鳴らす
-  return track.solo || ancestors(p, track).some((t) => t.solo) || descendants(p, track).some((t) => t.solo)
+/** トラックの並びごとの、鳴らすトラックとそのトラック自身の音を鳴らすトラック（描画や波形ブロックごとに先祖と子孫をたどり直さない） */
+const audibleCache = new WeakMap<Track[], { all: Set<string>; own: Set<string> }>()
+function audibleSets(p: Project) {
+  let out = audibleCache.get(p.tracks)
+  if (out) return out
+  const all = new Set<string>()
+  const own = new Set<string>()
+  const solo = p.tracks.some((t) => t.solo)
+  // ソロのトラックの先祖（子の音を通すために鳴らす）
+  const soloAncestors = new Set<string>()
+  if (solo) for (const t of p.tracks) if (t.solo) for (const a of ancestors(p, t)) soloAncestors.add(a.id)
+  for (const t of p.tracks) {
+    const anc = ancestors(p, t)
+    if (!solo) {
+      if (!t.mute && !anc.some((a) => a.mute)) all.add(t.id), own.add(t.id)
+    } else if (t.solo || anc.some((a) => a.solo)) {
+      // 自分か先祖がソロなら鳴る
+      all.add(t.id)
+      own.add(t.id)
+    } else if (soloAncestors.has(t.id)) all.add(t.id)
+  }
+  audibleCache.set(p.tracks, (out = { all, own }))
+  return out
 }
 
+/** 鳴らすトラックか（ソロがあればソロだけ、なければミュート以外。子孫がソロなら、その音を通すために鳴らす） */
+export const audible = (p: Project, track: Track) => audibleSets(p).all.has(track.id)
+
 /** そのトラック自身の音（波形ブロック、音源）を鳴らすか。ソロのとき、子がソロなだけの親は自分の音は鳴らさず、子の音を通すだけ（audible は通すほう） */
-export function ownAudible(p: Project, track: Track) {
-  if (!p.tracks.some((t) => t.solo)) return audible(p, track)
-  return track.solo || ancestors(p, track).some((t) => t.solo)
-}
+export const ownAudible = (p: Project, track: Track) => audibleSets(p).own.has(track.id)
 
 /** 親から先祖をたどる（近い順） */
 export function ancestors(p: Project, track: Track): Track[] {
