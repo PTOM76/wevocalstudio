@@ -2,11 +2,11 @@
 import { Box, Button, DialogActions, DialogContent, Typography } from '@mui/material'
 import { WindowDialog, pevenFont, useMobileLayout } from 'pevenmui'
 import { FxParams, LabeledSelect as Choice } from 'wevocal-lib/react'
-import { availableInstruments, defaultValues, findInstrument, fxDescription, fxText, migrateValues } from 'wevocal-lib'
+import { availableInstruments, visibleAlgorithms, type Algorithm, defaultValues, findInstrument, fxDescription, fxText, migrateValues } from 'wevocal-lib'
 import { i18n, useT } from './i18n'
 import type { InstrumentSlot, Project } from './project'
 
-export default function InstrumentDialog(p: { open: boolean; project: Project; track: string; onChange: (instrument: InstrumentSlot | undefined) => void; onClose: () => void }) {
+export default function InstrumentDialog(p: { open: boolean; project: Project; track: string; showLegacy: boolean; onChange: (instrument: InstrumentSlot | undefined) => void; onClose: () => void }) {
   const t = useT()
   // 画面の端の欄に置ける（スマホは欄がないので、ダイアログのまま）
   const mobile = useMobileLayout()
@@ -38,6 +38,15 @@ export default function InstrumentDialog(p: { open: boolean; project: Project; t
               value={slot?.sample ?? NONE}
               options={[[NONE, t('instrument.noSample')], ...p.project.sources.map((s): [string, string] => [s.id, s.name])]}
               onChange={(id) => slot && p.onChange({ ...slot, sample: id || undefined })}
+            />
+          )}
+          {/* フォルマントを保持するときのピッチの処理方式（波形ブロックと同じ一覧） */}
+          {plugin?.sample && slot && (
+            <Choice
+              label={t('block.algorithm')}
+              value={slot.algorithm ?? 'wsola'}
+              options={visibleAlgorithms(p.showLegacy, [slot.algorithm ?? 'wsola']).map((a): [string, string] => [a.value, t(a.label)])}
+              onChange={(a) => p.onChange({ ...slot, algorithm: a as Algorithm })}
             />
           )}
           {plugin && slot && <FxParams plugin={{ manifest: plugin.manifest, lang: plugin.lang, create: () => null as never }} values={values} lang={lang} onChange={(id, v) => p.onChange({ ...slot, values: { ...values, [id]: v } })} />}

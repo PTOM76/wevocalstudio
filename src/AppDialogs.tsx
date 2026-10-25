@@ -280,6 +280,7 @@ export default function AppDialogs(p: {
           open
           project={project}
           track={dialogs.arg<string>('instrument')!}
+          showLegacy={p.settings.showLegacyAlgorithms}
           onChange={(instrument) => doc.updateTrack(dialogs.arg<string>('instrument')!, { instrument }, `instrument:${dialogs.arg<string>('instrument')}`)}
           onClose={() => {
             doc.endMerge()

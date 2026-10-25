@@ -65,6 +65,8 @@ export interface InstrumentSlot {
   values: Record<string, number>
   /** サンプラーの音色に使う元の音（source の id） */
   sample?: string
+  /** サンプラーのフォルマント保持で使うピッチの処理方式（なければ wsola） */
+  algorithm?: Algorithm
 }
 
 /**

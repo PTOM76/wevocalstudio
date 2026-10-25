@@ -2,8 +2,8 @@
 import { findInstrument } from 'wevocal-lib'
 import { newBlock, type Block, type InstrumentSlot, type Project, midiBlocks } from '../project'
 
-/** 見えない波形ブロックに使う処理方式（音の種類を選ばない） */
-const DEFAULTS = { algorithm: 'wsola', preserveFormant: true } as const
+/** 見えない波形ブロックに使う処理方式の既定（音の種類を選ばない。音源の設定で変えられる） */
+const DEFAULT_ALGORITHM = 'wsola'
 /** 元の音の高さとの差の上限（半音）。これより離れる音は、速度を変えて鳴らす */
 const MAX_SHIFT = 48
 
@@ -54,7 +54,7 @@ export function samplerShifts(p: Project): SamplerShift[] {
     for (const pitch of [...pitches].sort((a, b) => a - b)) {
       const semis = pitch - root
       if (semis === 0 || Math.abs(semis) > MAX_SHIFT) continue
-      out.push({ track: track.id, pitch, block: { ...newBlock(track.id, source, 0, DEFAULTS), id: `sampler:${track.id}:${pitch}`, pitch: semis } })
+      out.push({ track: track.id, pitch, block: { ...newBlock(track.id, source, 0, { algorithm: spec.algorithm ?? DEFAULT_ALGORITHM, preserveFormant: true }), id: `sampler:${track.id}:${pitch}`, pitch: semis } })
     }
   }
   cache.set(p, out)
