@@ -224,8 +224,8 @@ export default function TrackHeader(p: {
         panExtra={
           <>
             <MixToggle label="Ø" title={t('track.invert')} on={!!track.invert} color="primary.main" onClick={() => p.onChange({ invert: !track.invert })} />
-            {/* FX の列。何か掛けているときは色を付ける */}
-            <MixToggle label={fxLabel(track.fx)} wide title={t(track.frozen?.fx ? 'track.frozenFx' : 'track.fx')} on={!isNeutralChain(track.fx)} color="primary.main" onClick={() => !track.frozen?.fx && p.onFx()} />
+            {/* FX の列。何か掛けているときは色を付ける（FX まで含めてフリーズしていても、FX を足すために開ける） */}
+            <MixToggle label={fxLabel(track.fx)} wide title={t(track.frozen?.fx ? 'track.frozenFx' : 'track.fx')} on={!isNeutralChain(track.fx)} color="primary.main" onClick={p.onFx} />
           </>
         }
       />

@@ -15,7 +15,7 @@ import VideoExportDialog, { type VideoExportSettings } from 'wevocalconverter/Vi
 import { kanaHost, videoHost } from './addons'
 import { ExportDialog, FxChainDialog, MarkerTempoDialog, MissingPluginsDialog, TempoChangeDialog, PitchToolText, SamplerDialog, SynthDialog, VibratoDialog, type ExportSettings } from 'wevocal-lib/react'
 import { placeOnNotes } from './sampler'
-import { addClipTrack, midiBlocks } from './project'
+import { addClipTrack, frozenFxCount, midiBlocks } from './project'
 import { AppIcon } from './AppHeader'
 import { app } from './appConfig'
 import { i18n, useT } from './i18n'
@@ -307,6 +307,8 @@ export default function AppDialogs(p: {
           open
           name={fxTarget.name}
           slots={fxTarget.slots}
+          locked={fxTrack && fxTarget.id !== 'master' ? frozenFxCount(fxTrack) : 0}
+          lockedLabel={t('fx.frozen')}
           dev={p.settings.showDevPlugins}
           onChange={(fx, merge) => (fxTarget.id === 'master' ? doc.updateMaster({ fx }, merge && `master:${merge}`) : doc.updateTrack(fxTarget.id, { fx }, merge && `${fxTarget.id}:${merge}`))}
           playing={p.playing}

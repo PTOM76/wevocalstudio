@@ -44,13 +44,18 @@ export interface Track {
   eq?: TrackEq
   /** 時間軸での縦の大きさ（px）。なければ既定値 */
   height?: number
-  /** フリーズ。波形ブロックの音を書き出した元の音（source）と、その頭の時間軸の位置（秒）。あれば波形ブロックの代わりにこれを鳴らす（src/freeze.ts）。fx なら FX の列も音に含めてあり、FX は動かさない */
-  frozen?: { source: string; start: number; fx?: boolean }
+  /** フリーズ。波形ブロックの音を書き出した元の音（source）と、その頭の時間軸の位置（秒）。あれば波形ブロックの代わりにこれを鳴らす（src/freeze.ts）。fx なら FX の列の先頭 fxCount 個も音に含めてあり、それは動かさない（後から足した FX は動かす。fxCount の無い古いものは全部） */
+  frozen?: { source: string; start: number; fx?: boolean; fxCount?: number }
 }
 
-/** トラックで実際に動かす FX の列（FX まで含めてフリーズしたトラックは空） */
+/** FX まで含めてフリーズしたときに音に含めた、FX の列の先頭の個数（変えられない） */
+export function frozenFxCount(t: Track): number {
+  return t.frozen?.fx ? Math.min(t.frozen.fxCount ?? Infinity, t.fx?.length ?? 0) : 0
+}
+
+/** トラックで実際に動かす FX の列（FX まで含めてフリーズしたトラックは、音に含めた分より後ろだけ） */
 export function liveSlots(t: Track): FxSlot[] {
-  return t.frozen?.fx ? [] : (t.fx ?? [])
+  return (t.fx ?? []).slice(frozenFxCount(t))
 }
 
 /** トラックの音源 */

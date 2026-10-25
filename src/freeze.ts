@@ -3,7 +3,7 @@
 // 自分の音量、パン、位相の反転は書き出さない（フリーズ中も変えられる）。自分の FX は withFx のときだけ含める（重い VST などを確定する）。元の波形ブロックは残し、解除すれば戻る
 import { chainLatency, chainTail } from 'wevocal-lib'
 import { renderMix } from './engine'
-import { ancestors, descendants, liveSlots, newId, newProject, type Project, type Track, midiBlocks } from './project'
+import { ancestors, descendants, frozenFxCount, liveSlots, newId, newProject, type Project, type Track, midiBlocks } from './project'
 
 /** トラックとサブトラックの音を、自分のフェーダーの前の音にする（withFx なら自分の FX の列の後の音）。頭は最初のブロックの位置から */
 export async function freezeTrack(p: Project, trackId: string, withFx = false, signal?: AbortSignal): Promise<Project> {
@@ -34,16 +34,16 @@ export async function freezeTrack(p: Project, trackId: string, withFx = false, s
   const skip = Math.round((start + late) * sr)
   const clip = skip ? { ...rendered, channels: rendered.channels.map((c) => c.slice(skip)) } : rendered
   const source = { id: newId(), name: `${track.name} (freeze)`, clip, duration: clip.channels[0].length / clip.sampleRate }
-  return applyFreeze(p, trackId, source, start, withFx)
+  return applyFreeze(p, trackId, source, start, withFx ? fx.length : null)
 }
 
 /** 描画した音をトラックに付ける（描画の間にトラックが消えていれば何もしない） */
-function applyFreeze(p: Project, trackId: string, source: Project['sources'][number], start: number, fx: boolean): Project {
+function applyFreeze(p: Project, trackId: string, source: Project['sources'][number], start: number, fxCount: number | null): Project {
   if (!p.tracks.some((t) => t.id === trackId)) return p
   return {
     ...p,
     sources: [...p.sources, source],
-    tracks: p.tracks.map((t) => (t.id === trackId ? { ...t, frozen: { source: source.id, start, ...(fx ? { fx: true } : {}) } } : t)),
+    tracks: p.tracks.map((t) => (t.id === trackId ? { ...t, frozen: { source: source.id, start, ...(fxCount !== null ? { fx: true, fxCount } : {}) } } : t)),
   }
 }
 
@@ -93,14 +93,20 @@ export function keepFrozen(prev: Project, next: Project): Project {
   return changed ? { ...next, blocks } : next
 }
 
-/** FX まで含めてフリーズしたトラックの FX の列を前のままにする */
+/** FX まで含めてフリーズしたトラックの、音に含めた FX（列の先頭）を前のままにする。後ろに足した FX はそのまま通す */
 function keepFrozenFx(prev: Project, next: Project, frozen: Set<string>): Project {
   let changed = false
   const tracks = next.tracks.map((t) => {
     const old = prev.tracks.find((x) => x.id === t.id)
     if (!frozen.has(t.id) || !t.frozen?.fx || !old || old.fx === t.fx) return t
+    const n = frozenFxCount(old)
+    const keep = (old.fx ?? []).slice(0, n)
+    const fx = t.fx ?? []
+    // 先頭が前と同じで、個数も記録してあれば、そのまま
+    if (t.frozen.fxCount === n && keep.every((s, i) => fx[i] === s)) return t
     changed = true
-    return { ...t, fx: old.fx }
+    // 音に含めた FX を先頭に戻し、ほかは後ろに付ける（個数を記録していない古いものは、ここで記録する）
+    return { ...t, fx: [...keep, ...fx.slice(n)], frozen: { ...t.frozen, fxCount: n } }
   })
   return changed ? { ...next, tracks } : next
 }
