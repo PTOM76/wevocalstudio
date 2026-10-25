@@ -128,14 +128,18 @@ class BlockMixer extends AudioWorkletProcessor {
       // 128 サンプルのうち声にかかる所だけを回す
       const i0 = Math.max(0, Math.ceil((v.t0 - t0) * sampleRate))
       const i1 = Math.min(n, Math.ceil((v.t1 - t0) * sampleRate))
+      // 音量の 1 サンプルあたりの変化（割り算をループの外に出す）。モノラルの音は 1 回だけ補間して左右に足す
+      const dg = (gb - ga) / n
+      const mono = cr === cl
       for (let i = i0; i < i1; i++) {
         const pos = startPos + i * step
         const k = Math.floor(pos)
         if (k < 0 || k + 1 >= len) continue
         const f = pos - k
-        const g = ga + ((gb - ga) * i) / n
-        L[i] += (cl[k] + (cl[k + 1] - cl[k]) * f) * g
-        R[i] += (cr[k] + (cr[k + 1] - cr[k]) * f) * g
+        const g = ga + dg * i
+        const left = (cl[k] + (cl[k + 1] - cl[k]) * f) * g
+        L[i] += left
+        R[i] += mono ? left : (cr[k] + (cr[k + 1] - cr[k]) * f) * g
       }
     }
     return true
