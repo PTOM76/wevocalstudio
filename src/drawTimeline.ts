@@ -74,9 +74,54 @@ export interface TimelineColors {
   afterEnd: string
 }
 
-/** 波形ブロックの中に元の音の波形を描く（1 列ごとの最小と最大） */
+/** 波形の画像の、横の大きさの上限（実際の画素）。これより広い波形ブロック（拡大したとき）は、見えている所だけをその場で描く */
+const WAVE_MAX = 4096
+/** 取っておく波形の画像の画素数の合計の上限（4 バイトずつなので 32 MB） */
+const WAVE_BUDGET = 8 * 1024 * 1024
+/** 波形の画像（元の音、使う範囲、速度、音量、大きさ、色が同じなら同じ。位置を動かすだけなら描き直さない）。使った順 */
+const waveImages = new Map<string, { canvas: HTMLCanvasElement; px: number }>()
+const waveOwners = new WeakMap<Source['clip'], number>()
+let wavePixels = 0
+let clipSeq = 0
+
+/** 波形ブロックの中に元の音の波形を描く。収まる大きさなら画像にして取っておいたものを貼る */
 function drawBlockWave(g: CanvasRenderingContext2D, b: Block, source: Source | undefined, x: number, y: number, w: number, h: number, width: number) {
   if (!source) return
+  const dpr = devicePixelRatio
+  const cw = Math.ceil(w * dpr)
+  const ch = Math.ceil(h * dpr)
+  if (cw > WAVE_MAX || cw < 1 || ch < 1) return drawWaveColumns(g, b, source, x, y, w, h, width)
+  let id = waveOwners.get(source.clip)
+  if (id === undefined) waveOwners.set(source.clip, (id = ++clipSeq))
+  const key = `${id}|${b.offset}|${b.length}|${b.rate}|${b.gain}|${cw}|${ch}|${String(g.fillStyle)}`
+  let img = waveImages.get(key)
+  if (img) {
+    // 使った順の最後へ
+    waveImages.delete(key)
+    waveImages.set(key, img)
+  } else {
+    const canvas = document.createElement('canvas')
+    canvas.width = cw
+    canvas.height = ch
+    const ig = canvas.getContext('2d')!
+    ig.fillStyle = g.fillStyle
+    ig.setTransform(dpr, 0, 0, dpr, 0, 0)
+    drawWaveColumns(ig, b, source, 0, 0, w, h, w)
+    img = { canvas, px: cw * ch }
+    waveImages.set(key, img)
+    wavePixels += img.px
+    // 上限を超えたら、長く使っていないものから捨てる
+    for (const [k, v] of waveImages) {
+      if (wavePixels <= WAVE_BUDGET || v === img) break
+      waveImages.delete(k)
+      wavePixels -= v.px
+    }
+  }
+  g.drawImage(img.canvas, Math.round(x * dpr) / dpr, y, cw / dpr, ch / dpr)
+}
+
+/** 波形を 1 列ごとの最小と最大で描く（width より右と 0 より左は描かない） */
+function drawWaveColumns(g: CanvasRenderingContext2D, b: Block, source: Source, x: number, y: number, w: number, h: number, width: number) {
   const { clip } = source
   const mid = y + h / 2
   const perPx = (b.length * b.rate * clip.sampleRate) / w
