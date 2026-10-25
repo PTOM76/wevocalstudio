@@ -184,6 +184,10 @@ src/storage/
   dataFolder.ts  設定と自動保存した作業を、指定したフォルダーにも写す（PWA を消しても戻せるように。処理は PevenMUI。WeVocalSynth と同じ）。画面と自動保存の Worker の両方から使う
   idb.ts  このアプリの IndexedDB（PevenMUI の createIdb。WeVocalSynth と同じ）。画面と自動保存の Worker の両方から使う
 
+src/stream/
+  trackStream.test.ts  trackStream.ts のテスト（SDK の見本の processor を通した 1 本のトラックの計算）
+  trackStream.ts  先を走る Worker の中の、1 本のトラックの計算（声を足す → 音量 → processor の列）。128 サンプルずつ、曲の時刻で進める。Web Audio を知らない（memo/anticipate-stream.md）
+
 src/test/
   setup.ts  テストの前に、ブラウザにしかない型の代わりを入れる（wevocal-lib の入口が WAM の SDK を読み込むため。音は鳴らさない）
 

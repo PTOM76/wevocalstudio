@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   resolve: {
     alias: [
+      { find: /^wevocal-lib\/stream$/, replacement: resolve(import.meta.dirname, '../wevocalsynth/wevocal-lib/web/src/plugins/stream/index.ts') },
       { find: /^wevocal-lib$/, replacement: resolve(import.meta.dirname, '../wevocalsynth/wevocal-lib/web/src/index.ts') },
       { find: /^pevenmui\/debug$/, replacement: resolve(import.meta.dirname, '../wevocalsynth/pevenmui/src/debug/index.ts') },
     ],

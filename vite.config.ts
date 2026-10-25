@@ -43,6 +43,7 @@ export default defineConfig({
       { find: /^wevocalconverter\/VideoExportDialog$/, replacement: resolve(converter, 'src/VideoExportDialog.tsx') },
       { find: /^wevocalanalyzer$/, replacement: resolve(analyzer, 'src/index.ts') },
       { find: /^wevocal-lib\/react$/, replacement: resolve(wevocalLib, 'web/src/react/index.ts') },
+      { find: /^wevocal-lib\/stream$/, replacement: resolve(wevocalLib, 'web/src/plugins/stream/index.ts') },
       { find: /^wevocal-lib$/, replacement: resolve(wevocalLib, 'web/src/index.ts') },
     ],
     // 外にある pevenmui から読み込む React、MUI も、このアプリと同じものにする（2 つになると動かない）
