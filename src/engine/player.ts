@@ -17,8 +17,12 @@ import { StreamHost, streamable } from '../stream/streamHost'
 const STREAM_WAIT = 400
 /** 再生中に先読みのかたまりを同時に作る数（トラックごとに 1 つ） */
 const ANT_PARALLEL = 2
-/** 再生を始めるときに、先に作る音の最初のかたまりを待つ長さ（ミリ秒）。これより遅いトラックはノードで鳴らし始める */
+/** 再生を始めるときに、先に作る音の最初のかたまりを待つ長さ（ミリ秒）。これより遅いトラックは、できるまで無音で鳴らし始める */
 const PRIME_WAIT = 150
+/** 最初のかたまりをこれより長く待ったら（秒）、ノードに戻す */
+const FIRST_LIMIT = 5
+/** かたまりを丸ごと続けてこの回数逃したら、ノードに戻す */
+const MISS_LIMIT = 2
 /** 止めている間の準備で、かたまりの間に空ける時間（ミリ秒） */
 const WARM_GAP = 100
 /** 再生。位置は AudioContext の時計から求める */
@@ -44,7 +48,7 @@ export class Player {
   /** 先に計算した量を状態バーのゲージに出す（設定。label が null なら出さない） */
   readonly gauge = new AntGauge()
   /** 先に作って鳴らしているトラック（id → 音を決めるものの識別、次に作るかたまりの番号） */
-  private ant: { sigs: Map<string, string>; next: Map<string, number>; busy: boolean; timer: ReturnType<typeof setInterval> } | null = null
+  private ant: { sigs: Map<string, string>; next: Map<string, number>; busy: boolean; timer: ReturnType<typeof setInterval>; /** かたまりを丸ごと逃した回数（続けて） */ miss: Map<string, number> } | null = null
   /** オートメーションを反映し続ける間隔の ID */
   private automation: ReturnType<typeof setInterval> | null = null
   private ctx: AudioContext | null = null
@@ -101,7 +105,8 @@ export class Player {
     await Promise.all([startContext(this.ctx, 'player'), loadMixer(this.ctx), preloadFx(this.ctx, ...fxLists(p)), preloadInstruments(this.ctx, instrumentIds(p))])
     this.startLoadMeter()
     if (id !== this.seq) return
-    // 先に作って鳴らすトラックは、最初のかたまりが待てる間（PRIME_WAIT）にできたものだけ。間に合わないトラックは待たずにノードで鳴らす（作りかけの分は置き場に入り、次の再生で使う）
+    // 先に作って鳴らすトラックは、最初のかたまりを待てる間（PRIME_WAIT）だけ待つ。間に合わないトラックもノードには戻さず、できるまで無音にして、できたら途中から鳴らす
+    // （ノードに戻すと、重い VST が読み込みの間素通しになる）。FIRST_LIMIT 秒たってもできなければノードに戻す
     const first = this.anticipative ? p.tracks.filter((t) => anticipated(p, t)) : []
     this.antInfo = !this.anticipative ? 'off' : first.length ? `${first.length} tracks` : 'no target track'
     // 重いプラグインがあるのに対象にならなかったトラックと、その理由
@@ -117,24 +122,20 @@ export class Player {
     const chunked = first.filter((t) => !streamed.includes(t))
     if (streamed.length) this.antInfo += ` / stream ${streamed.length}`
     const streaming = streamed.length ? this.streamHost(ctx).prepare(p, streamed.map((t) => t.id), from, STREAM_WAIT) : null
-    const [primed] = await Promise.all([
-      Promise.all(
-        chunked.map((t) =>
-          Promise.race([
-            this.makeChunk(p, t.id, k0).catch((e: unknown) => {
-              // 作れなかったトラックはノードで鳴らす。理由はデバッグ表示とコンソールに出す
-              this.antInfo = `failed: ${String(e)}`
-              console.warn('anticipate:', e)
-              return null
-            }),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), PRIME_WAIT)),
-          ]),
-        ),
+    const prime = chunked.map((t) =>
+      this.makeChunk(p, t.id, k0).then(
+        (buf) => ({ buf }),
+        (e: unknown) => {
+          // 作れなかったトラックはノードで鳴らす。理由はデバッグ表示とコンソールに出す
+          this.antInfo = `failed: ${String(e)}`
+          console.warn('anticipate:', e)
+          return { buf: null }
+        },
       ),
-      streaming,
-    ])
+    )
+    const [primed] = await Promise.all([Promise.all(prime.map((pr) => Promise.race([pr, new Promise<null>((resolve) => setTimeout(() => resolve(null), PRIME_WAIT))]))), streaming])
     const late = chunked.filter((_, i) => !primed[i]).length
-    if (late) this.antInfo += ` / live ${late} (not ready)`
+    if (late) this.antInfo += ` / waiting ${late}`
     if (id !== this.seq) return
     this.starting = false
     this.from = from
@@ -142,8 +143,8 @@ export class Player {
     this.startedAt = this.ctx.currentTime + (again ? 0.01 : 0.05)
     this.graph = new Graph(this.ctx, this.startedAt - from)
     this.graph.onFxState = this.onFxState
-    // 最初のかたまりができたトラックだけを先読みにする（できなかったトラックは今までどおりノードで鳴らす）
-    const ok = chunked.filter((_, i) => primed[i])
+    // 作れなかったトラックのほかは先読みにする（待っているトラックは無音から）
+    const ok = chunked.filter((_, i) => primed[i]?.buf !== null)
     // 子孫の音は、親の FX を通した形で、親の作った音に入っている。子孫をノードでも鳴らすと二重になるので、ノードでは鳴らさない（memo/anticipate-parent.md）
     this.graph.setAnticipated([...ok.flatMap((t) => subtree(p, t).map((x) => x.id)), ...(this.stream?.ids ?? [])])
     this.automation = setInterval(() => {
@@ -160,8 +161,21 @@ export class Player {
     // 先を走る方式のトラックは、読むだけのノードをつないで鳴らし始める
     if (this.stream?.ids.length) this.stream.begin(this.startedAt - from, (tid) => this.graph?.cacheInput(tid) ?? null)
     if (ok.length) {
-      this.ant = { sigs: new Map(ok.map((t) => [t.id, signature(p, t)])), next: new Map(ok.map((t) => [t.id, k0 + 1])), busy: false, timer: setInterval(() => void this.tick(), 250) }
-      for (const [i, t] of chunked.entries()) if (primed[i]) this.graph.playChunk(t.id, primed[i]!, k0 * CHUNK)
+      const ant = (this.ant = { sigs: new Map(ok.map((t) => [t.id, signature(p, t)])), next: new Map(ok.map((t) => [t.id, k0 + 1])), busy: false, timer: setInterval(() => void this.tick(), 250), miss: new Map() })
+      for (const [i, t] of chunked.entries()) {
+        const ready = primed[i]
+        if (ready?.buf) this.graph.playChunk(t.id, ready.buf, k0 * CHUNK)
+        else if (!ready) {
+          // できたら途中から鳴らす。FIRST_LIMIT 秒たってもできなければノードに戻す
+          const limit = setTimeout(() => this.ant === ant && ant.next.has(t.id) && this.release(t.id), FIRST_LIMIT * 1000)
+          void prime[i].then(({ buf }) => {
+            clearTimeout(limit)
+            if (this.ant !== ant || !ant.next.has(t.id)) return
+            if (buf) this.graph?.playChunk(t.id, buf, k0 * CHUNK)
+            else this.release(t.id)
+          })
+        }
+      }
       this.project = p
       this.fxLatency = maxTrackLatency(p, this.ctx!.sampleRate)
     }
@@ -360,8 +374,15 @@ export class Player {
     const step = async (id: string) => {
       const k = ant.next.get(id)
       if (k === undefined) return
-      // 作ったかたまりの先頭に再生位置が追いついたら、間に合っていない（ほかのトラックは続ける）
-      if (k * CHUNK < now) return this.release(id)
+      // かたまりの先頭を再生位置が過ぎていても、終わりまでに作れれば残りを鳴らす（少しの遅れでノードに戻さない）。
+      // 丸ごと逃したら、今の位置のかたまりへ飛ぶ。続けて MISS_LIMIT 回逃したら、間に合わないのでノードに戻す（ほかのトラックは続ける）
+      if ((k + 1) * CHUNK <= now) {
+        const miss = (ant.miss.get(id) ?? 0) + 1
+        ant.miss.set(id, miss)
+        if (miss >= MISS_LIMIT) return this.release(id)
+        ant.next.set(id, Math.floor(now / CHUNK))
+        return
+      }
       if (k * CHUNK > now + AHEAD || k * CHUNK > end) return
       try {
         const buf = await this.makeChunk(p, id, k)
@@ -369,6 +390,7 @@ export class Player {
         if (this.ant !== ant || !ant.next.has(id) || !this.graph) return
         this.graph.playChunk(id, buf, k * CHUNK)
         ant.next.set(id, k + 1)
+        ant.miss.set(id, 0)
       } catch {
         // 作れなかったら、次の周期でもう一度試す（続けて間に合わなければ release になる）
       }
