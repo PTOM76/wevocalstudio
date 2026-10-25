@@ -28,6 +28,17 @@ function settingsOf(t: Track) {
  * プラグインが保存する状態は再生中に変わるので設定には入れず、取っておくときだけ入れる（プラグインの画面で音を変えたあとに、前の音を鳴らさないように）
  */
 export function chunkKey(p: Project, trackId: string, k: number): string | null {
+  // プロジェクトは書き換えずに作り直すので、同じプロジェクトなら前の結果を使う（再生中は 0.25 秒ごとに何度も呼ぶ）
+  let byKey = keyCache.get(p)
+  if (!byKey) keyCache.set(p, (byKey = new Map()))
+  const id = `${trackId}|${k}`
+  let out = byKey.get(id)
+  if (out === undefined) byKey.set(id, (out = makeChunkKey(p, trackId, k)))
+  return out
+}
+const keyCache = new WeakMap<Project, Map<string, string | null>>()
+
+function makeChunkKey(p: Project, trackId: string, k: number): string | null {
   const t = p.tracks.find((x) => x.id === trackId)
   if (!t) return null
   // 子孫のトラックの音もかたまりに入る（memo/anticipate-parent.md）
