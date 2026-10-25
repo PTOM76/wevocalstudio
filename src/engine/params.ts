@@ -21,10 +21,16 @@ export const maxTrackLatency = (p: Project, sampleRate: number) => Math.max(0, .
 
 /** トラックの MIDI ブロックの識別（変わったら、送った音符を取り消して送り直す） */
 export const midiSig = (p: Project, track: string) => {
+  // もとの並びとテンポが同じなら前の結果を使う（同期のたびに全部の音符を文字にしない）
+  const c = sigCache.get(track)
+  if (c && c.tracks === p.tracks && c.tempo === p.tempo && c.markers === p.markers && c.midi === p.midi) return c.sig
   const t = p.tracks.find((x) => x.id === track)
   // 音符は拍なので、テンポが変わっても送り直す
-  return JSON.stringify([t && ownAudible(p, t), p.tempo, p.markers.filter((m) => m.tempo), midiBlocks(p).filter((b) => b.track === track)])
+  const sig = JSON.stringify([t && ownAudible(p, t), p.tempo, p.markers.filter((m) => m.tempo), midiBlocks(p).filter((b) => b.track === track)])
+  sigCache.set(track, { tracks: p.tracks, tempo: p.tempo, markers: p.markers, midi: p.midi, sig })
+  return sig
 }
+const sigCache = new Map<string, { tracks: Project['tracks']; tempo: Project['tempo']; markers: Project['markers']; midi: Project['midi']; sig: string }>()
 /** 音量エンベロープの形状のある区間を、ミキサーに渡す折れ線の点に展開する（ミキサーは点の間を直線でつなぐ。段は、ごく短い傾きにする） */
 export function volumeSteps(env: EnvPoint[]): EnvPoint[] {
   const out: EnvPoint[] = []
