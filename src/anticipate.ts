@@ -11,11 +11,11 @@ export const AHEAD = 16
 export const PREROLL = 2
 /** 余韻のないプラグイン（EQ、コンプなど）でも、フィルターの直前の値やコンプのかかり具合を作るために流す長さ（秒） */
 const PREROLL_MIN = 0.25
-/** 助走の上限（秒）。これより長い余韻は、つなぎ目で少し欠ける */
+/** 助走の上限（秒）。余韻がこれより長いトラックは、つなぎ目で余韻が欠けるので先に計算しない（ノードで鳴らす） */
 const PREROLL_MAX = 6
 
-/** かたまりの前に流す長さ（秒）。トラックと子孫の FX の余韻（manifest.tail、値で変わるものは値から）の最大。余韻を出さないプラグインがあれば PREROLL */
-export function prerollOf(p: Project, t: Track): number {
+/** トラックと子孫の FX の余韻（manifest.tail、値で変わるものは値から）の最大（秒）。余韻を出さないプラグインは PREROLL とみなす */
+function tailOf(p: Project, t: Track): number {
   const tails = subtree(p, t).flatMap((x) =>
     (x.fx ?? [])
       .filter((s) => s.on)
@@ -25,8 +25,11 @@ export function prerollOf(p: Project, t: Track): number {
         return pl?.manifest.tail ?? PREROLL
       }),
   )
-  return Math.min(PREROLL_MAX, Math.max(PREROLL_MIN, ...tails))
+  return Math.max(0, ...tails)
 }
+
+/** かたまりの前に流す長さ（秒）。FX の余韻の長さ（短くても PREROLL_MIN） */
+export const prerollOf = (p: Project, t: Track) => Math.max(PREROLL_MIN, tailOf(p, t))
 
 /** 外から足した、先に計算してよいプラグイン（processor 方式。anticipative が false のもの、サイドチェーンを使うものは除く）を持つか */
 function heavy(t: Track): boolean {
@@ -54,11 +57,11 @@ function linked(p: Project, t: Track): string | null {
 }
 
 /**
- * 先に計算して鳴らすトラックか。フリーズ中、サイドチェーンで聞く FX、外と音でつながっている部分木は除く。
+ * 先に計算して鳴らすトラックか。フリーズ中、サイドチェーンで聞く FX、外と音でつながっている部分木、余韻が PREROLL_MAX より長いものは除く。
  * 子のトラックがあれば、子孫の音もまとめて作る。先祖が対象なら、その音に入っているので自分は対象にしない
  */
 export function anticipated(p: Project, t: Track): boolean {
-  return heavy(t) && !bakedTracks(p).has(t.id) && !linked(p, t) && !ancestors(p, t).some((a) => anticipated(p, a))
+  return heavy(t) && !bakedTracks(p).has(t.id) && !linked(p, t) && tailOf(p, t) <= PREROLL_MAX && !ancestors(p, t).some((a) => anticipated(p, a))
 }
 
 /** 外から足したプラグイン（processor 方式）がオンなのに、先に計算しない理由。対象のトラックか、そういうプラグインが無ければ null（デバッグ表示） */
@@ -68,6 +71,7 @@ export function excludedReason(p: Project, t: Track): string | null {
   if (bakedTracks(p).has(t.id)) return 'frozen'
   const link = linked(p, t)
   if (link) return link
+  if (tailOf(p, t) > PREROLL_MAX) return 'long tail'
   if (ancestors(p, t).some((a) => anticipated(p, a))) return 'in anticipated parent'
   return null
 }
