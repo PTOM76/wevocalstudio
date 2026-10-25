@@ -1,8 +1,8 @@
 // トラックの音源（MIDI ブロックの音符を鳴らすプラグイン）の選択とつまみ。サンプラーは音色にする元の音（プロジェクトの元の音から）も選ぶ
 import { Box, Button, DialogActions, DialogContent, Typography } from '@mui/material'
 import { WindowDialog, pevenFont, useMobileLayout } from 'pevenmui'
-import { FxParams, LabeledSelect as Choice } from 'wevocal-lib/react'
-import { availableInstruments, visibleAlgorithms, type Algorithm, defaultValues, findInstrument, fxDescription, fxText, migrateValues } from 'wevocal-lib'
+import { AlgorithmSelect, FxParams, LabeledSelect as Choice } from 'wevocal-lib/react'
+import { availableInstruments, defaultValues, findInstrument, fxDescription, fxText, migrateValues } from 'wevocal-lib'
 import { i18n, useT } from './i18n'
 import type { InstrumentSlot, Project } from './project'
 
@@ -42,12 +42,7 @@ export default function InstrumentDialog(p: { open: boolean; project: Project; t
           )}
           {/* フォルマントを保持するときのピッチの処理方式（波形ブロックと同じ一覧） */}
           {plugin?.sample && slot && (
-            <Choice
-              label={t('block.algorithm')}
-              value={slot.algorithm ?? 'wsola'}
-              options={visibleAlgorithms(p.showLegacy, [slot.algorithm ?? 'wsola']).map((a): [string, string] => [a.value, t(a.label)])}
-              onChange={(a) => p.onChange({ ...slot, algorithm: a as Algorithm })}
-            />
+            <AlgorithmSelect label={t('block.algorithm')} value={slot.algorithm ?? 'wsola'} showLegacy={p.showLegacy} t={t} onChange={(algorithm) => p.onChange({ ...slot, algorithm })} />
           )}
           {plugin && slot && <FxParams plugin={{ manifest: plugin.manifest, lang: plugin.lang, create: () => null as never }} values={values} lang={lang} onChange={(id, v) => p.onChange({ ...slot, values: { ...values, [id]: v } })} />}
         </Box>

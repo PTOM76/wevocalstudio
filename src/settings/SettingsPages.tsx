@@ -2,14 +2,14 @@
 import { canMidiInput } from '../useMidiInput'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Box, Button, Typography } from '@mui/material'
-import { listInputDevices, visibleAlgorithms, type Algorithm, type InputDevice } from 'wevocal-lib'
+import { listInputDevices, type InputDevice } from 'wevocal-lib'
 import { AddonFolderRow, AddonSection, addonFolderSupported, Check, Choice, Group, KeymapEditor, LogRunRow, Row, pevenFont, type WindowMode } from 'pevenmui'
 import { EXTRACT_MODELS, isMdxModel, resolveModel, type VocalModel } from 'wevocalextractor/host'
 import { backendAllowed } from 'wevocalextractor/compat'
 import { ADDONS } from '../addons'
 import { diagnoseExtract } from '../useExtract'
 import { UpdateSection } from 'pevenmui/pwa'
-import { OutputDeviceRow } from 'wevocal-lib/react'
+import { AlgorithmSelect, OutputDeviceRow } from 'wevocal-lib/react'
 import { i18n, type LangSetting, type MessageKey } from '../i18n'
 import { ACTIONS } from '../keymap'
 import SettingRow from './items/SettingRow'
@@ -140,7 +140,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
       <>
         <Group title={t('settings.groupDefaultAlgorithm')}>
           <Row label={t('settings.algorithm')}>
-            <Choice<Algorithm> value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} options={visibleAlgorithms(draft.showLegacyAlgorithms, [draft.algorithm]).map((a): [Algorithm, string] => [a.value, t(a.label)])} />
+            <AlgorithmSelect value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} showLegacy={draft.showLegacyAlgorithms} t={t} />
           </Row>
           {S('showLegacyAlgorithms')}
           {S('preserveFormant')}

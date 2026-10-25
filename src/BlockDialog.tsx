@@ -1,8 +1,8 @@
 // 波形ブロックのプロパティ。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
 import { useEffect, useState } from 'react'
-import { Box, Button, Checkbox, ListItemText, DialogActions, DialogContent, FormControlLabel, MenuItem, Slider, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, Checkbox, DialogActions, DialogContent, FormControlLabel, MenuItem, Slider, Stack, TextField, Typography } from '@mui/material'
 import { PresetMenu, WindowDialog, enterToSubmit, type Preset, useMobileLayout } from 'pevenmui'
-import { visibleAlgorithms, type Algorithm } from 'wevocal-lib'
+import { AlgorithmSelect } from 'wevocal-lib/react'
 import { useT, type MessageKey } from './i18n'
 import { BLOCK_LIMITS, type Block, type Source } from './project'
 
@@ -220,40 +220,15 @@ export default function BlockDialog(p: {
                 <Box sx={grid}>{shown.map(field)}</Box>
                 {title === 'block.sectionPitchSpeed' && (
                   <>
-                    <TextField
-                      select
-                      size="small"
+                    {/* 処理方式の一覧（wevocal-lib。WeVocalSynth と同じ名前と説明）。従来の方式は設定で表示したときか、今使っているときだけ */}
+                    <AlgorithmSelect
                       label={t('block.algorithm')}
                       value={value('algorithm') ?? ''}
-                      // 選ぶ一覧には説明を付け、閉じているときは名前だけにする
-                      slotProps={{
-                        select: {
-                          renderValue: (v) => {
-                            const a = visibleAlgorithms(
-                              p.showLegacy,
-                              p.blocks.map((b) => b.algorithm),
-                            ).find((x) => x.value === v)
-                            return a ? t(a.label) : ''
-                          },
-                        },
-                      }}
-                      onChange={(e) =>
-                        setEdit({
-                          ...edit,
-                          algorithm: e.target.value as Algorithm,
-                        })
-                      }
-                    >
-                      {/* 処理方式の一覧（wevocal-lib。WeVocalSynth と同じ名前と説明）。従来の方式は設定で表示したときか、今使っているときだけ */}
-                      {visibleAlgorithms(
-                        p.showLegacy,
-                        p.blocks.map((b) => b.algorithm),
-                      ).map((a) => (
-                        <MenuItem key={a.value} value={a.value}>
-                          <ListItemText primary={t(a.label)} secondary={t(a.hint)} />
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                      showLegacy={p.showLegacy}
+                      keep={p.blocks.map((b) => b.algorithm)}
+                      t={t}
+                      onChange={(algorithm) => setEdit({ ...edit, algorithm })}
+                    />
                     <FormControlLabel
                       control={
                         <Checkbox
