@@ -29,7 +29,11 @@ export function useTransport({ project, range, setRange, fail, anticipativeFx, r
   useEffect(() => {
     if (playing) return
     const h = setTimeout(() => void player.current.warm(project, paused ?? cursor), 1500)
-    return () => clearTimeout(h)
+    return () => {
+      clearTimeout(h)
+      // 編集したら、前のプロジェクトで作っている準備はすぐやめる（作っている途中のかたまりだけは終わるまで待つ）
+      player.current.cancelWarm()
+    }
   }, [project, cursor, paused, playing, anticipativeFx])
 
   // 再生中の位置は状態に入れず、描く所が毎フレーム読む（画面全体を毎フレーム描き直さないように。WeVocalSynth と同じ）

@@ -19,6 +19,8 @@ const STREAM_WAIT = 400
 const ANT_PARALLEL = 2
 /** 再生を始めるときに、先に作る音の最初のかたまりを待つ長さ（ミリ秒）。これより遅いトラックはノードで鳴らし始める */
 const PRIME_WAIT = 150
+/** 止めている間の準備で、かたまりの間に空ける時間（ミリ秒） */
+const WARM_GAP = 100
 /** 再生。位置は AudioContext の時計から求める */
 export class Player {
   /** 音を作る処理の負荷（0〜1）が変わったときに呼ぶ。対応していないブラウザでは呼ばない */
@@ -262,6 +264,10 @@ export class Player {
   }
 
   private warmSeq = 0
+  /** 止めている間の準備をやめる（次のかたまりから作らない） */
+  cancelWarm() {
+    this.warmSeq++
+  }
   /**
    * 止めている間に、from 秒から曲の終わりまで、先に計算するトラックのかたまりを作って取っておく（memo/fx-cache.md の 3）。
    * 置き場の上限の 9 割に収まる数まで（超えると作ったばかりの先頭が捨てられる）。
@@ -297,6 +303,9 @@ export class Player {
         for (const t of targets) {
           if (id !== this.warmSeq || this.playing || this.starting) return info('stopped')
           if (this.chunks.has(chunkKey(p, t.id, k))) cached++
+          // 作るかたまりの間に画面の処理を挟む（続けて作ると、ノードを作るたびに画面のスレッドが待たされて固まる）
+          else await new Promise((r) => setTimeout(r, WARM_GAP))
+          if (id !== this.warmSeq || this.playing || this.starting) return info('stopped')
           await this.makeChunk(p, t.id, k).catch((e: unknown) => {
             failed++
             console.warn('anticipate (warm):', e)
