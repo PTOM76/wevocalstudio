@@ -183,7 +183,22 @@ export function clipFor(b: Block, source: Source): { clip: Clip; from: number } 
   const pieces = piecesFor(b, source, false)
   if (!pieces.length || pieces.length !== chunksOf(b).length) return null
   if (pieces.length === 1) return { clip: pieces[0].clip, from: pieces[0].from }
-  // かたまりをつないだ音を作る（つなぎ目はそのまま）
+  // 同じかたまりから同じ範囲をつないだものは、前に作ったものを使う（同期や描き直しのたびに全体を写さない）
+  const key = `${b.rate}|${pieces.map((pc) => `${pc.a}:${pc.z}:${pc.from}`).join(',')}`
+  let byKey = joined.get(pieces[0].clip)
+  const hit = byKey?.get(key)
+  if (hit && hit.clips.length === pieces.length && hit.clips.every((c, i) => c === pieces[i].clip)) return hit.out
+  const out = join(b, pieces)
+  if (!byKey) joined.set(pieces[0].clip, (byKey = new Map()))
+  byKey.set(key, { clips: pieces.map((pc) => pc.clip), out })
+  return out
+}
+
+/** つないだ音（先頭のかたまりの音ごと。かたまりが捨てられれば一緒に消える） */
+const joined = new WeakMap<Clip, Map<string, { clips: Clip[]; out: { clip: Clip; from: number } }>>()
+
+/** かたまりをつないだ音を作る（つなぎ目はそのまま） */
+function join(b: Block, pieces: Piece[]): { clip: Clip; from: number } {
   const sr = pieces[0].clip.sampleRate
   const parts = pieces.map((pc) => {
     const s = Math.floor(((pc.a - pc.from) / b.rate) * sr)
