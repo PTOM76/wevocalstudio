@@ -12,6 +12,8 @@ import { loadMixer } from '../mixer/mixer'
 import { preparePitch } from '../dsp/pitch'
 import { wantSamplerPitch } from '../dsp/samplerPitch'
 import { songEnd, type Project } from '../project'
+/** 再生を始めるときに、先に作る音の最初のかたまりを待つ長さ（ミリ秒）。これより遅いトラックはノードで鳴らし始める */
+const PRIME_WAIT = 150
 /** 再生。位置は AudioContext の時計から求める */
 export class Player {
   /** 音を作る処理の負荷（0〜1）が変わったときに呼ぶ。対応していないブラウザでは呼ばない */
@@ -88,7 +90,7 @@ export class Player {
     await Promise.all([startContext(this.ctx, 'player'), loadMixer(this.ctx), preloadFx(this.ctx, ...fxLists(p)), preloadInstruments(this.ctx, instrumentIds(p))])
     this.startLoadMeter()
     if (id !== this.seq) return
-    // 先に作って鳴らすトラックは、最初のかたまりができてから始める（作っている間は、ほかの音も待つ）
+    // 先に作って鳴らすトラックは、最初のかたまりが待てる間（PRIME_WAIT）にできたものだけ。間に合わないトラックは待たずにノードで鳴らす（作りかけの分は置き場に入り、次の再生で使う）
     const first = this.anticipative ? p.tracks.filter((t) => anticipated(p, t)) : []
     this.antInfo = !this.anticipative ? 'off' : first.length ? `${first.length} tracks` : 'no target track'
     // 重いプラグインがあるのに対象にならなかったトラックと、その理由
@@ -100,14 +102,19 @@ export class Player {
     const k0 = Math.floor(from / CHUNK)
     const primed = await Promise.all(
       first.map((t) =>
-        this.makeChunk(p, t.id, k0).catch((e: unknown) => {
-          // 作れなかったトラックはノードで鳴らす。理由はデバッグ表示とコンソールに出す
-          this.antInfo = `failed: ${String(e)}`
-          console.warn('anticipate:', e)
-          return null
-        }),
+        Promise.race([
+          this.makeChunk(p, t.id, k0).catch((e: unknown) => {
+            // 作れなかったトラックはノードで鳴らす。理由はデバッグ表示とコンソールに出す
+            this.antInfo = `failed: ${String(e)}`
+            console.warn('anticipate:', e)
+            return null
+          }),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), PRIME_WAIT)),
+        ]),
       ),
     )
+    const late = first.filter((_, i) => !primed[i]).length
+    if (late) this.antInfo += ` / live ${late} (not ready)`
     if (id !== this.seq) return
     this.starting = false
     this.from = from
