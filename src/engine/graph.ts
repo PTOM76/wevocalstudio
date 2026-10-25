@@ -127,10 +127,21 @@ export class Graph {
     const now = this.ctx.currentTime
     if (when >= now) src.start(when)
     else if (now - when < buffer.duration) src.start(now, now - when)
+    else {
+      // もう鳴り終わっている所なら鳴らさない（始めないと onended が来ず、つないだまま残る）
+      src.disconnect()
+      gain.disconnect()
+      return
+    }
     const list = this.cacheSources.get(trackId) ?? []
     list.push(src)
     this.cacheSources.set(trackId, list)
-    src.onended = () => this.cacheSources.set(trackId, (this.cacheSources.get(trackId) ?? []).filter((x) => x !== src))
+    src.onended = () => {
+      this.cacheSources.set(trackId, (this.cacheSources.get(trackId) ?? []).filter((x) => x !== src))
+      // 鳴り終えたノードは外す（長く再生すると、かたまりごとにつないだままのノードが溜まる）
+      src.disconnect()
+      gain.disconnect()
+    }
   }
 
   /** 先に作った音をやめ、ノードの FX の列と波形ブロックの声で鳴らす（編集したときと、先読みが間に合わなかったとき） */
