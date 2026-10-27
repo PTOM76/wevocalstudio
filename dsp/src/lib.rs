@@ -154,7 +154,20 @@ pub unsafe extern "C" fn process_curve_planar(
     let formant = if preserve_formant != 0 { Formant::Shift(formant_semitones) } else { Formant::Follow };
     let algorithm = Algorithm::from_id(algorithm);
     let share = if (stretch - 1.0).abs() > 1e-9 { 0.7 } else { 1.0 };
-    let mut out = curve::process(&chans, sample_rate, ratios, hop, algorithm, formant, &mut |p| host_progress(p * share));
+    // 曲線の処理は 1 フレームのピッチ比を ±24 半音までしか受けないので、はみ出す分は先に全体を定数でずらし、残りを曲線に渡す
+    let (lo, hi) = ratios.iter().fold((f32::MAX, f32::MIN), |(lo, hi), &r| (lo.min(r), hi.max(r)));
+    let mid_st = if lo > 0.0 && hi >= lo { 6.0 * (lo as f64 * hi as f64).log2() } else { 0.0 };
+    let pre = (mid_st / STEP_SEMITONES).round() * STEP_SEMITONES;
+    let shifted;
+    let (chans, ratios_rest): (Vec<&[f32]>, Vec<f32>) = if pre == 0.0 {
+        (chans, ratios.to_vec())
+    } else {
+        let keep = if preserve_formant != 0 { Formant::Shift(0.0) } else { Formant::Follow };
+        shifted = process_steps(&chans, sample_rate, pre, 1.0, algorithm, keep);
+        let div = 2f32.powf((pre / 12.0) as f32);
+        (shifted.iter().map(|c| c.as_slice()).collect(), ratios.iter().map(|r| r / div).collect())
+    };
+    let mut out = curve::process(&chans, sample_rate, &ratios_rest, hop, algorithm, formant, &mut |p| host_progress(p * share));
     if (stretch - 1.0).abs() > 1e-9 {
         let refs: Vec<&[f32]> = out.iter().map(|c| c.as_slice()).collect();
         out = process_with_progress(&refs, sample_rate, 0.0, stretch, algorithm, Formant::Follow, &mut |p| host_progress(share + p * (1.0 - share)));
