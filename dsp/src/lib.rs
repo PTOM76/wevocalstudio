@@ -156,8 +156,9 @@ pub unsafe extern "C" fn process_curve_planar(
     let share = if (stretch - 1.0).abs() > 1e-9 { 0.7 } else { 1.0 };
     // 曲線の処理は 1 フレームのピッチ比を ±24 半音までしか受けないので、はみ出す分は先に全体を定数でずらし、残りを曲線に渡す
     let (lo, hi) = ratios.iter().fold((f32::MAX, f32::MIN), |(lo, hi), &r| (lo.min(r), hi.max(r)));
-    let mid_st = if lo > 0.0 && hi >= lo { 6.0 * (lo as f64 * hi as f64).log2() } else { 0.0 };
-    let pre = (mid_st / STEP_SEMITONES).round() * STEP_SEMITONES;
+    let (lo_st, hi_st) = (12.0 * (lo as f64).log2(), 12.0 * (hi as f64).log2());
+    // 範囲が ±24 に収まるなら何もしない。はみ出すときだけ、範囲の真ん中の分をずらす
+    let pre = if lo > 0.0 && hi >= lo && (lo_st < -STEP_SEMITONES || hi_st > STEP_SEMITONES) { (lo_st + hi_st) / 2.0 } else { 0.0 };
     let shifted;
     let (chans, ratios_rest): (Vec<&[f32]>, Vec<f32>) = if pre == 0.0 {
         (chans, ratios.to_vec())
