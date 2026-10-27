@@ -1,7 +1,7 @@
 // projectTabs.ts のテスト
 import { describe, expect, it } from 'vitest'
 import { newProject } from './project'
-import { isBlank, isDirty, neighborAfterClose } from './projectTabs'
+import { isBlank, isDirty, moveTab, neighborAfterClose } from './projectTabs'
 
 describe('neighborAfterClose', () => {
   it('右隣、なければ左隣、ほかになければ null', () => {
@@ -32,5 +32,16 @@ describe('isDirty と isBlank', () => {
     expect(isBlank(empty, true)).toBe(false)
     expect(isBlank(withBlock, false)).toBe(false)
     expect(isBlank({ ...empty, tracks: [...empty.tracks, { ...empty.tracks[0], id: 'x' }] }, false)).toBe(false)
+  })
+})
+
+describe('moveTab', () => {
+  it('前から後ろへは to の後ろ、後ろから前へは to の前に入る', () => {
+    expect(moveTab(['a', 'b', 'c'], 'a', 'c')).toEqual(['b', 'c', 'a'])
+    expect(moveTab(['a', 'b', 'c'], 'c', 'a')).toEqual(['c', 'a', 'b'])
+  })
+  it('同じタブや無いタブは変えない', () => {
+    expect(moveTab(['a', 'b'], 'a', 'a')).toEqual(['a', 'b'])
+    expect(moveTab(['a', 'b'], 'x', 'a')).toEqual(['a', 'b'])
   })
 })

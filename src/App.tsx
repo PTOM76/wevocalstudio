@@ -314,7 +314,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       }}
     >
       <AppHeader menus={menus} canUndo={doc.canUndo} canRedo={doc.canRedo} onUndo={doc.undo} onRedo={doc.redo} projectName={fileName} dirty={files.dirty} />
-      {tabs.tabs.length > 1 && <DocumentTabs tabs={tabs.tabs} activeId={tabs.active} onSelect={tabs.select} onClose={closeTab} onAdd={commands.newProject.run} labels={{ close: t('tabs.close'), add: t('tabs.add') }} />}
+      {tabs.tabs.length > 1 && <DocumentTabs tabs={tabs.tabs} activeId={tabs.active} onSelect={tabs.select} onClose={closeTab} onMove={tabs.move} onAdd={commands.newProject.run} labels={{ close: t('tabs.close'), add: t('tabs.add') }} />}
       <Toolbar
         follow={p.settings.followPlayhead}
         snap={p.settings.snap}

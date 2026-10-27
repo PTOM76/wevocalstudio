@@ -29,5 +29,15 @@ export function neighborAfterClose(order: readonly string[], id: string): string
   return order[i + 1] ?? order[i - 1] ?? null
 }
 
+/** from のタブを to のタブの位置へ動かした並び（前から後ろへは to の後ろ、後ろから前へは to の前に入る） */
+export function moveTab(order: readonly string[], from: string, to: string): string[] {
+  const a = order.indexOf(from)
+  const b = order.indexOf(to)
+  if (a < 0 || b < 0 || a === b) return [...order]
+  const rest = order.filter((v) => v !== from)
+  rest.splice(rest.indexOf(to) + (a < b ? 1 : 0), 0, from)
+  return rest
+}
+
 /** 何も置いていない、保存済みのプロジェクトか（ファイルを開くとき、新しいタブを作らず置き換えてよいか） */
 export const isBlank = (project: Project, dirty: boolean) => !dirty && project.blocks.length === 0 && (project.midi?.length ?? 0) === 0 && project.tracks.length <= 1

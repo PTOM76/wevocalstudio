@@ -5,7 +5,7 @@ import type { SavedFile } from 'pevenmui/web'
 import type { TimelineView } from './drawTimeline'
 import { freshHistory, type Step } from './document/ProjectDocument'
 import { newProject, type Project } from './project'
-import { neighborAfterClose, recordDirty, type TabRecord } from './projectTabs'
+import { moveTab, neighborAfterClose, recordDirty, type TabRecord } from './projectTabs'
 
 export const DEFAULT_VIEW: TimelineView = { scroll: 0, pps: 50 }
 
@@ -118,6 +118,7 @@ export function useProjectTabs(o: {
     add,
     replaceActive,
     close,
+    move: (from: string, to: string) => setOrder((x) => moveTab(x, from, to)),
     dirtyOf,
     /** どれかのタブに、保存していない変更があるか */
     anyDirty: () => order.some(dirtyOf),
