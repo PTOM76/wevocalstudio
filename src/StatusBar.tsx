@@ -1,6 +1,6 @@
 // PC の下のステータスバー（WeVocalSynth と同じ並び）。プロジェクト名、書き出しの形式、範囲選択、BPM、処理中のゲージ
-import { useState, type ReactNode } from 'react'
-import { JobGauge, RenameDialog, SelectionField, StatusBar as Bar, StatusButton, StatusItem, StatusSpacer } from 'pevenmui'
+import type { ReactNode } from 'react'
+import { JobGauge, NameField, SelectionField, StatusBar as Bar, StatusItem, StatusSpacer } from 'pevenmui'
 import type { Range } from 'wevocal-lib'
 import { useT } from './i18n'
 import { countRender } from 'pevenmui/debug'
@@ -23,14 +23,13 @@ export default function StatusBar(p: {
 }) {
   countRender('StatusBar')
   const t = useT()
-  const [renaming, setRenaming] = useState<string | null>(null)
   return (
     <Bar>
-      {/* プロジェクト名。押すと名前を変えられる（保存と書き出しのファイル名になる） */}
-      <StatusButton title={t('status.renameHint')} onClick={() => setRenaming(p.fileName)}>
+      {/* プロジェクト名。押すと名前を変えられる（保存と書き出しのファイル名になる。PevenMUI の NameField） */}
+      <NameField name={p.fileName} title={t('status.projectName')} hint={t('status.renameHint')} onRename={p.onRename}>
         {p.fileName || '—'}
         {p.dirty && ' *'}
-      </StatusButton>
+      </NameField>
       <StatusItem secondary>
         {p.sampleRate} Hz・Stereo・{t('status.tracks', { n: p.tracks })}
       </StatusItem>
@@ -48,8 +47,6 @@ export default function StatusBar(p: {
       <StatusSpacer />
       {/* 処理中の進み具合（ピッチなどを作る、書き出し。PevenMUI の JobGauge。WeVocalSynth と同じ） */}
       <JobGauge<string> kindLabel={(k) => t(`job.${k}` as Parameters<typeof t>[0])} />
-      {/* 名前の変更（PevenMUI の RenameDialog。WeVocalSynth と同じ） */}
-      <RenameDialog name={renaming} title={t('status.projectName')} onClose={() => setRenaming(null)} onRename={(name) => p.onRename(name.trim())} />
     </Bar>
   )
 }
