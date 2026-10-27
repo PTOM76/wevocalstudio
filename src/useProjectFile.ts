@@ -3,13 +3,13 @@ import { useEffect, useRef, useState } from 'react'
 import { startJob, useFilesPicker, useLeaveGuard, useRecentFiles } from 'pevenmui'
 import { canSaveToFolder, configureFileAccess, fileRefOf, saveToFolder, initFileAccess, overwriteTarget, pickSaveTarget, rememberLaunched, type SavedFile } from 'pevenmui/web'
 import { AUDIO_ACCEPT, WVSP_EXT, isWvspFile, EXPORT_EXT, EXPORT_MIME, encodeWav, exportAudio, finishClip, toFrames, type Range } from 'wevocal-lib'
-import { renderMix } from './engine'
+import { renderMix, renderMixChunk } from './engine'
 import type { ExportSettings } from 'wevocal-lib/react'
 import { VIDEO_EXT, VIDEO_MIME, type VideoLook } from 'wevocalconverter/host'
 import type { VideoExportSettings } from 'wevocalconverter/VideoExportDialog'
 import { videoHost } from './addons'
 import type { useT } from './i18n'
-import { missingFx, type Project } from './project'
+import { missingFx, songEnd, type Project } from './project'
 import { isDirty } from './projectTabs'
 import { exportWvsp } from './wvspExport'
 import { optimizeProject, sourcesBytes, type OptimizeOptions } from './optimize'
@@ -23,6 +23,9 @@ initFileAccess({ store: { get: idbGet, put: async (k, v) => void (await idbPut(k
 const isProjectFile = (f: File) => [PROJECT_EXT, LEGACY_PROJECT_EXT].some((e) => f.name.toLowerCase().endsWith(e))
 /** 音声ではなく、プロジェクトとして開くファイル（.wvst、.wvsp）。音声として読み込むと失敗する */
 export const isProjectLike = (f: File) => isProjectFile(f) || isWvspFile(f)
+
+/** 動画のプレビューに描く長さ（秒） */
+const PREVIEW_SECONDS = 10
 
 export function useProjectFile(o: {
   t: ReturnType<typeof useT>
@@ -97,16 +100,12 @@ export function useProjectFile(o: {
 
   /** 書き出す音（全トラックを混ぜ、範囲があれば切り出してから仕上げを掛ける。音声、動画、フォルダーへの保存で共通。WeVocalSynth と同じ） */
   const renderFinished = async (p: Project, range: Range | null, onProgress?: (p: number) => void, signal?: AbortSignal) => {
-    console.time('renderFinished')
     let mix = await renderMix(p, range ? range.end : 0, 48000, onProgress, signal)
-    console.timeLog('renderFinished', 'renderMix')
     if (range) {
       const [s, e] = toFrames(mix, range)
       mix = { sampleRate: mix.sampleRate, channels: mix.channels.map((ch) => ch.slice(s, e)) }
     }
-    const finished = finishClip(mix, { normalize: settings.exportNormalize, fadeMs: settings.exportFadeMs })
-    console.timeEnd('renderFinished')
-    return finished
+    return finishClip(mix, { normalize: settings.exportNormalize, fadeMs: settings.exportFadeMs })
   }
 
   const runExport = async (c: ExportSettings, win?: Window | null) => {
@@ -260,8 +259,13 @@ export function useProjectFile(o: {
     saveOptimized: (opt: OptimizeOptions) => void runOptimizedSave(opt),
     runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
     runVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void runVideoExport(v, look, win),
-    /** 動画のプレビューに使う音（全体） */
-    renderPreview: () => renderFinished(o.project, null),
+    /** 動画のプレビューに使う音（範囲があればその中、なければ曲の真ん中の一部。全体を描くと時間がかかるため） */
+    renderPreview: () => {
+      const from = o.range ? o.range.start : 0
+      const to = o.range ? o.range.end : songEnd(o.project)
+      const dur = Math.min(PREVIEW_SECONDS, Math.max(0.1, to - from))
+      return renderMixChunk(o.project, Math.max(0, from + (to - from - dur) / 2), dur)
+    },
     /** フォルダーへ保存できるブラウザか（Chrome、Edge） */
     canSaveToFolder: canSaveToFolder(),
     saveRangeToFolder: () => void saveRangeToFolder(),

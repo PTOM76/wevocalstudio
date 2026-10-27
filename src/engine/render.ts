@@ -71,6 +71,30 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000, onPro
 
 
 /**
+ * 全トラックを混ぜた音の、曲の時刻 start から dur 秒だけ（ステレオ。マスターまで）。動画のプレビューのように一部だけ要るときに使う。
+ * FX の余韻の分だけ前から流して捨てる（長すぎる余韻は 4 秒まで）。仕上げ（正規化など）は掛けない
+ */
+export async function renderMixChunk(p: Project, start: number, dur: number, sampleRate = 48000): Promise<Clip> {
+  const t0 = Math.max(0, start - Math.min(4, Math.max(0, ...p.tracks.map((t) => prerollOf(p, t)))))
+  const lead = start - t0
+  await preparePitch(p, 0, true)
+  const length = Math.max(128, Math.ceil((lead + dur) * sampleRate))
+  const ctx = new OfflineAudioContext(2, length, sampleRate)
+  await Promise.all([loadMixer(ctx), preloadFx(ctx, ...fxLists(p)), preloadInstruments(ctx, instrumentIds(p))])
+  const graph = new Graph(ctx, -t0)
+  try {
+    graph.sync(p, false)
+    await graph.flush()
+    scheduleAutomation(ctx, graph, p, length, sampleRate, t0)
+    const out = await ctx.startRendering()
+    const from = Math.round(lead * sampleRate)
+    return { sampleRate, channels: [out.getChannelData(0).slice(from), out.getChannelData(1).slice(from)] }
+  } finally {
+    graph.dispose()
+  }
+}
+
+/**
  * 1 本のトラックの、曲の時刻 start から dur 秒の音（ステレオ。音量、位相の反転、FX の列まで。パンとミュート、ソロは含めない）。
  * 先に作って鳴らす（anticipate.ts）ためのもの。状態を作るため、FX の余韻の長さ（prerollOf）だけ前から流して、その分は捨てる
  */
