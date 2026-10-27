@@ -1,6 +1,7 @@
 {
   "about.version": "Version",
   "about.author": "Author",
+
   "block.gain": "Volume (dB)",
   "block.pitch": "Pitch (st)",
   "block.fadeIn": "Fade In (s)",
@@ -33,10 +34,13 @@
   "block.envelopeRange": "Volume envelope range",
   "block.envelopeRangeDefault": "Default (−{n} to +12 dB)",
   "block.envelopeRangeValue": "−{n} to +12 dB",
+
   "error.failed": "Failed: {error}",
   "error.noRecord": "Recording is not supported in this browser",
   "error.noTempo": "Could not detect the tempo",
+
   "licenses.app": "This app",
+
   "menu.file": "File",
   "menu.view": "View",
   "menu.help": "Help",
@@ -172,7 +176,11 @@
   "menu.copyRangeToTrack": "Copy selection to new track",
   "menu.moveRangeToTrack": "Move selection to new track",
   "menu.envelopeShape": "Shape",
+  "menu.wavesToMidi": "Create MIDI block from waveform blocks",
+  "menu.midiToWaves": "Arrange waveform block on MIDI notes",
+
   "screenset.defaultName": "Screenset {n}",
+
   "settings.title": "Settings",
   "settings.general": "General",
   "settings.appearance": "Appearance",
@@ -405,6 +413,7 @@
   "settings.showAnticipateGaugeHelp": "Shows the progress of \"Precompute heavy plugins\" as gauges in the status bar: preparation while stopped, and for each track during playback, how much audio is ready ahead of the playhead",
   "settings.anticipateWhileStopped": "Precompute while stopped",
   "settings.anticipateWhileStoppedHelp": "While stopped, prepares the audio from the cursor to the end of the song (as much as the cache allows). Playback starts more smoothly, but the CPU is used meanwhile. When off, audio is prepared only during playback",
+
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
   "editBar.playRange": "Play range",
@@ -427,6 +436,7 @@
   "editBar.editMidi": "Piano roll",
   "editBar.trackInstrument": "Instrument",
   "editBar.glueMidi": "Glue",
+
   "status.ready": "Ready",
   "status.playing": "Playing",
   "status.exporting": "Exporting…",
@@ -441,6 +451,7 @@
   "status.renameHint": "Click to rename the project (used for saved and exported files)",
   "status.tracks": "{n} tracks",
   "status.projectName": "Project name",
+
   "track.mute": "Mute",
   "track.solo": "Solo",
   "track.volume": "Volume",
@@ -487,6 +498,7 @@
   "track.propertiesHelp": "Mixed values are blank. In a mixed field, prefix a number with + or - to adjust each track by that amount. Only edited fields are applied.",
   "track.mixed": "Mixed",
   "track.displayName": "Display name",
+
   "export.title": "Export",
   "export.format": "Format",
   "export.bits": "Bit depth",
@@ -509,12 +521,14 @@
   "export.fileName": "File name",
   "export.fade": "Edge fade",
   "export.fadeNone": "None",
+
   "common.cancel": "Cancel",
   "common.ok": "OK",
   "common.close": "Close",
   "common.whole": "Whole",
   "common.selection": "Selection",
   "common.stop": "Stop",
+
   "transport.toStart": "Go to start",
   "transport.stop": "Stop",
   "transport.play": "Play",
@@ -525,6 +539,7 @@
   "transport.record": "Record",
   "transport.grid": "Grid",
   "transport.timeInput": "Enter position",
+
   "toast.restored": "Restored your previous work",
   "toast.tempo": "Set the tempo to {bpm} BPM",
   "toast.recentMissing": "Could not open \"{file}\" (it may have been moved or deleted)",
@@ -537,12 +552,15 @@
   "toast.exported": "Exported",
   "toast.voicesSplit": "Split the harmony into two tracks",
   "toast.optimized": "Saved optimized (sources {before} → {after})",
+
   "bake.job": "Commit",
+
   "marker.title": "Marker",
   "marker.name": "Name",
   "marker.remove": "Delete marker",
   "marker.tempo": "Change tempo from here…",
   "marker.rename": "Rename marker…",
+
   "eq.title": "EQ ({name})",
   "eq.on": "On",
   "eq.bandsN": "{n} bands",
@@ -555,6 +573,7 @@
   "eq.range": "Range",
   "eq.applyHelp": "Write the EQ into the track audio and reset the EQ to flat",
   "eq.apply": "Apply",
+
   "analysis.title": "Analysis",
   "analysis.select": "Select a block to show its spectrogram and F0",
   "analysis.busy": "Analyzing…",
@@ -563,6 +582,7 @@
   "analysis.clearCurve": "Clear curve",
   "analysis.grab": "Grab",
   "analysis.grabHelp": "Drag the pitch line up or down. Inside the time selection moves the selection, otherwise the voiced phrase. Shift snaps to semitones",
+
   "history.new": "New project",
   "history.open": "Open",
   "history.import": "Import audio",
@@ -589,10 +609,13 @@
   "history.current": "Current",
   "history.end": "End position",
   "history.midi": "MIDI",
+
   "confirm.newProject": "Close the current work and start a new project? Unsaved changes will be lost.",
   "confirm.discard": "There are unsaved changes. Discard them and open?",
   "confirm.discardOk": "Discard and open",
+
   "meter.master": "Master level",
+
   "job.pitch": "Processing pitch",
   "job.export": "Exporting",
   "job.extract": "Vocal extraction",
@@ -602,15 +625,18 @@
   "job.anticipate": "Precomputing",
   "job.anticipateWarm": "Precomputing {track}",
   "job.anticipateAhead": "{track} buffered ahead (of {sec} s)",
+
   "file.projectType": "WeVocal Studio project",
   "file.wvspType": "WeVocalSynth project",
   "file.audioType": "Audio file",
   "file.openType": "Audio and project files",
+
   "tempo.tap": "Tap tempo",
   "tempo.tapHint": "Tap on the beat a few times to set the BPM from the interval",
   "tempo.candidates": "Detected candidates",
   "tempo.analyze": "Re-analyze",
   "tempo.analyzing": "Analyzing…",
+
   "shortcuts.rightClick": "Right-click",
   "shortcuts.contextMenu": "Edit menu",
   "shortcuts.drag": "Drag",
@@ -629,7 +655,9 @@
   "shortcuts.scroll": "Scroll vertically (Shift: horizontal, Ctrl: zoom)",
   "shortcuts.shiftDrag": "Shift+drag",
   "shortcuts.noSnap": "Move without snapping",
+
   "volume.normalize": "Normalize",
+
   "data.usage": "Usage: {usage} (limit {quota})",
   "data.usageUnknown": "Usage: not available in this browser",
   "data.usageDetails": "Breakdown: cache {caches}, IndexedDB {idb}, service worker {sw}",
@@ -672,15 +700,19 @@
   "data.folderDataHelp": "Settings and autosaved work copied to the specified folder ({size}). You can restore them from here even after removing the PWA",
   "data.folderRestore": "Restore",
   "data.folderRestoreConfirm": "Restore the settings and work data from the specified folder and reload. Your current settings and autosaved work will be replaced. Continue?",
+
   "record.title": "Record",
+
   "window.limit": "The number of windows has reached the limit ({n})",
   "window.limitHint": "Close another window, or change the limit in Settings",
   "window.retry": "Retry",
   "window.noAutosave": "This window is not autosaved",
+
   "folder.saved": "Saved {name} to \"{folder}\"",
   "folder.savedMany": "Saved {n} files to \"{folder}\"",
   "folder.failed": "Could not save to folder: {error}",
   "folder.save": "Save selection to folder",
+
   "addon.vocalExtractor": "Vocal extraction runtime",
   "addon.runtimeGpu": "Vocal extraction runtime (GPU)",
   "addon.runtimeCpu": "Vocal extraction runtime (CPU)",
@@ -709,12 +741,14 @@
   "addon.whisperBaseShort": "Model (Standard, Whisper base)",
   "addon.whisperSmall": "Lyrics transcription model (Precise, Whisper small)",
   "addon.whisperSmallShort": "Model (Precise, Whisper small)",
+
   "extract.gpuFallback": "Could not process on the GPU ({reason}). Continue on the CPU? This takes longer (about 10 times the song length with high-quality models)",
   "extract.gpuFallbackOk": "Continue on CPU",
   "extract.noAdapter": "WebGPU is not available (the browser may have blocked WebGPU for this site; fully restarting the browser may fix it)",
   "extract.split": "Split into vocals and accompaniment",
   "extract.splitLead": "Split into lead, harmony, and accompaniment",
   "extract.splitInstruments": "Split by instrument",
+
   "midi.choose": "Choose MIDI file",
   "midi.loadFailed": "Failed to read the MIDI file: {error}",
   "midi.noNotes": "No notes found",
@@ -728,8 +762,11 @@
   "midi.title": "Fit pitch to MIDI",
   "midi.empty": "The MIDI file has no tracks with notes",
   "midi.exportEmpty": "No notes to export",
+
   "play.preview": "Preview",
+
   "process.semitoneUnit": "st",
+
   "sampler.base": "Selection pitch",
   "sampler.fit": "Length",
   "sampler.fitCut": "As is",
@@ -737,6 +774,7 @@
   "sampler.fitStretch": "Stretch",
   "sampler.hint": "Creates a new track with the selection (or the whole track) placed on each MIDI note at that note's pitch",
   "sampler.title": "Place on MIDI",
+
   "synth.create": "Create",
   "synth.formant": "Formant",
   "synth.hint": "The created audio is added as a new track. You can edit its pitch, length and formant",
@@ -758,17 +796,20 @@
   "synth.voiceU": "Voice (u)",
   "synth.volume": "Volume",
   "synth.open": "Create audio",
+
   "vibrato.depth": "Depth",
   "vibrato.rate": "Rate",
   "vibrato.secondUnit": "s",
   "vibrato.title": "Vibrato",
   "vibrato.delay": "Delay",
   "vibrato.syncBpm": "Match BPM {bpm}",
+
   "preset.button": "Presets",
   "preset.empty": "No saved presets",
   "preset.save": "Save current settings…",
   "preset.remove": "Delete",
   "preset.defaultName": "Preset {n}",
+
   "video.fileType": "Video file",
   "video.bars": "Detail",
   "video.bars128": "Fine (128)",
@@ -807,19 +848,23 @@
   "video.title": "Export as Video",
   "video.unsupported": "This browser does not support video export",
   "video.wave": "Wave",
+
   "task.exporting": "Exporting…",
   "task.extractVocals": "Extracting vocals…",
   "task.splitVoices": "Splitting harmony…",
+
   "pitchTool.flatten": "Flatten pitch fluctuation (selection, or whole)",
   "pitchTool.create": "Create",
   "pitchTool.hint": "The curve appears as a blue line in the pitch lane. Press Apply in the toolbar to render it",
   "pitchTool.target": "Target: {range}",
+
   "snap.title": "Snap to scale",
   "snap.keepShape": "Keep fluctuation (vibrato, etc.)",
   "snap.nearest": "Snap each note to the nearest semitone",
   "snap.note": "Snap everything to",
   "snap.speed": "Glide time",
   "snap.strength": "Strength",
+
   "kanaCut.downloading": "Loading the model… {percent}%",
   "kanaCut.empty": "No lyrics were recognized",
   "kanaCut.failed": "Could not process: {message}",
@@ -840,16 +885,20 @@
   "kanaCut.transcribing": "Transcribing…",
   "kanaCut.vocalsFirst": "Extract vocals first (for songs with accompaniment)",
   "kanaCut.trackName": "{name} (morae)",
+
   "selection.beats": "{n} beats",
   "selection.saveOrDrag": "Click to save to folder, drag to a folder to export (WAV)",
   "selection.dragOut": "Drag to a folder to export (WAV)",
   "selection.mode": "Multi-select",
   "selection.count": "{n} selected",
   "selection.help": "Tap tracks or blocks to add or remove them. Tap again to finish",
+
   "clip.start": "Start",
   "clip.end": "End",
+
   "markerTempo.title": "Tempo from {name}",
   "markerTempo.remove": "Remove tempo",
+
   "algorithm.sola2": "Solis",
   "algorithm.sola2Hint": "For voice. Stays clean on long stretches",
   "algorithm.sola3": "Vesola",
@@ -874,7 +923,9 @@
   "algorithm.pvHint": "For chords and percussion. Smooth stretching",
   "algorithm.sms": "Specraw",
   "algorithm.smsHint": "Experimental. Degrades less on round trips and repeated edits. Works on chords and backing too",
+
   "freeze.job": "Freezing",
+
   "fx.title": "FX ({name})",
   "fx.add": "Add",
   "fx.empty": "No effects. Choose one from Add.",
@@ -912,6 +963,9 @@
   "fx.copy": "Copy",
   "fx.paste": "Paste",
   "fx.duplicate": "Duplicate",
+  "fx.listFold": "Collapse the list",
+  "fx.listUnfold": "Expand the list",
+
   "plugins.intro": "Browse the catalog or enter a plugin URL from a trusted source. Installed plugins are saved on this device and work offline (WebAudio Modules are fetched each time they load).",
   "plugins.url": "URL of a plugin manifest or a WebAudio Module (.js)",
   "plugins.add": "Add",
@@ -958,6 +1012,7 @@
   "plugins.missing.intro": "This project uses plugins that are not installed. Plugins you do not install are bypassed.",
   "plugins.missing.notFound": "Not in the catalog",
   "plugins.missing.close": "Close",
+
   "optimize.title": "Save Optimized",
   "optimize.help": "Saves a lighter copy of the project as a separate file. The current project is not changed",
   "optimize.bake": "Commit processing",
@@ -971,9 +1026,11 @@
   "optimize.dropUnused": "Remove unused sources",
   "optimize.run": "Save…",
   "optimize.job": "Optimizing",
+
   "send.title": "Sends ({name})",
   "send.help": "Sends this track's sound (after the fader) to the input of another track. Send to a track with a reverb to share it among tracks. At the minimum, nothing is sent.",
   "send.none": "No track to send to",
+
   "roll.title": "Piano roll",
   "roll.grid": "Grid",
   "roll.help": "Double-click to add a note. Drag to move, drag the right edge to resize\nRight-click or Delete to remove. Shift+click to add to the selection\nArrows move (Shift+Up/Down: octave). Ctrl+C, X, V, D, G, Q\nTools: E select, P pen, D eraser, C slice, T mute\nHold Alt to ignore the grid\nCtrl+wheel zooms, Shift+wheel scrolls",
@@ -1036,17 +1093,20 @@
   "roll.rest": "Rest",
   "roll.fold": "Fold keys (only notes' pitches)",
   "roll.loopPlay": "Loop playback of the block",
+
   "instrument.title": "Instrument ({name})",
   "instrument.help": "The instrument that plays the notes of MIDI blocks. Volume, FX, and pan use the track's.",
   "instrument.plugin": "Instrument",
   "instrument.none": "None",
   "instrument.sample": "Sample source",
   "instrument.noSample": "Not selected",
+
   "midiProps.title": "MIDI block properties",
   "midiProps.length": "Length",
   "midiProps.notes": "{n} notes",
   "midiProps.mute": "Mute",
   "midiProps.loop": "Loop length",
+
   "tool.title": "Process with plugin",
   "tool.analyzeTitle": "Analyze with plugin",
   "tool.plugin": "Plugin",
@@ -1055,7 +1115,9 @@
   "tool.running": "Working…",
   "tool.noSelection": "Select waveform blocks first",
   "tool.help": "Runs on the current sound of {n} selected waveform blocks and replaces them with the result as a new source (undoable)",
+
   "project.name": "Project name",
+
   "glide.title": "Glide pitch between blocks",
   "glide.duration": "Glide duration (ms)",
   "glide.durationHelp": "The duration is limited to half of each block's length",
@@ -1069,6 +1131,7 @@
   "glide.shapeBezier": "Bezier",
   "glide.tension": "Bezier tension: {n}",
   "glide.tensionHelp": "Negative values start slowly; positive values start quickly",
+
   "midiImport.title": "Import MIDI file",
   "midiImport.splitChannels": "Split tracks by channel",
   "midiImport.tempo": "Tempo",
@@ -1076,23 +1139,26 @@
   "midiImport.atCursor": "Edit cursor",
   "midiImport.atStart": "Start of project",
   "midiImport.run": "Import",
+
   "dock.dock": "Dock",
   "dock.undock": "Show as a dialog",
   "dock.edgeBottom": "Dock at the bottom",
   "dock.edgeLeft": "Dock on the left",
   "dock.edgeRight": "Dock on the right",
   "dock.edgeTop": "Dock at the top",
+
   "hint.touch": "Double-tap a block for its properties, or long-press for a menu. Close the track list with «.",
+
   "empty.formats": "WAV / AIFF / MP3 / MP4 etc. (drag & drop supported)",
   "empty.choose": "Choose a file",
   "empty.showMore": "Show more ({n})",
   "empty.showLess": "Show less",
+
   "tabs.close": "Close",
   "tabs.add": "New project",
+
   "tempoChange.title": "Tempo change detected",
   "tempoChange.message": "The tempo may change at the following positions. If you use them, tempo markers will be placed. Select a row to move to that position",
   "tempoChange.keep": "Keep constant tempo",
-  "tempoChange.adopt": "Use",
-  "fx.listFold": "Collapse the list",
-  "fx.listUnfold": "Expand the list"
+  "tempoChange.adopt": "Use"
 }

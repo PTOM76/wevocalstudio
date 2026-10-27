@@ -1,6 +1,7 @@
 {
   "about.version": "バージョン",
   "about.author": "作者",
+
   "block.gain": "音量 (dB)",
   "block.pitch": "ピッチ (半音)",
   "block.fadeIn": "フェードイン (秒)",
@@ -33,10 +34,13 @@
   "block.envelopeRange": "音量エンベロープの範囲",
   "block.envelopeRangeDefault": "既定値（−{n} ～ +12 dB）",
   "block.envelopeRangeValue": "−{n} ～ +12 dB",
+
   "error.failed": "処理に失敗しました: {error}",
   "error.noRecord": "このブラウザでは録音できません",
   "error.noTempo": "テンポを見つけられませんでした",
+
   "licenses.app": "このアプリ",
+
   "menu.file": "ファイル",
   "menu.view": "表示",
   "menu.help": "ヘルプ",
@@ -172,7 +176,11 @@
   "menu.copyRangeToTrack": "選択範囲を新しいトラックへコピー",
   "menu.moveRangeToTrack": "選択範囲を新しいトラックへ移動",
   "menu.envelopeShape": "形状",
+  "menu.wavesToMidi": "波形ブロックから MIDI ブロックを作る",
+  "menu.midiToWaves": "MIDI ブロックの音符に波形ブロックを並べる",
+
   "screenset.defaultName": "配置 {n}",
+
   "settings.title": "設定",
   "settings.general": "全般",
   "settings.appearance": "表示",
@@ -405,6 +413,7 @@
   "settings.showAnticipateGaugeHelp": "「重いプラグインを先に計算して鳴らす」の進み具合を、状態バーのゲージに表示する。止めている間は準備の進み、再生中はトラックごとに、再生位置から先にできている量を表示する",
   "settings.anticipateWhileStopped": "止めている間も先に計算する",
   "settings.anticipateWhileStoppedHelp": "止めている間に、カーソルの位置から曲の終わりまで（置き場の量に収まる分）の音を作っておく。再生を始めたときに途切れにくくなるが、その間 CPU を使う。オフにすると、作るのは再生中だけになる",
+
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
   "editBar.playRange": "範囲を再生",
@@ -427,6 +436,7 @@
   "editBar.editMidi": "ピアノロール",
   "editBar.trackInstrument": "音源",
   "editBar.glueMidi": "つなぐ",
+
   "status.ready": "準備完了",
   "status.playing": "再生中",
   "status.exporting": "書き出し中…",
@@ -441,6 +451,7 @@
   "status.renameHint": "押すとプロジェクトの名前を変えられます（保存と書き出しのファイル名になります）",
   "status.tracks": "{n} トラック",
   "status.projectName": "プロジェクトの名前",
+
   "track.mute": "ミュート",
   "track.solo": "ソロ",
   "track.volume": "音量",
@@ -487,6 +498,7 @@
   "track.propertiesHelp": "値が混在する欄は空欄です。混在時に + または - を付けて入力すると各トラックの値から増減します。変更した欄だけ適用します。",
   "track.mixed": "混在",
   "track.displayName": "表示名",
+
   "export.title": "書き出す",
   "export.format": "形式",
   "export.bits": "サンプル形式",
@@ -509,12 +521,14 @@
   "export.fileName": "ファイル名",
   "export.fade": "両端のフェード",
   "export.fadeNone": "なし",
+
   "common.cancel": "キャンセル",
   "common.ok": "OK",
   "common.close": "閉じる",
   "common.whole": "全体",
   "common.selection": "選択範囲",
   "common.stop": "停止",
+
   "transport.toStart": "先頭へ",
   "transport.stop": "停止",
   "transport.play": "再生",
@@ -525,6 +539,7 @@
   "transport.record": "録音",
   "transport.grid": "グリッド",
   "transport.timeInput": "再生位置を入力",
+
   "toast.restored": "前回の作業を復元しました",
   "toast.tempo": "テンポを {bpm} BPM にしました",
   "toast.recentMissing": "「{file}」を開けませんでした（移動または削除された可能性があります）",
@@ -537,12 +552,15 @@
   "toast.exported": "書き出しました",
   "toast.voicesSplit": "和音を2つのトラックに分離しました",
   "toast.optimized": "最適化して保存しました（元の音 {before} → {after}）",
+
   "bake.job": "確定",
+
   "marker.title": "マーカー",
   "marker.name": "名前",
   "marker.remove": "マーカーを削除",
   "marker.tempo": "ここからテンポを変える…",
   "marker.rename": "マーカーの名前を変更…",
+
   "eq.title": "EQ（{name}）",
   "eq.on": "オン",
   "eq.bandsN": "{n} 帯",
@@ -555,6 +573,7 @@
   "eq.range": "上限",
   "eq.applyHelp": "EQをトラックの音声に書き込み、EQを平らに戻します",
   "eq.apply": "適用",
+
   "analysis.title": "解析",
   "analysis.select": "波形ブロックを選ぶと、スペクトログラムと F0 を表示します",
   "analysis.busy": "解析中…",
@@ -563,6 +582,7 @@
   "analysis.clearCurve": "カーブを消す",
   "analysis.grab": "つかむ",
   "analysis.grabHelp": "線をつかんで上下に動かします。範囲選択の中なら範囲を、外なら声が途切れる所までの一続きを動かします。Shift で半音きざみ",
+
   "history.new": "新しいプロジェクト",
   "history.open": "開く",
   "history.import": "音声の読み込み",
@@ -589,10 +609,13 @@
   "history.current": "現在",
   "history.end": "最終位置",
   "history.midi": "MIDI",
+
   "confirm.newProject": "今の作業を閉じて、新しいプロジェクトにしますか？（保存していない変更は失われます）",
   "confirm.discard": "保存していない変更があります。破棄して開きますか？",
   "confirm.discardOk": "破棄して開く",
+
   "meter.master": "全体の音量",
+
   "job.pitch": "ピッチなどを処理中",
   "job.export": "書き出し中",
   "job.extract": "ボーカル抽出",
@@ -602,15 +625,18 @@
   "job.anticipate": "先に計算中",
   "job.anticipateWarm": "{track} を先に計算中",
   "job.anticipateAhead": "{track} の先読み（{sec} 秒に対する量）",
+
   "file.projectType": "WeVocal Studio プロジェクト",
   "file.wvspType": "WeVocalSynth プロジェクト",
   "file.audioType": "音声ファイル",
   "file.openType": "音声とプロジェクトのファイル",
+
   "tempo.tap": "タップで計測",
   "tempo.tapHint": "拍に合わせてタップした間隔から BPM を算出します",
   "tempo.candidates": "自動解析の候補",
   "tempo.analyze": "再解析",
   "tempo.analyzing": "解析中…",
+
   "shortcuts.rightClick": "右クリック",
   "shortcuts.contextMenu": "編集メニュー",
   "shortcuts.drag": "ドラッグ",
@@ -629,7 +655,9 @@
   "shortcuts.scroll": "縦にスクロール（Shift で横、Ctrl で拡大縮小）",
   "shortcuts.shiftDrag": "Shift+ドラッグ",
   "shortcuts.noSnap": "吸い付けずに動かす",
+
   "volume.normalize": "ノーマライズ",
+
   "data.usage": "使用量: {usage}（上限{quota}）",
   "data.usageUnknown": "使用量: このブラウザでは確認できません",
   "data.usageDetails": "内訳: キャッシュ {caches}、IndexedDB {idb}、Service Worker {sw}",
@@ -672,15 +700,19 @@
   "data.folderDataHelp": "指定したフォルダーに写した設定と自動保存した作業（{size}）。PWA を削除したあとも、ここから戻せます",
   "data.folderRestore": "戻す",
   "data.folderRestoreConfirm": "指定したフォルダーの設定と作業データをブラウザに戻して、再読み込みします。今の設定と自動保存した作業は置き換わります。よろしいですか？",
+
   "record.title": "録音",
+
   "window.limit": "ウィンドウの数が上限（{n}）に達しています",
   "window.limitHint": "ほかのウィンドウを閉じるか、設定で上限を変更してください",
   "window.retry": "再試行",
   "window.noAutosave": "このウィンドウは自動保存されません",
+
   "folder.saved": "「{folder}」に{name}を保存しました",
   "folder.savedMany": "「{folder}」に{n}個のファイルを保存しました",
   "folder.failed": "フォルダーへ保存できませんでした: {error}",
   "folder.save": "選択範囲をフォルダーへ保存",
+
   "addon.vocalExtractor": "ボーカル抽出の実行環境",
   "addon.runtimeGpu": "ボーカル抽出の実行環境（GPU）",
   "addon.runtimeCpu": "ボーカル抽出の実行環境（CPU）",
@@ -709,12 +741,14 @@
   "addon.whisperBaseShort": "モデル（標準、Whisper base）",
   "addon.whisperSmall": "歌詞の文字化のモデル（高精度、Whisper small）",
   "addon.whisperSmallShort": "モデル（高精度、Whisper small）",
+
   "extract.gpuFallback": "GPUで処理できませんでした（{reason}）。CPUで続けますか？ CPUでは時間がかかります（高品質モデルは曲の長さの約10倍）",
   "extract.gpuFallbackOk": "CPUで続ける",
   "extract.noAdapter": "WebGPUを使用できません（ブラウザがこのサイトのWebGPUを止めている可能性があります。ブラウザを完全に終了して開き直すと直ることがあります）",
   "extract.split": "ボーカルと伴奏に分離",
   "extract.splitLead": "主旋律、ハモリ、伴奏に分離",
   "extract.splitInstruments": "楽器ごとに分離",
+
   "midi.choose": "MIDIファイルを選択",
   "midi.loadFailed": "MIDIファイルを読み込めませんでした: {error}",
   "midi.noNotes": "音符がありません",
@@ -728,8 +762,11 @@
   "midi.title": "MIDIの音程を当てはめる",
   "midi.empty": "音符のある MIDI のトラックがありません",
   "midi.exportEmpty": "書き出す音符がありません",
+
   "play.preview": "試聴",
+
   "process.semitoneUnit": "半音",
+
   "sampler.base": "選択範囲の音程",
   "sampler.fit": "長さ",
   "sampler.fitCut": "そのまま",
@@ -737,6 +774,7 @@
   "sampler.fitStretch": "伸縮",
   "sampler.hint": "選択範囲（なければ全体）を、MIDIの音符ごとに高さを変えて並べた新しいトラックを作成します",
   "sampler.title": "MIDIに並べる",
+
   "synth.create": "作成",
   "synth.formant": "フォルマント",
   "synth.hint": "作成した音声は新しいトラックとして追加されます。ピッチ、長さ、フォルマントの加工に使用できます",
@@ -758,17 +796,20 @@
   "synth.voiceU": "声（う）",
   "synth.volume": "音量",
   "synth.open": "音声を作成",
+
   "vibrato.depth": "深さ",
   "vibrato.rate": "速さ",
   "vibrato.secondUnit": "秒",
   "vibrato.title": "ビブラート",
   "vibrato.delay": "遅れ",
   "vibrato.syncBpm": "BPM {bpm}に合わせる",
+
   "preset.button": "プリセット",
   "preset.empty": "保存したプリセットはありません",
   "preset.save": "今の設定を保存…",
   "preset.remove": "削除",
   "preset.defaultName": "プリセット{n}",
+
   "video.fileType": "動画ファイル",
   "video.bars": "細かさ",
   "video.bars128": "細かい（128）",
@@ -807,19 +848,23 @@
   "video.title": "動画ファイルに書き出す",
   "video.unsupported": "このブラウザは動画の書き出しに対応していません",
   "video.wave": "波形",
+
   "task.exporting": "書き出し中…",
   "task.extractVocals": "ボーカル抽出中…",
   "task.splitVoices": "和音を分離しています…",
+
   "pitchTool.flatten": "ピッチの揺れを平らにする（選択範囲、なければ全体）",
   "pitchTool.create": "作成",
   "pitchTool.hint": "作成した曲線はピッチパネルに青い線で表示されます。ツールバーの「適用」で音声に反映します",
   "pitchTool.target": "対象: {range}",
+
   "snap.title": "音階に揃える",
   "snap.keepShape": "揺れ（ビブラートなど）を残す",
   "snap.nearest": "音ごとに近い半音へ揃える",
   "snap.note": "指定した音に揃える",
   "snap.speed": "揃えるまでの時間",
   "snap.strength": "強さ",
+
   "kanaCut.downloading": "モデルを読み込み中… {percent}%",
   "kanaCut.empty": "歌詞を認識できませんでした",
   "kanaCut.failed": "処理できませんでした: {message}",
@@ -840,16 +885,20 @@
   "kanaCut.transcribing": "文字化しています…",
   "kanaCut.vocalsFirst": "先にボーカルを抽出する（伴奏がある場合）",
   "kanaCut.trackName": "{name}（一音ずつ）",
+
   "selection.beats": "{n}拍",
   "selection.saveOrDrag": "クリックでフォルダーへ保存、ドラッグでフォルダーへ書き出し（WAV）",
   "selection.dragOut": "ドラッグしてフォルダーへ書き出す（WAV）",
   "selection.mode": "複数選択",
   "selection.count": "{n} 個選択中",
   "selection.help": "タップでトラックやブロックを選択し、もう一度押すと終了します",
+
   "clip.start": "開始",
   "clip.end": "終了",
+
   "markerTempo.title": "「{name}」からのテンポ",
   "markerTempo.remove": "テンポを外す",
+
   "algorithm.sola2": "Solis",
   "algorithm.sola2Hint": "声向け。大きく伸ばしても荒れにくい",
   "algorithm.sola3": "Vesola",
@@ -874,7 +923,9 @@
   "algorithm.pvHint": "和音、打楽器向け。滑らかに伸ばす",
   "algorithm.sms": "Specraw",
   "algorithm.smsHint": "試験的。往復や重ねた加工で劣化しにくい方式。和音や伴奏にも",
+
   "freeze.job": "フリーズ中",
+
   "fx.title": "FX（{name}）",
   "fx.add": "追加",
   "fx.empty": "エフェクトがありません。追加から選んでください。",
@@ -912,6 +963,9 @@
   "fx.copy": "コピー",
   "fx.paste": "貼り付け",
   "fx.duplicate": "複製",
+  "fx.listFold": "一覧を閉じる",
+  "fx.listUnfold": "一覧を開く",
+
   "plugins.intro": "カタログから選ぶか、信頼できるプラグインの URL を入力する。追加したプラグインはこの端末に保存され、オフラインでも使用できる（WebAudio Modules は読み込みのたびに取得する）",
   "plugins.url": "プラグインのマニフェスト、または WebAudio Modules（.js）の URL",
   "plugins.add": "追加",
@@ -958,6 +1012,7 @@
   "plugins.missing.intro": "このプロジェクトで使用しているプラグインのうち、インストールされていないものがあります。インストールしないプラグインは素通しになります。",
   "plugins.missing.notFound": "カタログにありません",
   "plugins.missing.close": "閉じる",
+
   "optimize.title": "最適化して保存",
   "optimize.help": "プロジェクトを軽くして、別のファイルとして保存します。今のプロジェクトは変わりません",
   "optimize.bake": "加工の確定",
@@ -971,9 +1026,11 @@
   "optimize.dropUnused": "使っていない元の音を消す",
   "optimize.run": "保存…",
   "optimize.job": "最適化中",
+
   "send.title": "センド（{name}）",
   "send.help": "このトラックの音（フェーダーのあと）を、ほかのトラックの入口へ送ります。リバーブなどを入れたトラックに送ると、複数のトラックで共有できます。下限にすると送りません。",
   "send.none": "送れるトラックがありません",
+
   "roll.title": "ピアノロール",
   "roll.grid": "グリッド",
   "roll.help": "ダブルクリックで音符を足す。ドラッグで動かし、右端で長さを変える\n右クリックか Delete で消す。Shift+クリックで選択の足し引き\n矢印で動かす（Shift+上下でオクターブ）。Ctrl+C、X、V、D、G、Q\n道具の切り替え: E 選択、P ペン、D 消しゴム、C 分割、T ミュート\nAlt を押している間はグリッドに合わせない\nCtrl+ホイールで拡大、Shift+ホイールで横に移動",
@@ -1036,17 +1093,20 @@
   "roll.rest": "休符",
   "roll.fold": "鍵盤の折りたたみ（音符のある高さだけ）",
   "roll.loopPlay": "ブロックの範囲を繰り返し再生",
+
   "instrument.title": "音源（{name}）",
   "instrument.help": "MIDI ブロックの音符を鳴らす音源です。音源を選ぶと、音量、FX、パンはトラックのものを使います",
   "instrument.plugin": "音源",
   "instrument.none": "なし",
   "instrument.sample": "音色にする元の音",
   "instrument.noSample": "選んでいない",
+
   "midiProps.title": "MIDI ブロックのプロパティ",
   "midiProps.length": "長さ",
   "midiProps.notes": "音符 {n} 個",
   "midiProps.mute": "ミュート",
   "midiProps.loop": "ループの長さ",
+
   "tool.title": "プラグインで処理",
   "tool.analyzeTitle": "プラグインで解析",
   "tool.plugin": "プラグイン",
@@ -1055,7 +1115,9 @@
   "tool.running": "処理中…",
   "tool.noSelection": "波形ブロックを選んでください",
   "tool.help": "選んだ波形ブロック {n} 個の今の音に対して実行し、結果の音を新しい元の音にして置き換えます（元に戻せます）",
+
   "project.name": "プロジェクト名",
+
   "glide.title": "ピッチをなめらかにつなぐ",
   "glide.duration": "つなぐ長さ (ms)",
   "glide.durationHelp": "各波形ブロックの長さの半分まで適用します",
@@ -1069,6 +1131,7 @@
   "glide.shapeBezier": "ベジェ",
   "glide.tension": "ベジェの張り具合: {n}",
   "glide.tensionHelp": "負の値はゆっくり開始、正の値は速く開始します",
+
   "midiImport.title": "MIDI ファイルを読み込む",
   "midiImport.splitChannels": "チャンネルごとにトラックを分ける",
   "midiImport.tempo": "テンポ",
@@ -1076,23 +1139,26 @@
   "midiImport.atCursor": "編集カーソルの位置",
   "midiImport.atStart": "先頭",
   "midiImport.run": "読み込む",
+
   "dock.dock": "欄に置く",
   "dock.undock": "ダイアログにする",
   "dock.edgeBottom": "下に置く",
   "dock.edgeLeft": "左に置く",
   "dock.edgeRight": "右に置く",
   "dock.edgeTop": "上に置く",
+
   "hint.touch": "ブロックはダブルタップでプロパティ、長押しでメニューを開けます。トラックの欄は « で閉じられます",
+
   "empty.formats": "WAV / AIFF / MP3 / MP4など（ドラッグ＆ドロップ可）",
   "empty.choose": "ファイルを選択",
   "empty.showMore": "もっと見る（あと{n}件）",
   "empty.showLess": "閉じる",
+
   "tabs.close": "閉じる",
   "tabs.add": "新しいプロジェクト",
+
   "tempoChange.title": "テンポの変化が検出されました",
   "tempoChange.message": "次の位置でテンポが変わっている可能性があります。採用すると、テンポのマーカーが配置されます。行を選択すると、その位置へ移動します",
   "tempoChange.keep": "一定のテンポにする",
-  "tempoChange.adopt": "採用する",
-  "fx.listFold": "一覧を閉じる",
-  "fx.listUnfold": "一覧を開く"
+  "tempoChange.adopt": "採用する"
 }

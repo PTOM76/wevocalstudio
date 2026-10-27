@@ -1,5 +1,6 @@
 // コマンドの表（操作の名前 → 実行と、押せるか）。キーの割り当て（keymap.ts）とメニューが、名前で呼ぶ
 import { glueMidi } from '../midiLoop'
+import { midiToWaves, wavesToMidi } from '../midiConvert'
 import { type Action } from '../keymap'
 import { newId, midiBlocks } from '../project'
 import { reverseBlocks } from '../reverse'
@@ -74,6 +75,21 @@ export const COMMANDS = defineCommands({
   },
   importMidi: { label: 'menu.importMidi' as MessageKey, run: ({ c }) => c.importMidi() },
   glueMidi: { label: 'menu.glueMidi' as MessageKey, enabled: ({ midiChosen }) => midiChosen.length > 1, run: ({ doc, midiChosen }) => doc.apply((q) => glueMidi(q, midiChosen.map((b) => b.id))) },
+  // 選んだ波形ブロックを音符にした MIDI ブロックを、新しいトラックに作る
+  wavesToMidi: {
+    label: 'menu.wavesToMidi' as MessageKey,
+    enabled: ({ anyWave }) => anyWave,
+    run: ({ doc, ids }) => {
+      const r = wavesToMidi(doc.project, ids, 'MIDI')
+      if (r.id) doc.apply(() => r.project, undefined, { selected: [r.id] })
+    },
+  },
+  // 選んだ MIDI ブロックの音符の位置に、選んだ波形ブロックを（音程の差だけピッチを変えて）並べる
+  midiToWaves: {
+    label: 'menu.midiToWaves' as MessageKey,
+    enabled: ({ midiSel, chosen }) => !!midiSel && chosen.length > 0,
+    run: ({ doc, midiSel, chosen }) => midiSel && chosen[0] && doc.apply((q) => midiToWaves(q, midiSel.id, chosen[0].id, doc.project.tracks.find((tr) => tr.id === midiSel.track)?.name || 'MIDI')),
+  },
   exportMidi: { label: 'menu.exportMidi' as MessageKey, enabled: ({ doc }) => midiBlocks(doc.project).length > 0, run: ({ c, midiChosen }) => c.exportMidi(midiChosen.map((b) => b.id)) },
   pluginTool: { label: 'menu.pluginTool' as MessageKey, run: ({ c }) => c.openDialog('tool') },
   pluginAnalyze: { label: 'menu.pluginAnalyze' as MessageKey, run: ({ c }) => c.openDialog('analyze') },

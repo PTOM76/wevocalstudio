@@ -43,7 +43,7 @@ export function buildMenus(env: CommandEnv, commands: Record<Action, CommandView
     {
       label: t('menu.block'),
       accessKey: 'I',
-      entries: [item('properties'), divider, sub('menu.pitchGroup', [item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('glidePitch'), item('vibratoEnvelope')]), sub('menu.midiGroup', [item('addMidiBlock'), item('importMidi'), item('exportMidi'), divider, item('glueMidi'), item('editMidi'), item('trackInstrument')]), divider, item('normalize'), item('reverse'), item('bake')],
+      entries: [item('properties'), divider, sub('menu.pitchGroup', [item('pitchUp'), item('pitchDown'), item('pitchUpFine'), item('pitchDownFine'), item('pitchReset'), divider, item('glidePitch'), item('vibratoEnvelope')]), sub('menu.midiGroup', [item('addMidiBlock'), item('importMidi'), item('exportMidi'), divider, item('glueMidi'), item('wavesToMidi'), item('midiToWaves'), item('editMidi'), item('trackInstrument')]), divider, item('normalize'), item('reverse'), item('bake')],
     },
     {
       label: t('menu.track'),
@@ -171,6 +171,7 @@ export function buildMenus(env: CommandEnv, commands: Record<Action, CommandView
     item('delete', t('menu.deleteBlock')),
     divider,
     item('glueMidi'),
+    item('midiToWaves'),
     item('exportMidi'),
   ]
   const blockMenu = chosen.length === 0 && midiChosen.length > 0 ? midiMenu : waveMenu

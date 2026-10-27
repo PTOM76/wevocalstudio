@@ -46,6 +46,8 @@ export type Action =
   | 'importMidi'
   | 'exportMidi'
   | 'glueMidi'
+  | 'wavesToMidi'
+  | 'midiToWaves'
   | 'editMidi'
   | 'trackInstrument'
   | 'sampler'
@@ -161,6 +163,8 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   importMidi: [],
   exportMidi: [],
   glueMidi: [],
+  wavesToMidi: [],
+  midiToWaves: [],
   editMidi: [],
   trackInstrument: [],
   sampler: [],
