@@ -256,3 +256,38 @@ pub unsafe extern "C" fn stitch_planar(input: *const f32, frames: usize, channel
 pub extern "C" fn output_ptr() -> *const f32 {
     OUTPUT.with(|o| o.borrow().as_ptr())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rms(x: &[f32]) -> f64 {
+        (x.iter().map(|&v| (v as f64).powi(2)).sum::<f64>() / x.len().max(1) as f64).sqrt()
+    }
+
+    /// 定数のピッチ比を曲線の経路に通したときの音量（RMS）が、ずらし量で下がらないことを見る
+    #[test]
+    #[ignore = "遅いので手動で実行する（cargo test -- --ignored --nocapture）"]
+    fn curve_rms_by_shift() {
+        let sr = 44100.0f32;
+        let n = (sr * 2.0) as usize;
+        let sig: Vec<f32> = (0..n)
+            .map(|i| {
+                let t = i as f32 / sr;
+                0.3 * (2.0 * std::f32::consts::PI * 220.0 * t).sin() + 0.15 * (2.0 * std::f32::consts::PI * 660.0 * t).sin()
+            })
+            .collect();
+        let base = rms(&sig);
+        for algo in [0u32, 1, 2] {
+            for st in [0.0f32, 12.0, 13.0, 24.0, 25.0, 30.0] {
+                let ratios = vec![2f32.powf(st / 12.0); 20];
+                let out = unsafe {
+                    process_curve_planar(sig.as_ptr(), n, 1, sr, ratios.as_ptr(), ratios.len(), 4410.0, algo, 0, 0.0, 1.0)
+                };
+                let o = OUTPUT.with(|o| o.borrow().clone());
+                assert_eq!(o.len(), out);
+                println!("algo {algo} +{st:>4}: len {out} rms {:.4} ({:.2} dB)", rms(&o), 20.0 * (rms(&o) / base).log10());
+            }
+        }
+    }
+}
