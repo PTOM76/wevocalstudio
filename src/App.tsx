@@ -99,6 +99,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const [restored, setRestored] = useState(false)
   // ダイアログの開閉（PevenMUI の useDialogs。WeVocalSynth と同じ）。描画は AppDialogs.tsx
   const dialogs = useDialogs()
+  // 非同期の処理の後で、ダイアログがまだ開いているかを見るための最新の状態
+  const dialogsRef = useRef(dialogs)
+  dialogsRef.current = dialogs
   const audioInput = useRef<HTMLInputElement>(null)
   // 時間軸に出すのは見えているトラックだけ（たたんだ親の子孫は隠す）
   const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project])
@@ -244,7 +247,10 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     exportVideo: () =>
       void (async () => {
         if (!(await addonInstall.ensure(CONVERTER_ADDON))) return
-        dialogs.open('video', await files.renderPreview())
+        // 全体のミックスは時間がかかるので、無音の仮の音で先に開き、できたら差し替える
+        dialogs.open('video', { sampleRate: 48000, channels: [new Float32Array(48000)] })
+        const clip = await files.renderPreview()
+        if (dialogsRef.current.isOpen('video')) dialogs.open('video', clip)
       })().catch(fail),
     bake: (ids) => void bake(ids),
     extract: { vocals: (id) => void extract.splitVocals(id), lead: (id) => void extract.splitLead(id), instruments: (id) => void extract.splitInstruments(id), voices: (id, by) => void extract.splitVoices(id, by) },
