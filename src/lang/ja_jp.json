@@ -625,6 +625,7 @@
   "job.anticipate": "先に計算中",
   "job.anticipateWarm": "{track} を先に計算中",
   "job.anticipateAhead": "{track} の先読み（{sec} 秒に対する量）",
+  "job.download": "ダウンロード中",
 
   "file.projectType": "WeVocal Studio プロジェクト",
   "file.wvspType": "WeVocalSynth プロジェクト",

@@ -625,6 +625,7 @@
   "job.anticipate": "Precomputing",
   "job.anticipateWarm": "Precomputing {track}",
   "job.anticipateAhead": "{track} buffered ahead (of {sec} s)",
+  "job.download": "Downloading",
 
   "file.projectType": "WeVocal Studio project",
   "file.wvspType": "WeVocalSynth project",
