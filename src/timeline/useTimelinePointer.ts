@@ -6,7 +6,7 @@ import { fracToParam } from 'wevocal-lib'
 import { useDoubleTap, useLongPress } from 'pevenmui'
 import { allLanes, hitAutoPoint, laneAt } from '../autoLane'
 import { hitMidi } from '../midiBlocks'
-import { projectEnd, midiBlocks } from '../project'
+import { projectEnd, midiBlocks, songEnd } from '../project'
 import { ENVELOPES, envelopeRange, hitEnvLine, hitEnvPoint } from '../envelopes'
 import { snapGrid, snapToStep } from '../grid'
 import { CURSOR, hitBlock } from '../blockDrag'
@@ -51,7 +51,7 @@ export function useTimelinePointer(o: {
   const doc = useDoc()
   // Shift+クリックの起点（前に押した波形ブロック）
   // 操作中の状態は 1 つ（gesture.ts）。操作を始めると前の操作は終わる
-  const { drag, rangeDrag, scrub, envDrag, autoDrag, midiDrag, marquee, pan } = useGestures()
+  const { drag, rangeDrag, scrub, envDrag, autoDrag, midiDrag, endDrag, marquee, pan } = useGestures()
   const anchor = useRef<string | null>(null)
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const dragCount = useRef(0)
@@ -230,6 +230,11 @@ export function useTimelinePointer(o: {
     const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) : null
     if (y < RULER) {
       e.currentTarget.setPointerCapture(e.pointerId)
+      // 曲の終わりの旗をつかんだら、終わりの位置を動かす
+      if (onEndFlag(x)) {
+        endDrag.current = { merge: `end${dragCount.current++}` }
+        return
+      }
       scrub.current = true
       p.onSeek(gridAt(x, e.shiftKey))
       return
@@ -344,6 +349,14 @@ export function useTimelinePointer(o: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.scroll])
 
+  /** 目盛りの上で、曲の終わりの旗（線の左の三角を含む）を押したか */
+  const onEndFlag = (x: number) => {
+    const last = songEnd(p.project)
+    if (last <= 0) return false
+    const ex = (last - view.scroll) * view.pps
+    return x >= ex - 11 && x <= ex + 4
+  }
+
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     longPress.move(e.clientX, e.clientY)
     if (touch.move(e)) return
@@ -395,6 +408,9 @@ export function useTimelinePointer(o: {
       doc.select(marqueeIds(p.project, mq.x, mq.y, x, y, toTime, slotAt), `marquee${mq.x},${mq.y}`)
       return
     }
+    if (endDrag.current) {
+      return doc.setEnd(Math.max(0, gridAt(x, e.shiftKey)), endDrag.current.merge)
+    }
     if (scrub.current) {
       edge.update(e.clientX)
       return p.onSeek(gridAt(x, e.shiftKey))
@@ -410,6 +426,7 @@ export function useTimelinePointer(o: {
     const d = drag.current
     if (!d) {
       // つまめる所でカーソルの形を変える
+      if (y < RULER && onEndFlag(x)) return setCursor('ew-resize')
       const hit = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps) ?? hitMidi(p.project, x, y, toTime, view.pps) : null
       setCursor(hit ? CURSOR[hit.kind] : 'default')
       return
@@ -458,6 +475,7 @@ export function useTimelinePointer(o: {
     const d = drag.current
     if (d?.copy && !d.copy.done && d.copy.wasSelected) doc.select(doc.selected.filter((s) => s !== d.block.id))
     rangeDrag.current = null
+    endDrag.current = null
     scrub.current = false
     edge.stop()
     blockEdge.stop()

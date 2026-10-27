@@ -189,7 +189,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   const removeMarker = useCallback((id: string) => change((p) => projectEdit.removeMarker(p, id)), [change])
 
   /** 曲の終わりを決める。null で自動に戻す */
-  const setEnd = useCallback((time: number | null) => change((p) => projectEdit.setEnd(p, time)), [change])
+  const setEnd = useCallback((time: number | null, merge?: string) => change((p) => projectEdit.setEnd(p, time), merge), [change])
 
   /** テンポを変える。MIDI ブロックは拍の位置を保つよう、位置と長さ（秒）を直す */
   const updateTempo = useCallback((patch: Partial<Tempo>, merge?: string) => change((p) => projectEdit.patchTempo(p, patch), merge), [change])

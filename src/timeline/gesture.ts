@@ -31,6 +31,10 @@ export interface MidiDrag {
   orig: MidiBlock
   alt: boolean
 }
+/** 目盛りの曲の終わりの旗をドラッグしている所（merge は履歴を 1 つにまとめる印） */
+export interface EndDrag {
+  merge: string
+}
 /** 右ドラッグの枠で選ぶ。moved なら右クリックのメニューは出さない */
 export interface Marquee {
   x: number
@@ -52,6 +56,7 @@ export type Gesture =
   | { type: 'env'; value: EnvDrag }
   | { type: 'auto'; value: AutoDrag }
   | { type: 'midi'; value: MidiDrag }
+  | { type: 'end'; value: EndDrag }
   | { type: 'marquee'; value: Marquee }
   | { type: 'pan'; value: PanDrag }
 
@@ -85,6 +90,7 @@ export function gestureSlots(gesture: { current: Gesture | null }) {
     envDrag: slot('env'),
     autoDrag: slot('auto'),
     midiDrag: slot('midi'),
+    endDrag: slot('end'),
     marquee: slot('marquee'),
     pan: slot('pan'),
     /** 目盛りの上で押している間は、再生位置が付いてくる（範囲選択にしない）。false を書くと終わる */
