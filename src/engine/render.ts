@@ -45,7 +45,9 @@ export function scheduleAutomation(ctx: OfflineAudioContext, graph: Graph, p: Pr
 /** until を渡すと、そこまでの長さにする（範囲選択が曲の終わりより後ろまであるとき） */
 export async function renderMix(p: Project, until = 0, sampleRate = 48000, onProgress?: (p: number) => void, signal?: AbortSignal): Promise<Clip> {
   signal?.throwIfAborted()
+  console.time('renderMix.pitch')
   await preparePitch(p, 0, true)
+  console.timeEnd('renderMix.pitch')
   signal?.throwIfAborted()
   const length = Math.max(1, Math.ceil(Math.max(songEnd(p), until) * sampleRate))
   const ctx = new OfflineAudioContext(2, length, sampleRate)
@@ -58,7 +60,9 @@ export async function renderMix(p: Project, until = 0, sampleRate = 48000, onPro
     await graph.flush()
     signal?.throwIfAborted()
     scheduleAutomation(ctx, graph, p, length, sampleRate, 0)
+    console.time('renderMix.offline')
     const out = await renderWithProgress(ctx, onProgress, signal)
+    console.timeEnd('renderMix.offline')
     return { sampleRate, channels: [out.getChannelData(0), out.getChannelData(1)] }
   } finally {
     graph.dispose()

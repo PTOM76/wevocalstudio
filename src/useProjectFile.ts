@@ -97,12 +97,16 @@ export function useProjectFile(o: {
 
   /** 書き出す音（全トラックを混ぜ、範囲があれば切り出してから仕上げを掛ける。音声、動画、フォルダーへの保存で共通。WeVocalSynth と同じ） */
   const renderFinished = async (p: Project, range: Range | null, onProgress?: (p: number) => void, signal?: AbortSignal) => {
+    console.time('renderFinished')
     let mix = await renderMix(p, range ? range.end : 0, 48000, onProgress, signal)
+    console.timeLog('renderFinished', 'renderMix')
     if (range) {
       const [s, e] = toFrames(mix, range)
       mix = { sampleRate: mix.sampleRate, channels: mix.channels.map((ch) => ch.slice(s, e)) }
     }
-    return finishClip(mix, { normalize: settings.exportNormalize, fadeMs: settings.exportFadeMs })
+    const finished = finishClip(mix, { normalize: settings.exportNormalize, fadeMs: settings.exportFadeMs })
+    console.timeEnd('renderFinished')
+    return finished
   }
 
   const runExport = async (c: ExportSettings, win?: Window | null) => {
