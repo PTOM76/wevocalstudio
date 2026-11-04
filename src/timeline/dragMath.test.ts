@@ -105,4 +105,9 @@ describe('marqueeIds と rangeSelectIds', () => {
     expect(rangeSelectIds(p, c, a)).toEqual(['a', 'b', 'c'])
     expect(rangeSelectIds(p, b, b)).toEqual(['b'])
   })
+
+  it('Shift: 起点のトラックがたたまれて隠れているときは、押したものだけ', () => {
+    const hidden = { ...p, tracks: p.tracks.filter((t) => t.id !== 't1') }
+    expect(rangeSelectIds(hidden, a, b)).toEqual(['b'])
+  })
 })

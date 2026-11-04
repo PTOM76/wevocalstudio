@@ -204,6 +204,7 @@ export function useTimelinePointer(o: {
     // 右ボタン: ドラッグすれば枠で選ぶ。動かさなければ右クリックのメニュー（onContextMenu）
     if (e.button === 2) {
       if (y > TOP) {
+        anchor.current = null
         e.currentTarget.setPointerCapture(e.pointerId)
         marquee.current = { x, y, moved: false }
       }
@@ -243,6 +244,7 @@ export function useTimelinePointer(o: {
     if (!hit && y > TOP && !p.envKind && !p.autoEdit) {
       const mh = hitMidi(p.project, x, y, toTime, view.pps, e.pointerType === 'touch' ? 18 : undefined)
       if (mh) {
+        anchor.current = null
         doc.select([mh.block.id])
         p.onSelectTrack(mh.block.track)
         e.currentTarget.setPointerCapture(e.pointerId)
@@ -260,6 +262,7 @@ export function useTimelinePointer(o: {
     }
     if (!hit) {
       // 空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択（範囲を選ぶときは再生位置を動かさないよう、再生位置は離したときに移す）
+      anchor.current = null
       if (!e.ctrlKey && !e.metaKey) doc.select([])
       const track = trackAt(y)
       if (track) p.onSelectTrack(track.id)

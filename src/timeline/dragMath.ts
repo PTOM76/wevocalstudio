@@ -75,6 +75,8 @@ export function marqueeIds(p: Project, x0: number, y0: number, x1: number, y1: n
 /** Shift で押したとき: 起点から押したものまでの、トラックと時間の範囲の波形ブロックの id */
 export function rangeSelectIds(p: Project, from: Block, to: Block): string[] {
   const row = (b: Block) => p.tracks.findIndex((t) => t.id === b.track)
+  // 起点のトラックが隠れている（たたまれた）ときは、範囲を作らず押したものだけ選ぶ
+  if (row(from) < 0) return [to.id]
   const [r0, r1] = [Math.min(row(from), row(to)), Math.max(row(from), row(to))]
   const t0 = Math.min(from.start, to.start)
   const t1 = Math.max(from.start + from.length, to.start + to.length)
