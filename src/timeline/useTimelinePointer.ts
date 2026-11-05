@@ -49,7 +49,6 @@ export function useTimelinePointer(o: {
   const { p, canvasRef, view, setView, vs, vscroll, setVscroll, maxRef, top: TOP, width, height, trackResizeRef, geo } = o
   const { cy, trackAt, rowDelta, slotAt, toTime, blockGeom } = geo
   const doc = useDoc()
-  // Shift+クリックの起点（前に押した波形ブロック）
   // 操作中の状態は 1 つ（gesture.ts）。操作を始めると前の操作は終わる
   const { drag, rangeDrag, scrub, envDrag, autoDrag, midiDrag, endDrag, marquee, pan } = useGestures()
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
