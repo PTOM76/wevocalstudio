@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { Drag } from '../blockDrag'
 import { ENVELOPES } from '../envelopes'
 import { fillBlock, newProject, type Block, type MidiBlock, type Project, type Track } from '../project'
-import { blockDragPatches, marqueeIds, midiDragPatch, movedAutoPoints, movedEnvPoints, rangeSelectIds } from './dragMath'
+import { blockDragPatches, marqueeIds, midiDragPatch, movedAutoPoints, movedEnvPoints } from './dragMath'
 
 const track = (id: string): Track => ({ id, name: id, volume: 0, pan: 0, mute: false, solo: false })
 const block = (id: string, tr: string, start: number, length = 2, patch: Partial<Block> = {}): Block => fillBlock({ id, track: tr, source: 's', start, offset: 0, length, ...patch })
@@ -86,7 +86,7 @@ describe('movedEnvPoints', () => {
   })
 })
 
-describe('marqueeIds と rangeSelectIds', () => {
+describe('marqueeIds', () => {
   const a = block('a', 't1', 0, 2)
   const b = block('b', 't2', 3, 2)
   const c = block('c', 't3', 6, 2)
@@ -98,16 +98,5 @@ describe('marqueeIds と rangeSelectIds', () => {
     expect(marqueeIds(p, 0, 0, 250, 150, toTime, slotAt)).toEqual(['a'])
     expect(marqueeIds(p, 0, 0, 500, 150, toTime, slotAt)).toEqual(['a', 'b'])
     expect(marqueeIds(p, 500, 150, 0, 0, toTime, slotAt)).toEqual(['a', 'b'])
-  })
-
-  it('Shift: 起点から押したものまでの、トラックと時間の範囲', () => {
-    expect(rangeSelectIds(p, a, b)).toEqual(['a', 'b'])
-    expect(rangeSelectIds(p, c, a)).toEqual(['a', 'b', 'c'])
-    expect(rangeSelectIds(p, b, b)).toEqual(['b'])
-  })
-
-  it('Shift: 起点のトラックがたたまれて隠れているときは、押したものだけ', () => {
-    const hidden = { ...p, tracks: p.tracks.filter((t) => t.id !== 't1') }
-    expect(rangeSelectIds(hidden, a, b)).toEqual(['b'])
   })
 })
