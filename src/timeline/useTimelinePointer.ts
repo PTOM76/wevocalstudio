@@ -296,7 +296,8 @@ export function useTimelinePointer(o: {
       return
     }
     // Shift: 起点から押したものまでの、トラックと時間の範囲の波形ブロックを選ぶ
-    const from = anchor.current && p.project.blocks.find((b) => b.id === anchor.current)
+    // 起点は選択に残っているときだけ使う（キー操作、元に戻す、Ctrl で外したなど、ここを通らずに選択が変わると古い起点が残るため）
+    const from = anchor.current && doc.selected.includes(anchor.current) && p.project.blocks.find((b) => b.id === anchor.current)
     if (e.shiftKey && from) {
       doc.select(rangeSelectIds(p.project, from, hit.block))
       return
