@@ -15,7 +15,7 @@ import type { Block, Track } from '../project'
 import { localPos } from '../timeline/geometry'
 import { menuHandlers } from './menuHandlers'
 import { useGestures } from './gesture'
-import { blockDragPatches, marqueeIds, midiDragPatch, movedAutoPoints, movedEnvPoints } from './dragMath'
+import { blockDragPatches, marqueeIds, midiDragPatch, movedAutoPoints, movedEnvPoints, rangeSelectIds } from './dragMath'
 import type { TimelineProps } from '../Timeline'
 
 /** 座標の補助（画面の y とスクロール、トラックの行、時刻）。画面を描く側とそろえるため、Timeline から受け取る */
@@ -49,8 +49,10 @@ export function useTimelinePointer(o: {
   const { p, canvasRef, view, setView, vs, vscroll, setVscroll, maxRef, top: TOP, width, height, trackResizeRef, geo } = o
   const { cy, trackAt, rowDelta, slotAt, toTime, blockGeom } = geo
   const doc = useDoc()
+  // Shift+クリックの起点（前に押した波形ブロック）
   // 操作中の状態は 1 つ（gesture.ts）。操作を始めると前の操作は終わる
   const { drag, rangeDrag, scrub, envDrag, autoDrag, midiDrag, endDrag, marquee, pan } = useGestures()
+  const anchor = useRef<string | null>(null)
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const dragCount = useRef(0)
   const [cursor, setCursor] = useState('default')
@@ -202,6 +204,7 @@ export function useTimelinePointer(o: {
     // 右ボタン: ドラッグすれば枠で選ぶ。動かさなければ右クリックのメニュー（onContextMenu）
     if (e.button === 2) {
       if (y > TOP) {
+        anchor.current = null
         e.currentTarget.setPointerCapture(e.pointerId)
         marquee.current = { x, y, moved: false }
       }
@@ -241,6 +244,7 @@ export function useTimelinePointer(o: {
     if (!hit && y > TOP && !p.envKind && !p.autoEdit) {
       const mh = hitMidi(p.project, x, y, toTime, view.pps, e.pointerType === 'touch' ? 18 : undefined)
       if (mh) {
+        anchor.current = null
         doc.select([mh.block.id])
         p.onSelectTrack(mh.block.track)
         e.currentTarget.setPointerCapture(e.pointerId)
@@ -258,6 +262,7 @@ export function useTimelinePointer(o: {
     }
     if (!hit) {
       // 空いている所: 押しただけなら再生位置、ドラッグしたら範囲選択（範囲を選ぶときは再生位置を動かさないよう、再生位置は離したときに移す）
+      anchor.current = null
       if (!e.ctrlKey && !e.metaKey) doc.select([])
       const track = trackAt(y)
       if (track) p.onSelectTrack(track.id)
@@ -290,12 +295,18 @@ export function useTimelinePointer(o: {
       envDrag.current = { block: b.id, index, merge: `env${dragCount.current++}` }
       return
     }
-    // Shift: 押したものを選択に足し引きする（ピアノロールの音符と同じ）
+    // Shift: 起点から押したものまでの、トラックと時間の範囲の波形ブロックを選ぶ
+    // 起点は選択に残っているときだけ使う（キー操作、元に戻す、Ctrl で外したなど、ここを通らずに選択が変わると古い起点が残るため）
+    const from = anchor.current && doc.selected.includes(anchor.current) && p.project.blocks.find((b) => b.id === anchor.current)
+    // REAPER と同じく、範囲は今の選択に追加する。起点がなければ押したものを追加して起点にする
     if (e.shiftKey) {
-      doc.select(doc.selected.includes(id) ? doc.selected.filter((s) => s !== id) : [...doc.selected, id])
+      const ids = from ? rangeSelectIds(p.project, from, hit.block) : [id]
+      if (!from) anchor.current = id
+      doc.select([...doc.selected, ...ids.filter((s) => !doc.selected.includes(s))])
       p.onSelectTrack(hit.block.track)
       return
     }
+    anchor.current = id
     // 押した所に再生位置を移す。端（長さを変える所）ならその端
     if (!e.ctrlKey && !e.metaKey) {
       const b = hit.block

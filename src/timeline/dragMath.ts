@@ -1,4 +1,4 @@
-// 時間軸のドラッグで、プロジェクトがどう変わるかの計算（波形ブロックの移動、長さ、MIDI ブロック、オートメーションとエンベロープの点、枠での選択）。状態に触れない純粋な関数
+// 時間軸のドラッグで、プロジェクトがどう変わるかの計算（波形ブロックの移動、長さ、MIDI ブロック、オートメーションとエンベロープの点、枠と Shift での選択）。状態に触れない純粋な関数
 import type { AutoPoint } from 'wevocal-lib'
 import { fracToParam } from 'wevocal-lib'
 import type { Drag } from '../blockDrag'
@@ -72,3 +72,13 @@ export function marqueeIds(p: Project, x0: number, y0: number, x1: number, y1: n
     .map((b) => b.id)
 }
 
+/** Shift で押したとき: 起点から押したものまでの、トラックと時間の範囲の波形ブロックの id */
+export function rangeSelectIds(p: Project, from: Block, to: Block): string[] {
+  const row = (b: Block) => p.tracks.findIndex((t) => t.id === b.track)
+  // 起点のトラックが隠れている（たたまれた）ときは、範囲を作らず押したものだけ選ぶ
+  if (row(from) < 0) return [to.id]
+  const [r0, r1] = [Math.min(row(from), row(to)), Math.max(row(from), row(to))]
+  const t0 = Math.min(from.start, to.start)
+  const t1 = Math.max(from.start + from.length, to.start + to.length)
+  return p.blocks.filter((b) => row(b) >= r0 && row(b) <= r1 && b.start < t1 && b.start + b.length > t0).map((b) => b.id)
+}
