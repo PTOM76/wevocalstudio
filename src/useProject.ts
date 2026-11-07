@@ -223,6 +223,9 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   /** 複数の波形ブロックを一度に変える（まとめて動かすとき）。id → 変える値 */
   const updateBlocks = useCallback((patches: Record<string, Partial<Block>>, merge?: string) => change((p) => edit.patchBlocks(p, patches), merge), [change])
 
+  /** 波形ブロックと MIDI ブロックを一度に変える（まとめて動かすとき）。id → 変える値 */
+  const moveBlocks = useCallback((patches: Record<string, Partial<Block> & Partial<MidiBlock>>, merge?: string) => change((p) => edit.patchMidiBlocks(edit.patchBlocks(p, patches), patches), merge), [change])
+
   const removeBlocks = useCallback((ids: string[]) => change((p) => edit.removeBlocks(p, ids)), [change])
 
   /** トラックの time 秒に、2 小節の空の MIDI ブロックを足す。音源がなければ標準のシンセを付ける。足したブロックの id（トラックがなければ null） */
@@ -309,6 +312,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     addMidiAt,
     insertMidi,
     updateMidiBlocks,
+    moveBlocks,
     updateMidiBlock,
     addSubtrack,
     indentTrack,

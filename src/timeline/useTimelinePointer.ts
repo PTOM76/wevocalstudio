@@ -6,7 +6,7 @@ import { fracToParam } from 'wevocal-lib'
 import { useDoubleTap, useLongPress } from 'pevenmui'
 import { allLanes, hitAutoPoint, laneAt } from '../autoLane'
 import { hitMidi } from '../midiBlocks'
-import { projectEnd, midiBlocks, songEnd } from '../project'
+import { allBlocks, projectEnd, midiBlocks, songEnd } from '../project'
 import { ENVELOPES, envelopeRange, hitEnvLine, hitEnvPoint } from '../envelopes'
 import { snapGrid, snapToStep } from '../grid'
 import { CURSOR, hitBlock } from '../blockDrag'
@@ -15,7 +15,7 @@ import type { Block, Track } from '../project'
 import { localPos } from '../timeline/geometry'
 import { menuHandlers } from './menuHandlers'
 import { useGestures } from './gesture'
-import { blockDragPatches, marqueeIds, midiDragPatch, movedAutoPoints, movedEnvPoints, rangeSelectIds } from './dragMath'
+import { blockDragPatches, marqueeIds, midiDragPatch, groupMove, movedAutoPoints, movedEnvPoints, pressSelection } from './dragMath'
 import type { TimelineProps } from '../Timeline'
 
 /** 座標の補助（画面の y とスクロール、トラックの行、時刻）。画面を描く側とそろえるため、Timeline から受け取る */
@@ -244,11 +244,14 @@ export function useTimelinePointer(o: {
     if (!hit && y > TOP && !p.envKind && !p.autoEdit) {
       const mh = hitMidi(p.project, x, y, toTime, view.pps, e.pointerType === 'touch' ? 18 : undefined)
       if (mh) {
-        anchor.current = null
-        doc.select([mh.block.id])
+        const ctrl = (e.ctrlKey || e.metaKey) && !e.shiftKey
+        const sel = pressSelection(p.project, doc.selected, anchor.current, mh.block, { shift: e.shiftKey, ctrl })
+        anchor.current = sel.anchor
+        doc.select(sel.selected)
         p.onSelectTrack(mh.block.track)
         e.currentTarget.setPointerCapture(e.pointerId)
-        midiDrag.current = { id: mh.block.id, kind: mh.kind, grabPx: x - (mh.block.start - view.scroll) * view.pps, merge: `midi${dragCount.current++}`, orig: mh.block, alt: e.altKey }
+        const others = mh.kind === 'move' ? allBlocks(p.project).filter((b) => sel.selected.includes(b.id) && b.id !== mh.block.id) : []
+        midiDrag.current = { id: mh.block.id, kind: mh.kind, grabPx: x - (mh.block.start - view.scroll) * view.pps, merge: `midi${dragCount.current++}`, orig: mh.block, alt: e.altKey, others, x0: x, deselect: ctrl && doc.selected.includes(mh.block.id) }
         return
       }
     }
@@ -295,37 +298,29 @@ export function useTimelinePointer(o: {
       envDrag.current = { block: b.id, index, merge: `env${dragCount.current++}` }
       return
     }
-    // Shift: 起点から押したものまでの、トラックと時間の範囲の波形ブロックを選ぶ
-    // 起点は選択に残っているときだけ使う（キー操作、元に戻す、Ctrl で外したなど、ここを通らずに選択が変わると古い起点が残るため）
-    const from = anchor.current && doc.selected.includes(anchor.current) && p.project.blocks.find((b) => b.id === anchor.current)
-    // REAPER と同じく、範囲は今の選択に追加する。起点がなければ押したものを追加して起点にする
-    if (e.shiftKey) {
-      const ids = from ? rangeSelectIds(p.project, from, hit.block) : [id]
-      if (!from) anchor.current = id
-      doc.select([...doc.selected, ...ids.filter((s) => !doc.selected.includes(s))])
-      p.onSelectTrack(hit.block.track)
-      return
-    }
-    anchor.current = id
+    // Shift は起点からの範囲を選択に追加し、そのまま動かせばスナップせずに動かす（REAPER と同じ）
+    const ctrl = (e.ctrlKey || e.metaKey) && !e.shiftKey
     // 押した所に再生位置を移す。端（長さを変える所）ならその端
-    if (!e.ctrlKey && !e.metaKey) {
+    if (!ctrl && !e.shiftKey) {
       const b = hit.block
       const t = hit.kind === 'left' || hit.kind === 'fadeIn' ? b.start : hit.kind === 'right' || hit.kind === 'fadeOut' ? b.start + b.length : toTime(x)
       const snapped = hit.kind === 'move' ? gridAt(x, e.shiftKey) : t
       p.onCursor(Math.max(0, snapped))
     }
     // 選んでいるものをつまんだら、選んだもの全部を動かす。Ctrl は、動かせば複製、動かさずに離せば選択の足し引き
-    const ctrl = e.ctrlKey || e.metaKey
     const wasSelected = doc.selected.includes(id)
-    const group = wasSelected ? doc.selected : ctrl ? [...doc.selected, id] : [id]
+    const sel = pressSelection(p.project, doc.selected, anchor.current, hit.block, { shift: e.shiftKey, ctrl })
+    anchor.current = sel.anchor
+    const group = sel.selected
     doc.select(group)
     p.onSelectTrack(hit.block.track)
     e.currentTarget.setPointerCapture(e.pointerId)
     const trackIndex = p.project.tracks.findIndex((t) => t.id === hit.block.track)
     const others = ['move', 'left', 'right'].includes(hit.kind) ? p.project.blocks.filter((b) => group.includes(b.id) && b.id !== id) : []
+    const midi = hit.kind === 'move' ? midiBlocks(p.project).filter((b) => group.includes(b.id)) : []
     dragScroll0.current = view.scroll
     lastMove.current = null
-    drag.current = { kind: hit.kind, block: hit.block, others, x, y, trackIndex, merge: `drag${dragCount.current++}`, copy: ctrl && hit.kind === 'move' ? { wasSelected, done: false } : undefined }
+    drag.current = { kind: hit.kind, block: hit.block, others, midi, x, y, trackIndex, merge: `drag${dragCount.current++}`, copy: ctrl && hit.kind === 'move' ? { wasSelected, done: false } : undefined }
   }
 
   /** ドラッグ中の波形ブロックを、指の位置（と流れた分）に合わせて動かす */
@@ -334,18 +329,23 @@ export function useTimelinePointer(o: {
     if (d.copy && !d.copy.done) {
       if (Math.hypot(x - d.x, y - d.y) < 4) return
       d.copy.done = true
-      p.onCopyBlocks([d.block, ...d.others])
+      p.onCopyBlocks([d.block, ...d.others, ...(d.midi ?? [])])
     }
     const raw = (x - d.x) / view.pps + (view.scroll - dragScroll0.current)
     const patches = blockDragPatches(p.project, d, raw, rowDelta(d.y, y), { altKey, shiftKey, snap: p.snap, cursor: p.cursor, snapping })
-    doc.updateBlocks(patches, d.merge)
+    doc.moveBlocks(patches, d.merge)
   }
 
   /** ドラッグしている MIDI ブロックを、指の位置に合わせて動かす（波形ブロックと同じく、縦に動かすとほかのトラックへ移り、端で表示が流れる） */
   const moveMidi = (md: NonNullable<typeof midiDrag.current>, x: number, y: number, shiftKey: boolean) => {
     const b = midiBlocks(p.project).find((q) => q.id === md.id)
     if (!b) return
-    doc.updateMidiBlock(b.id, midiDragPatch(p.project, md, b, x, trackAt(y)?.id, (gx) => gridAt(gx, shiftKey)), md.merge)
+    if (Math.abs(x - md.x0) >= 4) md.deselect = false
+    const patch = midiDragPatch(p.project, md, b, x, trackAt(y)?.id, (gx) => gridAt(gx, shiftKey))
+    if (md.kind !== 'move' || !md.others.length) return doc.updateMidiBlock(b.id, patch, md.merge)
+    // 選んでいるほかのブロックも、同じだけ動かす
+    const row = (id: string) => p.project.tracks.findIndex((t) => t.id === id)
+    doc.moveBlocks(groupMove(p.project, [md.orig, ...md.others], (patch.start ?? md.orig.start) - md.orig.start, row(patch.track ?? md.orig.track) - row(md.orig.track)), md.merge)
   }
 
   // 端で表示が流れている間は、指が動かなくても波形ブロックと MIDI ブロックを付いてこさせる
@@ -461,6 +461,8 @@ export function useTimelinePointer(o: {
     if (e.pointerType === 'touch' && doubleTap.tap(e.clientX, e.clientY)) doubleAt(local(e).x, local(e).y)
     envDrag.current = null
     autoDrag.current = null
+    const md = midiDrag.current
+    if (md?.deselect) doc.select(doc.selected.filter((s) => s !== md.id))
     midiDrag.current = null
     // 長押しから始めた範囲選択を、動かさずに離したら、そこにメニューを出す
     const tr = touchRange.current

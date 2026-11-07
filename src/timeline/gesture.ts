@@ -3,7 +3,7 @@
 import { useRef } from 'react'
 import type { Drag } from '../blockDrag'
 import type { MidiDragKind } from '../midiBlocks'
-import type { MidiBlock } from '../project'
+import type { AnyBlock, MidiBlock } from '../project'
 
 /** 範囲選択のドラッグを始めた時刻と位置 */
 export interface RangeDrag {
@@ -30,6 +30,11 @@ export interface MidiDrag {
   merge: string
   orig: MidiBlock
   alt: boolean
+  /** 一緒に動かす、選んでいるほかのブロック（本体をつまんだときだけ） */
+  others: AnyBlock[]
+  /** 押したときの x。Ctrl で選んでいたものを押し、動かさずに離したら選択から外す */
+  x0: number
+  deselect: boolean
 }
 /** 目盛りの曲の終わりの旗をドラッグしている所（merge は履歴を 1 つにまとめる印） */
 export interface EndDrag {

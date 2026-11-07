@@ -7,7 +7,7 @@ import type { LaneGeom } from '../autoLane'
 import { blockBeats, projectBeatMap } from '../beats'
 import type { EnvSpec } from '../envelopes'
 import { trimLeft, type MidiDragKind } from '../midiBlocks'
-import type { Block, MidiBlock, Project } from '../project'
+import { allBlocks, type AnyBlock, type Block, type MidiBlock, type Project } from '../project'
 
 type Snapping = Parameters<typeof snapDelta>[3]
 
@@ -19,13 +19,31 @@ export function blockDragPatches(p: Project, d: Drag, raw: number, di: number, o
   const all = [d.block, ...d.others]
   if (o.altKey && d.kind === 'move') return Object.fromEntries(all.map((b) => [b.id, slipPatch(p, b, raw)]))
   // Shift を押している間は吸い付けない
-  let dt = o.snap && !o.shiftKey ? snapDelta(d, raw, snapTargets(p, o.cursor, [d.block.id, ...d.others.map((b) => b.id)]), o.snapping) : raw
+  const midi = d.kind === 'move' ? (d.midi ?? []) : []
+  let dt = o.snap && !o.shiftKey ? snapDelta(d, raw, snapTargets(p, o.cursor, [...all, ...midi].map((b) => b.id)), o.snapping) : raw
   if (d.kind === 'left' || d.kind === 'right') return Object.fromEntries(all.map((b) => [b.id, dragPatch(p, { ...d, block: b, others: [] }, dt, 0, o.altKey)]))
-  if (!d.others.length) return { [d.block.id]: dragPatch(p, d, dt, di, o.altKey) }
+  if (!d.others.length && !midi.length) return { [d.block.id]: dragPatch(p, d, dt, di, o.altKey) }
+  return groupMove(p, [...all, ...midi], dt, di)
+}
+
+/** 波形ブロックと MIDI ブロックをまとめて dt 秒、di 行動かす値。一番前のものが 0 より前に出ない所、トラックの外に出ない所で止める */
+export function groupMove(p: Project, all: AnyBlock[], dt: number, di: number): Record<string, { start: number; track: string }> {
   dt = Math.max(dt, -Math.min(...all.map((b) => b.start)))
   const rows = all.map((b) => p.tracks.findIndex((t) => t.id === b.track))
   const shift = Math.max(-Math.min(...rows), Math.min(p.tracks.length - 1 - Math.max(...rows), di))
   return Object.fromEntries(all.map((b, i) => [b.id, { start: b.start + dt, track: p.tracks[rows[i] + shift].id }]))
+}
+
+/** ブロックを押したときの選択と Shift の起点。Shift は起点からの範囲を追加し、Ctrl は追加する。選んでいるものを押したら選択はそのまま、ほかは押したものだけ */
+export function pressSelection(p: Project, selected: string[], anchor: string | null, hit: AnyBlock, m: { shift: boolean; ctrl: boolean }): { selected: string[]; anchor: string } {
+  if (m.shift) {
+    // 起点は選択に残っているときだけ使う（ここを通らずに選択が変わると古い起点が残るため）
+    const from = anchor && selected.includes(anchor) ? allBlocks(p).find((b) => b.id === anchor) : undefined
+    const ids = from ? rangeSelectIds(p, from, hit) : [hit.id]
+    return { selected: [...selected, ...ids.filter((s) => !selected.includes(s))], anchor: from ? from.id : hit.id }
+  }
+  if (selected.includes(hit.id)) return { selected, anchor: hit.id }
+  return { selected: m.ctrl ? [...selected, hit.id] : [hit.id], anchor: hit.id }
 }
 
 /** ドラッグ中の MIDI ブロックの、変える値。grid は端の位置（画面の x）を拍と秒に合わせる、track は縦の位置のトラックの id */
@@ -58,13 +76,13 @@ export function movedEnvPoints(spec: EnvSpec, b: Block, index: number, x: number
   return env
 }
 
-/** 右ドラッグの枠 (x0, y0)〜(x1, y1)（時間軸の座標）にかかる波形ブロックの id。toTime は x を秒に、slotAt は y をトラックの並びの番号にする */
+/** 右ドラッグの枠 (x0, y0)〜(x1, y1)（時間軸の座標）にかかる波形ブロックと MIDI ブロックの id。toTime は x を秒に、slotAt は y をトラックの並びの番号にする */
 export function marqueeIds(p: Project, x0: number, y0: number, x1: number, y1: number, toTime: (x: number) => number, slotAt: (y: number) => number): string[] {
   const ta = toTime(Math.min(x0, x1))
   const tb = toTime(Math.max(x0, x1))
   const ra = slotAt(Math.min(y0, y1))
   const rb = slotAt(Math.max(y0, y1))
-  return p.blocks
+  return allBlocks(p)
     .filter((b) => {
       const r = p.tracks.findIndex((t) => t.id === b.track)
       return r >= ra && r <= rb && b.start < tb && b.start + b.length > ta
@@ -72,13 +90,13 @@ export function marqueeIds(p: Project, x0: number, y0: number, x1: number, y1: n
     .map((b) => b.id)
 }
 
-/** Shift で押したとき: 起点から押したものまでの、トラックと時間の範囲の波形ブロックの id */
-export function rangeSelectIds(p: Project, from: Block, to: Block): string[] {
-  const row = (b: Block) => p.tracks.findIndex((t) => t.id === b.track)
+/** Shift で押したとき: 起点から押したものまでの、トラックと時間の範囲の波形ブロックと MIDI ブロックの id */
+export function rangeSelectIds(p: Project, from: AnyBlock, to: AnyBlock): string[] {
+  const row = (b: AnyBlock) => p.tracks.findIndex((t) => t.id === b.track)
   // 起点のトラックが隠れている（たたまれた）ときは、範囲を作らず押したものだけ選ぶ
   if (row(from) < 0) return [to.id]
   const [r0, r1] = [Math.min(row(from), row(to)), Math.max(row(from), row(to))]
   const t0 = Math.min(from.start, to.start)
   const t1 = Math.max(from.start + from.length, to.start + to.length)
-  return p.blocks.filter((b) => row(b) >= r0 && row(b) <= r1 && b.start < t1 && b.start + b.length > t0).map((b) => b.id)
+  return allBlocks(p).filter((b) => row(b) >= r0 && row(b) <= r1 && b.start < t1 && b.start + b.length > t0).map((b) => b.id)
 }

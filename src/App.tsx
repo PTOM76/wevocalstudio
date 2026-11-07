@@ -31,7 +31,7 @@ import { f0Options, type Settings } from './settings/settings'
 import LevelMeter from './LevelMeter'
 import { snapGrid } from './grid'
 import { emitNote } from './pianoRoll/noteBus'
-import { addWvspTracks, midiBlocks, newProject, songEnd, visibleTracks } from './project'
+import { addWvspTracks, isMidiBlock, midiBlocks, type MidiBlock, newId, newProject, songEnd, visibleTracks } from './project'
 import { AHEAD } from './anticipate'
 import { isBlank } from './projectTabs'
 import { useProjectTabs } from './useProjectTabs'
@@ -400,7 +400,10 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onDropFiles={(list, at) => (list.some(isProjectLike) ? files.openFiles(list) : void load(list, at))}
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         onEmptyMenu={(kind, time, track, x, y, marker) => setEmptyAt({ kind, time, track, x, y, marker })}
-        onCopyBlocks={(blocks) => void doc.insertBlocks(blocks)}
+        onCopyBlocks={(blocks) => {
+          void doc.insertBlocks(blocks.filter((b): b is Exclude<typeof b, MidiBlock> => !isMidiBlock(b)))
+          for (const b of blocks.filter(isMidiBlock)) doc.addMidiBlock({ ...b, id: newId() })
+        }}
         onMarkerEdit={(id) => dialogs.open('marker', id)}
         onProperties={(id) => dialogs.open('block', selected.includes(id) ? selected : [id])}
         onFx={(id) => dialogs.open('fx', id)}

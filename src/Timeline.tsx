@@ -9,7 +9,7 @@ import { songEnd, trackHeight, TRACK_HEIGHT_DEFAULT, type PitchEnvelopeRange, ty
 import { type EnvKind } from './envelopes'
 import { type GridDivision, type GridMode } from './grid'
 import { topOf, totalTrackHeight, trackTop, type TimelineView } from './drawTimeline'
-import type { Block, Project } from './project'
+import type { AnyBlock, Block, Project } from './project'
 import type { DropAt } from './useProject'
 import TrackColumn from './timeline/TrackColumn'
 import { useTimelinePointer } from './timeline/useTimelinePointer'
@@ -47,7 +47,7 @@ export interface TimelineProps {
   /** 何もない所の右クリック（目盛りか、トラックの空いている所）。time はグリッドに合わせた時刻 */
   onEmptyMenu: (kind: 'lane' | 'ruler', time: number, track: string | null, x: number, y: number, marker?: string) => void
   /** Ctrl+ドラッグで、写しをその場に残す */
-  onCopyBlocks: (blocks: Block[]) => void
+  onCopyBlocks: (blocks: AnyBlock[]) => void
   /** 目盛りの上のマーカーをダブルクリック */
   onMarkerEdit: (id: string) => void
   /** 波形ブロックのダブルクリック（プロパティ） */

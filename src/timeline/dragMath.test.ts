@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { Drag } from '../blockDrag'
 import { ENVELOPES } from '../envelopes'
 import { fillBlock, newProject, type Block, type MidiBlock, type Project, type Track } from '../project'
-import { blockDragPatches, marqueeIds, midiDragPatch, movedAutoPoints, movedEnvPoints, rangeSelectIds } from './dragMath'
+import { blockDragPatches, groupMove, marqueeIds, midiDragPatch, movedAutoPoints, movedEnvPoints, pressSelection, rangeSelectIds } from './dragMath'
 
 const track = (id: string): Track => ({ id, name: id, volume: 0, pan: 0, mute: false, solo: false })
 const block = (id: string, tr: string, start: number, length = 2, patch: Partial<Block> = {}): Block => fillBlock({ id, track: tr, source: 's', start, offset: 0, length, ...patch })
@@ -109,5 +109,28 @@ describe('marqueeIds と rangeSelectIds', () => {
   it('Shift: 起点のトラックがたたまれて隠れているときは、押したものだけ', () => {
     const hidden = { ...p, tracks: p.tracks.filter((t) => t.id !== 't1') }
     expect(rangeSelectIds(hidden, a, b)).toEqual(['b'])
+  })
+})
+
+describe('MIDI ブロックを含む選択と移動', () => {
+  const a = block('a', 't1', 0, 2)
+  const c = block('c', 't3', 6, 2)
+  const m: MidiBlock = { id: 'm', track: 't2', start: 3, length: 2, unit: 'beat', notes: [], mute: false }
+  const p = { ...project([a, c]), midi: [m] }
+
+  it('Shift の範囲と枠に MIDI ブロックも入る', () => {
+    expect(rangeSelectIds(p, a, c)).toEqual(['a', 'c', 'm'])
+    expect(marqueeIds(p, 0, 0, 500, 250, (x) => x / 100, (y) => Math.floor(y / 100))).toEqual(['a', 'm'])
+  })
+
+  it('pressSelection: Shift は起点からの範囲を追加、起点がなければ押したものを追加', () => {
+    expect(pressSelection(p, ['a'], 'a', c, { shift: true, ctrl: false })).toEqual({ selected: ['a', 'c', 'm'], anchor: 'a' })
+    expect(pressSelection(p, ['a'], null, m, { shift: true, ctrl: false })).toEqual({ selected: ['a', 'm'], anchor: 'm' })
+    expect(pressSelection(p, ['a', 'm'], 'a', m, { shift: false, ctrl: false })).toEqual({ selected: ['a', 'm'], anchor: 'm' })
+    expect(pressSelection(p, ['a'], 'a', c, { shift: false, ctrl: false })).toEqual({ selected: ['c'], anchor: 'c' })
+  })
+
+  it('groupMove: 波形ブロックと MIDI ブロックを一緒に動かし、0 より前とトラックの外には出さない', () => {
+    expect(groupMove(p, [a, m], -1, 5)).toEqual({ a: { start: 0, track: 't2' }, m: { start: 3, track: 't3' } })
   })
 })

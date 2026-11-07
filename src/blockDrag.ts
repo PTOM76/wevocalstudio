@@ -2,7 +2,7 @@
 import { trackTop } from './drawTimeline'
 import { snapGrid, type GridDivision, type GridMode } from './grid'
 import { layoutRows } from './overlap'
-import { ENV_MAX, ENV_MIN, RATE_MAX, RATE_MIN, trackHeight, type Block, type Marker, type Project, type Tempo } from './project'
+import { ENV_MAX, ENV_MIN, RATE_MAX, RATE_MIN, trackHeight, type Block, type Marker, type MidiBlock, type Project, type Tempo } from './project'
 
 /** つまむ所。move は本体、left / right は端、fadeIn / fadeOut は上の角 */
 export type DragKind = 'move' | 'left' | 'right' | 'fadeIn' | 'fadeOut'
@@ -20,6 +20,8 @@ export interface Drag {
   block: Block
   /** 一緒に動かす、選んでいるほかの波形ブロック（つまんだときのもの） */
   others: Block[]
+  /** 一緒に動かす、選んでいる MIDI ブロック（本体をつまんだときだけ） */
+  midi?: MidiBlock[]
   x: number
   y: number
   trackIndex: number
