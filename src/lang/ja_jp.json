@@ -413,6 +413,8 @@
   "settings.showAnticipateGaugeHelp": "「重いプラグインを先に計算して鳴らす」の進み具合を、状態バーのゲージに表示する。止めている間は準備の進み、再生中はトラックごとに、再生位置から先にできている量を表示する",
   "settings.anticipateWhileStopped": "止めている間も先に計算する",
   "settings.anticipateWhileStoppedHelp": "止めている間に、カーソルの位置から曲の終わりまで（置き場の量に収まる分）の音を作っておく。再生を始めたときに途切れにくくなるが、その間 CPU を使う。オフにすると、作るのは再生中だけになる",
+  "settings.vstGuiWorker": "VST の画面を別のスレッドで動かす",
+  "settings.vstGuiWorkerHelp": "VST 自身の画面を、ページとは別のスレッド（Worker）で動かす。初めて開くときの読み込みで、画面が固まらない。オフにすると、ページのスレッドで動かす",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

@@ -42,6 +42,8 @@ export const experimental = defineItems('experimental', {
   showVst: check(false, { label: 'settings.showVst', help: 'settings.showVstHelp' }),
   // 重いプラグイン（VST など）を、再生中に自動で素通しにする（WeVocalSynth と同じ。オフなら途切れても掛け続ける。止まったときと出力が壊れたときは常に素通し）
   autoBypass: check(true, { label: 'settings.autoBypass', help: 'settings.autoBypassHelp' }),
+  // VST の画面を Worker で動かす（初めて開くときに画面が固まらない。オフならページのスレッドで動かす）
+  vstGuiWorker: check(true, { label: 'settings.vstGuiWorker', help: 'settings.vstGuiWorkerHelp' }),
   // 「重いプラグインを先に計算して鳴らす」の進み具合（止めている間の準備、再生中の先読みの量）を状態バーのゲージに出す
   showAnticipateGauge: check(false, { label: 'settings.showAnticipateGauge', help: 'settings.showAnticipateGaugeHelp' }),
   // 開発者向けのプラグイン（雛形）を FX の追加の一覧に出す

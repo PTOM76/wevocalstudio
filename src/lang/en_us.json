@@ -413,6 +413,8 @@
   "settings.showAnticipateGaugeHelp": "Shows the progress of \"Precompute heavy plugins\" as gauges in the status bar: preparation while stopped, and for each track during playback, how much audio is ready ahead of the playhead",
   "settings.anticipateWhileStopped": "Precompute while stopped",
   "settings.anticipateWhileStoppedHelp": "While stopped, prepares the audio from the cursor to the end of the song (as much as the cache allows). Playback starts more smoothly, but the CPU is used meanwhile. When off, audio is prepared only during playback",
+  "settings.vstGuiWorker": "Run VST editors on a separate thread",
+  "settings.vstGuiWorkerHelp": "Run the VST's own editor on a thread separate from the page (a Worker), so the screen does not freeze while it loads the first time. When off, it runs on the page thread",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
