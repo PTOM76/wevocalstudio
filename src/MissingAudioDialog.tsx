@@ -36,10 +36,11 @@ export default function MissingAudioDialog(p: { open: boolean; project: Project;
     }
   }
   /** フォルダーを選び、見つからない音声をまとめて探す（.rpp のあるフォルダーを選ぶ想定。サブフォルダーも見る） */
-  const fromFolder = async () => {
+  const fromFolder = async (win: Window) => {
     setBusy('folder')
     try {
-      const files = await pickFolderFiles(isAudioName)
+      // 押した窓で開く（ダイアログを別の窓に出しているとき、元の窓ではクリックとみなされず開けない）
+      const files = await pickFolderFiles(isAudioName, win)
       if (!files) return
       const found = matchAudio(
         missing.map((s) => s.missing!),
@@ -66,7 +67,7 @@ export default function MissingAudioDialog(p: { open: boolean; project: Project;
           {!missing.length && <Typography sx={{ fontSize: pevenFont('base') }}>{t('missingAudio.none')}</Typography>}
           {missing.length > 0 && (
             <Box>
-              <Button size="small" disabled={busy !== null} onClick={() => void fromFolder()}>
+              <Button size="small" disabled={busy !== null} onClick={(e) => void fromFolder(e.currentTarget.ownerDocument.defaultView ?? window)}>
                 {busy === 'folder' ? t('missingAudio.loading') : t('missingAudio.folder')}
               </Button>
             </Box>
