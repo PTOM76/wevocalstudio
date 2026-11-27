@@ -70,6 +70,8 @@ export class TrackStream {
     if (same) {
       slots.forEach((s, i) => {
         const st = this.stages[i]
+        // オフからオンに戻したとき、止まって素通しになっていた VST に読み込み直させる（ノードで鳴らすときと同じ）
+        if (s.on && !st.slot.on) st.runner.port.postMessage({ __wevocalRetry: true })
         st.slot = s
         // 元に戻すなどで状態が変わったら、プラグインに渡す（プラグインが知らせた値が戻ってきただけなら渡さない）
         const state = s.options.state as string | undefined
@@ -83,7 +85,9 @@ export class TrackStream {
     this.dispose()
     this.stages = slots.map((slot) => {
       const st: Stage = { slot, runner: new ProcessorRunner(slot.name, { ...this.assets.get(slot.key), ...slot.options }), cur: new Map(), mix: slot.on ? 1 : 0, state: slot.options.state as string | undefined }
-      st.runner.port.onmessage = (e: MessageEvent<{ __wevocalState?: unknown }>) => {
+      st.runner.port.onmessage = (e: MessageEvent<{ __wevocalState?: unknown; __wevocalError?: unknown }>) => {
+        // processor の中で止まった理由（VST の対応していない命令など）。素通しになっている
+        if (e.data?.__wevocalError) console.warn(`plugin ${slot.name}:`, e.data.__wevocalError)
         const state = e.data?.__wevocalState
         const index = this.stages.indexOf(st)
         if (typeof state !== 'string' || index < 0) return

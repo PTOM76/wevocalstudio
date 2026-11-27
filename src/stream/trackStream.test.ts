@@ -76,6 +76,31 @@ describe('TrackStream', () => {
     ])
   })
 
+  it('オフからオンに戻すと、processor に読み込み直しを知らせる（止まって素通しになった VST を戻すため）', async () => {
+    loadProcessorSource(`
+      class Retry extends AudioWorkletProcessor {
+        constructor(o) {
+          super(o)
+          this.port.onmessage = (e) => { if (e.data.__wevocalRetry) this.port.postMessage({ __wevocalState: 'retry' }) }
+        }
+        process() { return true }
+      }
+      registerProcessor('retry-proc', Retry)
+    `)
+    const s = new TrackStream(SR, clips)
+    const got: string[] = []
+    s.onState = (_i, st) => got.push(st)
+    const r = (on: boolean) => slot({ key: 'retry@1', name: 'retry-proc', params: [], values: {}, on })
+    s.setSlots([r(true)])
+    s.setSlots([r(true)])
+    await new Promise((res) => setTimeout(res, 20))
+    expect(got).toEqual([])
+    s.setSlots([r(false)])
+    s.setSlots([r(true)])
+    await new Promise((res) => setTimeout(res, 20))
+    expect(got).toEqual(['retry'])
+  })
+
   it('オフにすると、ならしながら素通しになる。同じ並びなら processor を作り直さない', () => {
     const s = new TrackStream(SR, clips)
     s.setVoices([voice], 0, false)
