@@ -140,7 +140,6 @@ export default function TrackColumn(c: { p: TimelineProps; vs: number; maxV: num
                 const ids = p.project.tracks.map((tr) => tr.id)
                 const sel = doc.selectedTracks
                 if (p.selectMode) {
-                  doc.setRange(null)
                   doc.selectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
                 } else if (e.ctrlKey || e.metaKey) doc.selectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
                 else if (e.shiftKey && p.selectedTrack) {

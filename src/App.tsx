@@ -365,7 +365,6 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onToggleSelectMode={() => {
           if (!selectMode && selected.length > 0) setSelectedTracks([])
           setSelectMode(!selectMode)
-          setRange(null)
         }}
       />
       {!touchLike && editBar}

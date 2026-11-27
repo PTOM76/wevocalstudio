@@ -35,7 +35,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
   const defaultsRef = useRef(defaults)
   defaultsRef.current = defaults
   // 範囲のドラッグや、続けての範囲の変更は、履歴の 1 段にまとめる
-  const setRange = useCallback((r: Range | null) => doc.selectRange(r, 'range'), [doc])
+  const setRange = useCallback((r: Range | null) => doc.selectRange(r), [doc])
   const { change, select, selectTracks, selectRange, endMerge, cancelMerge, undo, redo, goto, replace, setFxState } = doc
 
   /** 録った音を、指定したトラックの start 秒に波形ブロックとして置く */

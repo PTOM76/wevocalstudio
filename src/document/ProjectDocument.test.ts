@@ -71,41 +71,41 @@ describe('select', () => {
 })
 
 describe('トラックと範囲の選択', () => {
-  it('どちらも履歴の 1 段になり、元に戻せる', () => {
+  it('トラックの選択は履歴の 1 段になる。範囲は履歴に積まず、元に戻しても今の範囲のまま', () => {
     const d = make({ tracks: [{ id: 't1', name: '1', volume: 0, pan: 0, mute: false, solo: false }, { id: 't2', name: '2', volume: 0, pan: 0, mute: false, solo: false }] })
     d.selectTracks(['t1', 't2'])
     d.selectRange({ start: 1, end: 2 })
     expect(d.selectedTracks).toEqual(['t1', 't2'])
     expect(d.range).toEqual({ start: 1, end: 2 })
-    expect(d.store.get().past).toHaveLength(2)
-    d.undo()
-    expect(d.range).toBeNull()
-    expect(d.selectedTracks).toEqual(['t1', 't2'])
+    expect(d.store.get().past).toHaveLength(1)
     d.undo()
     expect(d.selectedTracks).toEqual([])
+    expect(d.range).toEqual({ start: 1, end: 2 })
+    d.redo()
+    expect(d.selectedTracks).toEqual(['t1', 't2'])
+    expect(d.range).toEqual({ start: 1, end: 2 })
   })
 
-  it('同じ範囲、同じトラックの選択は積まない。範囲のドラッグ（merge）は 1 段', () => {
+  it('同じトラックの選択は積まない。範囲を何度変えても段は増えない', () => {
     const d = make()
-    d.selectRange({ start: 1, end: 2 }, 'range')
-    d.selectRange({ start: 1, end: 3 }, 'range')
-    d.selectRange({ start: 1, end: 3 }, 'range')
-    expect(d.store.get().past).toHaveLength(1)
+    d.selectRange({ start: 1, end: 2 })
+    d.selectRange({ start: 1, end: 3 })
+    expect(d.store.get().past).toHaveLength(0)
     expect(d.range).toEqual({ start: 1, end: 3 })
     d.selectTracks([])
-    expect(d.store.get().past).toHaveLength(1)
+    expect(d.store.get().past).toHaveLength(0)
   })
 
-  it('消したトラックは選択から外れ、change の sel で範囲もいっしょに外せる', () => {
+  it('消したトラックは選択から外れ、change の sel で範囲もいっしょに外せる。元に戻しても範囲は外れたまま', () => {
     const d = make({ tracks: [{ id: 't1', name: '1', volume: 0, pan: 0, mute: false, solo: false }] })
     d.selectTracks(['t1'])
     d.selectRange({ start: 0, end: 1 })
     d.change((p) => ({ ...p, tracks: [] }), undefined, { range: null })
     expect(d.selectedTracks).toEqual([])
     expect(d.range).toBeNull()
-    expect(d.store.get().past.at(-1)?.range).toEqual({ start: 0, end: 1 })
     d.undo()
-    expect(d.range).toEqual({ start: 0, end: 1 })
+    expect(d.selectedTracks).toEqual(['t1'])
+    expect(d.range).toBeNull()
   })
 
   it('プロジェクトを変えずに選択だけを変えた change は select の名前になる', () => {

@@ -161,13 +161,11 @@ export function useTimelinePointer(o: {
       e.currentTarget.setPointerCapture(e.pointerId)
       const block = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps)?.block ?? hitMidi(p.project, x, y, toTime, view.pps)?.block : undefined
       if (block) {
-        doc.setRange(null)
         doc.selectTracks([])
         doc.select(doc.selected.includes(block.id) ? doc.selected.filter((id) => id !== block.id) : [...doc.selected, block.id])
       } else {
         const track = trackAt(y)
         if (track) {
-          doc.setRange(null)
           doc.select([])
           doc.selectTracks(doc.selectedTracks.includes(track.id) ? doc.selectedTracks.filter((id) => id !== track.id) : [...doc.selectedTracks, track.id])
         }
@@ -476,9 +474,8 @@ export function useTimelinePointer(o: {
       if (!marquee.current.moved) marquee.current = null
       setBox(null)
     }
-    // 範囲を作らずに離したら、範囲を消す
+    // 範囲を作らずに離したら、再生位置だけを動かす（範囲は残す。REAPER の時間選択と同じ）
     if (rangeDrag.current && Math.abs(local(e).x - rangeDrag.current.x) < 3) {
-      doc.setRange(null)
       p.onSeek(gridAt(rangeDrag.current.x, e.shiftKey))
     }
     // Ctrl で押して動かさずに離したら、選択の足し引き（選んでいたものは外す）

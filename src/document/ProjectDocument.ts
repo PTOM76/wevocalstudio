@@ -4,7 +4,7 @@ import { describeChange } from '../history'
 import type { MessageKey } from '../i18n'
 import { midiBlocks, type Project } from '../project'
 
-/** 選択（波形ブロックと MIDI ブロック、トラック、範囲）。履歴の 1 段に入り、元に戻せる */
+/** 選択（波形ブロックと MIDI ブロック、トラック、範囲）。ブロックとトラックの選択は履歴の 1 段に入り、元に戻せる。範囲は履歴に積まず、元に戻しても今の範囲のまま（REAPER の時間選択と同じ） */
 export interface Selection {
   /** 選んでいるブロック（波形と MIDI） */
   selected: string[]
@@ -92,13 +92,20 @@ export class ProjectDocument {
     }, merge)
   }
 
-  /** 範囲を変える（履歴の 1 段になる。ドラッグ中は merge で 1 段にまとめる）。null で外す */
-  selectRange = (range: Range | null, merge?: string) => {
-    this.store.commit((step) => {
+  /** 範囲を変える。履歴には積まず、今の段を書き換える。null で外す */
+  selectRange = (range: Range | null) => {
+    this.store.replacePresent((step) => {
       const cur = step.range
       if (cur === range || (cur && range && cur.start === range.start && cur.end === range.end)) return step
-      return { ...step, range, label: 'history.select' }
-    }, merge)
+      return { ...step, range }
+    })
+  }
+
+  /** 履歴を動かしても、範囲は今のまま（範囲は履歴に入れない） */
+  private keepRange(move: () => void) {
+    const range = this.range
+    move()
+    if (this.range !== range) this.store.replacePresent((step) => ({ ...step, range }))
   }
 
   /** 続けての変更のまとまりを切る（ドラッグを離したとき） */
@@ -123,9 +130,9 @@ export class ProjectDocument {
     }
   }
 
-  undo = () => this.store.undo()
-  redo = () => this.store.redo()
-  goto = (index: number) => this.store.goto(index)
+  undo = () => this.keepRange(() => this.store.undo())
+  redo = () => this.keepRange(() => this.store.redo())
+  goto = (index: number) => this.keepRange(() => this.store.goto(index))
 
   /** 開いたプロジェクトに入れ替える（履歴は消す） */
   replace = (p: Project, label: MessageKey = 'history.open') => this.store.reset({ project: p, ...NO_SELECTION, label })
