@@ -9,6 +9,7 @@ import { clipId, Mixers, voicesOf } from '../mixer/mixer'
 import type { Voice } from '../mixer/types'
 import { piecesFor, type Piece } from '../dsp/pitch'
 import { audible, bakedTracks, ownAudible, flowsTo, SEND_MIN, dbToGain, liveSlots, type Block, type Project, type Track } from '../project'
+import { streamPrefix } from '../stream/streamPrefix'
 
 export interface TrackNodes {
   input: GainNode
@@ -16,6 +17,8 @@ export interface TrackNodes {
   comp: DelayNode
   /** 先に作った音の入口（FX の列の出口へ足す。ミュートとソロはここで切る） */
   cache: GainNode
+  /** 先を走る方式で Worker が作った音の入口（FX の列の入口へ入れる。Worker で掛けなかった後ろの FX をノードで掛ける。ミュートとソロはここで切る） */
+  pre: GainNode
   /** サイドチェーンの取り出し口（パンのあとの音。ほかのトラックの FX がこれを聞く） */
   tap: GainNode
   /** センド（送り先のトラックの id → 送る量のゲイン） */
@@ -103,9 +106,23 @@ export class Graph {
     return !!this.proj && target !== source && !flowsTo(this.proj, target, source)
   }
 
-  /** そのトラックで、今ノードとして動かす FX の列（先に作った音で鳴らすトラックは空） */
+  /** 先を走る方式で鳴らすトラック（FX の列の先頭は Worker で掛け、残りをノードで掛ける） */
+  private streamed = new Set<string>()
+
+  /** そのトラックで、今ノードとして動かす FX の列（先に作った音で鳴らすトラックは空。先を走る方式のトラックは、Worker で掛けなかった後ろの分） */
   private liveFx(t: Track) {
+    if (this.streamed.has(t.id)) return liveSlots(t).slice(streamPrefix(t))
     return this.anticipated.has(t.id) ? [] : liveSlots(t)
+  }
+
+  /** 先を走る方式で鳴らすトラックを決める（setAnticipated にも入れる。sync の前に呼ぶ） */
+  setStreamed(ids: Iterable<string>) {
+    this.streamed = new Set(ids)
+  }
+
+  /** 先を走る方式で Worker が作った音を入れる所（FX の列の入口） */
+  streamInput(trackId: string): AudioNode | null {
+    return this.tracks.get(trackId)?.pre ?? null
   }
 
   /** 先に作った音で鳴らすトラックを決める（sync の前に呼ぶ） */
@@ -171,6 +188,7 @@ export class Graph {
     }
     this.cacheSources.delete(trackId)
     this.anticipated.delete(trackId)
+    this.streamed.delete(trackId)
   }
 
   /** 音源の組み立て: トラックに音源があれば作り、変わっていれば作り直し、なければ外す。書き出しは音符を全部、作るときに渡す */
@@ -266,7 +284,7 @@ export class Graph {
     const p = this.proj
     if (!p) return
     if (hasAutomation(p.master.fx)) this.masterFx.update(automatedSlots(p.master.fx ?? [], t))
-    for (const tr of p.tracks) if (hasAutomation(liveSlots(tr)) && !this.anticipated.has(tr.id)) this.tracks.get(tr.id)?.fx.update(automatedSlots(liveSlots(tr), t))
+    for (const tr of p.tracks) if (hasAutomation(this.liveFx(tr)) && (!this.anticipated.has(tr.id) || this.streamed.has(tr.id))) this.tracks.get(tr.id)?.fx.update(automatedSlots(this.liveFx(tr), t))
   }
 
   /** プラグインに渡すホストの情報 */
@@ -316,6 +334,8 @@ export class Graph {
     fx.output.connect(pan)
     const cache = this.ctx.createGain()
     cache.connect(fx.output)
+    const pre = this.ctx.createGain()
+    pre.connect(fx.input)
     const split = this.ctx.createChannelSplitter(2)
     const meter: [AnalyserNode, AnalyserNode] = [Graph.analyser(this.ctx), Graph.analyser(this.ctx)]
     pan.connect(split)
@@ -323,7 +343,7 @@ export class Graph {
     split.connect(meter[0], 0)
     split.connect(meter[1], 1)
     // 出し先（マスターか親のトラック）は sync でつなぐ
-    return { input, comp, cache, tap, sends: new Map(), inst: null, pan, fx, split, meter, dest: '' }
+    return { input, comp, cache, pre, tap, sends: new Map(), inst: null, pan, fx, split, meter, dest: '' }
   }
 
   /** 波形ブロックの声の一覧をミキサーに送る。変わっていない声はそのまま鳴り続け、差し替えた声は FADE でつなぐ（smooth のとき） */
@@ -349,6 +369,7 @@ export class Graph {
         this.tracks.set(t.id, n)
       } else n.fx.update(automatedSlots(this.liveFx(t), now))
       to(n.cache.gain, ownAudible(p, t) ? 1 : 0, fresh)
+      to(n.pre.gain, ownAudible(p, t) ? 1 : 0, fresh)
       // ミュートとソロは音量 0 にする（ノードは残す）
       to(n.input.gain, audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0, fresh)
       to(n.pan.pan, t.pan, fresh)
@@ -394,6 +415,7 @@ export class Graph {
       n.inst?.instance.dispose()
       n.comp.disconnect()
       n.cache.disconnect()
+      n.pre.disconnect()
       for (const g of n.sends.values()) g.disconnect()
       n.tap.disconnect()
       n.input.disconnect()
@@ -481,6 +503,7 @@ export class Graph {
       n.inst?.instance.dispose()
       n.comp.disconnect()
       n.cache.disconnect()
+      n.pre.disconnect()
       for (const g of n.sends.values()) g.disconnect()
       n.tap.disconnect()
       n.input.disconnect()

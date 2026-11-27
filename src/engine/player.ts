@@ -147,6 +147,7 @@ export class Player {
     const ok = chunked.filter((_, i) => primed[i]?.buf !== null)
     // 子孫の音は、親の FX を通した形で、親の作った音に入っている。子孫をノードでも鳴らすと二重になるので、ノードでは鳴らさない（memo/anticipate-parent.md）
     this.graph.setAnticipated([...ok.flatMap((t) => subtree(p, t).map((x) => x.id)), ...(this.stream?.ids ?? [])])
+    this.graph.setStreamed(this.stream?.ids ?? [])
     this.automation = setInterval(() => {
       this.graph?.automate()
       this.graph?.pumpMidi()
@@ -159,7 +160,7 @@ export class Player {
     this.playing = true
     this.project = p
     // 先を走る方式のトラックは、読むだけのノードをつないで鳴らし始める
-    if (this.stream?.ids.length) this.stream.begin(this.startedAt - from, (tid) => this.graph?.cacheInput(tid) ?? null)
+    if (this.stream?.ids.length) this.stream.begin(this.startedAt - from, (tid) => this.graph?.streamInput(tid) ?? null)
     if (ok.length) {
       const ant = (this.ant = { sigs: new Map(ok.map((t) => [t.id, signature(p, t)])), next: new Map(ok.map((t) => [t.id, k0 + 1])), busy: false, timer: setInterval(() => void this.tick(), 250), miss: new Map() })
       for (const [i, t] of chunked.entries()) {

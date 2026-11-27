@@ -1,5 +1,5 @@
 // 先を走る方式のメインスレッドの側。Worker（stream.worker.ts）と、トラックごとの読むだけのノードを組み、プロジェクトの変更を送る（memo/anticipate-stream.md）
-import { externalPackage, findPlugin, migrateValues, readySnapshot, type Clip } from 'wevocal-lib'
+import { migrateValues, readySnapshot, type Clip } from 'wevocal-lib'
 import { processorName } from 'wevocal-lib/stream'
 import { prerollOf } from '../anticipate'
 import { piecesFor } from '../dsp/pitch'
@@ -8,6 +8,7 @@ import type { Voice } from '../mixer/types'
 import { volumeSteps } from '../engine/params'
 import { audible, dbToGain, descendants, liveSlots, midiBlocks, type Project, type Track } from '../project'
 import type { StreamSlot } from './trackStream'
+import { streamPrefix, workerPackage } from './streamPrefix'
 import type { ReaderControl, ReaderEvent, StreamEvent, StreamMessage } from './types'
 import readerUrl from './stream.reader.worklet.ts?worker&url'
 
@@ -30,15 +31,15 @@ const loadReader = (ctx: BaseAudioContext) => {
   return p
 }
 
-/** processor の列にできる FX の項目（外から足した wevocal の processor と VST。WAM は Worker で動かせないので対象外）。できなければ null */
+/** Worker で動かす FX の項目（先頭から streamPrefix 個）。1 つもなければ null */
 function streamSlots(t: Track, sampleRate: number): { slots: StreamSlot[]; sources: Map<string, { source: string; assets: Record<string, unknown> }> } | null {
   const slots: StreamSlot[] = []
   const sources = new Map<string, { source: string; assets: Record<string, unknown> }>()
-  for (const s of liveSlots(t)) {
-    const plugin = findPlugin(s.plugin)
-    const pkg = externalPackage(plugin)
-    const format = pkg?.manifest.format
-    if (!plugin || !pkg || (format !== 'wevocal' && format !== 'vst') || !pkg.processor || s.sidechain) return null
+  const n = streamPrefix(t)
+  if (!n) return null
+  for (const s of liveSlots(t).slice(0, n)) {
+    const pkg = workerPackage(s)!
+    const format = pkg.manifest.format
     const key = `${pkg.manifest.id}@${pkg.manifest.version}`
     // 大きいもの（wasm、dll、写し）はプラグインごとに 1 回だけ送る。項目には小さい値だけを持たせる
     sources.set(key, { source: pkg.processor, assets: { wasm: pkg.wasm, dll: pkg.dll, snap: format === 'vst' ? readySnapshot(pkg) : null } })
@@ -56,7 +57,7 @@ function streamSlots(t: Track, sampleRate: number): { slots: StreamSlot[]; sourc
   return { slots, sources }
 }
 
-/** 先を走る方式にできるトラックか（子のトラック、音源、MIDI ブロックがなく、FX が全部 wevocal の processor か VST） */
+/** 先を走る方式にできるトラックか（子のトラック、音源、MIDI ブロックがなく、FX の列の先頭が wevocal の processor か VST。後ろの組み込みの FX などはノードで掛ける） */
 export function streamable(p: Project, t: Track, sampleRate: number): boolean {
   return !descendants(p, t).length && !t.instrument && !midiBlocks(p).some((b) => b.track === t.id) && !!streamSlots(t, sampleRate)?.slots.length
 }
