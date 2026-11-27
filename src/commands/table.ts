@@ -52,8 +52,12 @@ export const COMMANDS = defineCommands({
     },
   },
   // 選択の解除（範囲と波形ブロック）
-  // 範囲があれば範囲だけを外し、なければブロックとトラックの選択を外す（Esc を 2 回押すと全部外れる）
-  clearRange: { label: 'menu.clearRange' as MessageKey, enabled: ({ doc, any }) => !!doc.range || any || doc.selectedTracks.length > 0, run: ({ doc }) => (doc.range ? doc.setRange(null) : doc.apply((p) => p, undefined, { selected: [], selectedTracks: [] })) },
+  // 範囲があれば範囲だけを外し、なければブロックとトラックの選択を外す（Esc を 2 回押すと全部外れる）。従来の扱いでは範囲とブロックの選択を一度に外す
+  clearRange: {
+    label: 'menu.clearRange' as MessageKey,
+    enabled: ({ doc, any }) => !!doc.range || any || doc.selectedTracks.length > 0,
+    run: ({ doc, c }) => (c.rangeStyle === 'classic' ? doc.apply((p) => p, undefined, { range: null, selected: [] }) : doc.range ? doc.setRange(null) : doc.apply((p) => p, undefined, { selected: [], selectedTracks: [] })),
+  },
   trimRange: { label: 'menu.trimRange' as MessageKey, enabled: ({ doc }) => !!doc.range, run: ({ doc, c }) => doc.range && doc.apply((p) => cropToRange(p, doc.range!, c.defaultFade)) },
   deleteRange: { label: 'menu.deleteRange' as MessageKey, enabled: ({ doc }) => !!doc.range, run: ({ doc, c }) => doc.range && doc.apply((p) => deleteRange(p, doc.range!, c.defaultFade), undefined, { range: null }) },
   insertSilence: { label: 'menu.insertSilence' as MessageKey, enabled: ({ doc }) => !!doc.range, run: ({ doc, c }) => doc.range && (doc.apply((p) => insertSilence(p, doc.range!.start, doc.range!.end - doc.range!.start, c.defaultFade)), c.seekAfterInsert && c.moveCursor(doc.range.end)) },

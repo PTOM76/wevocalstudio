@@ -99,6 +99,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         <Group title={t('settings.groupInput')}>
           {S('sliderDoubleClickReset')}
           {S('seekAfterInsert')}
+          {S('rangeStyle')}
           {S('grid')}
         </Group>
         <Group title={t('settings.groupFade')}>

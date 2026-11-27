@@ -4,6 +4,7 @@ import type { WheelZoom } from 'wevocal-lib/react'
 import type { StartFolder } from 'pevenmui/web'
 import type { Action } from '../../keymap'
 import type { ExchangeBlocks } from '../../exchange/exchange'
+import type { RangeStyle } from '../../document/ProjectDocument'
 import { check, choice, defineItems, number, value } from './define'
 
 /** Ctrl+S で行うこと（もう一方は Ctrl+Shift+S になる） */
@@ -57,6 +58,15 @@ export const edit = defineItems('edit', {
   defaultBlockFadeMs: number(10, { label: 'settings.defaultBlockFadeMs', min: 1, max: 500, step: 1, unit: 'ms' }),
   // 貼り付けと無音の挿入のあと、再生位置を入れた範囲の終わりへ移す（WeVocalSynth と同じ）
   seekAfterInsert: check(true, { label: 'settings.seekAfterInsert' }),
+  // 範囲の扱い（REAPER の時間選択と同じか、従来か）
+  rangeStyle: choice<RangeStyle>('keep', {
+    label: 'settings.rangeStyle',
+    help: 'settings.rangeStyleHelp',
+    options: [
+      ['keep', 'settings.rangeKeep'],
+      ['classic', 'settings.rangeClassic'],
+    ],
+  }),
 })
 
 /** 「キーとマウス」 */

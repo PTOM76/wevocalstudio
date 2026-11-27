@@ -427,6 +427,10 @@
   "settings.exchangeChanged": "加工したブロックだけ描画する",
   "settings.exchangeAll": "すべて描画する",
   "settings.exchangeOriginal": "すべて元の音で渡す",
+  "settings.rangeStyle": "範囲の扱い",
+  "settings.rangeStyleHelp": "REAPER と同じでは、クリックしても範囲は残り、元に戻すで範囲は変わらない。Esc は範囲を解除し、範囲がなければ選択を解除する。従来では、クリックで範囲を解除し、範囲も元に戻せる",
+  "settings.rangeKeep": "REAPER と同じ",
+  "settings.rangeClassic": "従来",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

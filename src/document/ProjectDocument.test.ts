@@ -86,6 +86,15 @@ describe('トラックと範囲の選択', () => {
     expect(d.range).toEqual({ start: 1, end: 2 })
   })
 
+  it('従来の扱いでは、範囲も履歴の 1 段になり、ドラッグ（merge）は 1 段にまとまる', () => {
+    const d = new ProjectDocument(newProject(), { limit: () => 100, rangeStyle: () => 'classic' })
+    d.selectRange({ start: 1, end: 2 }, 'range')
+    d.selectRange({ start: 1, end: 3 }, 'range')
+    expect(d.store.get().past).toHaveLength(1)
+    d.undo()
+    expect(d.range).toBeNull()
+  })
+
   it('同じトラックの選択は積まない。範囲を何度変えても段は増えない', () => {
     const d = make()
     d.selectRange({ start: 1, end: 2 })

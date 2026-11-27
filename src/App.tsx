@@ -70,7 +70,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
   const { width: header, bar: headerBar, collapsed: headerCollapsed, toggle: toggleHeader } = useHeaderWidth()
   useAppSetup(p.settings, p.onSettingsChange)
   const addonFolderNotice = useAddonFolder(p.settings.addonFolder)
-  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit, defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0, defaultBpm: p.settings.defaultBpm })
+  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit, defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0, defaultBpm: p.settings.defaultBpm, rangeStyle: p.settings.rangeStyle })
   const { project, selected } = doc
   const setSelected = doc.select
   // 選んでいるトラック（複数。最後に選んだものが「選んでいるトラック」で、貼り付けや録音の先）
@@ -217,6 +217,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     cursor,
     playing,
     defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0,
+    rangeStyle: p.settings.rangeStyle,
     play,
     stop,
     pause,
@@ -365,6 +366,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onToggleSelectMode={() => {
           if (!selectMode && selected.length > 0) setSelectedTracks([])
           setSelectMode(!selectMode)
+          if (p.settings.rangeStyle === 'classic') setRange(null)
         }}
       />
       {!touchLike && editBar}

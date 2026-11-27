@@ -9,10 +9,12 @@ import { depthOf, masterHeight, trackHeight, TRACK_HEIGHT_MAX, TRACK_HEIGHT_MIN 
 import { RULER, totalTrackHeight, trackTop } from '../drawTimeline'
 import TrackHeader, { MasterHeader } from '../TrackHeader'
 import type { TimelineProps } from '../Timeline'
+import { useAppSettings } from '../settings/settings'
 
 export default function TrackColumn(c: { p: TimelineProps; vs: number; maxV: number; top: number; setVscroll: (v: number | ((v: number) => number)) => void; slotAt: (y: number) => number; resizeRef: { current: { id: string; y: number; height: number; merge: string } | null } }) {
   const { p, vs, maxV, top: TOP, setVscroll, slotAt, resizeRef: trackResizeRef } = c
   const doc = useDoc()
+  const classicRange = useAppSettings().settings.rangeStyle === 'classic'
   const t = useT()
   const header = p.headerWidth
   // トラックのドラッグ並び替え
@@ -140,6 +142,7 @@ export default function TrackColumn(c: { p: TimelineProps; vs: number; maxV: num
                 const ids = p.project.tracks.map((tr) => tr.id)
                 const sel = doc.selectedTracks
                 if (p.selectMode) {
+                  if (classicRange) doc.setRange(null)
                   doc.selectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
                 } else if (e.ctrlKey || e.metaKey) doc.selectTracks(sel.includes(track.id) ? sel.filter((x) => x !== track.id) : [...sel, track.id])
                 else if (e.shiftKey && p.selectedTrack) {

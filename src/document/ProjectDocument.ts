@@ -21,7 +21,12 @@ export interface Step extends Selection {
 
 const NO_SELECTION: Selection = { selected: [], selectedTracks: [], range: null }
 
+/** 範囲の扱い。keep は REAPER の時間選択と同じ（クリックで外さず、履歴に積まない）、classic は従来（クリックで外し、履歴に積む） */
+export type RangeStyle = 'keep' | 'classic'
+
 export interface DocumentOptions {
+  /** 範囲の扱い（設定で変わるので、そのたびに読む。省くと keep） */
+  rangeStyle?: () => RangeStyle
   /** 元に戻せる回数（設定で変わるので、そのたびに読む） */
   limit: () => number
   /** 変更を通す前に直す（フリーズ中のトラックの波形ブロックを守るなど）。省くとそのまま通す */
@@ -92,17 +97,24 @@ export class ProjectDocument {
     }, merge)
   }
 
-  /** 範囲を変える。履歴には積まず、今の段を書き換える。null で外す */
-  selectRange = (range: Range | null) => {
-    this.store.replacePresent((step) => {
-      const cur = step.range
-      if (cur === range || (cur && range && cur.start === range.start && cur.end === range.end)) return step
-      return { ...step, range }
-    })
+  private get rangeInHistory() {
+    return this.options.rangeStyle?.() === 'classic'
   }
 
-  /** 履歴を動かしても、範囲は今のまま（範囲は履歴に入れない） */
+  /** 範囲を変える。null で外す。keep では履歴に積まず今の段を書き換え、classic では履歴の 1 段にする（ドラッグ中は merge で 1 段にまとめる） */
+  selectRange = (range: Range | null, merge?: string) => {
+    const update = (step: Step): Step => {
+      const cur = step.range
+      if (cur === range || (cur && range && cur.start === range.start && cur.end === range.end)) return step
+      return this.rangeInHistory ? { ...step, range, label: 'history.select' } : { ...step, range }
+    }
+    if (this.rangeInHistory) this.store.commit(update, merge)
+    else this.store.replacePresent(update)
+  }
+
+  /** keep では、履歴を動かしても範囲は今のまま（範囲は履歴に入れない） */
   private keepRange(move: () => void) {
+    if (this.rangeInHistory) return move()
     const range = this.range
     move()
     if (this.range !== range) this.store.replacePresent((step) => ({ ...step, range }))

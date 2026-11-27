@@ -1,7 +1,7 @@
 // プロジェクトの状態と操作（読み込み、マスター、トラック、波形ブロックの変更）と、元に戻す、やり直す
 import { useCallback, useRef, useState } from 'react'
 import { useHistory } from 'wevocal-lib/react'
-import { ProjectDocument } from './document/ProjectDocument'
+import { ProjectDocument, type RangeStyle } from './document/ProjectDocument'
 import { keepFrozen } from './freeze'
 import { decodeFile, historySteps, type AutoPoint, type Clip, type Range } from 'wevocal-lib'
 import { defaultInstrument } from './midiImport'
@@ -25,17 +25,19 @@ async function decodeNamed(file: File): Promise<Clip> {
   }
 }
 
-export function useProject(defaults: PitchDefaults & { historyLimit: number; defaultFade: number; defaultBpm: number }) {
+export function useProject(defaults: PitchDefaults & { historyLimit: number; defaultFade: number; defaultBpm: number; rangeStyle: RangeStyle }) {
   // 元に戻せる回数（設定）。文書は 1 つだけ作り、設定が変わっても最新の値を読む
   const limit = useRef(defaults.historyLimit)
   limit.current = defaults.historyLimit
-  const [doc] = useState(() => new ProjectDocument(newProject(defaults.defaultBpm), { limit: () => limit.current, guard: keepFrozen }))
+  const rangeStyle = useRef(defaults.rangeStyle)
+  rangeStyle.current = defaults.rangeStyle
+  const [doc] = useState(() => new ProjectDocument(newProject(defaults.defaultBpm), { limit: () => limit.current, rangeStyle: () => rangeStyle.current, guard: keepFrozen }))
   const history = useHistory(doc.store)
   // 読み込みの途中で設定が変わっても、最新の既定値を使う
   const defaultsRef = useRef(defaults)
   defaultsRef.current = defaults
   // 範囲のドラッグや、続けての範囲の変更は、履歴の 1 段にまとめる
-  const setRange = useCallback((r: Range | null) => doc.selectRange(r), [doc])
+  const setRange = useCallback((r: Range | null) => doc.selectRange(r, 'range'), [doc])
   const { change, select, selectTracks, selectRange, endMerge, cancelMerge, undo, redo, goto, replace, setFxState } = doc
 
   /** 録った音を、指定したトラックの start 秒に波形ブロックとして置く */

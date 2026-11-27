@@ -427,6 +427,10 @@
   "settings.exchangeChanged": "Render processed blocks only",
   "settings.exchangeAll": "Render all blocks",
   "settings.exchangeOriginal": "Pass the original audio",
+  "settings.rangeStyle": "Range selection",
+  "settings.rangeStyleHelp": "Like REAPER: clicking keeps the range, and undo does not change it. Esc clears the range, or the selection when there is no range. Classic: clicking clears the range, and range changes can be undone",
+  "settings.rangeKeep": "Like REAPER",
+  "settings.rangeClassic": "Classic",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",

@@ -4,6 +4,7 @@ import { commandDefiner, type CommandSpec, type MenuEntry } from 'pevenmui'
 import type { MessageKey, useT } from '../i18n'
 import { type Block, type PitchEnvelopeRange, type Source, type Track, type VolumeEnvelopeRange } from '../project'
 import { type EnvKind } from '../envelopes'
+import type { RangeStyle } from '../document/ProjectDocument'
 import type { useProject } from '../useProject'
 
 export type ProjectApi = ReturnType<typeof useProject>
@@ -13,6 +14,8 @@ export interface ActionContext {
   cursor: number
   playing: boolean
   defaultFade: number
+  /** 範囲の扱い（設定） */
+  rangeStyle: RangeStyle
   /** 貼り付けと無音の挿入のあと、再生位置を入れた範囲の終わりへ移すか（設定） */
   seekAfterInsert: boolean
   play: () => void

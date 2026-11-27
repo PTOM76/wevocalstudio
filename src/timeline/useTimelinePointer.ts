@@ -17,6 +17,7 @@ import { menuHandlers } from './menuHandlers'
 import { useGestures } from './gesture'
 import { blockDragPatches, marqueeIds, midiDragPatch, groupMove, movedAutoPoints, movedEnvPoints, pressSelection } from './dragMath'
 import type { TimelineProps } from '../Timeline'
+import { useAppSettings } from '../settings/settings'
 
 /** 座標の補助（画面の y とスクロール、トラックの行、時刻）。画面を描く側とそろえるため、Timeline から受け取る */
 export interface TimelineGeometry {
@@ -49,6 +50,8 @@ export function useTimelinePointer(o: {
   const { p, canvasRef, view, setView, vs, vscroll, setVscroll, maxRef, top: TOP, width, height, trackResizeRef, geo } = o
   const { cy, trackAt, rowDelta, slotAt, toTime, blockGeom } = geo
   const doc = useDoc()
+  // 従来の範囲の扱い（クリックや選択モードで範囲を外す）
+  const classicRange = useAppSettings().settings.rangeStyle === 'classic'
   // Shift+クリックの起点（前に押した波形ブロック）
   // 操作中の状態は 1 つ（gesture.ts）。操作を始めると前の操作は終わる
   const { drag, rangeDrag, scrub, envDrag, autoDrag, midiDrag, endDrag, marquee, pan } = useGestures()
@@ -161,11 +164,13 @@ export function useTimelinePointer(o: {
       e.currentTarget.setPointerCapture(e.pointerId)
       const block = y > TOP ? hitBlock(p.project, x, y, toTime, view.pps)?.block ?? hitMidi(p.project, x, y, toTime, view.pps)?.block : undefined
       if (block) {
+        if (classicRange) doc.setRange(null)
         doc.selectTracks([])
         doc.select(doc.selected.includes(block.id) ? doc.selected.filter((id) => id !== block.id) : [...doc.selected, block.id])
       } else {
         const track = trackAt(y)
         if (track) {
+          if (classicRange) doc.setRange(null)
           doc.select([])
           doc.selectTracks(doc.selectedTracks.includes(track.id) ? doc.selectedTracks.filter((id) => id !== track.id) : [...doc.selectedTracks, track.id])
         }
@@ -474,8 +479,9 @@ export function useTimelinePointer(o: {
       if (!marquee.current.moved) marquee.current = null
       setBox(null)
     }
-    // 範囲を作らずに離したら、再生位置だけを動かす（範囲は残す。REAPER の時間選択と同じ）
+    // 範囲を作らずに離したら、再生位置だけを動かす（範囲は残す。REAPER の時間選択と同じ。従来の扱いでは範囲を外す）
     if (rangeDrag.current && Math.abs(local(e).x - rangeDrag.current.x) < 3) {
+      if (classicRange) doc.setRange(null)
       p.onSeek(gridAt(rangeDrag.current.x, e.shiftKey))
     }
     // Ctrl で押して動かさずに離したら、選択の足し引き（選んでいたものは外す）
