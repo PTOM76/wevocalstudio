@@ -34,6 +34,8 @@ export interface TimelineProps {
   onSelectTrack: (id: string) => void
   /** タッチ端末でタップによる追加選択をする */
   selectMode: boolean
+  /** 従来の範囲の扱い（設定の rangeStyle が classic。クリックや選択モードで範囲を外す） */
+  classicRange: boolean
   onSeek: (t: number) => void
   /** トラック一覧の幅と、その境目の分割バー（App で持つ。解析の欄の左の幅にもそろえる） */
   headerWidth: number

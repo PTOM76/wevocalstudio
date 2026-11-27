@@ -397,6 +397,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         selectedTrack={selectedTrack}
         onSelectTrack={setSelectedTrack}
         selectMode={selectMode}
+        classicRange={p.settings.rangeStyle === 'classic'}
         onSeek={seek}
         headerWidth={header}
         headerBar={headerBar}
