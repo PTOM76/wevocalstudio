@@ -1,6 +1,6 @@
 // ほかの DAW のプロジェクト（.rpp、.dawproject、それらを入れた zip）を開く（memo/daw-exchange.md）。音声は zip の中か、一緒に選んだファイルから名前で探す
 import { readZip } from 'pevenmui/web'
-import { decodeFile, installedPlugins, type Clip } from 'wevocal-lib'
+import { decodeFile, externalPackage, findPlugin, installedPlugins, vstParamsFromChunk, type Clip } from 'wevocal-lib'
 import type { Project } from '../project'
 import { readDawproject } from './dawprojectRead'
 import { baseName, fromExchange } from './fromExchange'
@@ -67,5 +67,13 @@ export async function importDaw(files: File[], pitchMap?: ReaperPitchMap): Promi
     }
   }
   const { project, missing, skippedFx } = fromExchange(x, audio, installedPlugins(), pitchMap)
+  // 塊でしか状態を持たない VST は、塊を戻したときのつまみの値を VST から読み、画面のつまみと音をそろえる
+  for (const t of project.tracks)
+    for (const s of t.fx ?? []) {
+      const pkg = s.state ? externalPackage(findPlugin(s.plugin)) : null
+      if (!pkg || pkg.manifest.format !== 'vst') continue
+      const params = await vstParamsFromChunk(pkg, Uint8Array.from(atob(s.state!), (c) => c.charCodeAt(0)))
+      if (params) pkg.manifest.params.forEach((d, i) => params[i] !== undefined && (s.values[d.id] = params[i]))
+    }
   return { project, name: main.name.replace(/\.[^.]+$/, ''), missing, skipped: skipped + skippedFx }
 }

@@ -191,7 +191,9 @@ export function trackFx(t: Project['tracks'][number]): { fx: XFx[]; skipped: num
     if (m?.format === 'vst') {
       const values = migrateValues(m, s.values)
       const name = String(plugin?.lang?.en_us?.name ?? plugin?.lang?.ja_jp?.name ?? m.id)
-      fx.push({ kind: 'vst', on: s.on, name, file: m.vst?.file ?? `${name}.dll`, uniqueId: m.vst?.uniqueId ?? 0, params: m.params.map((d) => values[d.id] ?? d.default) })
+      // 状態の塊（ほかの DAW から読んだもの）があれば、塊で書く
+      const chunk = s.state ? Uint8Array.from(atob(s.state), (c) => c.charCodeAt(0)) : undefined
+      fx.push({ kind: 'vst', on: s.on, name, file: m.vst?.file ?? `${name}.dll`, uniqueId: m.vst?.uniqueId ?? 0, params: m.params.map((d) => values[d.id] ?? d.default), ...(chunk ? { chunk } : {}) })
     } else if (s.plugin === EQ_ID) {
       const eq = valuesToEq(s.values, s.on)
       const bands = eqFreqs(eq.bands)

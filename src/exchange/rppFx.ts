@@ -3,7 +3,7 @@
 
 /** 中間の形の FX。vst はつまみの値（0〜1）をそのまま、reaeq は帯（周波数、dB、幅（オクターブ））で持つ */
 export type XFx =
-  | { kind: 'vst'; on: boolean; name: string; file: string; uniqueId: number; params: number[] }
+  | { kind: 'vst'; on: boolean; name: string; file: string; uniqueId: number; params: number[]; /** 状態の塊（塊でしか状態を持たない VST）。あれば params より優先して書く */ chunk?: Uint8Array }
   | { kind: 'reaeq'; on: boolean; bands: { freq: number; gain: number; bw: number }[] }
 
 /** ReaEQ の識別番号（'reeq'）と DLL の名前 */
@@ -97,8 +97,9 @@ function reaeqChunk(bands: { freq: number; gain: number; bw: number }[]): Uint8A
 /** 1 つの FX の行（BYPASS、<VST …> と塊、> まで）。quote は RPP の文字列の囲み */
 export function fxLines(fx: XFx, quote: (s: string) => string): string[] {
   const vst = fx.kind === 'vst' ? fx : { name: REAEQ.name, file: REAEQ.file, uniqueId: REAEQ_ID }
-  const data = fx.kind === 'vst' ? fx.params.reduce((b, v) => b.f32(v), new Bytes().u32(0xdeadbeef).u32(0xdeadf00d)).done() : reaeqChunk(fx.bands)
-  const lines = blobLines(vst.uniqueId, data, fx.kind === 'reaeq', fx.kind === 'vst' ? 'Default' : '')
+  const chunk = fx.kind === 'reaeq' || !!fx.chunk
+  const data = fx.kind === 'reaeq' ? reaeqChunk(fx.bands) : fx.chunk ?? fx.params.reduce((b, v) => b.f32(v), new Bytes().u32(0xdeadbeef).u32(0xdeadf00d)).done()
+  const lines = blobLines(vst.uniqueId, data, chunk, fx.kind === 'vst' ? 'Default' : '')
   return [`BYPASS ${fx.on ? 0 : 1} 0 0`, `<VST ${quote(`VST: ${vst.name}`)} ${quote(vst.file)} 0 "" ${vst.uniqueId >>> 0}<${vstTag(vst.uniqueId, vst.name)}> ""`, ...lines.map((l) => `  ${l}`), '>', 'FLOATPOS 0 0 0 0', 'WAK 0 0']
 }
 
@@ -140,9 +141,12 @@ export function readFx(o: { name: string; file: string; uniqueId: number; lines:
     }
     return { kind: 'reaeq', on: o.on, bands }
   }
-  if (chunk || data.byteLength < 8 || data.getUint32(0, true) !== 0xdeadbeef) return null
+  const name = o.name.replace(/^VST3?i?: /, '').replace(/\s*\([^()]*\)$/, '')
+  // 塊でしか状態を持たない VST は、塊をそのまま持つ（つまみの値は読み込むときに VST から読む）
+  if (chunk) return data.byteLength ? { kind: 'vst', on: o.on, name, file: o.file, uniqueId: o.uniqueId, params: [], chunk: new Uint8Array(all.subarray(0, data.byteLength)) } : null
+  if (data.byteLength < 8 || data.getUint32(0, true) !== 0xdeadbeef) return null
   const params = Array.from({ length: (data.byteLength - 8) >> 2 }, (_, i) => data.getFloat32(8 + i * 4, true))
-  return { kind: 'vst', on: o.on, name: o.name.replace(/^VST3?i?: /, '').replace(/\s*\([^()]*\)$/, ''), file: o.file, uniqueId: o.uniqueId, params }
+  return { kind: 'vst', on: o.on, name, file: o.file, uniqueId: o.uniqueId, params }
 }
 
 /** Q（Web Audio の peaking）を ReaEQ の幅（オクターブ）にする */

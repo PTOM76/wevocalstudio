@@ -62,7 +62,9 @@ export function vstToSlot(fx: Extract<XFx, { kind: 'vst' }>, installed: readonly
   if (!hit) return null
   const values: Record<string, number> = {}
   hit.manifest.params.forEach((d, i) => (values[d.id] = fx.params[i] ?? d.default))
-  return { plugin: hit.manifest.id, version: hit.manifest.version, on: fx.on, values }
+  // 塊でしか状態を持たない VST は、塊を状態（base64）に入れる。つまみの値は開くときに VST から読む（importDaw）
+  const state = fx.chunk ? btoa(Array.from(fx.chunk, (b) => String.fromCharCode(b)).join('')) : undefined
+  return { plugin: hit.manifest.id, version: hit.manifest.version, on: fx.on, values, ...(state ? { state } : {}) }
 }
 
 /** 中間の形のクリップのピッチの処理方式とエンベロープを、波形ブロックの項目にする（処理方式は対応表で、エンベロープは元の音の時刻へ） */

@@ -30,6 +30,15 @@ describe('REAPER の FX の読み込み', () => {
     if (got[1].kind === 'reaeq') expect(got[1].bands[0].gain).toBeCloseTo(6)
   })
 
+  it('塊でしか状態を持たない VST は塊のまま往復し、導入済みのものに当てると状態（base64）に入る', () => {
+    const chunk = Uint8Array.from([1, 2, 3, 250])
+    const r = readRpp(writeRpp(project([{ kind: 'vst', on: true, name: 'Chunky', file: 'chunky.dll', uniqueId: 9, params: [], chunk }])))
+    const fx = r.project.tracks[0].fx![0]
+    expect(fx.kind === 'vst' && Array.from(fx.chunk ?? [])).toEqual([1, 2, 3, 250])
+    const plugin = { manifest: { id: 'vst.chunky', version: '1.0.0', format: 'vst', params: [{ id: 'p0', default: 0.5 }], vst: { file: 'chunky.dll', uniqueId: 9 } }, lang: {} } as unknown as FxPlugin
+    if (fx.kind === 'vst') expect(vstToSlot(fx, [plugin])).toEqual({ plugin: 'vst.chunky', version: '1.0.0', on: true, values: { p0: 0.5 }, state: btoa(String.fromCharCode(1, 2, 3, 250)) })
+  })
+
   it('ReaEQ の帯は、一番近い周波数の帯へ寄せる（幅が広ければ 10 帯）', () => {
     const s = reaeqToSlot({ kind: 'reaeq', on: true, bands: [{ freq: 1100, gain: 4, bw: 1 }, { freq: 120, gain: -15, bw: 1 }] })
     expect(s.values.bands).toBe(0)
