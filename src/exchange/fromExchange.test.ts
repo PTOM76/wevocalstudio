@@ -47,6 +47,9 @@ describe('fromExchange', () => {
     const q = assignAudio(project, project.sources[0].id, clip2, 'a.wav')
     expect(q.sources[0]).toMatchObject({ name: 'a.wav', duration: 3 })
     expect(q.sources[0].missing).toBeUndefined()
+    // キャッシュを作り直させるため、新しい id にしてブロックも付け替える
+    expect(q.sources[0].id).not.toBe(project.sources[0].id)
+    expect(q.blocks.every((b) => b.source === q.sources[0].id)).toBe(true)
   })
 })
 

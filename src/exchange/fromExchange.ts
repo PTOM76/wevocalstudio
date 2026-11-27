@@ -127,7 +127,13 @@ export function fromExchange(x: XProject, audio: Map<string, Clip>, installed: r
 
 /** 見つからなかった音声（missing のある Source）に音を割り当てる。ブロックの位置と範囲はそのまま */
 export function assignAudio(p: Project, source: string, clip: Clip, name: string): Project {
-  return { ...p, sources: p.sources.map((s) => (s.id === source ? { id: s.id, name, clip, duration: clip.channels[0].length / clip.sampleRate } : s)) }
+  // 新しい id にする（ピッチを変えた音や波形のキャッシュは元の音の id で引くので、同じ id のままだと仮の無音から作ったものが残る）
+  const id = newId()
+  return {
+    ...p,
+    sources: p.sources.map((s) => (s.id === source ? { id, name, clip, duration: clip.channels[0].length / clip.sampleRate } : s)),
+    blocks: p.blocks.map((b) => (b.source === source ? { ...b, source: id } : b)),
+  }
 }
 
 /**
