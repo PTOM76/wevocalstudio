@@ -136,7 +136,10 @@ src/engine/
   render.ts  書き出し用の描画（全体、1 本のトラック、先に作って鳴らすためのかたまり）。再生と同じミキサーとグラフで作る
 
 src/exchange/
+  dawproject.test.ts  dawproject.ts のテスト（XML の形、入れ子のトラック、伸縮の対応点、音符）
+  dawproject.ts  DAWproject（.dawproject。zip の中に project.xml、metadata.xml、音声）の XML を書く（memo/daw-exchange.md）。時間軸は秒、MIDI の音符は拍。親と子は入れ子の Track（親はサブミックス）
   exchange.ts  ほかの DAW とやり取りするための中間の形（トラックとクリップの一覧）と、Studio のプロジェクトからの変換（memo/daw-exchange.md）。形式ごとのファイル（rpp.ts など）はこの形だけを扱う
+  exportDawproject.ts  プロジェクトを DAWproject（.dawproject。project.xml、metadata.xml、音声の zip）に書き出す（memo/daw-exchange.md）
   exportRpp.ts  プロジェクトを REAPER のプロジェクト（.rpp）と音声ファイルにして、zip にまとめる（memo/daw-exchange.md）
   rpp.test.ts  rpp.ts のテスト（フォルダーの印、クリップの項目、文字列の囲み）
   rpp.ts  REAPER のプロジェクト（.rpp。テキスト）を書く。音声は相対のパス（audio/…）で参照し、呼ぶ側が zip に一緒に入れる（memo/daw-exchange.md）

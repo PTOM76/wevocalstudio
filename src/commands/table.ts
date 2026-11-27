@@ -166,6 +166,7 @@ export const COMMANDS = defineCommands({
   export: { label: 'menu.export' as MessageKey, enabled: ({ doc }) => doc.project.blocks.length > 0, run: ({ c }) => c.openExport() },
   exportVideo: { label: 'menu.exportVideo' as MessageKey, enabled: ({ doc }) => doc.project.blocks.length > 0, run: ({ c }) => c.exportVideo() },
   exportWvsp: { label: 'menu.exportWvsp' as MessageKey, enabled: ({ doc }) => doc.project.blocks.length > 0, run: ({ c }) => c.exportWvsp() },
+  exportDawproject: { label: 'menu.exportDawproject' as MessageKey, enabled: ({ doc }) => doc.project.blocks.length > 0, run: ({ c }) => c.exportDawproject() },
   exportRpp: { label: 'menu.exportRpp' as MessageKey, enabled: ({ doc }) => doc.project.blocks.length > 0, run: ({ c }) => c.exportRpp() },
   pitchUp: { label: 'menu.pitchUp' as MessageKey, enabled: ({ anyWave }) => anyWave, run: ({ doc, ids }) => doc.nudgePitch(ids, 1) },
   pitchDown: { label: 'menu.pitchDown' as MessageKey, enabled: ({ anyWave }) => anyWave, run: ({ doc, ids }) => doc.nudgePitch(ids, -1) },

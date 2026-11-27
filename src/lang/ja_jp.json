@@ -179,6 +179,11 @@
   "menu.wavesToMidi": "波形ブロックから MIDI ブロックを作る",
   "menu.midiToWaves": "MIDI ブロックの音符に波形ブロックを並べる",
   "menu.exportRpp": "REAPER のプロジェクトに書き出す…",
+  "menu.exportDawproject": "DAWproject に書き出す…",
+  "menu.exportOther": "ほかのアプリに書き出す",
+  "menu.exportOtherWvsp": "WeVocalSynth のプロジェクト…",
+  "menu.exportOtherRpp": "REAPER のプロジェクト…",
+  "menu.exportOtherDawproject": "DAWproject…",
 
   "screenset.defaultName": "配置 {n}",
 
@@ -417,7 +422,7 @@
   "settings.vstGuiWorker": "VST の画面を別のスレッドで動かす",
   "settings.vstGuiWorkerHelp": "VST 自身の画面を、ページとは別のスレッド（Worker）で動かす。初めて開くときの読み込みで、画面が固まらない。オフにすると、ページのスレッドで動かす",
   "settings.exchangeBlocks": "ほかの DAW へのブロックの渡し方",
-  "settings.exchangeBlocksHelp": "REAPER のプロジェクトへ書き出すとき、ピッチや速度などを加工した波形ブロックをどう渡すか。元の音で渡すと、ピッチカーブ、エンベロープ、フォルマントは反映されない",
+  "settings.exchangeBlocksHelp": "ほかの DAW のプロジェクト（REAPER、DAWproject）へ書き出すとき、ピッチや速度などを加工した波形ブロックをどう渡すか。元の音で渡すと、ピッチカーブ、エンベロープ、フォルマントは反映されない（DAWproject ではピッチと音量も反映されない）",
   "settings.exchangeChanged": "加工したブロックだけ描画する",
   "settings.exchangeAll": "すべて描画する",
   "settings.exchangeOriginal": "すべて元の音で渡す",
@@ -640,6 +645,7 @@
   "file.audioType": "音声ファイル",
   "file.openType": "音声とプロジェクトのファイル",
   "file.rppType": "REAPER のプロジェクトと音声（zip）",
+  "file.dawprojectType": "DAWproject",
 
   "tempo.tap": "タップで計測",
   "tempo.tapHint": "拍に合わせてタップした間隔から BPM を算出します",

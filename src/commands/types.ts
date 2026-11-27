@@ -47,6 +47,7 @@ export interface ActionContext {
   /** WeVocalSynth のプロジェクト（.wvsp）への書き出し（選んだトラック。なければ全トラック） */
   exportWvsp: () => void
   exportRpp: () => void
+  exportDawproject: () => void
   /** ボーカル抽出と楽器ごとの分離（波形ブロックの id） */
   /** ダイアログを開く（音を 0 から作る、MIDI の音符に並べる） */
   openDialog: (id: 'synth' | 'sampler' | 'renameTrack' | 'kanaCut' | 'marker' | 'markerTempo' | 'pianoRoll' | 'instrument' | 'midiProps' | 'tool' | 'analyze' | 'glidePitch' | 'vibrato', arg?: string | string[]) => void

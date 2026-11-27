@@ -179,6 +179,11 @@
   "menu.wavesToMidi": "Create MIDI block from waveform blocks",
   "menu.midiToWaves": "Arrange waveform block on MIDI notes",
   "menu.exportRpp": "Export as REAPER Project…",
+  "menu.exportDawproject": "Export as DAWproject…",
+  "menu.exportOther": "Export for Other Apps",
+  "menu.exportOtherWvsp": "WeVocalSynth Project…",
+  "menu.exportOtherRpp": "REAPER Project…",
+  "menu.exportOtherDawproject": "DAWproject…",
 
   "screenset.defaultName": "Screenset {n}",
 
@@ -417,7 +422,7 @@
   "settings.vstGuiWorker": "Run VST editors on a separate thread",
   "settings.vstGuiWorkerHelp": "Run the VST's own editor on a thread separate from the page (a Worker), so the screen does not freeze while it loads the first time. When off, it runs on the page thread",
   "settings.exchangeBlocks": "Blocks in other DAW projects",
-  "settings.exchangeBlocksHelp": "How to pass audio blocks with pitch, speed, or other processing when exporting to a REAPER project. Passing the original audio drops pitch curves, envelopes, and formant changes",
+  "settings.exchangeBlocksHelp": "How to pass audio blocks with pitch, speed, or other processing when exporting to other DAW projects (REAPER, DAWproject). Passing the original audio drops pitch curves, envelopes, and formant changes (and pitch and gain in DAWproject)",
   "settings.exchangeChanged": "Render processed blocks only",
   "settings.exchangeAll": "Render all blocks",
   "settings.exchangeOriginal": "Pass the original audio",
@@ -640,6 +645,7 @@
   "file.audioType": "Audio file",
   "file.openType": "Audio and project files",
   "file.rppType": "REAPER project and audio (zip)",
+  "file.dawprojectType": "DAWproject",
 
   "tempo.tap": "Tap tempo",
   "tempo.tapHint": "Tap on the beat a few times to set the BPM from the interval",

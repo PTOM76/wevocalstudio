@@ -140,8 +140,13 @@ export function midiEvents(b: MidiBlock, map: BeatMap): XMidi {
   return { name: b.name || b.defaultName || 'MIDI', start: b.start, length: b.length, mute: b.mute, ticks: tick(len), events: events.map(({ tick, bytes }) => ({ tick, bytes })) }
 }
 
+/** 書き出す形式でできること。clipGain はクリップに音量を書けるか（書けなければ、音量を変えたブロックも描画する） */
+export interface ExchangeTarget {
+  clipGain: boolean
+}
+
 /** Studio のプロジェクトを中間の形にする */
-export async function toExchange(p: Project, mode: ExchangeBlocks, onProgress?: (v: number) => void, signal?: AbortSignal): Promise<XProject> {
+export async function toExchange(p: Project, mode: ExchangeBlocks, target: ExchangeTarget, onProgress?: (v: number) => void, signal?: AbortSignal): Promise<XProject> {
   const map = beatMap(p.tempo, p.markers)
   const files = new Map<string, Blob>()
   const used = new Set<string>()
@@ -168,7 +173,7 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, onProgress?: 
       const source = p.sources.find((s) => s.id === b.source)
       const name = source?.name.replace(/\.[^.]+$/, '') ?? 'audio'
       const base = { name, start: b.start, length: b.length, mute: b.mute }
-      if (source && (mode === 'original' || (mode === 'changed' && !processed(b)))) {
+      if (source && (mode === 'original' || (mode === 'changed' && !processed(b) && (target.clipGain || b.gain === 0)))) {
         clips.push({ ...base, file: sourceFile(b.source), offset: b.offset, gain: b.gain, fadeIn: b.fadeIn, fadeOut: b.fadeOut, rate: b.rate, pitch: b.pitch })
       } else if (source) {
         const clip = await renderBlock(p, b, sampleRate, signal)
