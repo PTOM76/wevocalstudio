@@ -79,7 +79,7 @@ function trackVoices(p: Project, t: Track, used: Map<number, Clip>): Voice[] {
 export class StreamHost {
   private readonly ctx: AudioContext
   /** Worker ごとの、送ったプラグインのソースと元の音（Worker が残っている間は送り直さない） */
-  private readonly workers: { worker: Worker; sources: Set<string>; clips: Set<number>; tracks: number }[] = []
+  private readonly workers: { worker: Worker; sources: Map<string, boolean>; clips: Set<number>; tracks: number }[] = []
   /** トラックを受け持つ Worker の番号 */
   private readonly owner = new Map<string, number>()
   private readonly readers = new Map<string, AudioWorkletNode>()
@@ -123,7 +123,7 @@ export class StreamHost {
         }
       }
       worker.postMessage({ type: 'init', sampleRate: this.ctx.sampleRate } satisfies StreamMessage)
-      this.workers.push({ worker, sources: new Set(), clips: new Set(), tracks: 0 })
+      this.workers.push({ worker, sources: new Map(), clips: new Set(), tracks: 0 })
     }
   }
 
@@ -215,9 +215,10 @@ export class StreamHost {
     if (!t || !made) return this.onGiveUp?.(id)
     const w = this.workerOf(id)
     for (const [key, { source, assets }] of made.sources)
-      if (!w.sources.has(key)) {
+      // 送ったかと、VST の写しを付けたか。写しが後からできたら送り直す（Worker は写しだけを足し、次に作る processor から使う）
+      if (!w.sources.has(key) || (!w.sources.get(key) && assets.snap)) {
         w.worker.postMessage({ type: 'source', key, source, assets } satisfies StreamMessage)
-        w.sources.add(key)
+        w.sources.set(key, !!assets.snap)
       }
     const used = new Map<number, Clip>()
     const voices = trackVoices(p, t, used)

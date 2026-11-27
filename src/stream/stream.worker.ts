@@ -99,10 +99,11 @@ scope.onmessage = (e) => {
     sampleRate = m.sampleRate
     installScope(sampleRate)
   } else if (m.type === 'source') {
-    if (!assets.has(m.key)) {
+    const had = assets.get(m.key)
+    if (!had) {
       loadProcessorSource(m.source)
       assets.set(m.key, m.assets)
-    }
+    } else if (m.assets.snap && !had.snap) assets.set(m.key, { ...had, snap: m.assets.snap })
   } else if (m.type === 'clip') clips.set(m.id, { sampleRate: m.sampleRate, channels: m.channels })
   else if (m.type === 'unclip') for (const id of m.ids) clips.delete(id)
   else if (m.type === 'track') {
