@@ -53,6 +53,7 @@ src/
   midiImport.ts  MIDI ファイルの読み込み。選んだトラック（チャンネルで分けることもできる）ごとに、新しいトラックと MIDI ブロックを作る（音源は標準のシンセ）。画面を知らない
   MidiImportDialog.tsx  MIDI ファイルの読み込みの選択（トラック、チャンネルで分けるか、テンポをどうするか、置く位置）
   midiLoop.ts  MIDI ブロックのループ（loop 拍ごとに、頭からの中身を繰り返す）の展開と、MIDI ブロックの接着。画面を知らない
+  MissingAudioDialog.tsx  ほかの DAW から読み込んだとき見つからなかった音声（Source の missing）に、ファイルを選んで割り当てる。割り当てるまでは無音の仮の音
   optimize.ts  最適化して保存するためのプロジェクトの整理（波形ブロックの確定、使っていない元の音の部分を切る、使っていない元の音を消す）。元のプロジェクトは書き換えない
   OptimizeDialog.tsx  最適化して保存のダイアログ（何を確定し、何を捨てるかを選ぶ。実行は useProjectFile の saveOptimized）
   overlap.ts  重なった波形ブロックの段の割り当て（重なっている所だけトラックの高さを段に分ける）。画面を知らない
@@ -138,11 +139,19 @@ src/engine/
 src/exchange/
   dawproject.test.ts  dawproject.ts のテスト（XML の形、入れ子のトラック、伸縮の対応点、音符）
   dawproject.ts  DAWproject（.dawproject。zip の中に project.xml、metadata.xml、音声）の XML を書く（memo/daw-exchange.md）。時間軸は秒、MIDI の音符は拍。親と子は入れ子の Track（親はサブミックス）
+  dawprojectRead.test.ts  dawprojectRead.ts のテスト（dawproject.ts で書いたものを読むと元に戻る、拍で書いたもの、XML の読み取り）
+  dawprojectRead.ts  DAWproject の project.xml を読み、中間の形にする（memo/daw-exchange.md）。拍で書かれた時間はテンポ（途中の変化を含む）で秒に直す。音声はファイルのパスのまま返す
   exchange.ts  ほかの DAW とやり取りするための中間の形（トラックとクリップの一覧）と、Studio のプロジェクトからの変換（memo/daw-exchange.md）。形式ごとのファイル（rpp.ts など）はこの形だけを扱う
   exportDawproject.ts  プロジェクトを DAWproject（.dawproject。project.xml、metadata.xml、音声の zip）に書き出す（memo/daw-exchange.md）
   exportRpp.ts  プロジェクトを REAPER のプロジェクト（.rpp）と音声ファイルにして、zip にまとめる（memo/daw-exchange.md）
+  fromExchange.test.ts  fromExchange.ts のテスト（深さから親を決める、見つからない音声の仮の音、テンポの変化をマーカーに、割り当て）
+  fromExchange.ts  中間の形（ほかの DAW から読んだもの）から Studio のプロジェクトを作る（memo/daw-exchange.md）。見つからない音声は無音の仮の音にして、missing に元のパスを残す
+  importDaw.ts  ほかの DAW のプロジェクト（.rpp、.dawproject、それらを入れた zip）を開く（memo/daw-exchange.md）。音声は zip の中か、一緒に選んだファイルから名前で探す
   rpp.test.ts  rpp.ts のテスト（フォルダーの印、クリップの項目、文字列の囲み）
   rpp.ts  REAPER のプロジェクト（.rpp。テキスト）を書く。音声は相対のパス（audio/…）で参照し、呼ぶ側が zip に一緒に入れる（memo/daw-exchange.md）
+  rppRead.test.ts  rppRead.ts のテスト（rpp.ts で書いたものを読むと元に戻る、フォルダーの深さ、語の分け方）
+  rppRead.ts  REAPER のプロジェクト（.rpp）を読み、中間の形にする（memo/daw-exchange.md）。音声はファイルのパスのまま返し、中身は呼ぶ側が探す
+  xml.ts  小さな XML の読み取り（要素、属性、子。文字は Title などの短いものだけ）。DAWproject の読み込み用で、ブラウザとテスト（Node）の両方で動く
 
 src/mixer/
   mixCore.test.ts  mixCore.ts のテスト（声を足す計算と、声の差し替え）

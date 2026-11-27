@@ -1,7 +1,7 @@
 // dawproject.ts のテスト（XML の形、入れ子のトラック、伸縮の対応点、音符）
 import { describe, expect, it } from 'vitest'
-import { notesOf, writeDawproject } from './dawproject'
-import { PPQ, type XClip, type XMidi, type XProject, type XTrack } from './exchange'
+import { writeDawproject } from './dawproject'
+import { notesOf, PPQ, type XClip, type XMidi, type XProject, type XTrack } from './exchange'
 
 const clip: XClip = { name: 'a&b', start: 1, length: 2, file: 'audio/a.wav', offset: 0.5, gain: 0, fadeIn: 0.01, fadeOut: 0.02, rate: 1.5, pitch: 0, mute: false }
 const midi: XMidi = { name: 'm', start: 0, length: 2, mute: false, ticks: 4 * PPQ, events: [{ tick: 0, bytes: [0x90, 60, 127] }, { tick: PPQ, bytes: [0x80, 60, 0] }, { tick: 2 * PPQ, bytes: [0x90, 62, 64] }] }

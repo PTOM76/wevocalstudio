@@ -1,26 +1,9 @@
 // DAWproject（.dawproject。zip の中に project.xml、metadata.xml、音声）の XML を書く（memo/daw-exchange.md）。時間軸は秒、MIDI の音符は拍。親と子は入れ子の Track（親はサブミックス）
-import { PPQ, type XMidi, type XProject, type XTrack } from './exchange'
+import { notesOf, type XProject, type XTrack } from './exchange'
 
 const dbToGain = (db: number) => (db <= -150 ? 0 : 10 ** (db / 20))
 const num = (v: number) => (Number.isFinite(v) ? String(Math.round(v * 1e9) / 1e9) : '0')
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-
-/** MIDI のイベントから音符（拍）を組み立てる。押したまま終わる音は終わりで切る */
-export function notesOf(m: XMidi): { time: number; duration: number; key: number; vel: number }[] {
-  const on = new Map<number, { tick: number; vel: number }[]>()
-  const out: { time: number; duration: number; key: number; vel: number }[] = []
-  const end = (key: number, tick: number) => {
-    const s = on.get(key)?.shift()
-    if (s) out.push({ time: s.tick / PPQ, duration: (tick - s.tick) / PPQ, key, vel: s.vel / 127 })
-  }
-  for (const e of m.events) {
-    const [st, key, vel] = e.bytes
-    if (st === 0x90 && vel > 0) on.set(key, [...(on.get(key) ?? []), { tick: e.tick, vel }])
-    else if (st === 0x80 || (st === 0x90 && vel === 0)) end(key, e.tick)
-  }
-  for (const [key, list] of on) for (let i = list.length; i > 0; i--) end(key, m.ticks)
-  return out.sort((a, b) => a.time - b.time || a.key - b.key)
-}
 
 export function writeDawproject(p: XProject, app: { name: string; version: string }): string {
   let next = 0

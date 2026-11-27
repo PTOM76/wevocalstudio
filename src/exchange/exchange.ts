@@ -203,3 +203,20 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, target: Excha
   }
   return project
 }
+
+/** MIDI のイベントから音符（拍）を組み立てる。押したまま終わる音は終わりで切る */
+export function notesOf(m: XMidi): { time: number; duration: number; key: number; vel: number }[] {
+  const on = new Map<number, { tick: number; vel: number }[]>()
+  const out: { time: number; duration: number; key: number; vel: number }[] = []
+  const end = (key: number, tick: number) => {
+    const s = on.get(key)?.shift()
+    if (s) out.push({ time: s.tick / PPQ, duration: (tick - s.tick) / PPQ, key, vel: s.vel / 127 })
+  }
+  for (const e of m.events) {
+    const [st, key, vel] = e.bytes
+    if (st === 0x90 && vel > 0) on.set(key, [...(on.get(key) ?? []), { tick: e.tick, vel }])
+    else if (st === 0x80 || (st === 0x90 && vel === 0)) end(key, e.tick)
+  }
+  for (const [key, list] of on) for (let i = list.length; i > 0; i--) end(key, m.ticks)
+  return out.sort((a, b) => a.time - b.time || a.key - b.key)
+}

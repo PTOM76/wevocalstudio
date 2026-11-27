@@ -23,6 +23,8 @@ import SettingsDialog from './settings/SettingsDialog'
 import { PLUGIN_REGISTRY } from './settings/PluginsSection'
 import type { Settings } from './settings/settings'
 import OptimizeDialog from './OptimizeDialog'
+import MissingAudioDialog from './MissingAudioDialog'
+import { assignAudio } from './exchange/fromExchange'
 import GlideDialog from './GlideDialog'
 import { glideBlocks } from './glide'
 import { vibratoBlocks } from './vibratoEnv'
@@ -105,6 +107,13 @@ export default function AppDialogs(p: {
         registryUrl={PLUGIN_REGISTRY}
         vst={p.settings.showVst}
         onClose={dialogs.closer('missingPlugins')}
+      />
+      <MissingAudioDialog
+        open={dialogs.isOpen('missingAudio')}
+        project={p.doc.project}
+        onAssign={(source, clip, name) => p.doc.apply((q) => assignAudio(q, source, clip, name))}
+        onError={p.fail}
+        onClose={dialogs.closer('missingAudio')}
       />
       {/* 編集の履歴（PevenMUI の HistoryDialog。WeVocalSynth と同じ）。一番上は開いたとき */}
       <HistoryDialog

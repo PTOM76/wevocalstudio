@@ -12,6 +12,8 @@ export interface Source {
   clip: Clip
   /** 長さ（秒） */
   duration: number
+  /** ほかの DAW から読み込んだときに見つからなかった音声のパス。clip は無音の仮の音で、あとから割り当てる */
+  missing?: string
 }
 
 /** トラック。波形ブロックを時間軸に並べる */

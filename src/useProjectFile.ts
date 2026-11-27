@@ -14,6 +14,7 @@ import { isDirty } from './projectTabs'
 import { exportWvsp } from './wvspExport'
 import { exportRpp } from './exchange/exportRpp'
 import { exportDawproject } from './exchange/exportDawproject'
+import { DAW_ACCEPT, importDaw, isDawFile } from './exchange/importDaw'
 import { optimizeProject, sourcesBytes, type OptimizeOptions } from './optimize'
 import { LEGACY_PROJECT_EXT, PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings/settings'
@@ -24,7 +25,7 @@ initFileAccess({ store: { get: idbGet, put: async (k, v) => void (await idbPut(k
 
 const isProjectFile = (f: File) => [PROJECT_EXT, LEGACY_PROJECT_EXT].some((e) => f.name.toLowerCase().endsWith(e))
 /** 音声ではなく、プロジェクトとして開くファイル（.wvst、.wvsp）。音声として読み込むと失敗する */
-export const isProjectLike = (f: File) => isProjectFile(f) || isWvspFile(f)
+export const isProjectLike = (f: File) => isProjectFile(f) || isWvspFile(f) || isDawFile(f)
 
 /** 動画のプレビューに描く長さ（秒） */
 const PREVIEW_SECONDS = 10
@@ -49,6 +50,8 @@ export function useProjectFile(o: {
   notify: (message: string) => void
   /** 開いたプロジェクトに入っていないプラグインがあったとき（id の一覧） */
   onMissingPlugins: (ids: string[]) => void
+  /** ほかの DAW から開いて、見つからない音声があった */
+  onMissingAudio: () => void
 }) {
   const { t, settings } = o
   // 保存したとき（開いたとき）のプロジェクト。今と違えば変更あり（名前の後ろに *）
@@ -69,15 +72,28 @@ export function useProjectFile(o: {
       o.fail(e)
     }
   }
+  const openDawFiles = async (files: File[]) => {
+    try {
+      const r = await importDaw(files)
+      if (!r) return o.fail(new Error(t('toast.dawUnknown')))
+      o.onOpened(r.project, r.name, null)
+      if (r.skipped) o.notify(t('toast.dawSkipped', { n: r.skipped }))
+      if (r.missing) o.onMissingAudio()
+    } catch (e) {
+      o.fail(e)
+    }
+  }
   /** プロジェクトは開き、音声は今のプロジェクトに読み込む */
   const openFiles = (files: File[]) => {
     const proj = files.find(isProjectFile)
     if (proj) return void openProjectFile(proj)
+    // ほかの DAW のプロジェクト。一緒に選んだ音声は、その音声の候補にする
+    if (files.some(isDawFile)) return void openDawFiles(files)
     files.filter(isWvspFile).forEach(o.onWvsp)
     const audio = files.filter((f) => !isWvspFile(f))
     if (audio.length) o.onAudio(audio)
   }
-  const picker = useFilesPicker(`${PROJECT_EXT},${LEGACY_PROJECT_EXT},${WVSP_EXT},${AUDIO_ACCEPT}`, openFiles, t('file.openType'))
+  const picker = useFilesPicker(`${PROJECT_EXT},${LEGACY_PROJECT_EXT},${WVSP_EXT},${DAW_ACCEPT},${AUDIO_ACCEPT}`, openFiles, t('file.openType'))
   const recent = useRecentFiles(
     (f) => openFiles([f]),
     (name) => o.fail(t('toast.recentMissing', { file: name })),

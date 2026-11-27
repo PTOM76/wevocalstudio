@@ -28,6 +28,8 @@ export type DialogId =
   | 'kanaCut'
   // 開いたプロジェクトに入っていないプラグイン（id の一覧）
   | 'missingPlugins'
+  // ほかの DAW から読み込んで見つからなかった音声の割り当て
+  | 'missingAudio'
   // 自動解析で見つけたテンポの変化（区間の一覧）
   | 'tempoChange'
 

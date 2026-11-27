@@ -82,6 +82,7 @@ export type Action =
   | 'exportWvsp'
   | 'exportRpp'
   | 'exportDawproject'
+  | 'assignMissingAudio'
   | 'saveRangeToFolder'
   | 'saveBlocksToFolder'
   | 'import'
@@ -208,6 +209,7 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   exportWvsp: [],
   exportRpp: [],
   exportDawproject: [],
+  assignMissingAudio: [],
   // 範囲、波形ブロックをフォルダーへ保存（Chrome、Edge）
   saveRangeToFolder: [],
   saveBlocksToFolder: [],

@@ -12,6 +12,8 @@ const VERSION = 2
 interface StoredSource {
   id: string
   name: string
+  /** 見つからなかった音声のパス（Source の missing） */
+  missing?: string
   sampleRate: number
   channels: number
   frames: number
@@ -33,7 +35,7 @@ interface Header {
 export function writeProject(p: Project): Blob {
   const header: Header = {
     version: VERSION,
-    sources: p.sources.map((s) => ({ id: s.id, name: s.name, sampleRate: s.clip.sampleRate, channels: s.clip.channels.length, frames: s.clip.channels[0].length })),
+    sources: p.sources.map((s) => ({ id: s.id, name: s.name, ...(s.missing ? { missing: s.missing } : {}), sampleRate: s.clip.sampleRate, channels: s.clip.channels.length, frames: s.clip.channels[0].length })),
     tempo: p.tempo,
     markers: p.markers,
     master: p.master,
@@ -67,7 +69,7 @@ export async function readProject(file: Blob): Promise<Project> {
       at += s.frames * 4
     }
     const clip: Clip = { sampleRate: s.sampleRate, channels }
-    return { id: s.id, name: s.name, clip, duration: s.frames / s.sampleRate }
+    return { id: s.id, name: s.name, clip, duration: s.frames / s.sampleRate, ...(s.missing ? { missing: s.missing } : {}) }
   })
   // 足した項目が古いファイルに無くても動くよう、既定値で埋める
   const tempo = { ...DEFAULT_TEMPO, ...header.tempo }

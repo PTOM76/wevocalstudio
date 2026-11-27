@@ -199,6 +199,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     fail,
     notify: setNotice,
     onMissingPlugins: (ids) => dialogs.open('missingPlugins', ids),
+    onMissingAudio: () => dialogs.open('missingAudio'),
     onExported: () => dialogs.close('export'),
   })
 
@@ -245,6 +246,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     exportWvsp: () => files.exportWvsp(selectedTracks),
     exportRpp: () => files.exportRpp(),
     exportDawproject: () => files.exportDawproject(),
+    assignMissingAudio: () => dialogs.open('missingAudio'),
     saveOptimized: () => dialogs.open('optimize', selected),
     exportVideo: () =>
       void (async () => {

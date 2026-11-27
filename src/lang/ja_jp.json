@@ -184,6 +184,7 @@
   "menu.exportOtherWvsp": "WeVocalSynth のプロジェクト…",
   "menu.exportOtherRpp": "REAPER のプロジェクト…",
   "menu.exportOtherDawproject": "DAWproject…",
+  "menu.assignMissingAudio": "足りない音声を割り当てる…",
 
   "screenset.defaultName": "配置 {n}",
 
@@ -565,6 +566,8 @@
   "toast.exported": "書き出しました",
   "toast.voicesSplit": "和音を2つのトラックに分離しました",
   "toast.optimized": "最適化して保存しました（元の音 {before} → {after}）",
+  "toast.dawUnknown": "ほかの DAW のプロジェクトが見つかりません（.rpp、.dawproject、またはそれを入れた zip を選んでください）",
+  "toast.dawSkipped": "読み込めない項目が {n} 個ありました（音声と MIDI 以外のクリップなど）",
 
   "bake.job": "確定",
 
@@ -1176,5 +1179,11 @@
   "tempoChange.title": "テンポの変化が検出されました",
   "tempoChange.message": "次の位置でテンポが変わっている可能性があります。採用すると、テンポのマーカーが配置されます。行を選択すると、その位置へ移動します",
   "tempoChange.keep": "一定のテンポにする",
-  "tempoChange.adopt": "採用する"
+  "tempoChange.adopt": "採用する",
+
+  "missingAudio.title": "足りない音声",
+  "missingAudio.help": "ほかの DAW のプロジェクトから読み込んだとき、見つからなかった音声です。ファイルを選ぶと、ブロックの位置と範囲はそのままで音が入ります。割り当てるまでは無音になります",
+  "missingAudio.none": "足りない音声はありません",
+  "missingAudio.pick": "ファイルを選ぶ",
+  "missingAudio.loading": "読み込み中…"
 }

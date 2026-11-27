@@ -184,6 +184,7 @@
   "menu.exportOtherWvsp": "WeVocalSynth Project…",
   "menu.exportOtherRpp": "REAPER Project…",
   "menu.exportOtherDawproject": "DAWproject…",
+  "menu.assignMissingAudio": "Assign Missing Audio…",
 
   "screenset.defaultName": "Screenset {n}",
 
@@ -565,6 +566,8 @@
   "toast.exported": "Exported",
   "toast.voicesSplit": "Split the harmony into two tracks",
   "toast.optimized": "Saved optimized (sources {before} → {after})",
+  "toast.dawUnknown": "No project from another DAW was found (choose a .rpp, a .dawproject, or a zip containing one)",
+  "toast.dawSkipped": "{n} items could not be imported (clips other than audio and MIDI, and so on)",
 
   "bake.job": "Commit",
 
@@ -1176,5 +1179,11 @@
   "tempoChange.title": "Tempo change detected",
   "tempoChange.message": "The tempo may change at the following positions. If you use them, tempo markers will be placed. Select a row to move to that position",
   "tempoChange.keep": "Keep constant tempo",
-  "tempoChange.adopt": "Use"
+  "tempoChange.adopt": "Use",
+
+  "missingAudio.title": "Missing Audio",
+  "missingAudio.help": "Audio that was not found when importing a project from another DAW. Choose a file to fill in the sound while keeping each block's position and range. Until then, these blocks are silent",
+  "missingAudio.none": "No audio is missing",
+  "missingAudio.pick": "Choose File",
+  "missingAudio.loading": "Loading…"
 }

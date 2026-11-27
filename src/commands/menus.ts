@@ -33,7 +33,7 @@ export function buildMenus(env: CommandEnv, commands: Record<Action, CommandView
     {
       label: t('menu.file'),
       accessKey: 'F',
-      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), item('saveOptimized'), divider, item('import'), item('export'), item('exportVideo'), sub('menu.exportOther', [{ ...item('exportWvsp'), label: t('menu.exportOtherWvsp') }, { ...item('exportRpp'), label: t('menu.exportOtherRpp') }, { ...item('exportDawproject'), label: t('menu.exportOtherDawproject') }]), ...(c.folder ? [item('saveRangeToFolder'), item('saveBlocksToFolder')] : []), divider, { label: t('menu.settings'), onClick: c.openSettings }],
+      entries: [item('newWindow'), divider, item('newProject'), item('open'), ...recent, item('save'), item('saveAs'), item('saveOptimized'), divider, item('import'), item('assignMissingAudio'), item('export'), item('exportVideo'), sub('menu.exportOther', [{ ...item('exportWvsp'), label: t('menu.exportOtherWvsp') }, { ...item('exportRpp'), label: t('menu.exportOtherRpp') }, { ...item('exportDawproject'), label: t('menu.exportOtherDawproject') }]), ...(c.folder ? [item('saveRangeToFolder'), item('saveBlocksToFolder')] : []), divider, { label: t('menu.settings'), onClick: c.openSettings }],
     },
     {
       label: t('menu.edit'),
