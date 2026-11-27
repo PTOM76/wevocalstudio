@@ -1,6 +1,5 @@
 // 先を走る方式のメインスレッドの側。Worker（stream.worker.ts）と、トラックごとの読むだけのノードを組み、プロジェクトの変更を送る（memo/anticipate-stream.md）
-import { migrateValues, readySnapshot, type Clip } from 'wevocal-lib'
-import { processorName } from 'wevocal-lib/stream'
+import { migrateValues, type Clip } from 'wevocal-lib'
 import { prerollOf } from '../anticipate'
 import { piecesFor } from '../dsp/pitch'
 import { clipId, voicesOf } from '../mixer/mixer'
@@ -8,7 +7,7 @@ import type { Voice } from '../mixer/types'
 import { volumeSteps } from '../engine/params'
 import { audible, dbToGain, descendants, liveSlots, midiBlocks, type Project, type Track } from '../project'
 import type { StreamSlot } from './trackStream'
-import { streamPrefix, workerPackage } from './streamPrefix'
+import { isHeavyWorkerFx, streamPrefix, workerFx } from './streamPrefix'
 import type { ReaderControl, ReaderEvent, StreamEvent, StreamMessage } from './types'
 import readerUrl from './stream.reader.worklet.ts?worker&url'
 
@@ -31,23 +30,21 @@ const loadReader = (ctx: BaseAudioContext) => {
   return p
 }
 
-/** Worker で動かす FX の項目（先頭から streamPrefix 個）。1 つもなければ null */
+/** Worker で動かす FX の項目（先頭から streamPrefix 個）。外から足した processor か VST が 1 つもなければ null（組み込みの EQ だけならノードで十分） */
 function streamSlots(t: Track, sampleRate: number): { slots: StreamSlot[]; sources: Map<string, { source: string; assets: Record<string, unknown> }> } | null {
   const slots: StreamSlot[] = []
   const sources = new Map<string, { source: string; assets: Record<string, unknown> }>()
-  const n = streamPrefix(t)
-  if (!n) return null
-  for (const s of liveSlots(t).slice(0, n)) {
-    const pkg = workerPackage(s)!
-    const format = pkg.manifest.format
-    const key = `${pkg.manifest.id}@${pkg.manifest.version}`
+  const head = liveSlots(t).slice(0, streamPrefix(t))
+  if (!head.some(isHeavyWorkerFx)) return null
+  for (const s of head) {
+    const fx = workerFx(s)!
     // 大きいもの（wasm、dll、写し）はプラグインごとに 1 回だけ送る。項目には小さい値だけを持たせる
-    sources.set(key, { source: pkg.processor, assets: { wasm: pkg.wasm, dll: pkg.dll, snap: format === 'vst' ? readySnapshot(pkg) : null } })
+    sources.set(fx.key, { source: fx.source, assets: fx.assets() })
     slots.push({
-      key,
-      name: processorName(pkg.manifest.id),
-      params: pkg.manifest.params,
-      values: migrateValues(pkg.manifest, s.values),
+      key: fx.key,
+      name: fx.name,
+      params: fx.manifest.params,
+      values: migrateValues(fx.manifest, s.values),
       auto: s.auto,
       on: s.on,
       // offline: VST は途中を素通しにせず、最初に読み込みを済ませる（Worker なので画面は止まらない）

@@ -209,6 +209,7 @@ src/storage/
   idb.ts  このアプリの IndexedDB（PevenMUI の createIdb。WeVocalSynth と同じ）。画面と自動保存の Worker の両方から使う
 
 src/stream/
+  eqProcessor.test.ts  組み込みの EQ の processor（wevocal-lib の eqProcessor.ts）を Worker のシムで回し、帯の中心の正弦波が帯の dB だけ大きくなるか、0 dB では変わらないかを確かめる
   stream.reader.worklet.ts  読むだけのノード（AudioWorklet）。先を走る Worker が作った音を、曲の今の位置の所だけ出す。足りなければ無音にして、メインに知らせる
   stream.worker.ts  先を走る Worker。トラックごとに TrackStream を持ち、再生位置の AHEAD 先まで作り続けて、読むだけのノード（stream.reader.worklet.ts）へ送る（memo/anticipate-stream.md）
   streamHost.ts  先を走る方式のメインスレッドの側。Worker（stream.worker.ts）と、トラックごとの読むだけのノードを組み、プロジェクトの変更を送る（memo/anticipate-stream.md）
