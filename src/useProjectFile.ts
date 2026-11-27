@@ -194,18 +194,18 @@ export function useProjectFile(o: {
   }
 
   /** ほかの DAW のプロジェクトに書き出す。加工した波形ブロックの渡し方は設定の exchangeBlocks */
-  const runDawExport = async (name: string, kind: string, description: string, mime: string, ext: string, write: (signal: AbortSignal, onProgress: (v: number) => void) => Promise<Blob>) => {
+  const runDawExport = async (name: string, kind: string, description: string, mime: string, ext: string, write: (signal: AbortSignal, onProgress: (v: number) => void) => Promise<{ data: Blob; note?: string }>) => {
     const target = await pickSaveTarget(name, kind, { description, mime, ext })
     if (!target) return
     const controller = new AbortController()
     const job = startJob('export', t('job.export'), () => controller.abort())
     job.update(-1)
     try {
-      const data = await write(controller.signal, (v) => job.update(v))
+      const { data, note } = await write(controller.signal, (v) => job.update(v))
       controller.signal.throwIfAborted()
       await target.write(data)
       o.onExported()
-      o.notify(t('toast.exported'))
+      o.notify(note ?? t('toast.exported'))
     } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) o.fail(e)
     } finally {
@@ -213,9 +213,13 @@ export function useProjectFile(o: {
     }
   }
   /** REAPER のプロジェクト（.rpp と音声ファイルの zip） */
-  const runRppExport = (mode: ExchangeBlocks) => runDawExport(`${o.fileName}.zip`, 'rpp', t('file.rppType'), 'application/zip', '.zip', (signal, onProgress) => exportRpp(o.project, o.fileName, mode, onProgress, signal))
+  const runRppExport = (mode: ExchangeBlocks, fx: boolean) =>
+    runDawExport(`${o.fileName}.zip`, 'rpp', t('file.rppType'), 'application/zip', '.zip', async (signal, onProgress) => {
+      const r = await exportRpp(o.project, o.fileName, mode, fx, onProgress, signal)
+      return { data: r.zip, note: r.skippedFx ? t('toast.exportedSkippedFx', { n: r.skippedFx }) : undefined }
+    })
   /** DAWproject（.dawproject） */
-  const runDawprojectExport = (mode: ExchangeBlocks) => runDawExport(`${o.fileName}.dawproject`, 'dawproject', t('file.dawprojectType'), 'application/zip', '.dawproject', (signal, onProgress) => exportDawproject(o.project, o.fileName, mode, onProgress, signal))
+  const runDawprojectExport = (mode: ExchangeBlocks) => runDawExport(`${o.fileName}.dawproject`, 'dawproject', t('file.dawprojectType'), 'application/zip', '.dawproject', async (signal, onProgress) => ({ data: await exportDawproject(o.project, o.fileName, mode, onProgress, signal) }))
 
   /** 範囲（全トラックを混ぜたもの）を切り出して WAV にする。仕上げは書き出しと同じ */
   const renderRange = async (p: Project, r: Range) => encodeWav(await renderFinished(p, r))
@@ -301,7 +305,7 @@ export function useProjectFile(o: {
     saveAs: () => void save(true),
     exportWvsp: (selected: string[]) => void runWvspExport(selected),
     /** ほかの DAW へ書き出す（書き出しのダイアログから） */
-    exportDaw: (format: DawFormat, mode: ExchangeBlocks) => void (format === 'rpp' ? runRppExport(mode) : runDawprojectExport(mode)),
+    exportDaw: (format: DawFormat, mode: ExchangeBlocks, fx: boolean) => void (format === 'rpp' ? runRppExport(mode, fx) : runDawprojectExport(mode)),
     saveOptimized: (opt: OptimizeOptions) => void runOptimizedSave(opt),
     runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
     runVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void runVideoExport(v, look, win),

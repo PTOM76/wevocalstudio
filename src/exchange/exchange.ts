@@ -1,5 +1,6 @@
 // ほかの DAW とやり取りするための中間の形（トラックとクリップの一覧）と、Studio のプロジェクトからの変換（memo/daw-exchange.md）。形式ごとのファイル（rpp.ts など）はこの形だけを扱う
-import { encodeWav, type Clip } from 'wevocal-lib'
+import { EQ_ID, Q as EQ_Q, encodeWav, eqFreqs, findPlugin, migrateValues, valuesToEq, type Clip } from 'wevocal-lib'
+import { qToOctaves, type XFx } from './rppFx'
 import { renderMix } from '../engine/render'
 import { beatMap, blockBeats, type BeatMap } from '../beats'
 import { playedNotes, playedPoints } from '../midiLoop'
@@ -54,12 +55,16 @@ export interface XTrack {
   depth: number
   clips: XClip[]
   midi: XMidi[]
+  /** FX の列（書き出せるものだけ。target.fx のとき） */
+  fx?: XFx[]
 }
 
 export interface XProject {
   bpm: number
   beatsPerBar: number
   markers: { time: number; name: string }[]
+  /** 書き出せなかった FX の数（target.fx のとき） */
+  skippedFx?: number
   /** 途中のテンポの変化（位置の順） */
   tempos: { time: number; bpm: number; beatsPerBar: number }[]
   master: { volume: number; pan: number; mute: boolean }
@@ -143,6 +148,30 @@ export function midiEvents(b: MidiBlock, map: BeatMap): XMidi {
 /** 書き出す形式でできること。clipGain はクリップに音量を書けるか（書けなければ、音量を変えたブロックも描画する） */
 export interface ExchangeTarget {
   clipGain: boolean
+  /** FX を書き出すか（VST と、ReaEQ に変える組み込みの EQ） */
+  fx?: boolean
+}
+
+/** トラックの FX の列を、書き出せる FX にする（VST はつまみの値のまま、組み込みの EQ は ReaEQ の帯に。ほかは数だけ返す） */
+export function trackFx(t: Project['tracks'][number]): { fx: XFx[]; skipped: number } {
+  const fx: XFx[] = []
+  let skipped = 0
+  for (const s of t.fx ?? []) {
+    const plugin = findPlugin(s.plugin)
+    const m = plugin?.manifest
+    if (m?.format === 'vst') {
+      const values = migrateValues(m, s.values)
+      const name = String(plugin?.lang?.en_us?.name ?? plugin?.lang?.ja_jp?.name ?? m.id)
+      fx.push({ kind: 'vst', on: s.on, name, file: m.vst?.file ?? `${name}.dll`, uniqueId: m.vst?.uniqueId ?? 0, params: m.params.map((d) => values[d.id] ?? d.default) })
+    } else if (s.plugin === EQ_ID) {
+      const eq = valuesToEq(s.values, s.on)
+      const bands = eqFreqs(eq.bands)
+        .map((freq, i) => ({ freq, gain: eq.gains[i], bw: qToOctaves(EQ_Q[eq.bands]) }))
+        .filter((b) => b.gain !== 0)
+      if (bands.length) fx.push({ kind: 'reaeq', on: s.on, bands })
+    } else skipped++
+  }
+  return { fx, skipped }
 }
 
 /** Studio のプロジェクトを中間の形にする */
@@ -165,6 +194,7 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, target: Excha
   const sampleRate = 48000
   const total = Math.max(1, p.blocks.length)
   let done = 0
+  let skippedFx = 0
   const tracks: XTrack[] = []
   for (const t of treeOrder(p)) {
     const clips: XClip[] = []
@@ -187,7 +217,9 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, target: Excha
       .filter((x) => x.track === t.id)
       .sort((x, y) => x.start - y.start)
       .map((x) => midiEvents(x, map))
-    tracks.push({ name: t.name, volume: t.volume, pan: t.pan, mute: t.mute, solo: t.solo, invert: !!t.invert, depth: ancestors(p, t).length, clips, midi })
+    const fx = target.fx ? trackFx(t) : null
+    skippedFx += fx?.skipped ?? 0
+    tracks.push({ name: t.name, volume: t.volume, pan: t.pan, mute: t.mute, solo: t.solo, invert: !!t.invert, depth: ancestors(p, t).length, clips, midi, ...(fx ? { fx: fx.fx } : {}) })
   }
   const project: XProject = {
     bpm: p.tempo.bpm,
@@ -199,6 +231,7 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, target: Excha
       .map((m) => ({ time: m.time, ...m.tempo! })),
     master: { ...p.master },
     tracks,
+    skippedFx,
     files,
   }
   return project

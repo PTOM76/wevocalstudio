@@ -431,6 +431,8 @@
   "settings.rangeStyleHelp": "Like REAPER: clicking keeps the range, and undo does not change it. Esc clears the range, or the selection when there is no range. Classic: clicking clears the range, and range changes can be undone",
   "settings.rangeKeep": "Like REAPER",
   "settings.rangeClassic": "Classic",
+  "settings.exchangeFx": "Include effects",
+  "settings.exchangeFxHelp": "When exporting to REAPER, VST plugins are written as is (with their knob values), and WevEQ becomes ReaEQ. Other built-in effects are not exported",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
@@ -572,6 +574,7 @@
   "toast.optimized": "Saved optimized (sources {before} → {after})",
   "toast.dawUnknown": "No project from another DAW was found (choose a .rpp, a .dawproject, or a zip containing one)",
   "toast.dawSkipped": "{n} items could not be imported (clips other than audio and MIDI, and so on)",
+  "toast.exportedSkippedFx": "Exported ({n} built-in effects without a REAPER equivalent were not included)",
 
   "bake.job": "Commit",
 

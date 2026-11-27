@@ -150,6 +150,8 @@ src/exchange/
   importDaw.ts  ほかの DAW のプロジェクト（.rpp、.dawproject、それらを入れた zip）を開く（memo/daw-exchange.md）。音声は zip の中か、一緒に選んだファイルから名前で探す
   rpp.test.ts  rpp.ts のテスト（フォルダーの印、クリップの項目、文字列の囲み）
   rpp.ts  REAPER のプロジェクト（.rpp。テキスト）を書く。音声は相対のパス（audio/…）で参照し、呼ぶ側が zip に一緒に入れる（memo/daw-exchange.md）
+  rppFx.test.ts  rppFx.ts のテスト（REAPER の FX の塊の形。値は架空のもの）
+  rppFx.ts  REAPER のプロジェクトに書く FX（<VST …> の項目と、状態の塊の base64）。組み込みの EQ は ReaEQ にする（memo/daw-exchange.md）
   rppRead.test.ts  rppRead.ts のテスト（rpp.ts で書いたものを読むと元に戻る、フォルダーの深さ、語の分け方）
   rppRead.ts  REAPER のプロジェクト（.rpp）を読み、中間の形にする（memo/daw-exchange.md）。音声はファイルのパスのまま返し、中身は呼ぶ側が探す
   xml.ts  小さな XML の読み取り（要素、属性、子。文字は Title などの短いものだけ）。DAWproject の読み込み用で、ブラウザとテスト（Node）の両方で動く

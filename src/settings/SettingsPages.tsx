@@ -121,6 +121,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('startFolder')}
         {S('recentFiles')}
         {S('exchangeBlocks')}
+        {S('exchangeFx')}
       </Group>
     ),
     display: (

@@ -431,6 +431,8 @@
   "settings.rangeStyleHelp": "REAPER と同じでは、クリックしても範囲は残り、元に戻すで範囲は変わらない。Esc は範囲を解除し、範囲がなければ選択を解除する。従来では、クリックで範囲を解除し、範囲も元に戻せる",
   "settings.rangeKeep": "REAPER と同じ",
   "settings.rangeClassic": "従来",
+  "settings.exchangeFx": "FX も書き出す",
+  "settings.exchangeFxHelp": "REAPER に書き出すとき、VST はそのまま（つまみの値も）、WevEQ は ReaEQ にして書く。そのほかの組み込みの FX は書き出さない",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
@@ -572,6 +574,7 @@
   "toast.optimized": "最適化して保存しました（元の音 {before} → {after}）",
   "toast.dawUnknown": "ほかの DAW のプロジェクトが見つかりません（.rpp、.dawproject、またはそれを入れた zip を選んでください）",
   "toast.dawSkipped": "読み込めない項目が {n} 個ありました（音声と MIDI 以外のクリップなど）",
+  "toast.exportedSkippedFx": "書き出しました（REAPER にない組み込みの FX {n} 個は含めていません）",
 
   "bake.job": "確定",
 

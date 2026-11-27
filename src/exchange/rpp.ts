@@ -1,5 +1,6 @@
 // REAPER のプロジェクト（.rpp。テキスト）を書く。音声は相対のパス（audio/…）で参照し、呼ぶ側が zip に一緒に入れる（memo/daw-exchange.md）
 import { PPQ, type XMidi, type XProject, type XTrack } from './exchange'
+import { fxLines } from './rppFx'
 
 const dbToGain = (db: number) => (db <= -150 ? 0 : 10 ** (db / 20))
 /** 数を短く書く（REAPER は小数点を . で読む） */
@@ -72,6 +73,19 @@ export function writeRpp(p: XProject): string {
     line(`MUTESOLO ${t.mute ? 1 : 0} ${t.solo ? 2 : 0} 0`)
     line(`IPHASE ${t.invert ? 1 : 0}`)
     line(`ISBUS ${folderOf(p.tracks, i)}`)
+    if (t.fx?.length) {
+      open('FXCHAIN')
+      line('SHOW 0')
+      line('LASTSEL 0')
+      line('DOCKED 0')
+      for (const fx of t.fx)
+        for (const l of fxLines(fx, quote)) {
+          if (l === '>') close()
+          else if (l.startsWith('<')) open(l.slice(1))
+          else line(l.replace(/^ {2}/, ''))
+        }
+      close()
+    }
     for (const c of t.clips) {
       open('ITEM')
       line(`POSITION ${num(c.start)}`)

@@ -57,7 +57,7 @@ export default function AppDialogs(p: {
   onOptimize: (o: OptimizeOptions) => void
   onVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void
   /** ほかの DAW へ書き出す */
-  onDawExport: (format: DawFormat, blocks: ExchangeBlocks) => void
+  onDawExport: (format: DawFormat, blocks: ExchangeBlocks, fx: boolean) => void
   fail: (e: unknown) => void
   /** 短い知らせ（画面の下に出す） */
   notify: (message: string) => void
@@ -118,10 +118,11 @@ export default function AppDialogs(p: {
         open={dialogs.isOpen('dawExport')}
         format={dialogs.arg<DawFormat>('dawExport') ?? 'rpp'}
         blocks={p.settings.exchangeBlocks}
+        fx={p.settings.exchangeFx}
         onClose={dialogs.closer('dawExport')}
-        onRun={(format, blocks) => {
-          if (blocks !== p.settings.exchangeBlocks) p.onSettingsChange({ exchangeBlocks: blocks })
-          p.onDawExport(format, blocks)
+        onRun={(format, blocks, fx) => {
+          if (blocks !== p.settings.exchangeBlocks || fx !== p.settings.exchangeFx) p.onSettingsChange({ exchangeBlocks: blocks, exchangeFx: fx })
+          p.onDawExport(format, blocks, fx)
         }}
       />
       <MissingAudioDialog

@@ -106,6 +106,8 @@ export const file = defineItems('file', {
   }),
   recentFiles: check(true, { label: 'settings.recentFiles', help: 'settings.recentFilesHelp' }),
   // ほかの DAW（REAPER など）へ書き出すときの、加工した波形ブロックの渡し方（memo/daw-exchange.md）
+  // ほかの DAW（REAPER）へ書き出すとき、FX の列も書く（VST と、ReaEQ に変える組み込みの EQ）
+  exchangeFx: check(true, { label: 'settings.exchangeFx', help: 'settings.exchangeFxHelp' }),
   // 既定は元の音で渡し、ピッチや速度は相手の項目に書く（相手の DAW で編集しやすく、ファイルも増えない）
   exchangeBlocks: choice<ExchangeBlocks>('original', {
     label: 'settings.exchangeBlocks',
