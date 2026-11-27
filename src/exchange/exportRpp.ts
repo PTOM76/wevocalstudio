@@ -4,9 +4,9 @@ import type { Project } from '../project'
 import { toExchange, type ExchangeBlocks } from './exchange'
 import { writeRpp } from './rpp'
 
-export async function exportRpp(p: Project, fileName: string, mode: ExchangeBlocks, onProgress?: (v: number) => void, signal?: AbortSignal): Promise<{ zip: Blob; skippedMidi: number }> {
-  const { project, skippedMidi } = await toExchange(p, mode, onProgress, signal)
+export async function exportRpp(p: Project, fileName: string, mode: ExchangeBlocks, onProgress?: (v: number) => void, signal?: AbortSignal): Promise<Blob> {
+  const project = await toExchange(p, mode, onProgress, signal)
   signal?.throwIfAborted()
   const entries = [{ name: `${fileName}.rpp`, data: new Blob([writeRpp(project)], { type: 'text/plain' }) }, ...[...project.files].map(([name, data]) => ({ name, data }))]
-  return { zip: await createZip(entries), skippedMidi }
+  return createZip(entries)
 }

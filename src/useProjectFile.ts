@@ -182,11 +182,11 @@ export function useProjectFile(o: {
     const job = startJob('export', t('job.export'), () => controller.abort())
     job.update(-1)
     try {
-      const { zip, skippedMidi } = await exportRpp(o.project, o.fileName, settings.exchangeBlocks, (v) => job.update(v), controller.signal)
+      const zip = await exportRpp(o.project, o.fileName, settings.exchangeBlocks, (v) => job.update(v), controller.signal)
       controller.signal.throwIfAborted()
       await target.write(zip)
       o.onExported()
-      o.notify(skippedMidi ? t('toast.exportedNoMidi', { n: skippedMidi }) : t('toast.exported'))
+      o.notify(t('toast.exported'))
     } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) o.fail(e)
     } finally {

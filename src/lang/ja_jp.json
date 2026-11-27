@@ -560,7 +560,6 @@
   "toast.exported": "書き出しました",
   "toast.voicesSplit": "和音を2つのトラックに分離しました",
   "toast.optimized": "最適化して保存しました（元の音 {before} → {after}）",
-  "toast.exportedNoMidi": "書き出しました（MIDI ブロック {n} 個は含めていません）",
 
   "bake.job": "確定",
 

@@ -1,5 +1,5 @@
 // REAPER のプロジェクト（.rpp。テキスト）を書く。音声は相対のパス（audio/…）で参照し、呼ぶ側が zip に一緒に入れる（memo/daw-exchange.md）
-import type { XProject, XTrack } from './exchange'
+import { PPQ, type XMidi, type XProject, type XTrack } from './exchange'
 
 const dbToGain = (db: number) => (db <= -150 ? 0 : 10 ** (db / 20))
 /** 数を短く書く（REAPER は小数点を . で読む） */
@@ -33,6 +33,25 @@ export function writeRpp(p: XProject): string {
     line('>')
   }
 
+  /** MIDI のアイテム。イベントは前のイベントからの tick で書き、最後に長さの分を置く（全部の音を止める CC 123） */
+  const writeMidi = (m: XMidi) => {
+    open('ITEM')
+    line(`POSITION ${num(m.start)}`)
+    line(`LENGTH ${num(m.length)}`)
+    line(`MUTE ${m.mute ? 1 : 0} 0`)
+    line(`NAME ${quote(m.name)}`)
+    open('SOURCE MIDI')
+    line(`HASDATA 1 ${PPQ} QN`)
+    let at = 0
+    for (const e of m.events) {
+      line(`E ${e.tick - at} ${e.bytes.map((b) => b.toString(16).padStart(2, '0')).join(' ')}`)
+      at = e.tick
+    }
+    line(`E ${Math.max(0, m.ticks - at)} b0 7b 00`)
+    close()
+    close()
+  }
+
   open('REAPER_PROJECT 0.1 "7.0" 0')
   line(`TEMPO ${num(p.bpm)} ${p.beatsPerBar} 4`)
   line(`MASTER_VOLUME ${num(dbToGain(p.master.volume))} ${num(p.master.pan)} -1 -1 1`)
@@ -62,6 +81,7 @@ export function writeRpp(p: XProject): string {
       close()
       close()
     }
+    for (const m of t.midi) writeMidi(m)
     close()
   })
   close()

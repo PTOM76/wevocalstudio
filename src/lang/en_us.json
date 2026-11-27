@@ -560,7 +560,6 @@
   "toast.exported": "Exported",
   "toast.voicesSplit": "Split the harmony into two tracks",
   "toast.optimized": "Saved optimized (sources {before} → {after})",
-  "toast.exportedNoMidi": "Exported ({n} MIDI blocks were not included)",
 
   "bake.job": "Commit",
 

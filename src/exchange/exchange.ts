@@ -1,7 +1,12 @@
 // ほかの DAW とやり取りするための中間の形（トラックとクリップの一覧）と、Studio のプロジェクトからの変換（memo/daw-exchange.md）。形式ごとのファイル（rpp.ts など）はこの形だけを扱う
 import { encodeWav, type Clip } from 'wevocal-lib'
 import { renderMix } from '../engine/render'
-import { ancestors, type Block, type Project } from '../project'
+import { beatMap, blockBeats, type BeatMap } from '../beats'
+import { playedNotes, playedPoints } from '../midiLoop'
+import { ancestors, midiBlocks, type Block, type MidiBlock, type Project } from '../project'
+
+/** MIDI の 4 分音符あたりの tick */
+export const PPQ = 960
 
 /** 加工した波形ブロックの渡し方。changed は加工のあるものだけ描画、all はすべて描画、original はすべて元の音（ピッチカーブなどは失う） */
 export type ExchangeBlocks = 'changed' | 'all' | 'original'
@@ -26,6 +31,17 @@ export interface XClip {
   mute: boolean
 }
 
+/** MIDI のクリップ。events は頭からの tick と、チャンネル 1 のメッセージのバイト列（tick の順） */
+export interface XMidi {
+  name: string
+  start: number
+  length: number
+  mute: boolean
+  /** 長さ（tick） */
+  ticks: number
+  events: { tick: number; bytes: number[] }[]
+}
+
 export interface XTrack {
   name: string
   /** 音量（dB）、パン（-1〜1） */
@@ -37,6 +53,7 @@ export interface XTrack {
   /** 親と子の深さ（0 が一番上） */
   depth: number
   clips: XClip[]
+  midi: XMidi[]
 }
 
 export interface XProject {
@@ -87,8 +104,43 @@ export function treeOrder(p: Project): Project['tracks'] {
   return out
 }
 
-/** Studio のプロジェクトを中間の形にする。MIDI ブロックはまだ渡さない（数を返す） */
-export async function toExchange(p: Project, mode: ExchangeBlocks, onProgress?: (v: number) => void, signal?: AbortSignal): Promise<{ project: XProject; skippedMidi: number }> {
+/** 曲線の直線の間を埋める間隔（拍）。MIDI の CC は段になるので、細かく刻む */
+const CURVE_STEP = 1 / 16
+
+/** MIDI ブロックを tick のイベントにする（ループを展開し、ミュートした音符は除く。曲線は直線の間を刻む） */
+export function midiEvents(b: MidiBlock, map: BeatMap): XMidi {
+  const len = blockBeats(map, b)
+  const tick = (beat: number) => Math.max(0, Math.round(beat * PPQ))
+  const events: { tick: number; bytes: number[]; order: number }[] = []
+  for (const { note, t, dur } of playedNotes(b, len)) {
+    if (note.mute) continue
+    const vel = Math.max(1, Math.min(127, Math.round(note.vel * 127)))
+    // 同じ tick では、離す（0）を押す（1）より先にする
+    events.push({ tick: tick(t), bytes: [0x90, note.pitch, vel], order: 1 }, { tick: tick(t + dur), bytes: [0x80, note.pitch, 0], order: 0 })
+  }
+  for (const c of b.curves ?? []) {
+    const pts = playedPoints(c.points, b.loop, len)
+      .filter((q) => q.t < len)
+      .sort((x, y) => x.t - y.t)
+    const bytes = (v: number) => {
+      if (c.kind === 'cc') return [0xb0, c.cc ?? 1, Math.max(0, Math.min(127, Math.round(v * 127)))]
+      const x = Math.max(0, Math.min(16383, Math.round(((v + 1) / 2) * 16383)))
+      return [0xe0, x & 0x7f, x >> 7]
+    }
+    pts.forEach((q, i) => {
+      events.push({ tick: tick(q.t), bytes: bytes(q.v), order: 2 })
+      const r = pts[i + 1]
+      if (!r) return
+      for (let t = q.t + CURVE_STEP; t < r.t - 1e-9; t += CURVE_STEP) events.push({ tick: tick(t), bytes: bytes(q.v + ((r.v - q.v) * (t - q.t)) / (r.t - q.t)), order: 2 })
+    })
+  }
+  events.sort((x, y) => x.tick - y.tick || x.order - y.order)
+  return { name: b.name || b.defaultName || 'MIDI', start: b.start, length: b.length, mute: b.mute, ticks: tick(len), events: events.map(({ tick, bytes }) => ({ tick, bytes })) }
+}
+
+/** Studio のプロジェクトを中間の形にする */
+export async function toExchange(p: Project, mode: ExchangeBlocks, onProgress?: (v: number) => void, signal?: AbortSignal): Promise<XProject> {
+  const map = beatMap(p.tempo, p.markers)
   const files = new Map<string, Blob>()
   const used = new Set<string>()
   /** 元の音（source の id → ファイル名）。使うものだけを書く */
@@ -124,7 +176,11 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, onProgress?: 
       }
       onProgress?.(++done / total)
     }
-    tracks.push({ name: t.name, volume: t.volume, pan: t.pan, mute: t.mute, solo: t.solo, invert: !!t.invert, depth: ancestors(p, t).length, clips })
+    const midi = midiBlocks(p)
+      .filter((x) => x.track === t.id)
+      .sort((x, y) => x.start - y.start)
+      .map((x) => midiEvents(x, map))
+    tracks.push({ name: t.name, volume: t.volume, pan: t.pan, mute: t.mute, solo: t.solo, invert: !!t.invert, depth: ancestors(p, t).length, clips, midi })
   }
   const project: XProject = {
     bpm: p.tempo.bpm,
@@ -134,5 +190,5 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, onProgress?: 
     tracks,
     files,
   }
-  return { project, skippedMidi: p.midi?.length ?? 0 }
+  return project
 }
