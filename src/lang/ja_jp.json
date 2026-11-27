@@ -178,6 +178,7 @@
   "menu.envelopeShape": "形状",
   "menu.wavesToMidi": "波形ブロックから MIDI ブロックを作る",
   "menu.midiToWaves": "MIDI ブロックの音符に波形ブロックを並べる",
+  "menu.exportRpp": "REAPER のプロジェクトに書き出す…",
 
   "screenset.defaultName": "配置 {n}",
 
@@ -415,6 +416,11 @@
   "settings.anticipateWhileStoppedHelp": "止めている間に、カーソルの位置から曲の終わりまで（置き場の量に収まる分）の音を作っておく。再生を始めたときに途切れにくくなるが、その間 CPU を使う。オフにすると、作るのは再生中だけになる",
   "settings.vstGuiWorker": "VST の画面を別のスレッドで動かす",
   "settings.vstGuiWorkerHelp": "VST 自身の画面を、ページとは別のスレッド（Worker）で動かす。初めて開くときの読み込みで、画面が固まらない。オフにすると、ページのスレッドで動かす",
+  "settings.exchangeBlocks": "ほかの DAW へのブロックの渡し方",
+  "settings.exchangeBlocksHelp": "REAPER のプロジェクトへ書き出すとき、ピッチや速度などを加工した波形ブロックをどう渡すか。元の音で渡すと、ピッチカーブ、エンベロープ、フォルマントは反映されない",
+  "settings.exchangeChanged": "加工したブロックだけ描画する",
+  "settings.exchangeAll": "すべて描画する",
+  "settings.exchangeOriginal": "すべて元の音で渡す",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",
@@ -554,6 +560,7 @@
   "toast.exported": "書き出しました",
   "toast.voicesSplit": "和音を2つのトラックに分離しました",
   "toast.optimized": "最適化して保存しました（元の音 {before} → {after}）",
+  "toast.exportedNoMidi": "書き出しました（MIDI ブロック {n} 個は含めていません）",
 
   "bake.job": "確定",
 
@@ -633,6 +640,7 @@
   "file.wvspType": "WeVocalSynth プロジェクト",
   "file.audioType": "音声ファイル",
   "file.openType": "音声とプロジェクトのファイル",
+  "file.rppType": "REAPER のプロジェクトと音声（zip）",
 
   "tempo.tap": "タップで計測",
   "tempo.tapHint": "拍に合わせてタップした間隔から BPM を算出します",

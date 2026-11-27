@@ -178,6 +178,7 @@
   "menu.envelopeShape": "Shape",
   "menu.wavesToMidi": "Create MIDI block from waveform blocks",
   "menu.midiToWaves": "Arrange waveform block on MIDI notes",
+  "menu.exportRpp": "Export as REAPER Project…",
 
   "screenset.defaultName": "Screenset {n}",
 
@@ -415,6 +416,11 @@
   "settings.anticipateWhileStoppedHelp": "While stopped, prepares the audio from the cursor to the end of the song (as much as the cache allows). Playback starts more smoothly, but the CPU is used meanwhile. When off, audio is prepared only during playback",
   "settings.vstGuiWorker": "Run VST editors on a separate thread",
   "settings.vstGuiWorkerHelp": "Run the VST's own editor on a thread separate from the page (a Worker), so the screen does not freeze while it loads the first time. When off, it runs on the page thread",
+  "settings.exchangeBlocks": "Blocks in other DAW projects",
+  "settings.exchangeBlocksHelp": "How to pass audio blocks with pitch, speed, or other processing when exporting to a REAPER project. Passing the original audio drops pitch curves, envelopes, and formant changes",
+  "settings.exchangeChanged": "Render processed blocks only",
+  "settings.exchangeAll": "Render all blocks",
+  "settings.exchangeOriginal": "Pass the original audio",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
@@ -554,6 +560,7 @@
   "toast.exported": "Exported",
   "toast.voicesSplit": "Split the harmony into two tracks",
   "toast.optimized": "Saved optimized (sources {before} → {after})",
+  "toast.exportedNoMidi": "Exported ({n} MIDI blocks were not included)",
 
   "bake.job": "Commit",
 
@@ -633,6 +640,7 @@
   "file.wvspType": "WeVocalSynth project",
   "file.audioType": "Audio file",
   "file.openType": "Audio and project files",
+  "file.rppType": "REAPER project and audio (zip)",
 
   "tempo.tap": "Tap tempo",
   "tempo.tapHint": "Tap on the beat a few times to set the BPM from the interval",

@@ -83,7 +83,7 @@ src/
   Transport.tsx  再生のボタン一式（先頭へ、停止、再生と一時停止、録音、リピート、末尾へ）、時間の表示、マスターのメーター、テンポとグリッド。部品は WeVocalSynth のツールバーと同じ
   useActions.ts  操作の表（キーとメニューから行うもの）を作るフック。選択とコピーの状態を持ち、表（commands/table.ts）とメニュー（commands/menus.ts）に渡し、キーを受ける
   useAddonFolder.tsx  追加機能の保存先のフォルダー（試験的）。許可の通知と、設定と自動保存した作業の写しは PevenMUI の useAddonFolderSync（WeVocalSynth と同じ）
-  useAppSetup.ts  アプリを開いているあいだ、設定を音の出力とデバッグ表示に反映する（出力先、リミッター、再生のセッション、重いプラグインの素通し、処理の開発者向けの設定、Ctrl+Shift+D）
+  useAppSetup.ts  アプリを開いているあいだ、設定を音の出力とデバッグ表示に反映する（出力先、リミッター、再生のセッション、重いプラグインの素通し、VST の画面のスレッド、処理の開発者向けの設定、Ctrl+Shift+D）
   useAutosave.ts  起動時に前回の作業（開いていたタブすべて）を戻し、変わったら少し待って書く（WeVocalSynth と同じ。書き込みは Worker）
   useBlockJobs.ts  時間のかかる、波形ブロックとトラックの確定（現在の音にして置き換える）と、トラックのフリーズ（書き出した音で鳴らす）。進み具合は PevenMUI のジョブで見せ、取り消せる
   useDialogs.ts  ダイアログの開閉と、開くときに渡す値（PevenMUI の useDialogs。WeVocalSynth と同じ）
@@ -134,6 +134,12 @@ src/engine/
   params.ts  音のグラフと再生で共通に使う定数と補助の関数（つなぎの時間、遅れ、つまみへの書き込み、音量エンベロープの展開）
   player.ts  再生。位置は AudioContext の時計から求め、グラフを組んで鳴らす（先に作った音、鍵盤の音の試聴を含む）
   render.ts  書き出し用の描画（全体、1 本のトラック、先に作って鳴らすためのかたまり）。再生と同じミキサーとグラフで作る
+
+src/exchange/
+  exchange.ts  ほかの DAW とやり取りするための中間の形（トラックとクリップの一覧）と、Studio のプロジェクトからの変換（memo/daw-exchange.md）。形式ごとのファイル（rpp.ts など）はこの形だけを扱う
+  exportRpp.ts  プロジェクトを REAPER のプロジェクト（.rpp）と音声ファイルにして、zip にまとめる（memo/daw-exchange.md）
+  rpp.test.ts  rpp.ts のテスト（フォルダーの印、クリップの項目、文字列の囲み）
+  rpp.ts  REAPER のプロジェクト（.rpp。テキスト）を書く。音声は相対のパス（audio/…）で参照し、呼ぶ側が zip に一緒に入れる（memo/daw-exchange.md）
 
 src/mixer/
   mixCore.test.ts  mixCore.ts のテスト（声を足す計算と、声の差し替え）

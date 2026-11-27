@@ -80,6 +80,7 @@ export type Action =
   | 'saveOptimized'
   | 'exportVideo'
   | 'exportWvsp'
+  | 'exportRpp'
   | 'saveRangeToFolder'
   | 'saveBlocksToFolder'
   | 'import'
@@ -204,6 +205,7 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   exportVideo: [],
   // WeVocalSynth のプロジェクト（.wvsp）への書き出し
   exportWvsp: [],
+  exportRpp: [],
   // 範囲、波形ブロックをフォルダーへ保存（Chrome、Edge）
   saveRangeToFolder: [],
   saveBlocksToFolder: [],

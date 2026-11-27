@@ -119,6 +119,7 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
         {S('rememberFolder')}
         {S('startFolder')}
         {S('recentFiles')}
+        {S('exchangeBlocks')}
       </Group>
     ),
     display: (

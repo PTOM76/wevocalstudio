@@ -12,6 +12,7 @@ import type { useT } from './i18n'
 import { missingFx, songEnd, type Project } from './project'
 import { isDirty } from './projectTabs'
 import { exportWvsp } from './wvspExport'
+import { exportRpp } from './exchange/exportRpp'
 import { optimizeProject, sourcesBytes, type OptimizeOptions } from './optimize'
 import { LEGACY_PROJECT_EXT, PROJECT_EXT, readProject, writeProject } from './projectFile'
 import type { Settings } from './settings/settings'
@@ -173,6 +174,26 @@ export function useProjectFile(o: {
     }
   }
 
+  /** REAPER のプロジェクト（.rpp と音声ファイルの zip）に書き出す。加工した波形ブロックの渡し方は設定の exchangeBlocks */
+  const runRppExport = async () => {
+    const target = await pickSaveTarget(`${o.fileName}.zip`, 'rpp', { description: t('file.rppType'), mime: 'application/zip', ext: '.zip' })
+    if (!target) return
+    const controller = new AbortController()
+    const job = startJob('export', t('job.export'), () => controller.abort())
+    job.update(-1)
+    try {
+      const { zip, skippedMidi } = await exportRpp(o.project, o.fileName, settings.exchangeBlocks, (v) => job.update(v), controller.signal)
+      controller.signal.throwIfAborted()
+      await target.write(zip)
+      o.onExported()
+      o.notify(skippedMidi ? t('toast.exportedNoMidi', { n: skippedMidi }) : t('toast.exported'))
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === 'AbortError')) o.fail(e)
+    } finally {
+      job.end()
+    }
+  }
+
   /** 範囲（全トラックを混ぜたもの）を切り出して WAV にする。仕上げは書き出しと同じ */
   const renderRange = async (p: Project, r: Range) => encodeWav(await renderFinished(p, r))
 
@@ -256,6 +277,7 @@ export function useProjectFile(o: {
     save: () => void save(),
     saveAs: () => void save(true),
     exportWvsp: (selected: string[]) => void runWvspExport(selected),
+    exportRpp: () => void runRppExport(),
     saveOptimized: (opt: OptimizeOptions) => void runOptimizedSave(opt),
     runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
     runVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void runVideoExport(v, look, win),

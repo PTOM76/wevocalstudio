@@ -3,6 +3,7 @@ import type { KeymapOverrides } from 'pevenmui'
 import type { WheelZoom } from 'wevocal-lib/react'
 import type { StartFolder } from 'pevenmui/web'
 import type { Action } from '../../keymap'
+import type { ExchangeBlocks } from '../../exchange/exchange'
 import { check, choice, defineItems, number, value } from './define'
 
 /** Ctrl+S で行うこと（もう一方は Ctrl+Shift+S になる） */
@@ -94,4 +95,14 @@ export const file = defineItems('file', {
     ],
   }),
   recentFiles: check(true, { label: 'settings.recentFiles', help: 'settings.recentFilesHelp' }),
+  // ほかの DAW（REAPER など）へ書き出すときの、加工した波形ブロックの渡し方（memo/daw-exchange.md）
+  exchangeBlocks: choice<ExchangeBlocks>('changed', {
+    label: 'settings.exchangeBlocks',
+    help: 'settings.exchangeBlocksHelp',
+    options: [
+      ['changed', 'settings.exchangeChanged'],
+      ['all', 'settings.exchangeAll'],
+      ['original', 'settings.exchangeOriginal'],
+    ],
+  }),
 })

@@ -243,6 +243,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     openDialog: (id, arg) => dialogs.open(id, arg),
     // 動画の書き出し: 追加機能「変換」を確かめ、プレビューに使う音を作ってから開く
     exportWvsp: () => files.exportWvsp(selectedTracks),
+    exportRpp: () => files.exportRpp(),
     saveOptimized: () => dialogs.open('optimize', selected),
     exportVideo: () =>
       void (async () => {
