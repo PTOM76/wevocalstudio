@@ -7,6 +7,8 @@ interface Node {
   args: string[]
   lines: string[][]
   children: Node[]
+  /** 行とかたまりを、書かれた順に並べたもの（テイクの区切りを見るため） */
+  items: (string[] | Node)[]
 }
 
 /** 1 行を語に分ける（"…"、'…'、`…` で囲んだものは 1 語） */
@@ -35,7 +37,7 @@ export function tokens(line: string): string[] {
 }
 
 function parseTree(text: string): Node {
-  const root: Node = { name: '', args: [], lines: [], children: [] }
+  const root: Node = { name: '', args: [], lines: [], children: [], items: [] }
   const stack = [root]
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim()
@@ -43,12 +45,17 @@ function parseTree(text: string): Node {
     const top = stack[stack.length - 1]
     if (line.startsWith('<')) {
       const [name, ...args] = tokens(line.slice(1))
-      const node: Node = { name, args, lines: [], children: [] }
+      const node: Node = { name, args, lines: [], children: [], items: [] }
       top.children.push(node)
+      top.items.push(node)
       stack.push(node)
     } else if (line === '>') {
       if (stack.length > 1) stack.pop()
-    } else top.lines.push(tokens(line))
+    } else {
+      const l = tokens(line)
+      top.lines.push(l)
+      top.items.push(l)
+    }
   }
   return root
 }
@@ -77,6 +84,27 @@ function readMidi(src: Node, item: Omit<XMidi, 'ticks' | 'events'>): XMidi {
     events.push({ tick: Math.round(at * scale), bytes })
   }
   return { ...item, ticks: Math.round(at * scale), events }
+}
+
+/**
+ * アイテムの中の、選んでいるテイク（TAKE SEL。無ければ最初のテイク）の行とかたまり。
+ * 最初のテイクの項目はアイテムの行に混ざり、2 つ目からは TAKE の行のあとに続く
+ */
+function activeTake(item: Node): Node {
+  const takes: Node[] = [{ name: 'TAKE', args: [], lines: [], children: [], items: [] }]
+  let sel = 0
+  for (const x of item.items) {
+    if (Array.isArray(x) && x[0] === 'TAKE') {
+      takes.push({ name: 'TAKE', args: x.slice(1), lines: [], children: [], items: [] })
+      if (x.includes('SEL')) sel = takes.length - 1
+      continue
+    }
+    const t = takes[takes.length - 1]
+    t.items.push(x)
+    if (Array.isArray(x)) t.lines.push(x)
+    else t.children.push(x)
+  }
+  return takes[sel]
 }
 
 /** 読めなかったものの数（呼ぶ側が知らせる） */
@@ -119,23 +147,27 @@ export function readRpp(text: string): { project: XProject; notes: ReadNotes } {
     const clips: XClip[] = []
     const midi: XMidi[] = []
     for (const it of t.children.filter((c) => c.name === 'ITEM')) {
-      const src = it.children.find((c) => c.name === 'SOURCE')
-      const base = { name: get(it, 'NAME')?.[1] ?? '', start: numAt(get(it, 'POSITION'), 1), length: numAt(get(it, 'LENGTH'), 1), mute: numAt(get(it, 'MUTE'), 1) === 1 }
+      const take = activeTake(it)
+      const src = take.children.find((c) => c.name === 'SOURCE')
+      const base = { name: get(take, 'NAME')?.[1] ?? '', start: numAt(get(it, 'POSITION'), 1), length: numAt(get(it, 'LENGTH'), 1), mute: numAt(get(it, 'MUTE'), 1) === 1 }
       // 中身が SECTION などで包まれていれば、その中の SOURCE を見る
       const inner = src?.children.find((c) => c.name === 'SOURCE') ?? src
       const file = inner && get(inner, 'FILE')?.[1]
       if (inner?.args[0] === 'MIDI') midi.push(readMidi(inner, base))
       else if (file) {
-        const pr = get(it, 'PLAYRATE')
+        // PLAYRATE 速度 ピッチを保つか ピッチ（半音）…。ピッチを保たない（0）ときは、テープのように速度の分だけ音程も変わる
+        const pr = get(take, 'PLAYRATE')
+        const rate = numAt(pr, 1, 1) || 1
+        const keepPitch = !pr || numAt(pr, 2, 1) !== 0
         clips.push({
           ...base,
           file,
-          offset: numAt(get(it, 'SOFFS'), 1),
-          gain: gainToDb(numAt(get(it, 'VOLPAN'), 3, 1)),
+          offset: numAt(get(take, 'SOFFS'), 1),
+          gain: gainToDb(numAt(get(take, 'VOLPAN'), 3, 1)),
           fadeIn: numAt(get(it, 'FADEIN'), 2),
           fadeOut: numAt(get(it, 'FADEOUT'), 2),
-          rate: numAt(pr, 1, 1) || 1,
-          pitch: numAt(pr, 3),
+          rate,
+          pitch: numAt(pr, 3) + (keepPitch ? 0 : 12 * Math.log2(rate)),
         })
       } else notes.skippedItems++
     }

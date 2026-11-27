@@ -42,6 +42,49 @@ describe('readRpp', () => {
     expect({ ...t, volume: near(t.volume), clips: t.clips.map((c) => ({ ...c, gain: near(c.gain) })) }).toEqual(x.tracks[1])
   })
 
+  it('ピッチを保たない速度変更は、速度の分だけ音程も変える', () => {
+    const text = `<REAPER_PROJECT 0.1 "7.0" 0
+  <TRACK
+    <ITEM
+      POSITION 0
+      LENGTH 1
+      PLAYRATE 2 0 1 -1 0 0.0025
+      <SOURCE WAVE
+        FILE "a.wav"
+      >
+    >
+  >
+>`
+    const c = readRpp(text).project.tracks[0].clips[0]
+    expect([c.rate, c.pitch]).toEqual([2, 13])
+  })
+
+  it('テイクが複数あれば、選んでいるテイクを読む', () => {
+    const text = `<REAPER_PROJECT 0.1 "7.0" 0
+  <TRACK
+    <ITEM
+      POSITION 1
+      LENGTH 2
+      NAME "first"
+      SOFFS 0
+      PLAYRATE 1 1 0 -1 0 0.0025
+      <SOURCE WAVE
+        FILE "first.wav"
+      >
+      TAKE SEL
+      NAME "second"
+      SOFFS 0.5
+      PLAYRATE 1 1 -3 -1 0 0.0025
+      <SOURCE WAVE
+        FILE "Audio/second.wav"
+      >
+    >
+  >
+>`
+    const c = readRpp(text).project.tracks[0].clips[0]
+    expect([c.name, c.file, c.offset, c.pitch, c.start]).toEqual(['second', 'Audio/second.wav', 0.5, -3, 1])
+  })
+
   it('囲みの記号ごとに語を分ける', () => {
     expect(tokens(`NAME "a b" 'c "d"' \`e\` 1`)).toEqual(['NAME', 'a b', 'c "d"', 'e', '1'])
   })

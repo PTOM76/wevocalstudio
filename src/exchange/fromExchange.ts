@@ -89,3 +89,28 @@ export function fromExchange(x: XProject, audio: Map<string, Clip>): { project: 
 export function assignAudio(p: Project, source: string, clip: Clip, name: string): Project {
   return { ...p, sources: p.sources.map((s) => (s.id === source ? { id: s.id, name, clip, duration: clip.channels[0].length / clip.sampleRate } : s)) }
 }
+
+/**
+ * 見つからなかった音声のパスに、フォルダーの中のファイル（フォルダーからの相対パス）を当てる。
+ * パスの後ろからより多くの部分が一致するもの（Audio/a.wav なら、Audio/a.wav を a.wav より先）を選ぶ。大文字と小文字、\ と / は区別しない
+ */
+export function matchAudio<F>(missing: string[], files: { path: string; file: F }[]): Map<string, F> {
+  const norm = (s: string) => s.replace(/\\/g, '/').toLowerCase()
+  const list = files.map((f) => ({ path: `/${norm(f.path)}`, file: f.file }))
+  const out = new Map<string, F>()
+  for (const m of missing) {
+    const parts = norm(m).split('/').filter(Boolean)
+    for (let k = parts.length; k >= 1; k--) {
+      const tail = `/${parts.slice(-k).join('/')}`
+      const hit = list.find((f) => f.path.endsWith(tail))
+      if (hit) {
+        out.set(m, hit.file)
+        break
+      }
+    }
+  }
+  return out
+}
+
+/** 見つからなかった音声にまとめて音を割り当てる（1 回の変更にする） */
+export const assignAudios = (p: Project, list: { source: string; clip: Clip; name: string }[]): Project => list.reduce((q, a) => assignAudio(q, a.source, a.clip, a.name), p)

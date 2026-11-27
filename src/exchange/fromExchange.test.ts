@@ -1,6 +1,6 @@
 // fromExchange.ts のテスト（深さから親を決める、見つからない音声の仮の音、テンポの変化をマーカーに、割り当て）
 import { describe, expect, it } from 'vitest'
-import { assignAudio, fromExchange } from './fromExchange'
+import { assignAudio, fromExchange, matchAudio } from './fromExchange'
 import type { XProject, XTrack } from './exchange'
 
 const track = (name: string, depth: number, o: Partial<XTrack> = {}): XTrack => ({ name, volume: 0, pan: 0, mute: false, solo: false, invert: false, depth, clips: [], midi: [], ...o })
@@ -47,5 +47,21 @@ describe('fromExchange', () => {
     const q = assignAudio(project, project.sources[0].id, clip2, 'a.wav')
     expect(q.sources[0]).toMatchObject({ name: 'a.wav', duration: 3 })
     expect(q.sources[0].missing).toBeUndefined()
+  })
+})
+
+describe('matchAudio', () => {
+  const files = [
+    { path: 'Old/a.wav', file: 'old' },
+    { path: 'Audio/A.WAV', file: 'audio' },
+    { path: 'x/b.wav', file: 'b' },
+  ]
+  it('パスの後ろがより多く一致するものを選び、なければファイル名で探す', () => {
+    const win = String.raw`C:\Users\me\song\Audio\a.wav`
+    const m = matchAudio([win, 'b.wav', 'none.wav'], files)
+    expect([...m]).toEqual([
+      [win, 'audio'],
+      ['b.wav', 'b'],
+    ])
   })
 })

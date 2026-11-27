@@ -24,7 +24,7 @@ import { PLUGIN_REGISTRY } from './settings/PluginsSection'
 import type { Settings } from './settings/settings'
 import OptimizeDialog from './OptimizeDialog'
 import MissingAudioDialog from './MissingAudioDialog'
-import { assignAudio } from './exchange/fromExchange'
+import { assignAudios } from './exchange/fromExchange'
 import GlideDialog from './GlideDialog'
 import { glideBlocks } from './glide'
 import { vibratoBlocks } from './vibratoEnv'
@@ -55,6 +55,8 @@ export default function AppDialogs(p: {
   onOptimize: (o: OptimizeOptions) => void
   onVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void
   fail: (e: unknown) => void
+  /** 短い知らせ（画面の下に出す） */
+  notify: (message: string) => void
   /** 再生中か、再生と一時停止の切り替え（FX を開いたまま聞く） */
   playing: boolean
   onTogglePlay: () => void
@@ -111,8 +113,9 @@ export default function AppDialogs(p: {
       <MissingAudioDialog
         open={dialogs.isOpen('missingAudio')}
         project={p.doc.project}
-        onAssign={(source, clip, name) => p.doc.apply((q) => assignAudio(q, source, clip, name))}
+        onAssign={(list) => p.doc.apply((q) => assignAudios(q, list))}
         onError={p.fail}
+        onNotify={p.notify}
         onClose={dialogs.closer('missingAudio')}
       />
       {/* 編集の履歴（PevenMUI の HistoryDialog。WeVocalSynth と同じ）。一番上は開いたとき */}

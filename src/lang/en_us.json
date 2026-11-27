@@ -1186,8 +1186,10 @@
   "tempoChange.adopt": "Use",
 
   "missingAudio.title": "Missing Audio",
-  "missingAudio.help": "Audio that was not found when importing a project from another DAW. Choose a file to fill in the sound while keeping each block's position and range. Until then, these blocks are silent",
+  "missingAudio.help": "Audio that was not found when importing a project from another DAW. Choose the project folder to search it (including subfolders) by path and name, or choose files one by one. Block positions and ranges stay the same, and the blocks are silent until audio is assigned",
   "missingAudio.none": "No audio is missing",
   "missingAudio.pick": "Choose File",
-  "missingAudio.loading": "Loading…"
+  "missingAudio.loading": "Loading…",
+  "missingAudio.folder": "Search a Folder…",
+  "missingAudio.found": "Assigned {n} of {total}"
 }
