@@ -60,6 +60,8 @@ export interface XProject {
   bpm: number
   beatsPerBar: number
   markers: { time: number; name: string }[]
+  /** 途中のテンポの変化（位置の順） */
+  tempos: { time: number; bpm: number; beatsPerBar: number }[]
   master: { volume: number; pan: number; mute: boolean }
   tracks: XTrack[]
   /** 音声ファイル（名前 → WAV） */
@@ -186,6 +188,10 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, onProgress?: 
     bpm: p.tempo.bpm,
     beatsPerBar: p.tempo.beatsPerBar,
     markers: p.markers.map((m) => ({ time: m.time, name: m.name })),
+    tempos: p.markers
+      .filter((m) => m.tempo)
+      .sort((x, y) => x.time - y.time)
+      .map((m) => ({ time: m.time, ...m.tempo! })),
     master: { ...p.master },
     tracks,
     files,

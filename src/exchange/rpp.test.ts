@@ -8,7 +8,7 @@ import { midiEvents, PPQ } from './exchange'
 
 const clip = (o: Partial<XClip> = {}): XClip => ({ name: 'a', start: 1, length: 2, file: 'audio/a.wav', offset: 0.5, gain: -6, fadeIn: 0.01, fadeOut: 0.02, rate: 1.5, pitch: 2, mute: false, ...o })
 const track = (name: string, depth: number, clips: XClip[] = [], midi: XMidi[] = []): XTrack => ({ name, volume: 0, pan: 0, mute: false, solo: false, invert: false, depth, clips, midi })
-const project = (tracks: XTrack[]): XProject => ({ bpm: 128, beatsPerBar: 3, markers: [{ time: 4, name: 'サビ' }], master: { volume: 0, pan: 0, mute: false }, tracks, files: new Map() })
+const project = (tracks: XTrack[]): XProject => ({ bpm: 128, beatsPerBar: 3, markers: [{ time: 4, name: 'サビ' }], tempos: [], master: { volume: 0, pan: 0, mute: false }, tracks, files: new Map() })
 
 describe('writeRpp', () => {
   it('親と子をフォルダーにする', () => {
@@ -27,6 +27,12 @@ describe('writeRpp', () => {
     expect(text).toContain('FILE "audio/a.wav"')
     // 開きと閉じの数がそろう
     expect(text.match(/^\s*</gm)!.length).toBe(text.match(/^\s*>$/gm)!.length)
+  })
+
+  it('途中のテンポの変化をエンベロープの点にする', () => {
+    const text = writeRpp({ ...project([]), tempos: [{ time: 8, bpm: 140, beatsPerBar: 3 }] })
+    expect(text).toContain('PT 0 128 1 262147 0 1')
+    expect(text).toContain('PT 8 140 1 262147 0 1')
   })
 
   it('" を含む名前は別の記号で囲む', () => {

@@ -56,6 +56,14 @@ export function writeRpp(p: XProject): string {
   line(`TEMPO ${num(p.bpm)} ${p.beatsPerBar} 4`)
   line(`MASTER_VOLUME ${num(dbToGain(p.master.volume))} ${num(p.master.pan)} -1 -1 1`)
   line(`MASTERMUTESOLO ${p.master.mute ? 1 : 0}`)
+  // 途中のテンポの変化はテンポのエンベロープの点（四角の形 1。拍子は分子 + 分母 × 65536）
+  if (p.tempos.length) {
+    open('TEMPOENVEX')
+    line('ACT 1 -1')
+    line(`PT 0 ${num(p.bpm)} 1 ${p.beatsPerBar + 4 * 65536} 0 1`)
+    for (const t of p.tempos) line(`PT ${num(t.time)} ${num(t.bpm)} 1 ${t.beatsPerBar + 4 * 65536} 0 1`)
+    close()
+  }
   p.markers.forEach((m, i) => line(`MARKER ${i + 1} ${num(m.time)} ${quote(m.name)} 0`))
   p.tracks.forEach((t, i) => {
     open('TRACK')
