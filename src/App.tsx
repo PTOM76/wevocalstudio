@@ -245,8 +245,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     openDialog: (id, arg) => dialogs.open(id, arg),
     // 動画の書き出し: 追加機能「変換」を確かめ、プレビューに使う音を作ってから開く
     exportWvsp: () => files.exportWvsp(selectedTracks),
-    exportRpp: () => files.exportRpp(),
-    exportDawproject: () => files.exportDawproject(),
+    exportRpp: () => dialogs.open('dawExport', 'rpp'),
+    exportDawproject: () => dialogs.open('dawExport', 'dawproject'),
     assignMissingAudio: () => dialogs.open('missingAudio'),
     saveOptimized: () => dialogs.open('optimize', selected),
     exportVideo: () =>
@@ -486,7 +486,7 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       <ContextMenu position={menuAt} entries={blockMenu} onClose={() => setMenuAt(null)} />
       <ContextMenu position={envAt} entries={envAt ? envelopeMenu(envAt.block, envAt.index) : []} onClose={() => setEnvAt(null)} />
       <ContextMenu position={emptyAt} entries={emptyAt ? emptyMenu(emptyAt.kind, emptyAt.time, emptyAt.track, emptyAt.marker) : []} onClose={() => setEmptyAt(null)} />
-      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} onRenameProject={setFileName} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} fail={fail} notify={setNotice} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} position={() => player.current.position()} onTogglePlay={() => (playing ? pause() : play())} onPlayRange={playRoll} repeat={repeat} onRepeat={setRepeat} onSeek={seek} load={renderLoad} onPreview={(track, pitch, vel, on) => void player.current.monitorNote(project, track, pitch, vel, on)} />
+      <AppDialogs dialogs={dialogs} settings={p.settings} onSettingsChange={p.onSettingsChange} doc={doc} fileName={fileName} onRenameProject={setFileName} onExport={files.runExport} onOptimize={files.saveOptimized} onVideoExport={files.runVideoExport} onDawExport={files.exportDaw} fail={fail} notify={setNotice} cursor={cursor} prepareSeparate={extract.prepareSeparate} ensure={addonInstall.ensure} playing={playing} position={() => player.current.position()} onTogglePlay={() => (playing ? pause() : play())} onPlayRange={playRoll} repeat={repeat} onRepeat={setRepeat} onSeek={seek} load={renderLoad} onPreview={(track, pitch, vel, on) => void player.current.monitorNote(project, track, pitch, vel, on)} />
 
       {!mobile && p.settings.showStatusBar && (
         <StatusBar

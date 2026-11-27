@@ -426,7 +426,7 @@
   "settings.exchangeBlocksHelp": "ほかの DAW のプロジェクト（REAPER、DAWproject）へ書き出すとき、ピッチや速度などを加工した波形ブロックをどう渡すか。元の音で渡すと、ピッチカーブ、エンベロープ、フォルマントは反映されない（DAWproject ではピッチと音量も反映されない）",
   "settings.exchangeChanged": "加工したブロックだけ描画する",
   "settings.exchangeAll": "すべて描画する",
-  "settings.exchangeOriginal": "すべて元の音で渡す",
+  "settings.exchangeOriginal": "元の音で渡し、ピッチや速度は設定値にする",
   "settings.rangeStyle": "範囲の扱い",
   "settings.rangeStyleHelp": "REAPER と同じでは、クリックしても範囲は残り、元に戻すで範囲は変わらない。Esc は範囲を解除し、範囲がなければ選択を解除する。従来では、クリックで範囲を解除し、範囲も元に戻せる",
   "settings.rangeKeep": "REAPER と同じ",
@@ -1191,5 +1191,13 @@
   "missingAudio.pick": "ファイルを選ぶ",
   "missingAudio.loading": "読み込み中…",
   "missingAudio.folder": "フォルダーから探す…",
-  "missingAudio.found": "{total} 個のうち {n} 個を割り当てました"
+  "missingAudio.found": "{total} 個のうち {n} 個を割り当てました",
+
+  "dawExport.titleRpp": "REAPER のプロジェクトに書き出す",
+  "dawExport.titleDawproject": "DAWproject に書き出す",
+  "dawExport.originalHelpRpp": "相手の DAW で編集しやすく、ファイルも増えない。ピッチ、速度、音量、フェードは REAPER の項目に書く。ピッチカーブ、エンベロープ、フォルマントは反映されない",
+  "dawExport.originalHelpDawproject": "相手の DAW で編集しやすく、ファイルも増えない。速度とフェードは DAWproject の項目に書く。ピッチ、音量、ピッチカーブ、エンベロープ、フォルマントは反映されない",
+  "dawExport.changedHelp": "ピッチなどを変えたブロックだけ、音を描画したファイルにする。音は同じになるが、そのブロックは相手の DAW でピッチを変え直せない",
+  "dawExport.allHelp": "すべてのブロックを、音を描画したファイルにする。音は同じになるが、ファイルが多く大きくなる",
+  "dawExport.run": "書き出す"
 }

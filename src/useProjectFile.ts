@@ -14,6 +14,8 @@ import { isDirty } from './projectTabs'
 import { exportWvsp } from './wvspExport'
 import { exportRpp } from './exchange/exportRpp'
 import { exportDawproject } from './exchange/exportDawproject'
+import type { ExchangeBlocks } from './exchange/exchange'
+import type { DawFormat } from './DawExportDialog'
 import { DAW_ACCEPT, importDaw, isDawFile } from './exchange/importDaw'
 import { optimizeProject, sourcesBytes, type OptimizeOptions } from './optimize'
 import { LEGACY_PROJECT_EXT, PROJECT_EXT, readProject, writeProject } from './projectFile'
@@ -211,9 +213,9 @@ export function useProjectFile(o: {
     }
   }
   /** REAPER のプロジェクト（.rpp と音声ファイルの zip） */
-  const runRppExport = () => runDawExport(`${o.fileName}.zip`, 'rpp', t('file.rppType'), 'application/zip', '.zip', (signal, onProgress) => exportRpp(o.project, o.fileName, settings.exchangeBlocks, onProgress, signal))
+  const runRppExport = (mode: ExchangeBlocks) => runDawExport(`${o.fileName}.zip`, 'rpp', t('file.rppType'), 'application/zip', '.zip', (signal, onProgress) => exportRpp(o.project, o.fileName, mode, onProgress, signal))
   /** DAWproject（.dawproject） */
-  const runDawprojectExport = () => runDawExport(`${o.fileName}.dawproject`, 'dawproject', t('file.dawprojectType'), 'application/zip', '.dawproject', (signal, onProgress) => exportDawproject(o.project, o.fileName, settings.exchangeBlocks, onProgress, signal))
+  const runDawprojectExport = (mode: ExchangeBlocks) => runDawExport(`${o.fileName}.dawproject`, 'dawproject', t('file.dawprojectType'), 'application/zip', '.dawproject', (signal, onProgress) => exportDawproject(o.project, o.fileName, mode, onProgress, signal))
 
   /** 範囲（全トラックを混ぜたもの）を切り出して WAV にする。仕上げは書き出しと同じ */
   const renderRange = async (p: Project, r: Range) => encodeWav(await renderFinished(p, r))
@@ -298,8 +300,8 @@ export function useProjectFile(o: {
     save: () => void save(),
     saveAs: () => void save(true),
     exportWvsp: (selected: string[]) => void runWvspExport(selected),
-    exportRpp: () => void runRppExport(),
-    exportDawproject: () => void runDawprojectExport(),
+    /** ほかの DAW へ書き出す（書き出しのダイアログから） */
+    exportDaw: (format: DawFormat, mode: ExchangeBlocks) => void (format === 'rpp' ? runRppExport(mode) : runDawprojectExport(mode)),
     saveOptimized: (opt: OptimizeOptions) => void runOptimizedSave(opt),
     runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
     runVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void runVideoExport(v, look, win),

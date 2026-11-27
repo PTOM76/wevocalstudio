@@ -24,6 +24,8 @@ import { PLUGIN_REGISTRY } from './settings/PluginsSection'
 import type { Settings } from './settings/settings'
 import OptimizeDialog from './OptimizeDialog'
 import MissingAudioDialog from './MissingAudioDialog'
+import DawExportDialog, { type DawFormat } from './DawExportDialog'
+import type { ExchangeBlocks } from './exchange/exchange'
 import { assignAudios } from './exchange/fromExchange'
 import GlideDialog from './GlideDialog'
 import { glideBlocks } from './glide'
@@ -54,6 +56,8 @@ export default function AppDialogs(p: {
   onExport: (s: ExportSettings, win?: Window | null) => void
   onOptimize: (o: OptimizeOptions) => void
   onVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void
+  /** ほかの DAW へ書き出す */
+  onDawExport: (format: DawFormat, blocks: ExchangeBlocks) => void
   fail: (e: unknown) => void
   /** 短い知らせ（画面の下に出す） */
   notify: (message: string) => void
@@ -109,6 +113,16 @@ export default function AppDialogs(p: {
         registryUrl={PLUGIN_REGISTRY}
         vst={p.settings.showVst}
         onClose={dialogs.closer('missingPlugins')}
+      />
+      <DawExportDialog
+        open={dialogs.isOpen('dawExport')}
+        format={dialogs.arg<DawFormat>('dawExport') ?? 'rpp'}
+        blocks={p.settings.exchangeBlocks}
+        onClose={dialogs.closer('dawExport')}
+        onRun={(format, blocks) => {
+          if (blocks !== p.settings.exchangeBlocks) p.onSettingsChange({ exchangeBlocks: blocks })
+          p.onDawExport(format, blocks)
+        }}
       />
       <MissingAudioDialog
         open={dialogs.isOpen('missingAudio')}

@@ -30,6 +30,8 @@ export type DialogId =
   | 'missingPlugins'
   // ほかの DAW から読み込んで見つからなかった音声の割り当て
   | 'missingAudio'
+  // ほかの DAW への書き出し（形式 'rpp' か 'dawproject'）
+  | 'dawExport'
   // 自動解析で見つけたテンポの変化（区間の一覧）
   | 'tempoChange'
 

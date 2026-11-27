@@ -426,7 +426,7 @@
   "settings.exchangeBlocksHelp": "How to pass audio blocks with pitch, speed, or other processing when exporting to other DAW projects (REAPER, DAWproject). Passing the original audio drops pitch curves, envelopes, and formant changes (and pitch and gain in DAWproject)",
   "settings.exchangeChanged": "Render processed blocks only",
   "settings.exchangeAll": "Render all blocks",
-  "settings.exchangeOriginal": "Pass the original audio",
+  "settings.exchangeOriginal": "Pass the original audio with pitch and speed as settings",
   "settings.rangeStyle": "Range selection",
   "settings.rangeStyleHelp": "Like REAPER: clicking keeps the range, and undo does not change it. Esc clears the range, or the selection when there is no range. Classic: clicking clears the range, and range changes can be undone",
   "settings.rangeKeep": "Like REAPER",
@@ -1191,5 +1191,13 @@
   "missingAudio.pick": "Choose File",
   "missingAudio.loading": "Loading…",
   "missingAudio.folder": "Search a Folder…",
-  "missingAudio.found": "Assigned {n} of {total}"
+  "missingAudio.found": "Assigned {n} of {total}",
+
+  "dawExport.titleRpp": "Export as REAPER Project",
+  "dawExport.titleDawproject": "Export as DAWproject",
+  "dawExport.originalHelpRpp": "Easy to edit in the other DAW, with no extra files. Pitch, speed, gain, and fades become REAPER item settings. Pitch curves, envelopes, and formant changes are not kept",
+  "dawExport.originalHelpDawproject": "Easy to edit in the other DAW, with no extra files. Speed and fades become DAWproject settings. Pitch, gain, pitch curves, envelopes, and formant changes are not kept",
+  "dawExport.changedHelp": "Only blocks with pitch or other changes are rendered to new audio files. The sound matches, but those blocks cannot be re-pitched in the other DAW",
+  "dawExport.allHelp": "All blocks are rendered to new audio files. The sound matches, but there are more and larger files",
+  "dawExport.run": "Export"
 }

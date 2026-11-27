@@ -24,6 +24,7 @@ src/
   BlockDialog.tsx  波形ブロックのプロパティ。複数を選んでいれば一括で変える（触った欄だけを全部に掛ける）。元の音も選び直せる
   blockDrag.ts  波形ブロックのドラッグ（移動、端で長さを変える、角でフェード）の計算。画面を知らない
   BlockEditBar.tsx  画面の下に出す編集のボタンの列（PevenMUI の EditBar）。波形ブロックを選んでいれば波形ブロックの編集、範囲を選んでいれば範囲の編集
+  DawExportDialog.tsx  ほかの DAW（REAPER、DAWproject）への書き出しのダイアログ。波形ブロックの渡し方を選ぶ（選んだものは設定の exchangeBlocks に覚える）。実行は useProjectFile
   DocContext.tsx  開いているプロジェクトの文書（useProject の戻り値）を、部品へ props で渡さずに読めるようにする。選択、範囲、プロジェクトを変える操作はここから使う
   drawTimeline.ts  時間軸の描画（目盛り、トラックの区切り、波形ブロック、再生位置）
   EmptyProject.tsx  何も置いていないときの案内（開く、音を作る、録音、最近使用したファイル。部品は PevenMUI の EmptyState。WeVocalSynth と同じ）。時間軸の操作は妨げない
