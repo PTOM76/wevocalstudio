@@ -5,6 +5,8 @@
 export type XFx =
   | { kind: 'vst'; on: boolean; name: string; file: string; uniqueId: number; params: number[]; /** 状態の塊（塊でしか状態を持たない VST）。あれば params より優先して書く */ chunk?: Uint8Array }
   | { kind: 'reaeq'; on: boolean; bands: { freq: number; gain: number; bw: number }[] }
+  /** REAPER の JSFX（パスと、スライダーの値を単位のまま。1 番から並べ、無い番号は undefined） */
+  | { kind: 'js'; on: boolean; path: string; sliders: (number | undefined)[] }
 
 /** ReaEQ の識別番号（'reeq'）と DLL の名前 */
 const REAEQ_ID = 0x72656571
@@ -96,6 +98,11 @@ function reaeqChunk(bands: { freq: number; gain: number; bw: number }[]): Uint8A
 
 /** 1 つの FX の行（BYPASS、<VST …> と塊、> まで）。quote は RPP の文字列の囲み */
 export function fxLines(fx: XFx, quote: (s: string) => string): string[] {
+  // JSFX: <JS パス ""> のあとに、64 個のスライダーの値を 1 行に（無い番号は -）
+  if (fx.kind === 'js') {
+    const values = Array.from({ length: 64 }, (_, i) => (fx.sliders[i] === undefined ? '-' : String(Math.round(fx.sliders[i]! * 1e6) / 1e6)))
+    return [`BYPASS ${fx.on ? 0 : 1} 0 0`, `<JS ${fx.path.includes(' ') ? quote(fx.path) : fx.path} ""`, `  ${values.join(' ')}`, '>', 'FLOATPOS 0 0 0 0', 'WAK 0 0']
+  }
   const vst = fx.kind === 'vst' ? fx : { name: REAEQ.name, file: REAEQ.file, uniqueId: REAEQ_ID }
   const chunk = fx.kind === 'reaeq' || !!fx.chunk
   const data = fx.kind === 'reaeq' ? reaeqChunk(fx.bands) : fx.chunk ?? fx.params.reduce((b, v) => b.f32(v), new Bytes().u32(0xdeadbeef).u32(0xdeadf00d)).done()

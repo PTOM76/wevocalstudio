@@ -1,6 +1,7 @@
 // 中間の形（ほかの DAW から読んだもの）から Studio のプロジェクトを作る（memo/daw-exchange.md）。見つからない音声は無音の仮の音にして、missing に元のパスを残す
-import { eqFreqs, eqToSlot, type Clip, type EqBands, type FxPlugin, type FxSlot } from 'wevocal-lib'
+import { eqFreqs, eqToSlot, findPlugin, type Clip, type EqBands, type FxPlugin, type FxSlot } from 'wevocal-lib'
 import type { XFx } from './rppFx'
+import { jsToBuiltin } from './reaperBuiltin'
 import { fillBlock, newId, newProject, newTrack, RATE_MAX, RATE_MIN, type Marker, type MidiBlock, type MidiCurve, type Project, type Source, type Block } from '../project'
 import { notesOf, PPQ, type XClip, type XMidi, type XProject } from './exchange'
 import { DEFAULT_REAPER_PITCH_MAP, reaperPitchKind, type ReaperPitchMap } from './reaperPitch'
@@ -77,6 +78,16 @@ export function clipExtras(c: XClip, rate: number, pitchMap: ReaperPitchMap): Pa
   return out
 }
 
+/** 知っている JSFX を Studio の組み込みの FX にする（足りない値は既定値）。知らないものは null */
+export function jsToSlot(fx: Extract<XFx, { kind: 'js' }>): FxSlot | null {
+  const r = jsToBuiltin(fx)
+  const m = r && findPlugin(r.plugin)?.manifest
+  if (!r || !m) return null
+  const values: Record<string, number> = {}
+  for (const d of m.params) values[d.id] = Number.isFinite(r.values[d.id]) ? r.values[d.id] : d.default
+  return { plugin: m.id, version: m.version, on: fx.on, values }
+}
+
 export function fromExchange(x: XProject, audio: Map<string, Clip>, installed: readonly FxPlugin[] = [], pitchMap: ReaperPitchMap = DEFAULT_REAPER_PITCH_MAP): { project: Project; missing: number; skippedFx: number } {
   let skippedFx = 0
   const p = newProject(x.bpm)
@@ -129,7 +140,7 @@ export function fromExchange(x: XProject, audio: Map<string, Clip>, installed: r
     for (const m of t.midi) midi.push(midiBlock(m, track.id))
     const slots: FxSlot[] = []
     for (const fx of t.fx ?? []) {
-      const s = fx.kind === 'reaeq' ? reaeqToSlot(fx) : vstToSlot(fx, installed)
+      const s = fx.kind === 'reaeq' ? reaeqToSlot(fx) : fx.kind === 'js' ? jsToSlot(fx) : vstToSlot(fx, installed)
       if (s) slots.push(s)
       else skippedFx++
     }

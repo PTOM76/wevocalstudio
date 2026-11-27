@@ -139,6 +139,13 @@ function readChain(chain: Node | undefined, notes: ReadNotes): XFx[] {
       if (x[0] === 'BYPASS') bypass = x[1] === '1'
       continue
     }
+    if (x.name === 'JS') {
+      // JSFX: 1 行目がスライダーの値（- は無い番号）
+      const vals = x.lines[0] ?? []
+      out.push({ kind: 'js', on: !bypass, path: x.args[0] ?? '', sliders: vals.map((v) => (v === '-' ? undefined : parseFloat(v))) })
+      bypass = false
+      continue
+    }
     const fx = x.name === 'VST' ? readFx({ name: x.args[0] ?? '', file: x.args[1] ?? '', uniqueId: parseInt(x.args[4] ?? '0', 10) || 0, lines: x.lines.map((l) => l.join('')), on: !bypass }) : null
     if (fx) out.push(fx)
     else if (x.name !== 'JS_SER') notes.skippedFx++

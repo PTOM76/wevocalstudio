@@ -1,6 +1,7 @@
 // ほかの DAW とやり取りするための中間の形（トラックとクリップの一覧）と、Studio のプロジェクトからの変換（memo/daw-exchange.md）。形式ごとのファイル（rpp.ts など）はこの形だけを扱う
-import { EQ_ID, Q as EQ_Q, encodeWav, eqFreqs, findPlugin, migrateValues, valuesToEq, type Clip } from 'wevocal-lib'
-import { qToOctaves, type XFx } from './rppFx'
+import { EQ_ID, encodeWav, findPlugin, migrateValues, type Clip } from 'wevocal-lib'
+import type { XFx } from './rppFx'
+import { builtinToReaper, type ReaperFxPrefer } from './reaperBuiltin'
 import { reaperModeFor, simplify, type XEnvPoint } from './reaperPitch'
 import { CURVE_HOP, pitchEnvAt } from '../project'
 import { renderMix } from '../engine/render'
@@ -177,12 +178,14 @@ export function blockEnvelopes(b: Block): { pitchEnv?: XEnvPoint[]; volEnv?: XEn
 /** 書き出す形式でできること。clipGain はクリップに音量を書けるか（書けなければ、音量を変えたブロックも描画する） */
 export interface ExchangeTarget {
   clipGain: boolean
-  /** FX を書き出すか（VST と、ReaEQ に変える組み込みの EQ） */
+  /** FX を書き出すか（VST と、REAPER の FX に変える組み込みの FX） */
   fx?: boolean
+  /** 組み込みの FX の変換先の優先（Rea 系の VST か JSFX） */
+  fxPrefer?: ReaperFxPrefer
 }
 
 /** トラックの FX の列を、書き出せる FX にする（VST はつまみの値のまま、組み込みの EQ は ReaEQ の帯に。ほかは数だけ返す） */
-export function trackFx(t: Project['tracks'][number]): { fx: XFx[]; skipped: number } {
+export function trackFx(t: Project['tracks'][number], bpm = 120, prefer: ReaperFxPrefer = 'vst'): { fx: XFx[]; skipped: number } {
   const fx: XFx[] = []
   let skipped = 0
   for (const s of t.fx ?? []) {
@@ -194,13 +197,12 @@ export function trackFx(t: Project['tracks'][number]): { fx: XFx[]; skipped: num
       // 状態の塊（ほかの DAW から読んだもの）があれば、塊で書く
       const chunk = s.state ? Uint8Array.from(atob(s.state), (c) => c.charCodeAt(0)) : undefined
       fx.push({ kind: 'vst', on: s.on, name, file: m.vst?.file ?? `${name}.dll`, uniqueId: m.vst?.uniqueId ?? 0, params: m.params.map((d) => values[d.id] ?? d.default), ...(chunk ? { chunk } : {}) })
-    } else if (s.plugin === EQ_ID) {
-      const eq = valuesToEq(s.values, s.on)
-      const bands = eqFreqs(eq.bands)
-        .map((freq, i) => ({ freq, gain: eq.gains[i], bw: qToOctaves(EQ_Q[eq.bands]) }))
-        .filter((b) => b.gain !== 0)
-      if (bands.length) fx.push({ kind: 'reaeq', on: s.on, bands })
-    } else skipped++
+    } else {
+      // 組み込みの FX は、REAPER の FX（Rea 系の VST か JSFX。prefer の方を先に）にする。平らな EQ は書かない
+      const r = m ? builtinToReaper(s, migrateValues(m, s.values), bpm, prefer) : null
+      if (r) fx.push(r)
+      else if (s.plugin !== EQ_ID) skipped++
+    }
   }
   return { fx, skipped }
 }
@@ -248,7 +250,7 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, target: Excha
       .filter((x) => x.track === t.id)
       .sort((x, y) => x.start - y.start)
       .map((x) => midiEvents(x, map))
-    const fx = target.fx ? trackFx(t) : null
+    const fx = target.fx ? trackFx(t, p.tempo.bpm, target.fxPrefer) : null
     skippedFx += fx?.skipped ?? 0
     tracks.push({ name: t.name, volume: t.volume, pan: t.pan, mute: t.mute, solo: t.solo, invert: !!t.invert, depth: ancestors(p, t).length, clips, midi, ...(fx ? { fx: fx.fx } : {}) })
   }
