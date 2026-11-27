@@ -149,6 +149,8 @@ src/exchange/
   fromExchange.ts  中間の形（ほかの DAW から読んだもの）から Studio のプロジェクトを作る（memo/daw-exchange.md）。見つからない音声は無音の仮の音にして、missing に元のパスを残す
   fxImport.test.ts  REAPER の FX の読み込みのテスト（書いたものを読むと戻る、ReaEQ を WevEQ に、VST を導入済みのものに当てる。値は架空のもの）
   importDaw.ts  ほかの DAW のプロジェクト（.rpp、.dawproject、それらを入れた zip）を開く（memo/daw-exchange.md）。音声は zip の中か、一緒に選んだファイルから名前で探す
+  reaperPitch.test.ts  REAPER のピッチの処理方式とテイクのエンベロープのテスト（値は架空のもの）
+  reaperPitch.ts  REAPER のピッチの処理方式（PLAYRATE の 4 つ目、DEFPITCHMODE）と Studio の処理方式の対応、テイクのエンベロープ（<PITCHENV>、<VOLENV>）と Studio のエンベロープの変換（memo/daw-exchange.md）
   rpp.test.ts  rpp.ts のテスト（フォルダーの印、クリップの項目、文字列の囲み）
   rpp.ts  REAPER のプロジェクト（.rpp。テキスト）を書く。音声は相対のパス（audio/…）で参照し、呼ぶ側が zip に一緒に入れる（memo/daw-exchange.md）
   rppFx.test.ts  rppFx.ts のテスト（REAPER の FX の塊の形。値は架空のもの）

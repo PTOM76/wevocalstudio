@@ -1,6 +1,8 @@
 // ほかの DAW とやり取りするための中間の形（トラックとクリップの一覧）と、Studio のプロジェクトからの変換（memo/daw-exchange.md）。形式ごとのファイル（rpp.ts など）はこの形だけを扱う
 import { EQ_ID, Q as EQ_Q, encodeWav, eqFreqs, findPlugin, migrateValues, valuesToEq, type Clip } from 'wevocal-lib'
 import { qToOctaves, type XFx } from './rppFx'
+import { reaperModeFor, simplify, type XEnvPoint } from './reaperPitch'
+import { CURVE_HOP, pitchEnvAt } from '../project'
 import { renderMix } from '../engine/render'
 import { beatMap, blockBeats, type BeatMap } from '../beats'
 import { playedNotes, playedPoints } from '../midiLoop'
@@ -30,6 +32,12 @@ export interface XClip {
   /** ピッチ（半音） */
   pitch: number
   mute: boolean
+  /** ピッチの処理方式（REAPER の番号。無ければ相手の既定） */
+  pitchMode?: number
+  /** ピッチのエンベロープ（アイテムの頭からの秒と半音。clip の pitch に足す） */
+  pitchEnv?: XEnvPoint[]
+  /** 音量のエンベロープ（アイテムの頭からの秒と dB） */
+  volEnv?: XEnvPoint[]
 }
 
 /** MIDI のクリップ。events は頭からの tick と、チャンネル 1 のメッセージのバイト列（tick の順） */
@@ -145,6 +153,27 @@ export function midiEvents(b: MidiBlock, map: BeatMap): XMidi {
   return { name: b.name || b.defaultName || 'MIDI', start: b.start, length: b.length, mute: b.mute, ticks: tick(len), events: events.map(({ tick, bytes }) => ({ tick, bytes })) }
 }
 
+/**
+ * 波形ブロックのピッチカーブとピッチのエンベロープ、音量のエンベロープを、アイテムの頭からの秒の点にする。
+ * ピッチカーブがあれば 10 ms ごとに読んで 0.05 半音以内に収まる点だけに減らし、なければエンベロープの点をそのまま（形も）移す
+ */
+export function blockEnvelopes(b: Block): { pitchEnv?: XEnvPoint[]; volEnv?: XEnvPoint[] } {
+  const out: { pitchEnv?: XEnvPoint[]; volEnv?: XEnvPoint[] } = {}
+  const toItem = (s: number) => (s - b.offset) / b.rate
+  if (b.curve?.st.some((v) => v !== 0)) {
+    const c = b.curve
+    const pts: XEnvPoint[] = []
+    for (let t = 0; t <= b.length + 1e-9; t += CURVE_HOP) {
+      const s = b.offset + t * b.rate
+      const i = Math.round((s - c.from) / CURVE_HOP)
+      pts.push({ t, v: (i >= 0 && i < c.st.length ? c.st[i] : 0) + pitchEnvAt(b.pitchEnvelope, s) })
+    }
+    out.pitchEnv = simplify(pts, 0.05)
+  } else if (b.pitchEnvelope?.length) out.pitchEnv = b.pitchEnvelope.map((p) => ({ t: toItem(p.s), v: p.st, ...(p.shape ? { shape: p.shape } : {}), ...(p.tension ? { tension: p.tension } : {}) }))
+  if (b.envelope?.length) out.volEnv = b.envelope.map((p) => ({ t: p.t, v: p.db, ...(p.shape ? { shape: p.shape } : {}), ...(p.tension ? { tension: p.tension } : {}) }))
+  return out
+}
+
 /** 書き出す形式でできること。clipGain はクリップに音量を書けるか（書けなければ、音量を変えたブロックも描画する） */
 export interface ExchangeTarget {
   clipGain: boolean
@@ -204,7 +233,7 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, target: Excha
       const name = source?.name.replace(/\.[^.]+$/, '') ?? 'audio'
       const base = { name, start: b.start, length: b.length, mute: b.mute }
       if (source && (mode === 'original' || (mode === 'changed' && !processed(b) && (target.clipGain || b.gain === 0)))) {
-        clips.push({ ...base, file: sourceFile(b.source), offset: b.offset, gain: b.gain, fadeIn: b.fadeIn, fadeOut: b.fadeOut, rate: b.rate, pitch: b.pitch })
+        clips.push({ ...base, file: sourceFile(b.source), offset: b.offset, gain: b.gain, fadeIn: b.fadeIn, fadeOut: b.fadeOut, rate: b.rate, pitch: b.pitch, pitchMode: reaperModeFor(b.algorithm), ...blockEnvelopes(b) })
       } else if (source) {
         const clip = await renderBlock(p, b, sampleRate, signal)
         const file = uniqueName(used, `audio/${safeName(name)} ${safeName(t.name)}`, '.wav')

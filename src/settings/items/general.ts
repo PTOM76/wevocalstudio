@@ -4,6 +4,7 @@ import type { WheelZoom } from 'wevocal-lib/react'
 import type { StartFolder } from 'pevenmui/web'
 import type { Action } from '../../keymap'
 import type { ExchangeBlocks } from '../../exchange/exchange'
+import { DEFAULT_REAPER_PITCH_MAP, type ReaperPitchMap } from '../../exchange/reaperPitch'
 import type { RangeStyle } from '../../document/ProjectDocument'
 import { check, choice, defineItems, number, value } from './define'
 
@@ -108,6 +109,8 @@ export const file = defineItems('file', {
   // ほかの DAW（REAPER など）へ書き出すときの、加工した波形ブロックの渡し方（memo/daw-exchange.md）
   // ほかの DAW（REAPER）へ書き出すとき、FX の列も書く（VST と、ReaEQ に変える組み込みの EQ）
   exchangeFx: check(true, { label: 'settings.exchangeFx', help: 'settings.exchangeFxHelp' }),
+  // REAPER のピッチの処理方式（Soloist、Pro など）を、読み込むときにどの処理方式にするか。画面は自前の行（SettingsPages）
+  reaperPitchMap: value<ReaperPitchMap>(DEFAULT_REAPER_PITCH_MAP),
   // 既定は元の音で渡し、ピッチや速度は相手の項目に書く（相手の DAW で編集しやすく、ファイルも増えない）
   exchangeBlocks: choice<ExchangeBlocks>('original', {
     label: 'settings.exchangeBlocks',

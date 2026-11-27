@@ -6,6 +6,7 @@ import { readDawproject } from './dawprojectRead'
 import { baseName, fromExchange } from './fromExchange'
 import { readRpp } from './rppRead'
 import type { XProject } from './exchange'
+import type { ReaperPitchMap } from './reaperPitch'
 
 const ext = (name: string) => name.toLowerCase().match(/\.[^.]+$/)?.[0] ?? ''
 /** ほかの DAW のプロジェクトとして開くファイルか（zip は中を見るまで分からないので、開いてみる） */
@@ -22,7 +23,7 @@ export interface DawImport {
 }
 
 /** files のうち、ほかの DAW のプロジェクトを 1 つ開く。残りのファイルは音声の候補にする。プロジェクトが無ければ null */
-export async function importDaw(files: File[]): Promise<DawImport | null> {
+export async function importDaw(files: File[], pitchMap?: ReaperPitchMap): Promise<DawImport | null> {
   const main = files.find((f) => ext(f.name) === '.rpp') ?? files.find((f) => ['.dawproject', '.zip'].includes(ext(f.name)))
   if (!main) return null
   let x: XProject
@@ -65,6 +66,6 @@ export async function importDaw(files: File[]): Promise<DawImport | null> {
       console.warn('Failed to decode audio for DAW import', { path, error: e })
     }
   }
-  const { project, missing, skippedFx } = fromExchange(x, audio, installedPlugins())
+  const { project, missing, skippedFx } = fromExchange(x, audio, installedPlugins(), pitchMap)
   return { project, name: main.name.replace(/\.[^.]+$/, ''), missing, skipped: skipped + skippedFx }
 }

@@ -1,6 +1,7 @@
 // REAPER のプロジェクト（.rpp。テキスト）を書く。音声は相対のパス（audio/…）で参照し、呼ぶ側が zip に一緒に入れる（memo/daw-exchange.md）
 import { PPQ, type XMidi, type XProject, type XTrack } from './exchange'
 import { fxLines } from './rppFx'
+import { shapeToReaper, type XEnvPoint } from './reaperPitch'
 
 const dbToGain = (db: number) => (db <= -150 ? 0 : 10 ** (db / 20))
 /** 数を短く書く（REAPER は小数点を . で読む） */
@@ -32,6 +33,18 @@ export function writeRpp(p: XProject): string {
   const close = () => {
     depth--
     line('>')
+  }
+
+  /** テイクのエンベロープ。PT 時刻 値 形 拍子 選択（ベジェは張り具合を後ろに足す） */
+  const envelope = (name: string, pts: XEnvPoint[], value: (v: number) => number) => {
+    open(name)
+    line('ACT 1 -1')
+    line('VIS 1 1 1')
+    line('LANEHEIGHT 0 0')
+    line('ARM 0')
+    line('DEFSHAPE 0 -1 -1')
+    for (const p of pts) line(`PT ${num(p.t)} ${num(value(p.v))} ${shapeToReaper(p.shape)} 0 0${p.shape === 'bezier' ? ` 0 ${num(p.tension ?? 0)}` : ''}`)
+    close()
   }
 
   /** MIDI のアイテム。イベントは前のイベントからの tick で書き、最後に長さの分を置く（全部の音を止める CC 123） */
@@ -97,10 +110,13 @@ export function writeRpp(p: XProject): string {
       line(`VOLPAN 1 0 ${num(dbToGain(c.gain))} -1`)
       line(`SOFFS ${num(c.offset)}`)
       // 速度、ピッチを保つ（1）、ピッチ（半音）
-      line(`PLAYRATE ${num(c.rate)} 1 ${num(c.pitch)} -1 0 0.0025`)
+      line(`PLAYRATE ${num(c.rate)} 1 ${num(c.pitch)} ${c.pitchMode ?? -1} 0 0.0025`)
       open('SOURCE WAVE')
       line(`FILE ${quote(c.file)}`)
       close()
+      // テイクのエンベロープ（ピッチは半音、音量は倍率。点はアイテムの頭からの秒と形）
+      if (c.pitchEnv?.length) envelope('PITCHENV', c.pitchEnv, (v) => v)
+      if (c.volEnv?.length) envelope('VOLENV', c.volEnv, dbToGain)
       close()
     }
     for (const m of t.midi) writeMidi(m)

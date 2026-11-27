@@ -1,211 +1,390 @@
 // 設定画面の分類ごとの中身（定義のある項目は S(名前) の 1 行。WeVocalSynth と同じ形）
-import { canMidiInput } from '../useMidiInput'
-import { useEffect, useState, type ReactNode } from 'react'
-import { Box, Button, Typography } from '@mui/material'
-import { listInputDevices, type InputDevice } from 'wevocal-lib'
-import { AddonFolderRow, AddonSection, addonFolderSupported, Check, Choice, Group, KeymapEditor, LogRunRow, Row, pevenFont, type WindowMode } from 'pevenmui'
-import { EXTRACT_MODELS, isMdxModel, resolveModel, type VocalModel } from 'wevocalextractor/host'
-import { backendAllowed } from 'wevocalextractor/compat'
-import { ADDONS } from '../addons'
-import { diagnoseExtract } from '../useExtract'
-import { UpdateSection } from 'pevenmui/pwa'
-import { AlgorithmSelect, OutputDeviceRow } from 'wevocal-lib/react'
-import { i18n, type LangSetting, type MessageKey } from '../i18n'
-import { ACTIONS } from '../keymap'
-import SettingRow from './items/SettingRow'
-import DataSection from './DataSection'
-import PluginsSection from './PluginsSection'
-import type { Category } from './settingsSearch'
-import type { Settings } from './settings'
-import ProjectSection, { type ProjectSettings } from './ProjectSection'
+import { canMidiInput } from "../useMidiInput";
+import { useEffect, useState, type ReactNode } from "react";
+import { Box, Button, Typography } from "@mui/material";
+import { listInputDevices, type InputDevice } from "wevocal-lib";
+import {
+  AddonFolderRow,
+  AddonSection,
+  addonFolderSupported,
+  Check,
+  Choice,
+  Group,
+  KeymapEditor,
+  LogRunRow,
+  Row,
+  pevenFont,
+  type WindowMode,
+} from "pevenmui";
+import {
+  EXTRACT_MODELS,
+  isMdxModel,
+  resolveModel,
+  type VocalModel,
+} from "wevocalextractor/host";
+import { backendAllowed } from "wevocalextractor/compat";
+import { ADDONS } from "../addons";
+import { diagnoseExtract } from "../useExtract";
+import { UpdateSection } from "pevenmui/pwa";
+import { AlgorithmSelect, OutputDeviceRow } from "wevocal-lib/react";
+import { i18n, type LangSetting, type MessageKey } from "../i18n";
+import { ACTIONS } from "../keymap";
+import SettingRow from "./items/SettingRow";
+import DataSection from "./DataSection";
+import PluginsSection from "./PluginsSection";
+import type { Category } from "./settingsSearch";
+import type { Settings } from "./settings";
+import ProjectSection, { type ProjectSettings } from "./ProjectSection";
 
 /** 抽出のモデルの呼び名（WeVocalSynth と同じ） */
-const MODEL_LABELS: Record<VocalModel, MessageKey> = { fp16: 'addon.modelLight', int8: 'addon.modelStandard', fp32: 'addon.modelPrecise', 'voc-ft': 'addon.modelVocalHq', 'inst-hq4': 'addon.modelInstHq', kara2: 'addon.modelLead' }
+const MODEL_LABELS: Record<VocalModel, MessageKey> = {
+  fp16: "addon.modelLight",
+  int8: "addon.modelStandard",
+  fp32: "addon.modelPrecise",
+  "voc-ft": "addon.modelVocalHq",
+  "inst-hq4": "addon.modelInstHq",
+  kara2: "addon.modelLead",
+};
 
 /** 設定の「ボーカル抽出」に並べる追加機能（モデル。実行環境はモデルと一緒に導入・削除するので別に出す） */
-const VOCAL_ADDONS = ADDONS.filter((a) => a.requires?.includes('vocal-extractor') && !a.companion).map((a) => a.id)
+const VOCAL_ADDONS = ADDONS.filter(
+  (a) => a.requires?.includes("vocal-extractor") && !a.companion,
+).map((a) => a.id);
 
 /** 録音の入力元の行（開いたときに一覧を読む。名前はマイクを許可するまで出ないことがある） */
-function InputDeviceRow(p: { value: string; onChange: (v: string) => void; t: (key: MessageKey) => string }) {
-  const [inputs, setInputs] = useState<InputDevice[]>([])
-  useEffect(() => void listInputDevices().then(setInputs, () => setInputs([])), [])
+function InputDeviceRow(p: {
+  value: string;
+  onChange: (v: string) => void;
+  t: (key: MessageKey) => string;
+}) {
+  const [inputs, setInputs] = useState<InputDevice[]>([]);
+  useEffect(
+    () => void listInputDevices().then(setInputs, () => setInputs([])),
+    [],
+  );
   return (
-    <Row label={p.t('settings.inputDevice')}>
-      <Choice<string> value={p.value} onChange={p.onChange} options={[['', p.t('settings.inputDefault')], ...inputs.map((d) => [d.id, d.label] as [string, string])]} />
+    <Row label={p.t("settings.inputDevice")}>
+      <Choice<string>
+        value={p.value}
+        onChange={p.onChange}
+        options={[
+          ["", p.t("settings.inputDefault")],
+          ...inputs.map((d) => [d.id, d.label] as [string, string]),
+        ]}
+      />
     </Row>
-  )
+  );
 }
 
 /** MIDI キーボードの機器（つないでいるもの）の選択。MIDI 入力を使うときだけ、機器の一覧を読む */
-function MidiDeviceRow(p: { value: string; onChange: (v: string) => void; t: (key: MessageKey) => string }) {
-  const [inputs, setInputs] = useState<{ id: string; name: string }[]>([])
+function MidiDeviceRow(p: {
+  value: string;
+  onChange: (v: string) => void;
+  t: (key: MessageKey) => string;
+}) {
+  const [inputs, setInputs] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
-    if (!canMidiInput()) return
+    if (!canMidiInput()) return;
     void navigator.requestMIDIAccess().then(
-      (a) => setInputs([...a.inputs.values()].map((i) => ({ id: i.id, name: i.name ?? i.id }))),
+      (a) =>
+        setInputs(
+          [...a.inputs.values()].map((i) => ({
+            id: i.id,
+            name: i.name ?? i.id,
+          })),
+        ),
       () => setInputs([]),
-    )
-  }, [])
+    );
+  }, []);
   return (
-    <Row label={p.t('settings.midiDevice')}>
-      <Choice<string> value={p.value} onChange={p.onChange} options={[['', p.t('settings.midiDeviceAll')], ...inputs.map((d) => [d.id, d.name] as [string, string])]} />
+    <Row label={p.t("settings.midiDevice")}>
+      <Choice<string>
+        value={p.value}
+        onChange={p.onChange}
+        options={[
+          ["", p.t("settings.midiDeviceAll")],
+          ...inputs.map((d) => [d.id, d.name] as [string, string]),
+        ]}
+      />
     </Row>
-  )
+  );
 }
 
 /** 設定画面の分類ごとの中身。定義（items/）のある項目は S('名前') の 1 行で置け、検索の対象にも自動で入る */
-export function settingsPages({ draft, set, t, onClose, go, project }: { draft: Settings; set: (patch: Partial<Settings>) => void; t: (key: MessageKey, vars?: Record<string, string | number>) => string; onClose: () => void; go: (category: Category) => void; project: ProjectSettings }): Record<Category, ReactNode> {
-  const S = (name: keyof Settings) => <SettingRow name={name} draft={draft} set={set} t={t} />
+export function settingsPages({
+  draft,
+  set,
+  t,
+  onClose,
+  go,
+  project,
+}: {
+  draft: Settings;
+  set: (patch: Partial<Settings>) => void;
+  t: (key: MessageKey, vars?: Record<string, string | number>) => string;
+  onClose: () => void;
+  go: (category: Category) => void;
+  project: ProjectSettings;
+}): Record<Category, ReactNode> {
+  const S = (name: keyof Settings) => (
+    <SettingRow name={name} draft={draft} set={set} t={t} />
+  );
   // 操作の名前はメニューと同じ（menu.<操作の名前>）
-  const keyActions = ACTIONS.map((a) => ({ ...a, label: t(`menu.${a.id}` as MessageKey) }))
+  const keyActions = ACTIONS.map((a) => ({
+    ...a,
+    label: t(`menu.${a.id}` as MessageKey),
+  }));
   return {
     project: <ProjectSection project={project} />,
     general: (
       <>
-        <Group title={t('settings.groupStartup')}>
-          {S('autoRestore')}
-          {S('confirmClose')}
+        <Group title={t("settings.groupStartup")}>
+          {S("autoRestore")}
+          {S("confirmClose")}
         </Group>
-        <Group title={t('settings.groupWindows')}>
-          {S('maxWindows')}
-          {S('extraWindows')}
+        <Group title={t("settings.groupWindows")}>
+          {S("maxWindows")}
+          {S("extraWindows")}
         </Group>
-        <Group title={t('settings.groupOutput')}>
-          <OutputDeviceRow value={draft.outputDevice} onChange={(outputDevice) => set({ outputDevice })} t={t} />
-          {S('outputLimit')}
-          {draft.outputLimit && S('outputLimitDb')}
-          {S('playbackOffsetMs')}
+        <Group title={t("settings.groupOutput")}>
+          <OutputDeviceRow
+            value={draft.outputDevice}
+            onChange={(outputDevice) => set({ outputDevice })}
+            t={t}
+          />
+          {S("outputLimit")}
+          {draft.outputLimit && S("outputLimitDb")}
+          {S("playbackOffsetMs")}
         </Group>
-        <Group title={t('settings.groupRecord')}>
-          <InputDeviceRow value={draft.inputDevice} onChange={(inputDevice) => set({ inputDevice })} t={t} />
-          {S('recordEchoCancellation')}
-          {S('recordNoiseSuppression')}
-          {S('recordAutoGain')}
-          {S('midiInput')}
-          {draft.midiInput && <MidiDeviceRow value={draft.midiDevice} onChange={(midiDevice) => set({ midiDevice })} t={t} />}
-          {S('midiChannel')}
-          {S('midiSustain')}
-          {S('midiLatencyMs')}
-          {S('midiRecordMode')}
+        <Group title={t("settings.groupRecord")}>
+          <InputDeviceRow
+            value={draft.inputDevice}
+            onChange={(inputDevice) => set({ inputDevice })}
+            t={t}
+          />
+          {S("recordEchoCancellation")}
+          {S("recordNoiseSuppression")}
+          {S("recordAutoGain")}
+          {S("midiInput")}
+          {draft.midiInput && (
+            <MidiDeviceRow
+              value={draft.midiDevice}
+              onChange={(midiDevice) => set({ midiDevice })}
+              t={t}
+            />
+          )}
+          {S("midiChannel")}
+          {S("midiSustain")}
+          {S("midiLatencyMs")}
+          {S("midiRecordMode")}
         </Group>
-        <Group title={t('settings.groupUpdate')}>
+        <Group title={t("settings.groupUpdate")}>
           <UpdateSection />
         </Group>
       </>
     ),
     edit: (
       <>
-        <Group title={t('settings.groupHistory')}>{S('historyLimit')}</Group>
-        <Group title={t('settings.groupInput')}>
-          {S('sliderDoubleClickReset')}
-          {S('seekAfterInsert')}
-          {S('rangeStyle')}
-          {S('grid')}
+        <Group title={t("settings.groupHistory")}>{S("historyLimit")}</Group>
+        <Group title={t("settings.groupInput")}>
+          {S("sliderDoubleClickReset")}
+          {S("seekAfterInsert")}
+          {S("rangeStyle")}
+          {S("grid")}
         </Group>
-        <Group title={t('settings.groupFade')}>
-          {S('defaultBlockFade')}
-          {draft.defaultBlockFade && S('defaultBlockFadeMs')}
+        <Group title={t("settings.groupFade")}>
+          {S("defaultBlockFade")}
+          {draft.defaultBlockFade && S("defaultBlockFadeMs")}
         </Group>
       </>
     ),
     keys: (
-      <Group title={t('settings.groupShortcuts')}>
-        {S('ctrlS')}
-        {S('wheelZoom')}
-        <KeymapEditor actions={keyActions} overrides={draft.keymap} onChange={(keymap) => set({ keymap })} />
+      <Group title={t("settings.groupShortcuts")}>
+        {S("ctrlS")}
+        {S("wheelZoom")}
+        <KeymapEditor
+          actions={keyActions}
+          overrides={draft.keymap}
+          onChange={(keymap) => set({ keymap })}
+        />
       </Group>
     ),
     file: (
-      <Group title={t('settings.groupFile')}>
-        {S('rememberFolder')}
-        {S('startFolder')}
-        {S('recentFiles')}
-        {S('exchangeBlocks')}
-        {S('exchangeFx')}
-      </Group>
+      <>
+        <Group title={t("settings.groupFile")}>
+          {S("rememberFolder")}
+          {S("startFolder")}
+          {S("recentFiles")}
+          {S("exchangeBlocks")}
+          {S("exchangeFx")}
+        </Group>
+        {/* REAPER のピッチの処理方式から、読み込むときの処理方式とフォルマント（種類ごとに 1 行） */}
+        <Group title={t("settings.groupReaperPitch")}>
+          <Typography
+            sx={{ fontSize: pevenFont("sm"), color: "text.secondary" }}
+          >
+            {t("settings.reaperPitchHelp")}
+          </Typography>
+          {(["soloist", "pro", "efficient", "other"] as const).map((kind) => {
+            const cur = draft.reaperPitchMap[kind];
+            const put = (v: Partial<typeof cur>) =>
+              set({
+                reaperPitchMap: {
+                  ...draft.reaperPitchMap,
+                  [kind]: { ...cur, ...v },
+                },
+              });
+            return (
+              <Box key={kind}>
+                <Row label={t(`settings.reaperPitch.${kind}` as MessageKey)}>
+                  <AlgorithmSelect
+                    value={cur.algorithm}
+                    onChange={(algorithm) => put({ algorithm })}
+                    showLegacy={draft.showLegacyAlgorithms}
+                    t={t}
+                  />
+                </Row>
+                <Check
+                  checked={cur.preserveFormant}
+                  onChange={(preserveFormant) => put({ preserveFormant })}
+                  label={t("settings.preserveFormant")}
+                />
+              </Box>
+            );
+          })}
+        </Group>
+      </>
     ),
     display: (
-      <Group title={t('settings.groupAppearance')}>
-        {S('theme')}
-        {S('uiScale')}
-        {S('showMeters')}
-        {S('minimapPlayhead')}
-        {S('dockWindowSnap')}
-        {S('envelopeRange')}
-        {S('pitchEnvelopeRange')}
-        {S('editBar')}
-        <Row label={t('settings.language')}>
-          <Choice<LangSetting> value={draft.language} onChange={(language) => set({ language })} options={[['auto', t('settings.languageAuto')], ...i18n.options()]} />
+      <Group title={t("settings.groupAppearance")}>
+        {S("theme")}
+        {S("uiScale")}
+        {S("showMeters")}
+        {S("minimapPlayhead")}
+        {S("dockWindowSnap")}
+        {S("envelopeRange")}
+        {S("pitchEnvelopeRange")}
+        {S("editBar")}
+        <Row label={t("settings.language")}>
+          <Choice<LangSetting>
+            value={draft.language}
+            onChange={(language) => set({ language })}
+            options={[["auto", t("settings.languageAuto")], ...i18n.options()]}
+          />
         </Row>
       </Group>
     ),
     process: (
       <>
-        <Group title={t('settings.groupDefaultAlgorithm')}>
-          <Row label={t('settings.algorithm')}>
-            <AlgorithmSelect value={draft.algorithm} onChange={(algorithm) => set({ algorithm })} showLegacy={draft.showLegacyAlgorithms} t={t} />
+        <Group title={t("settings.groupDefaultAlgorithm")}>
+          <Row label={t("settings.algorithm")}>
+            <AlgorithmSelect
+              value={draft.algorithm}
+              onChange={(algorithm) => set({ algorithm })}
+              showLegacy={draft.showLegacyAlgorithms}
+              t={t}
+            />
           </Row>
-          {S('showLegacyAlgorithms')}
-          {S('preserveFormant')}
+          {S("showLegacyAlgorithms")}
+          {S("preserveFormant")}
         </Group>
       </>
     ),
     pitch: (
-      <Group title={t('settings.groupPitch')}>
-        {S('f0MinHz')}
-        {S('f0MaxHz')}
-        {S('f0Voicing')}
-        {S('flattenStrength')}
-        {S('f0SilenceDb')}
+      <Group title={t("settings.groupPitch")}>
+        {S("f0MinHz")}
+        {S("f0MaxHz")}
+        {S("f0Voicing")}
+        {S("flattenStrength")}
+        {S("f0SilenceDb")}
       </Group>
     ),
     tempo: (
-      <Group title={t('settings.groupTempo')}>
-        {S('autoTempo')}
-        {S('tempoChange')}
-        {S('defaultBpm')}
-        {S('tempoStretch')}
+      <Group title={t("settings.groupTempo")}>
+        {S("autoTempo")}
+        {S("tempoChange")}
+        {S("defaultBpm")}
+        {S("tempoStretch")}
       </Group>
     ),
     vocal: (
       <>
-        <Group title={t('settings.groupVocal')}>
+        <Group title={t("settings.groupVocal")}>
           {/* この端末で使えないモデルは、抽出のときに代わりのモデルを使うことを知らせる（WeVocalSynth と同じ） */}
           <Row
-            label={t('settings.vocalModel')}
+            label={t("settings.vocalModel")}
             help={
               resolveModel(draft.vocalModel, draft.vocalGpu).replaced
-                ? t('settings.vocalModelReplaced', { from: t(MODEL_LABELS[draft.vocalModel]), name: t(MODEL_LABELS[resolveModel(draft.vocalModel, draft.vocalGpu).model]) })
-                : isMdxModel(draft.vocalModel) && (!draft.vocalGpu || !('gpu' in navigator))
-                  ? t('settings.vocalSlowCpu')
+                ? t("settings.vocalModelReplaced", {
+                    from: t(MODEL_LABELS[draft.vocalModel]),
+                    name: t(
+                      MODEL_LABELS[
+                        resolveModel(draft.vocalModel, draft.vocalGpu).model
+                      ],
+                    ),
+                  })
+                : isMdxModel(draft.vocalModel) &&
+                    (!draft.vocalGpu || !("gpu" in navigator))
+                  ? t("settings.vocalSlowCpu")
                   : undefined
             }
           >
-            <Choice<VocalModel> value={draft.vocalModel} onChange={(vocalModel) => set({ vocalModel })} options={EXTRACT_MODELS.map((m): [VocalModel, string] => [m, t(MODEL_LABELS[m])])} />
+            <Choice<VocalModel>
+              value={draft.vocalModel}
+              onChange={(vocalModel) => set({ vocalModel })}
+              options={EXTRACT_MODELS.map((m): [VocalModel, string] => [
+                m,
+                t(MODEL_LABELS[m]),
+              ])}
+            />
           </Row>
           {/* GPU を使えないモデルでは押せなくし、理由を出す */}
           <Check
-            checked={draft.vocalGpu && backendAllowed(draft.vocalModel, 'webgpu')}
-            disabled={!backendAllowed(draft.vocalModel, 'webgpu')}
+            checked={
+              draft.vocalGpu && backendAllowed(draft.vocalModel, "webgpu")
+            }
+            disabled={!backendAllowed(draft.vocalModel, "webgpu")}
             onChange={(vocalGpu) => set({ vocalGpu })}
-            label={t('settings.vocalGpu')}
-            help={backendAllowed(draft.vocalModel, 'webgpu') ? t('settings.vocalGpuHelp') : t('settings.vocalGpuUnsupported')}
+            label={t("settings.vocalGpu")}
+            help={
+              backendAllowed(draft.vocalModel, "webgpu")
+                ? t("settings.vocalGpuHelp")
+                : t("settings.vocalGpuUnsupported")
+            }
           />
-          {S('vocalKeepHighBand')}
-          {S('vocalBeforeAnalysis')}
-          {S('vocalThreads')}
-          {S('vocalMemoryMb')}
+          {S("vocalKeepHighBand")}
+          {S("vocalBeforeAnalysis")}
+          {S("vocalThreads")}
+          {S("vocalMemoryMb")}
         </Group>
-        <Group title={t('settings.groupStems')}>
-          {S('stemModel')}
-          {S('stemChorus')}
+        <Group title={t("settings.groupStems")}>
+          {S("stemModel")}
+          {S("stemChorus")}
         </Group>
-        <Group title={t('settings.groupAddons')}>
+        <Group title={t("settings.groupAddons")}>
           {/* 追加機能の一覧（AddonSection）と同じく、説明は左、ボタンは右（WeVocalSynth と同じ） */}
-          <Box sx={{ gridColumn: '1 / -1', width: '100cqi', maxWidth: '100cqi', display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography sx={{ flex: 1, minWidth: 0, fontSize: pevenFont('base') }}>{t('settings.addonsMoved')}</Typography>
-            <Button size="small" variant="outlined" onClick={() => go('addons')} sx={{ flexShrink: 0 }}>
-              {t('settings.openAddons')}
+          <Box
+            sx={{
+              gridColumn: "1 / -1",
+              width: "100cqi",
+              maxWidth: "100cqi",
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
+            <Typography
+              sx={{ flex: 1, minWidth: 0, fontSize: pevenFont("base") }}
+            >
+              {t("settings.addonsMoved")}
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => go("addons")}
+              sx={{ flexShrink: 0 }}
+            >
+              {t("settings.openAddons")}
             </Button>
           </Box>
         </Group>
@@ -213,85 +392,109 @@ export function settingsPages({ draft, set, t, onClose, go, project }: { draft: 
     ),
     addons: (
       <>
-        <Group title={t('settings.groupAddonVocal')}>
+        <Group title={t("settings.groupAddonVocal")}>
           <AddonSection ids={VOCAL_ADDONS} />
         </Group>
         {/* モデルを入れると一緒に入る実行環境。大きさの確認や、使わなくなった方（GPU 用、CPU 用）の削除のために分けて出す */}
-        <Group title={t('settings.groupAddonVocalRuntime')}>
-          <AddonSection ids={['vocal-extractor', 'vocal-extractor-gpu', 'vocal-extractor-cpu']} />
+        <Group title={t("settings.groupAddonVocalRuntime")}>
+          <AddonSection
+            ids={[
+              "vocal-extractor",
+              "vocal-extractor-gpu",
+              "vocal-extractor-cpu",
+            ]}
+          />
         </Group>
-        <Group title={t('settings.groupAddonAnalyzer')}>
-          <AddonSection ids={['analyzer']} />
+        <Group title={t("settings.groupAddonAnalyzer")}>
+          <AddonSection ids={["analyzer"]} />
         </Group>
-        <Group title={t('settings.groupAddonLyrics')}>
-          <AddonSection ids={['analyzer-lyrics', 'whisper-tiny', 'whisper-base', 'whisper-small']} />
+        <Group title={t("settings.groupAddonLyrics")}>
+          <AddonSection
+            ids={[
+              "analyzer-lyrics",
+              "whisper-tiny",
+              "whisper-base",
+              "whisper-small",
+            ]}
+          />
         </Group>
-        <Group title={t('settings.groupAddonConverter')}>
-          <AddonSection ids={['converter']} />
+        <Group title={t("settings.groupAddonConverter")}>
+          <AddonSection ids={["converter"]} />
         </Group>
       </>
     ),
     plugins: <PluginsSection vst={draft.showVst} />,
     data: (
-      <Group title={t('settings.groupData')}>
+      <Group title={t("settings.groupData")}>
         <DataSection onClose={onClose} />
       </Group>
     ),
     debug: (
-      <Group title={t('settings.groupDebug')}>
-        {S('showDebug')}
-        {S('devUpdates')}
-        {S('filePicker')}
-        <Row label={t('settings.dialogWindow')}>
-          <Choice<WindowMode | 'auto'>
+      <Group title={t("settings.groupDebug")}>
+        {S("showDebug")}
+        {S("devUpdates")}
+        {S("filePicker")}
+        <Row label={t("settings.dialogWindow")}>
+          <Choice<WindowMode | "auto">
             value={draft.dialogWindow}
             onChange={(dialogWindow) => set({ dialogWindow })}
             options={[
-              ['auto', t('settings.auto')],
-              ['dialog', t('settings.windowDialog')],
-              ['popup', t('settings.windowPopup')],
-              ['tab', t('settings.windowTab')],
-              ['window', t('settings.windowSub')],
+              ["auto", t("settings.auto")],
+              ["dialog", t("settings.windowDialog")],
+              ["popup", t("settings.windowPopup")],
+              ["tab", t("settings.windowTab")],
+              ["window", t("settings.windowSub")],
             ]}
           />
         </Row>
       </Group>
     ),
     debugAudio: (
-      <Group title={t('settings.groupDebugAudio')}>
-        {S('fastMath')}
-        {S('suspendWhenStopped')}
-        {S('playbackSession')}
+      <Group title={t("settings.groupDebugAudio")}>
+        {S("fastMath")}
+        {S("suspendWhenStopped")}
+        {S("playbackSession")}
       </Group>
     ),
     experimental: (
-      <Group title={t('settings.groupExperimental')}>
-        {S('showExperimentalAlgorithms')}
-        {S('showVoiceSplit')}
-        {S('showVst')}
-        {S('autoBypass')}
-        {S('vstGuiWorker')}
-        {S('showAnticipateGauge')}
-        {S('showDevPlugins')}
-        {S('anticipativeFx')}
-        {draft.anticipativeFx && S('anticipateWhileStopped')}
-        {draft.anticipativeFx && S('anticipateStream')}
-        {S('anticipativeCacheMb')}
+      <Group title={t("settings.groupExperimental")}>
+        {S("showExperimentalAlgorithms")}
+        {S("showVoiceSplit")}
+        {S("showVst")}
+        {S("autoBypass")}
+        {S("vstGuiWorker")}
+        {S("showAnticipateGauge")}
+        {S("showDevPlugins")}
+        {S("anticipativeFx")}
+        {draft.anticipativeFx && S("anticipateWhileStopped")}
+        {draft.anticipativeFx && S("anticipateStream")}
+        {S("anticipativeCacheMb")}
         {/* 追加機能の保存先のフォルダー（Chrome、Edge だけ） */}
-        {addonFolderSupported() && S('addonFolder')}
+        {addonFolderSupported() && S("addonFolder")}
         {addonFolderSupported() && draft.addonFolder && <AddonFolderRow />}
       </Group>
     ),
     diagnose: (
-      <Group title={t('settings.groupDiagnose')}>
+      <Group title={t("settings.groupDiagnose")}>
         <LogRunRow
-          label={t('settings.extractDiagnose')}
-          help={t('settings.extractDiagnoseHelp')}
-          runLabel={t('settings.extractDiagnoseRun')}
-          runningLabel={t('settings.extractDiagnoseRunning')}
-          run={(log) => diagnoseExtract({ model: draft.vocalModel, gpu: draft.vocalGpu, keepHighBand: draft.vocalKeepHighBand, memoryMb: draft.vocalMemoryMb, threads: draft.vocalThreads }, log)}
+          label={t("settings.extractDiagnose")}
+          help={t("settings.extractDiagnoseHelp")}
+          runLabel={t("settings.extractDiagnoseRun")}
+          runningLabel={t("settings.extractDiagnoseRunning")}
+          run={(log) =>
+            diagnoseExtract(
+              {
+                model: draft.vocalModel,
+                gpu: draft.vocalGpu,
+                keepHighBand: draft.vocalKeepHighBand,
+                memoryMb: draft.vocalMemoryMb,
+                threads: draft.vocalThreads,
+              },
+              log,
+            )
+          }
         />
       </Group>
     ),
-  }
+  };
 }

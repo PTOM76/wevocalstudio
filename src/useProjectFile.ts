@@ -76,7 +76,7 @@ export function useProjectFile(o: {
   }
   const openDawFiles = async (files: File[]) => {
     try {
-      const r = await importDaw(files)
+      const r = await importDaw(files, settings.reaperPitchMap)
       if (!r) return o.fail(new Error(t('toast.dawUnknown')))
       o.onOpened(r.project, r.name, null)
       if (r.skipped) o.notify(t('toast.dawSkipped', { n: r.skipped }))

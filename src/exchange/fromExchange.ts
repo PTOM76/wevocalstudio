@@ -1,8 +1,10 @@
 // 中間の形（ほかの DAW から読んだもの）から Studio のプロジェクトを作る（memo/daw-exchange.md）。見つからない音声は無音の仮の音にして、missing に元のパスを残す
 import { eqFreqs, eqToSlot, type Clip, type EqBands, type FxPlugin, type FxSlot } from 'wevocal-lib'
 import type { XFx } from './rppFx'
-import { fillBlock, newId, newProject, newTrack, RATE_MAX, RATE_MIN, type Marker, type MidiBlock, type MidiCurve, type Project, type Source } from '../project'
-import { notesOf, PPQ, type XMidi, type XProject } from './exchange'
+import { fillBlock, newId, newProject, newTrack, RATE_MAX, RATE_MIN, type Marker, type MidiBlock, type MidiCurve, type Project, type Source, type Block } from '../project'
+import { notesOf, PPQ, type XClip, type XMidi, type XProject } from './exchange'
+import { DEFAULT_REAPER_PITCH_MAP, reaperPitchKind, type ReaperPitchMap } from './reaperPitch'
+import { ENV_MAX, ENV_MIN, PITCH_ENV_MAX } from '../envelopeCurve'
 
 /** 仮の音の標本化周波数（無音なので低くてよい） */
 const SILENT_RATE = 8000
@@ -63,7 +65,17 @@ export function vstToSlot(fx: Extract<XFx, { kind: 'vst' }>, installed: readonly
   return { plugin: hit.manifest.id, version: hit.manifest.version, on: fx.on, values }
 }
 
-export function fromExchange(x: XProject, audio: Map<string, Clip>, installed: readonly FxPlugin[] = []): { project: Project; missing: number; skippedFx: number } {
+/** 中間の形のクリップのピッチの処理方式とエンベロープを、波形ブロックの項目にする（処理方式は対応表で、エンベロープは元の音の時刻へ） */
+export function clipExtras(c: XClip, rate: number, pitchMap: ReaperPitchMap): Partial<Block> {
+  const out: Partial<Block> = {}
+  if (c.pitchMode !== undefined) Object.assign(out, pitchMap[c.pitchMode === -1 ? 'other' : reaperPitchKind(c.pitchMode)])
+  if (c.pitchEnv?.length)
+    out.pitchEnvelope = c.pitchEnv.map((p) => ({ s: c.offset + p.t * rate, st: Math.max(-PITCH_ENV_MAX, Math.min(PITCH_ENV_MAX, p.v)), ...(p.shape ? { shape: p.shape } : {}), ...(p.tension ? { tension: p.tension } : {}) }))
+  if (c.volEnv?.length) out.envelope = c.volEnv.map((p) => ({ t: p.t, db: Math.max(ENV_MIN, Math.min(ENV_MAX, p.v)), ...(p.shape ? { shape: p.shape } : {}), ...(p.tension ? { tension: p.tension } : {}) }))
+  return out
+}
+
+export function fromExchange(x: XProject, audio: Map<string, Clip>, installed: readonly FxPlugin[] = [], pitchMap: ReaperPitchMap = DEFAULT_REAPER_PITCH_MAP): { project: Project; missing: number; skippedFx: number } {
   let skippedFx = 0
   const p = newProject(x.bpm)
   p.tempo = { ...p.tempo, bpm: x.bpm, beatsPerBar: x.beatsPerBar }
@@ -107,8 +119,9 @@ export function fromExchange(x: XProject, audio: Map<string, Clip>, installed: r
     parents[t.depth] = track.id
     for (const c of t.clips) {
       const s = sources.get(c.file)!
+      const rate = Math.max(RATE_MIN, Math.min(RATE_MAX, c.rate))
       p.blocks.push(
-        fillBlock({ id: newId(), track: track.id, source: s.id, start: c.start, length: c.length, offset: c.offset, rate: Math.max(RATE_MIN, Math.min(RATE_MAX, c.rate)), gain: c.gain, pitch: c.pitch, fadeIn: c.fadeIn, fadeOut: c.fadeOut, mute: c.mute, ...(c.name ? { name: c.name } : {}) }),
+        fillBlock({ id: newId(), track: track.id, source: s.id, start: c.start, length: c.length, offset: c.offset, rate, gain: c.gain, pitch: c.pitch, fadeIn: c.fadeIn, fadeOut: c.fadeOut, mute: c.mute, ...(c.name ? { name: c.name } : {}), ...clipExtras(c, rate, pitchMap) }),
       )
     }
     for (const m of t.midi) midi.push(midiBlock(m, track.id))

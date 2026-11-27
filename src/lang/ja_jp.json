@@ -433,6 +433,12 @@
   "settings.rangeClassic": "従来",
   "settings.exchangeFx": "FX も書き出す",
   "settings.exchangeFxHelp": "REAPER に書き出すとき、VST はそのまま（つまみの値も）、WevEQ は ReaEQ にして書く。そのほかの組み込みの FX は書き出さない",
+  "settings.groupReaperPitch": "REAPER のピッチの処理方式",
+  "settings.reaperPitchHelp": "REAPER のプロジェクトを開くとき、アイテムのピッチの処理方式（élastique の Soloist、Pro など）を、どの処理方式にするか。プロジェクトの既定の方式を使うアイテムも、その方式で決める",
+  "settings.reaperPitch.soloist": "Soloist（声など単音）",
+  "settings.reaperPitch.pro": "Pro",
+  "settings.reaperPitch.efficient": "Efficient",
+  "settings.reaperPitch.other": "そのほか",
 
   "editBar.pitchReset": "ピッチを戻す",
   "editBar.normalize": "ノーマライズ",

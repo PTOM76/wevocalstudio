@@ -1,6 +1,7 @@
 // REAPER のプロジェクト（.rpp）を読み、中間の形にする（memo/daw-exchange.md）。音声はファイルのパスのまま返し、中身は呼ぶ側が探す
 import { PPQ, type XClip, type XMidi, type XProject, type XTrack } from './exchange'
 import { readFx, type XFx } from './rppFx'
+import { shapeFromReaper, type XEnvPoint } from './reaperPitch'
 
 /** RPP の 1 つのかたまり（<NAME 引数 … >）。lines は中の行（かたまり以外）を語に分けたもの */
 interface Node {
@@ -116,6 +117,19 @@ export interface ReadNotes {
   skippedFx: number
 }
 
+/** テイクのエンベロープ（PT 時刻 値 形 拍子 選択 … 張り具合）を読む。value で値を直す。オフ（ACT 0）なら空 */
+function readEnvelope(env: Node | undefined, value: (v: number) => number): XEnvPoint[] {
+  if (!env || get(env, 'ACT')?.[1] === '0') return []
+  return env.lines
+    .filter((l) => l[0] === 'PT')
+    .map((l) => {
+      const shape = shapeFromReaper(parseInt(l[3] ?? '0', 10) || 0)
+      const tension = shape === 'bezier' ? numAt(l, 7) : 0
+      return { t: numAt(l, 1), v: value(numAt(l, 2)), ...(shape ? { shape } : {}), ...(tension ? { tension } : {}) }
+    })
+    .sort((a, b) => a.t - b.t)
+}
+
 /** FX の列（<FXCHAIN>）を読む。直前の BYPASS の行でオンかオフかを決める */
 function readChain(chain: Node | undefined, notes: ReadNotes): XFx[] {
   const out: XFx[] = []
@@ -140,6 +154,8 @@ export function readRpp(text: string): { project: XProject; notes: ReadNotes } {
   const bpm = numAt(tempo, 1, 120)
   const beatsPerBar = Math.round(numAt(tempo, 2, 4)) || 4
   const notes: ReadNotes = { skippedItems: 0, skippedFx: 0 }
+  // プロジェクトの既定のピッチの処理方式（アイテムの -1 はこれ）
+  const defPitchMode = numAt(get(root, 'DEFPITCHMODE'), 1, -1)
 
   // マーカー（区間は始まりだけ。旗 1 が区間）
   const markers: XProject['markers'] = []
@@ -175,8 +191,11 @@ export function readRpp(text: string): { project: XProject; notes: ReadNotes } {
       const file = inner && get(inner, 'FILE')?.[1]
       if (inner?.args[0] === 'MIDI') midi.push(readMidi(inner, base))
       else if (file) {
-        // PLAYRATE 速度 ピッチを保つか ピッチ（半音）…。ピッチを保たない（0）ときは、テープのように速度の分だけ音程も変わる
+        // PLAYRATE 速度 ピッチを保つか ピッチ（半音） 処理方式（-1 はプロジェクトの既定）…。ピッチを保たない（0）ときは、テープのように速度の分だけ音程も変わる
         const pr = get(take, 'PLAYRATE')
+        const mode = numAt(pr, 4, -1)
+        const pitchEnv = readEnvelope(take.children.find((c) => c.name === 'PITCHENV'), (v) => v)
+        const volEnv = readEnvelope(take.children.find((c) => c.name === 'VOLENV'), (v) => (v <= 0 ? -60 : Math.max(-60, 20 * Math.log10(v))))
         const rate = numAt(pr, 1, 1) || 1
         const keepPitch = !pr || numAt(pr, 2, 1) !== 0
         clips.push({
@@ -188,6 +207,10 @@ export function readRpp(text: string): { project: XProject; notes: ReadNotes } {
           fadeOut: numAt(get(it, 'FADEOUT'), 2),
           rate,
           pitch: numAt(pr, 3) + (keepPitch ? 0 : 12 * Math.log2(rate)),
+          // 処理方式（-1 はプロジェクトの既定。既定も無ければ項目を付けない）
+          ...((mode === -1 ? defPitchMode : mode) !== -1 ? { pitchMode: mode === -1 ? defPitchMode : mode } : {}),
+          ...(pitchEnv.length ? { pitchEnv } : {}),
+          ...(volEnv.length ? { volEnv } : {}),
         })
       } else notes.skippedItems++
     }

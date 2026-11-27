@@ -433,6 +433,12 @@
   "settings.rangeClassic": "Classic",
   "settings.exchangeFx": "Include effects",
   "settings.exchangeFxHelp": "When exporting to REAPER, VST plugins are written as is (with their knob values), and WevEQ becomes ReaEQ. Other built-in effects are not exported",
+  "settings.groupReaperPitch": "REAPER pitch modes",
+  "settings.reaperPitchHelp": "When opening a REAPER project, which processing method to use for each item pitch mode (élastique Soloist, Pro, and so on). Items that use the project default follow that default mode",
+  "settings.reaperPitch.soloist": "Soloist (voice and other monophonic sources)",
+  "settings.reaperPitch.pro": "Pro",
+  "settings.reaperPitch.efficient": "Efficient",
+  "settings.reaperPitch.other": "Other",
 
   "editBar.pitchReset": "Reset pitch",
   "editBar.normalize": "Normalize",
