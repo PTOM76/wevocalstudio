@@ -440,7 +440,7 @@
   "settings.reaperPitch.efficient": "Efficient",
   "settings.reaperPitch.other": "Other",
   "settings.exchangeFxPrefer": "Convert built-in effects to",
-  "settings.exchangeFxPreferHelp": "Which REAPER effects to use for built-in effects when exporting to REAPER. If the preferred kind has no match, the other kind is used. JSFX keep knob values in their units, so values are exact. Rea plugins currently cover only WevEQ to ReaEQ",
+  "settings.exchangeFxPreferHelp": "Which REAPER effects to use for built-in effects when exporting to REAPER. If the preferred kind has no match, the other kind is used. JSFX keep knob values in their units, so values are exact. Rea plugins currently cover WevEQ to ReaEQ and the compressor to ReaComp",
   "settings.exchangeFxPreferVst": "Prefer Rea plugins",
   "settings.exchangeFxPreferJs": "Prefer JSFX",
 

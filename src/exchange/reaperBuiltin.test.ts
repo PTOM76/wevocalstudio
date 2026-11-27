@@ -1,7 +1,7 @@
 // 組み込みの FX と REAPER の FX（JSFX、Rea 系の VST）の変換のテスト（値は架空のもの）
 import { describe, expect, it } from 'vitest'
 import { EQ_ID, type FxSlot } from 'wevocal-lib'
-import { builtinToReaper, jsToBuiltin } from './reaperBuiltin'
+import { builtinToReaper, jsToBuiltin, reaVstToBuiltin } from './reaperBuiltin'
 import { fxLines } from './rppFx'
 
 const slot = (plugin: string, values: Record<string, number>): FxSlot => ({ plugin, version: '1.0.0', on: true, values })
@@ -52,6 +52,18 @@ describe('JSFX への変換', () => {
     const eq = { bands: 0, range: 0, b5: 3 }
     expect(builtinToReaper(slot(EQ_ID, eq), eq, 120, 'js')?.kind).toBe('reaeq')
     expect(builtinToReaper(slot(EQ_ID, eq), eq, 120, 'vst')?.kind).toBe('reaeq')
+  })
+
+  it('Rea 系を優先すると、コンプは ReaComp（入力 4 つ）になり、読むとコンプに戻る', () => {
+    const v = { threshold: -18, ratio: 5, attack: 12, release: 300, knee: 6, makeup: 3 }
+    const fx = builtinToReaper(slot('wevocal.compressor', v), v, 120, 'vst')!
+    expect(fx.kind === 'vst' && [fx.file, fx.inputs, fx.params.length]).toEqual(['reacomp.dll', 4, 21])
+    if (fx.kind !== 'vst') return
+    const back = reaVstToBuiltin(fx)!
+    expect(back.plugin).toBe('wevocal.compressor')
+    for (const [k, x] of Object.entries(v)) expect(back.values[k]).toBeCloseTo(x, 3)
+    // JSFX を優先すると Major Tom
+    expect(builtinToReaper(slot('wevocal.compressor', v), v, 120, 'js')?.kind).toBe('js')
   })
 
   it('JSFX の行は 64 個の値で、無い番号は -', () => {

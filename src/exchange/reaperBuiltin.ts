@@ -92,8 +92,28 @@ const JS: Record<string, JsMap> = {
 /** REAPER の JSFX のパス → Studio の FX の id（読み込み用。ensemble と chorus は声の数で分ける） */
 const BY_PATH = new Map(Object.entries(JS).filter(([id]) => id !== 'wevocal.ensemble').map(([id, m]) => [m.path.toLowerCase(), id]))
 
-/** B（Rea 系の VST）にできる FX。今は WevEQ → ReaEQ だけ（ほかの Rea 系はつまみの目盛りが分かってから足す） */
-function toVst(s: FxSlot): XFx | null {
+/** ReaComp（識別番号 'recm'）。つまみの値は 21 個で、サイドチェーンの分だけ入力が 4 つ */
+const REACOMP_ID = 0x7265636d
+/** 新しく入れた ReaComp のつまみの値（REAPER が保存したもの）。コンプで決まる所だけを書き換える */
+const REACOMP_DEFAULTS = [1, 0.030303, 0.010364, 0.025146, 0.001124, 0, 1, 0, 0, 0, 3.16e-8, 1, 0, 0.05, 0, 0, 0, 0.25, 0, 0, 0]
+/**
+ * ReaComp のつまみの目盛り（REAPER 7.82 で測られたもの。https://github.com/xDarkzx/Reaper-MCP/issues/41）。
+ * 0 しきい値（倍率）、1 比率（(比率 - 1) / 99）、2 アタック（ms / 500）、3 リリース（ms / 5000）、11 ウェット（倍率）、14 ニー（dB / 24）
+ */
+const REACOMP = { threshold: 0, ratio: 1, attack: 2, release: 3, wet: 11, knee: 14 }
+
+/** B（Rea 系の VST）にできる FX。WevEQ → ReaEQ、コンプ → ReaComp（ほかの Rea 系はつまみの目盛りが分かってから足す） */
+function toVst(s: FxSlot, v: Values): XFx | null {
+  if (s.plugin === 'wevocal.compressor') {
+    const p = [...REACOMP_DEFAULTS]
+    p[REACOMP.threshold] = gain(v.threshold)
+    p[REACOMP.ratio] = clamp((v.ratio - 1) / 99, 0, 1)
+    p[REACOMP.attack] = clamp(v.attack / 500, 0, 1)
+    p[REACOMP.release] = clamp(v.release / 5000, 0, 1)
+    p[REACOMP.knee] = clamp(v.knee / 24, 0, 1)
+    p[REACOMP.wet] = gain(v.makeup)
+    return { kind: 'vst', on: s.on, name: 'ReaComp (Cockos)', file: 'reacomp.dll', uniqueId: REACOMP_ID, params: p, inputs: 4, preset: '' }
+  }
   if (s.plugin !== EQ_ID) return null
   const eq = valuesToEq(s.values, s.on)
   const bands = eqFreqs(eq.bands)
@@ -112,7 +132,7 @@ function toJs(s: FxSlot, values: Values, bpm: number): JsFx | null {
 
 /** 組み込みの FX を REAPER の FX にする（prefer の方を先に試す）。できなければ null */
 export function builtinToReaper(s: FxSlot, values: Values, bpm: number, prefer: ReaperFxPrefer): XFx | null {
-  return prefer === 'vst' ? (toVst(s) ?? toJs(s, values, bpm)) : (toJs(s, values, bpm) ?? toVst(s))
+  return prefer === 'vst' ? (toVst(s, values) ?? toJs(s, values, bpm)) : (toJs(s, values, bpm) ?? toVst(s, values))
 }
 
 /** 読み込み: JSFX を Studio の FX にする。知らない JSFX は null */
@@ -123,4 +143,21 @@ export function jsToBuiltin(fx: JsFx): { plugin: string; values: Values } | null
   // 声が 3 つ以上なら ensemble、2 つまでなら chorus
   const plugin = id === 'wevocal.chorus' && s[1] > 2 ? 'wevocal.ensemble' : id
   return { plugin, values: JS[plugin].from(s) }
+}
+
+/** 読み込み: Rea 系の VST を Studio の FX にする（ReaComp → コンプ）。知らないものは null */
+export function reaVstToBuiltin(fx: Extract<XFx, { kind: 'vst' }>): { plugin: string; values: Values } | null {
+  if (fx.uniqueId !== REACOMP_ID || fx.params.length <= REACOMP.knee) return null
+  const p = fx.params
+  return {
+    plugin: 'wevocal.compressor',
+    values: {
+      threshold: clamp(dB(p[REACOMP.threshold]), -60, 0),
+      ratio: clamp(1 + 99 * p[REACOMP.ratio], 1, 20),
+      attack: clamp(p[REACOMP.attack] * 500, 0, 100),
+      release: clamp(p[REACOMP.release] * 5000, 10, 1000),
+      knee: clamp(p[REACOMP.knee] * 24, 0, 40),
+      makeup: clamp(dB(p[REACOMP.wet]), 0, 24),
+    },
+  }
 }

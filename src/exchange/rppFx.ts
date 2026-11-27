@@ -3,7 +3,7 @@
 
 /** 中間の形の FX。vst はつまみの値（0〜1）をそのまま、reaeq は帯（周波数、dB、幅（オクターブ））で持つ */
 export type XFx =
-  | { kind: 'vst'; on: boolean; name: string; file: string; uniqueId: number; params: number[]; /** 状態の塊（塊でしか状態を持たない VST）。あれば params より優先して書く */ chunk?: Uint8Array }
+  | { kind: 'vst'; on: boolean; name: string; file: string; uniqueId: number; params: number[]; /** 状態の塊（塊でしか状態を持たない VST）。あれば params より優先して書く */ chunk?: Uint8Array; /** 入力のピンの数（サイドチェーンを持つ ReaComp は 4。省くと 2） */ inputs?: number; /** プリセットの名前（省くと Default） */ preset?: string }
   | { kind: 'reaeq'; on: boolean; bands: { freq: number; gain: number; bw: number }[] }
   /** REAPER の JSFX（パスと、スライダーの値を単位のまま。1 番から並べ、無い番号は undefined） */
   | { kind: 'js'; on: boolean; path: string; sliders: (number | undefined)[] }
@@ -66,10 +66,13 @@ const base64 = (b: Uint8Array) => {
 }
 
 /** 塊を REAPER と同じ行に分ける（見出し 1 行、データは 96 バイトずつ、プリセットの名前 1 行） */
-function blobLines(uniqueId: number, data: Uint8Array, chunk: boolean, preset: string): string[] {
+function blobLines(uniqueId: number, data: Uint8Array, chunk: boolean, preset: string, inputs = 2): string[] {
   // 見出し: 識別番号、印（塊なら 0xfeed5eee、つまみの値なら 0xfeed5eef）、入力 2 つと出力 2 つ（左 1、右 2 のピン）、データの大きさ、塊かどうか、終わりの印
-  const head = new Bytes().u32(uniqueId).u32(chunk ? 0xfeed5eee : 0xfeed5eef).u32(2).u64(1).u64(2).u32(2).u64(1).u64(2).u32(data.length).u32(chunk ? 1 : 0).u32(0x100000).done()
-  const lines = [base64(head)]
+  // 入力のピンは 1、2、4、8…（3 つ目からはサイドチェーン）
+  const head = new Bytes().u32(uniqueId).u32(chunk ? 0xfeed5eee : 0xfeed5eef).u32(inputs)
+  for (let i = 0; i < inputs; i++) head.u64(2 ** i)
+  head.u32(2).u64(1).u64(2).u32(data.length).u32(chunk ? 1 : 0).u32(0x100000)
+  const lines = [base64(head.done())]
   for (let i = 0; i < data.length; i += 96) lines.push(base64(data.subarray(i, i + 96)))
   const name = new TextEncoder().encode(preset)
   lines.push(base64(new Bytes().bytes(name).u8(0).bytes(name).u8(0).u32(0x10).done()))
@@ -106,8 +109,8 @@ export function fxLines(fx: XFx, quote: (s: string) => string): string[] {
   const vst = fx.kind === 'vst' ? fx : { name: REAEQ.name, file: REAEQ.file, uniqueId: REAEQ_ID }
   const chunk = fx.kind === 'reaeq' || !!fx.chunk
   const data = fx.kind === 'reaeq' ? reaeqChunk(fx.bands) : fx.chunk ?? fx.params.reduce((b, v) => b.f32(v), new Bytes().u32(0xdeadbeef).u32(0xdeadf00d)).done()
-  const lines = blobLines(vst.uniqueId, data, chunk, fx.kind === 'vst' ? 'Default' : '')
-  return [`BYPASS ${fx.on ? 0 : 1} 0 0`, `<VST ${quote(`VST: ${vst.name}`)} ${quote(vst.file)} 0 "" ${vst.uniqueId >>> 0}<${vstTag(vst.uniqueId, vst.name)}> ""`, ...lines.map((l) => `  ${l}`), '>', 'FLOATPOS 0 0 0 0', 'WAK 0 0']
+  const lines = blobLines(vst.uniqueId, data, chunk, fx.kind === 'vst' ? (fx.preset ?? 'Default') : '', fx.kind === 'vst' ? fx.inputs : 2)
+  return [`BYPASS ${fx.on ? 0 : 1} 0 0`, `<VST ${quote(`VST: ${vst.name}`)} ${vst.file.includes(' ') ? quote(vst.file) : vst.file} 0 "" ${vst.uniqueId >>> 0}<${vstTag(vst.uniqueId, vst.name)}> ""`, ...lines.map((l) => `  ${l}`), '>', 'FLOATPOS 0 0 0 0', 'WAK 0 0']
 }
 
 const fromBase64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))

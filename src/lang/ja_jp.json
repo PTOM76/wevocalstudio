@@ -440,7 +440,7 @@
   "settings.reaperPitch.efficient": "Efficient",
   "settings.reaperPitch.other": "そのほか",
   "settings.exchangeFxPrefer": "組み込みの FX の変換先",
-  "settings.exchangeFxPreferHelp": "REAPER に書き出すとき、組み込みの FX を REAPER のどの FX にするか。先に選んだ方に対応するものが無ければ、もう一方にする。JSFX はつまみを単位のまま書くので値が正確。Rea 系の VST は、今は WevEQ → ReaEQ だけ",
+  "settings.exchangeFxPreferHelp": "REAPER に書き出すとき、組み込みの FX を REAPER のどの FX にするか。先に選んだ方に対応するものが無ければ、もう一方にする。JSFX はつまみを単位のまま書くので値が正確。Rea 系の VST は、今は WevEQ → ReaEQ とコンプ → ReaComp",
   "settings.exchangeFxPreferVst": "Rea 系の VST を優先",
   "settings.exchangeFxPreferJs": "JSFX を優先",
 

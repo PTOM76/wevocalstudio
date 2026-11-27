@@ -27,7 +27,7 @@ describe('fxLines', () => {
 
   it('ReaEQ: 塊の印と、帯（種類 8、周波数、倍率、幅）', () => {
     const lines = fxLines({ kind: 'reaeq', on: true, bands: [{ freq: 1000, gain: 6, bw: 1 }] }, q)
-    expect(lines[1]).toBe('<VST "VST: ReaEQ (Cockos)" "reaeq.dll" 0 "" 1919247729<56535472656571726561657100000000> ""')
+    expect(lines[1]).toBe('<VST "VST: ReaEQ (Cockos)" reaeq.dll 0 "" 1919247729<56535472656571726561657100000000> ""')
     const head = bytes(lines[2].trim())
     expect(head.getUint32(4, true)).toBe(0xfeed5eee)
     expect(head.getUint32(52, true)).toBe(1)
