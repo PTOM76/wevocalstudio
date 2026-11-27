@@ -61,6 +61,8 @@ export interface ActionContext {
   extract: { vocals: (id: string) => void; lead: (id: string) => void; instruments: (id: string) => void; voices: (id: string, by: 'pitch' | 'volume') => void }
   /** 和音の分離をメニューに出すか（設定） */
   voiceSplit: boolean
+  /** ほかの DAW から読み込んで、不足している音声がある */
+  missingAudio: boolean
   openProperties: (id: string) => void
   openFile: () => void
   importFiles: () => void

@@ -184,7 +184,7 @@
   "menu.exportOtherWvsp": "WeVocalSynth のプロジェクト…",
   "menu.exportOtherRpp": "REAPER のプロジェクト…",
   "menu.exportOtherDawproject": "DAWproject…",
-  "menu.assignMissingAudio": "足りない音声を割り当てる…",
+  "menu.assignMissingAudio": "不足している音声を割り当てる…",
 
   "screenset.defaultName": "配置 {n}",
 
@@ -1181,9 +1181,9 @@
   "tempoChange.keep": "一定のテンポにする",
   "tempoChange.adopt": "採用する",
 
-  "missingAudio.title": "足りない音声",
+  "missingAudio.title": "不足している音声",
   "missingAudio.help": "ほかの DAW のプロジェクトから読み込んだとき、見つからなかった音声です。ファイルを選ぶと、ブロックの位置と範囲はそのままで音が入ります。割り当てるまでは無音になります",
-  "missingAudio.none": "足りない音声はありません",
+  "missingAudio.none": "不足している音声はありません",
   "missingAudio.pick": "ファイルを選ぶ",
   "missingAudio.loading": "読み込み中…"
 }
