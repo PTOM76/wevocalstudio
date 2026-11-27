@@ -114,7 +114,7 @@ export const COMMANDS = defineCommands({
   muteTrack: { label: 'menu.muteTrack' as MessageKey, enabled: ({ track }) => !!track, run: ({ track, doc }) => track && doc.updateTracks(Object.fromEntries((doc.selectedTracks.includes(track.id) ? doc.selectedTracks : [track.id]).map((id) => [id, { mute: !track.mute }]))) },
   soloTrack: { label: 'menu.soloTrack' as MessageKey, enabled: ({ track }) => !!track, run: ({ track, doc }) => track && doc.updateTracks(Object.fromEntries((doc.selectedTracks.includes(track.id) ? doc.selectedTracks : [track.id]).map((id) => [id, { solo: !track.solo }]))) },
   clearMarkers: { label: 'menu.clearMarkers' as MessageKey, enabled: ({ doc }) => doc.project.markers.length > 0, run: ({ doc }) => doc.apply((p) => ({ ...p, markers: [] })) },
-  // 波形ブロックか MIDI ブロックを選んでいればそれを、選んでいなければ選んでいるトラックを（元に戻せる）
+  // 波形ブロックか MIDI ブロックを選んでいればそれを、選んでいなければ選んでいるトラックをすべて（元に戻せる）
   delete: {
     label: 'menu.delete' as MessageKey,
     enabled: ({ any, selectedTrack }) => any || !!selectedTrack,
@@ -123,7 +123,9 @@ export const COMMANDS = defineCommands({
         doc.removeBlocks([...ids, ...midiChosen.map((b) => b.id)])
         doc.select([])
       } else if (selectedTrack) {
-        doc.removeTrack(selectedTrack)
+        // 選んでいるトラックをまとめて消す（選んでいるトラックが選択に無ければ、それだけ）
+        doc.removeTracks(doc.selectedTracks.includes(selectedTrack) ? doc.selectedTracks : [selectedTrack])
+        doc.selectTracks([])
         selectTrack(null)
       }
     },

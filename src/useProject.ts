@@ -165,6 +165,8 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
 
   /** トラックとその波形ブロックを消す。使われなくなった元の音も消す */
   const removeTrack = useCallback((id: string) => change((p) => trackEdit.removeTrack(p, id)), [change])
+  /** いくつかのトラックを 1 回の操作で消す（元に戻すのも 1 回） */
+  const removeTracks = useCallback((ids: string[]) => change((p) => ids.reduce(trackEdit.removeTrack, p)), [change])
 
   /** parent の子として、新しいトラックを親の子孫の一番後ろに足して id を返す（サブトラック） */
   const addSubtrack = useCallback(
@@ -309,6 +311,7 @@ export function useProject(defaults: PitchDefaults & { historyLimit: number; def
     addTrackNow,
     addTrack,
     removeTrack,
+    removeTracks,
     duplicateTrack,
     addMidiBlock,
     addMidiAt,

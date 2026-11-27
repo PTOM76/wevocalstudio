@@ -133,6 +133,8 @@ export function assignAudio(p: Project, source: string, clip: Clip, name: string
     ...p,
     sources: p.sources.map((s) => (s.id === source ? { id, name, clip, duration: clip.channels[0].length / clip.sampleRate } : s)),
     blocks: p.blocks.map((b) => (b.source === source ? { ...b, source: id } : b)),
+    // トラックの音源の音と、固定した音も同じ元の音を指していれば付け替える
+    tracks: p.tracks.map((t) => (t.instrument?.sample === source || t.frozen?.source === source ? { ...t, ...(t.instrument?.sample === source ? { instrument: { ...t.instrument, sample: id } } : {}), ...(t.frozen?.source === source ? { frozen: { ...t.frozen, source: id } } : {}) } : t)),
   }
 }
 

@@ -57,7 +57,8 @@ export function buildMenus(env: CommandEnv, commands: Record<Action, CommandView
           label: t('menu.removeTrack'),
           disabled: !selectedTrack,
           onClick: () => {
-            if (selectedTrack) doc.removeTrack(selectedTrack)
+            if (selectedTrack) doc.removeTracks(doc.selectedTracks.includes(selectedTrack) ? doc.selectedTracks : [selectedTrack])
+            doc.selectTracks([])
             selectTrack(null)
             doc.select([])
           },
@@ -217,7 +218,8 @@ export function buildMenus(env: CommandEnv, commands: Record<Action, CommandView
       { label: t('menu.soloTrack'), checked: tr.solo, onClick: () => doc.updateTrack(tr.id, { solo: !tr.solo }) },
       { label: t('menu.renameTrack'), onClick: () => c.openDialog('renameTrack', tr.id) },
       { label: t('menu.duplicateTrack'), onClick: () => doc.duplicateTrack(tr.id) },
-      { label: t('menu.removeTrack'), onClick: () => doc.removeTrack(tr.id) },
+      // 右クリックしたトラックが選択に入っていれば、選んでいるトラックをまとめて消す
+      { label: t('menu.removeTrack'), onClick: () => doc.removeTracks(doc.selectedTracks.includes(tr.id) ? doc.selectedTracks : [tr.id]) },
       divider,
     ]
   }
