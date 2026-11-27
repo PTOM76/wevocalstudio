@@ -1,5 +1,6 @@
 // REAPER のプロジェクト（.rpp）を読み、中間の形にする（memo/daw-exchange.md）。音声はファイルのパスのまま返し、中身は呼ぶ側が探す
 import { PPQ, type XClip, type XMidi, type XProject, type XTrack } from './exchange'
+import { readFx, type XFx } from './rppFx'
 
 /** RPP の 1 つのかたまり（<NAME 引数 … >）。lines は中の行（かたまり以外）を語に分けたもの */
 interface Node {
@@ -111,6 +112,25 @@ function activeTake(item: Node): Node {
 export interface ReadNotes {
   /** 音声と MIDI 以外のアイテム（サブプロジェクトなど） */
   skippedItems: number
+  /** 読めなかった FX（JSFX、塊でしか状態を持たない VST など） */
+  skippedFx: number
+}
+
+/** FX の列（<FXCHAIN>）を読む。直前の BYPASS の行でオンかオフかを決める */
+function readChain(chain: Node | undefined, notes: ReadNotes): XFx[] {
+  const out: XFx[] = []
+  let bypass = false
+  for (const x of chain?.items ?? []) {
+    if (Array.isArray(x)) {
+      if (x[0] === 'BYPASS') bypass = x[1] === '1'
+      continue
+    }
+    const fx = x.name === 'VST' ? readFx({ name: x.args[0] ?? '', file: x.args[1] ?? '', uniqueId: parseInt(x.args[4] ?? '0', 10) || 0, lines: x.lines.map((l) => l.join('')), on: !bypass }) : null
+    if (fx) out.push(fx)
+    else if (x.name !== 'JS_SER') notes.skippedFx++
+    bypass = false
+  }
+  return out
 }
 
 export function readRpp(text: string): { project: XProject; notes: ReadNotes } {
@@ -119,7 +139,7 @@ export function readRpp(text: string): { project: XProject; notes: ReadNotes } {
   const tempo = get(root, 'TEMPO')
   const bpm = numAt(tempo, 1, 120)
   const beatsPerBar = Math.round(numAt(tempo, 2, 4)) || 4
-  const notes: ReadNotes = { skippedItems: 0 }
+  const notes: ReadNotes = { skippedItems: 0, skippedFx: 0 }
 
   // マーカー（区間は始まりだけ。旗 1 が区間）
   const markers: XProject['markers'] = []
@@ -171,7 +191,8 @@ export function readRpp(text: string): { project: XProject; notes: ReadNotes } {
         })
       } else notes.skippedItems++
     }
-    tracks.push({ name: get(t, 'NAME')?.[1] ?? '', volume: gainToDb(numAt(vp, 1, 1)), pan: numAt(vp, 2), mute: numAt(ms, 1) === 1, solo: numAt(ms, 2) > 0, invert: numAt(get(t, 'IPHASE'), 1) === 1, depth, clips, midi })
+    const fx = readChain(t.children.find((c) => c.name === 'FXCHAIN'), notes)
+    tracks.push({ name: get(t, 'NAME')?.[1] ?? '', volume: gainToDb(numAt(vp, 1, 1)), pan: numAt(vp, 2), mute: numAt(ms, 1) === 1, solo: numAt(ms, 2) > 0, invert: numAt(get(t, 'IPHASE'), 1) === 1, depth, clips, midi, ...(fx.length ? { fx } : {}) })
     // フォルダーの印で、次のトラックの深さを決める
     const bus = get(t, 'ISBUS')
     const kind = numAt(bus, 1)

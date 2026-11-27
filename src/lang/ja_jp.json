@@ -573,7 +573,7 @@
   "toast.voicesSplit": "和音を2つのトラックに分離しました",
   "toast.optimized": "最適化して保存しました（元の音 {before} → {after}）",
   "toast.dawUnknown": "ほかの DAW のプロジェクトが見つかりません（.rpp、.dawproject、またはそれを入れた zip を選んでください）",
-  "toast.dawSkipped": "読み込めない項目が {n} 個ありました（音声と MIDI 以外のクリップなど）",
+  "toast.dawSkipped": "読み込めない項目が {n} 個ありました（音声と MIDI 以外のクリップ、導入していない VST、変換できない FX など）",
   "toast.exportedSkippedFx": "書き出しました（REAPER にない組み込みの FX {n} 個は含めていません）",
 
   "bake.job": "確定",

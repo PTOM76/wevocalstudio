@@ -147,6 +147,7 @@ src/exchange/
   exportRpp.ts  プロジェクトを REAPER のプロジェクト（.rpp）と音声ファイルにして、zip にまとめる（memo/daw-exchange.md）
   fromExchange.test.ts  fromExchange.ts のテスト（深さから親を決める、見つからない音声の仮の音、テンポの変化をマーカーに、割り当て）
   fromExchange.ts  中間の形（ほかの DAW から読んだもの）から Studio のプロジェクトを作る（memo/daw-exchange.md）。見つからない音声は無音の仮の音にして、missing に元のパスを残す
+  fxImport.test.ts  REAPER の FX の読み込みのテスト（書いたものを読むと戻る、ReaEQ を WevEQ に、VST を導入済みのものに当てる。値は架空のもの）
   importDaw.ts  ほかの DAW のプロジェクト（.rpp、.dawproject、それらを入れた zip）を開く（memo/daw-exchange.md）。音声は zip の中か、一緒に選んだファイルから名前で探す
   rpp.test.ts  rpp.ts のテスト（フォルダーの印、クリップの項目、文字列の囲み）
   rpp.ts  REAPER のプロジェクト（.rpp。テキスト）を書く。音声は相対のパス（audio/…）で参照し、呼ぶ側が zip に一緒に入れる（memo/daw-exchange.md）

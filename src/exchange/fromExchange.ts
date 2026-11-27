@@ -1,5 +1,6 @@
 // 中間の形（ほかの DAW から読んだもの）から Studio のプロジェクトを作る（memo/daw-exchange.md）。見つからない音声は無音の仮の音にして、missing に元のパスを残す
-import type { Clip } from 'wevocal-lib'
+import { eqFreqs, eqToSlot, type Clip, type EqBands, type FxPlugin, type FxSlot } from 'wevocal-lib'
+import type { XFx } from './rppFx'
 import { fillBlock, newId, newProject, newTrack, RATE_MAX, RATE_MIN, type Marker, type MidiBlock, type MidiCurve, type Project, type Source } from '../project'
 import { notesOf, PPQ, type XMidi, type XProject } from './exchange'
 
@@ -31,7 +32,39 @@ function midiBlock(m: XMidi, track: string): MidiBlock {
  * 中間の形からプロジェクトを作る。audio はファイルのパス → 音（見つからなければ無い）。
  * 返す missing は見つからなかったパスの数
  */
-export function fromExchange(x: XProject, audio: Map<string, Clip>): { project: Project; missing: number } {
+/** ReaEQ の帯を WevEQ にする。帯ごとに一番近い周波数（対数）の帯へ足す。幅の狭い（0.6 オクターブ未満の）帯があれば 31 帯 */
+export function reaeqToSlot(fx: Extract<XFx, { kind: 'reaeq' }>): FxSlot {
+  const bands: EqBands = fx.bands.some((b) => b.bw < 0.6) ? 31 : 10
+  const freqs = eqFreqs(bands)
+  const gains = freqs.map(() => 0)
+  for (const b of fx.bands) {
+    let best = 0
+    freqs.forEach((f, i) => {
+      if (Math.abs(Math.log2(f / b.freq)) < Math.abs(Math.log2(freqs[best] / b.freq))) best = i
+    })
+    gains[best] += b.gain
+  }
+  const range = gains.some((g) => Math.abs(g) > 12) ? 24 : 12
+  return eqToSlot({ bands, gains: gains.map((g) => Math.round(Math.max(-range, Math.min(range, g)) * 10) / 10), on: fx.on, ...(range === 24 ? { range } : {}) })
+}
+
+/** VST の FX を、導入済みの VST から探す（識別番号、DLL の名前、プラグインの名前の順）。無ければ null */
+export function vstToSlot(fx: Extract<XFx, { kind: 'vst' }>, installed: readonly FxPlugin[]): FxSlot | null {
+  const vsts = installed.filter((p) => p.manifest.format === 'vst')
+  const lower = (s: string) => s.toLowerCase()
+  const nameOf = (p: FxPlugin) => String(p.lang?.en_us?.name ?? p.lang?.ja_jp?.name ?? '')
+  const hit =
+    (fx.uniqueId && vsts.find((p) => p.manifest.vst?.uniqueId === fx.uniqueId)) ||
+    vsts.find((p) => p.manifest.vst && lower(p.manifest.vst.file) === lower(fx.file)) ||
+    vsts.find((p) => lower(nameOf(p)) === lower(fx.name))
+  if (!hit) return null
+  const values: Record<string, number> = {}
+  hit.manifest.params.forEach((d, i) => (values[d.id] = fx.params[i] ?? d.default))
+  return { plugin: hit.manifest.id, version: hit.manifest.version, on: fx.on, values }
+}
+
+export function fromExchange(x: XProject, audio: Map<string, Clip>, installed: readonly FxPlugin[] = []): { project: Project; missing: number; skippedFx: number } {
+  let skippedFx = 0
   const p = newProject(x.bpm)
   p.tempo = { ...p.tempo, bpm: x.bpm, beatsPerBar: x.beatsPerBar }
   p.master = { ...p.master, ...x.master }
@@ -79,10 +112,17 @@ export function fromExchange(x: XProject, audio: Map<string, Clip>): { project: 
       )
     }
     for (const m of t.midi) midi.push(midiBlock(m, track.id))
+    const slots: FxSlot[] = []
+    for (const fx of t.fx ?? []) {
+      const s = fx.kind === 'reaeq' ? reaeqToSlot(fx) : vstToSlot(fx, installed)
+      if (s) slots.push(s)
+      else skippedFx++
+    }
+    if (slots.length) track.fx = slots
   })
   if (!p.tracks.length) p.tracks = [newTrack(1)]
   if (midi.length) p.midi = midi
-  return { project: p, missing }
+  return { project: p, missing, skippedFx }
 }
 
 /** 見つからなかった音声（missing のある Source）に音を割り当てる。ブロックの位置と範囲はそのまま */

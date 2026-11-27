@@ -102,5 +102,48 @@ export function fxLines(fx: XFx, quote: (s: string) => string): string[] {
   return [`BYPASS ${fx.on ? 0 : 1} 0 0`, `<VST ${quote(`VST: ${vst.name}`)} ${quote(vst.file)} 0 "" ${vst.uniqueId >>> 0}<${vstTag(vst.uniqueId, vst.name)}> ""`, ...lines.map((l) => `  ${l}`), '>', 'FLOATPOS 0 0 0 0', 'WAK 0 0']
 }
 
+const fromBase64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
+
+/**
+ * <VST …> の項目を読む（fxLines の逆）。ReaEQ は帯域（種類 8）の帯だけを、つまみの値の VST はその値を読む。
+ * 塊でしか状態を持たない VST（つまみの値が読めない）と、読めない塊は null
+ */
+export function readFx(o: { name: string; file: string; uniqueId: number; lines: string[]; on: boolean }): XFx | null {
+  let raw: Uint8Array[]
+  try {
+    raw = o.lines.map(fromBase64)
+  } catch {
+    return null
+  }
+  if (raw.length < 2) return null
+  const head = new DataView(raw[0].buffer)
+  // 見出し: 識別番号、印、入力の数とピン（8 バイトずつ）、出力の数とピン、データの大きさ、塊かどうか
+  let at = 8
+  const ins = head.getUint32(at, true)
+  at += 4 + ins * 8
+  const outs = at + 4 <= head.byteLength ? head.getUint32(at, true) : 0
+  at += 4 + outs * 8
+  if (at + 8 > head.byteLength) return null
+  const size = head.getUint32(at, true)
+  const chunk = head.getUint32(at + 4, true) === 1
+  const all = new Uint8Array(raw.slice(1).reduce((n, r) => n + r.length, 0))
+  raw.slice(1).reduce((n, r) => (all.set(r, n), n + r.length), 0)
+  const data = new DataView(all.buffer, 0, Math.min(size, all.length))
+  if (o.uniqueId === REAEQ_ID && chunk) {
+    const n = data.byteLength >= 8 ? data.getUint32(4, true) : 0
+    const bands: { freq: number; gain: number; bw: number }[] = []
+    for (let i = 0, p = 8; i < n && p + 33 <= data.byteLength; i++, p += 33) {
+      const type = data.getUint32(p, true)
+      const enabled = data.getUint32(p + 4, true) === 1
+      const gain = data.getFloat64(p + 16, true)
+      if (type === 8 && enabled && gain > 0) bands.push({ freq: data.getFloat64(p + 8, true), gain: 20 * Math.log10(gain), bw: data.getFloat64(p + 24, true) })
+    }
+    return { kind: 'reaeq', on: o.on, bands }
+  }
+  if (chunk || data.byteLength < 8 || data.getUint32(0, true) !== 0xdeadbeef) return null
+  const params = Array.from({ length: (data.byteLength - 8) >> 2 }, (_, i) => data.getFloat32(8 + i * 4, true))
+  return { kind: 'vst', on: o.on, name: o.name.replace(/^VST3?i?: /, '').replace(/\s*\([^()]*\)$/, ''), file: o.file, uniqueId: o.uniqueId, params }
+}
+
 /** Q（Web Audio の peaking）を ReaEQ の幅（オクターブ）にする */
 export const qToOctaves = (q: number) => ((2 / Math.LN2) * Math.asinh(1 / (2 * q)))

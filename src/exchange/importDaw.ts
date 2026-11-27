@@ -1,6 +1,6 @@
 // ほかの DAW のプロジェクト（.rpp、.dawproject、それらを入れた zip）を開く（memo/daw-exchange.md）。音声は zip の中か、一緒に選んだファイルから名前で探す
 import { readZip } from 'pevenmui/web'
-import { decodeFile, type Clip } from 'wevocal-lib'
+import { decodeFile, installedPlugins, type Clip } from 'wevocal-lib'
 import type { Project } from '../project'
 import { readDawproject } from './dawprojectRead'
 import { baseName, fromExchange } from './fromExchange'
@@ -31,7 +31,7 @@ export async function importDaw(files: File[]): Promise<DawImport | null> {
   if (ext(main.name) === '.rpp') {
     const r = readRpp(await main.text())
     x = r.project
-    skipped = r.notes.skippedItems
+    skipped = r.notes.skippedItems + r.notes.skippedFx
   } else {
     entries = await readZip(main)
     const xml = entries.get('project.xml')
@@ -43,7 +43,7 @@ export async function importDaw(files: File[]): Promise<DawImport | null> {
     } else if (rpp) {
       const r = readRpp(await entries.get(rpp)!.text())
       x = r.project
-      skipped = r.notes.skippedItems
+      skipped = r.notes.skippedItems + r.notes.skippedFx
       // .rpp の置き場所からの相対のパスにする
       const dir = rpp.includes('/') ? rpp.slice(0, rpp.lastIndexOf('/') + 1) : ''
       if (dir) entries = new Map([...entries].map(([k, v]) => [k.startsWith(dir) ? k.slice(dir.length) : k, v]))
@@ -65,6 +65,6 @@ export async function importDaw(files: File[]): Promise<DawImport | null> {
       console.warn('Failed to decode audio for DAW import', { path, error: e })
     }
   }
-  const { project, missing } = fromExchange(x, audio)
-  return { project, name: main.name.replace(/\.[^.]+$/, ''), missing, skipped }
+  const { project, missing, skippedFx } = fromExchange(x, audio, installedPlugins())
+  return { project, name: main.name.replace(/\.[^.]+$/, ''), missing, skipped: skipped + skippedFx }
 }

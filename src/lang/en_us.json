@@ -573,7 +573,7 @@
   "toast.voicesSplit": "Split the harmony into two tracks",
   "toast.optimized": "Saved optimized (sources {before} → {after})",
   "toast.dawUnknown": "No project from another DAW was found (choose a .rpp, a .dawproject, or a zip containing one)",
-  "toast.dawSkipped": "{n} items could not be imported (clips other than audio and MIDI, and so on)",
+  "toast.dawSkipped": "{n} items could not be imported (clips other than audio and MIDI, VST plugins that are not installed, effects that cannot be converted, and so on)",
   "toast.exportedSkippedFx": "Exported ({n} built-in effects without a REAPER equivalent were not included)",
 
   "bake.job": "Commit",
