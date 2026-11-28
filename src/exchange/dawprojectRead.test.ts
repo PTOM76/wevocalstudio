@@ -43,6 +43,21 @@ describe('readDawproject', () => {
     expect(t.midi).toEqual(x.tracks[1].midi)
   })
 
+  it('一定のピッチ、ピッチと音量のエンベロープを、クリップの表現の点で往復する', () => {
+    const base = x.tracks[1].clips[0]
+    const clips = [
+      { ...base, pitch: 3 },
+      { ...base, start: 4, pitch: 1, pitchEnv: [{ t: 0, v: 0 }, { t: 0.5, v: 2, shape: 'square' as const }], volEnv: [{ t: 0, v: 0 }, { t: 1, v: -6 }] },
+    ]
+    const { project } = readDawproject(writeDawproject({ ...x, tracks: [{ ...x.tracks[1], depth: 0, midi: [], clips }] }, { name: 't', version: '1' }))
+    const [a, b] = project.tracks[0].clips
+    expect([a.pitch, a.pitchEnv]).toEqual([3, undefined])
+    // エンベロープは一定のピッチを足した値で書くので、読むとピッチは 0 でエンベロープに入る
+    expect(b.pitch).toBe(0)
+    expect(b.pitchEnv).toEqual([{ t: 0, v: 1 }, { t: 0.5, v: 3, shape: 'square' }])
+    expect(b.volEnv!.map((p) => ({ t: p.t, v: near(p.v) }))).toEqual([{ t: 0, v: 0 }, { t: 1, v: -6 }])
+  })
+
   it('拍で書いた位置と長さを、テンポの変化で秒に直す', () => {
     const xml = `<Project version="1.0"><Transport><Tempo unit="bpm" value="120"/></Transport>
       <Structure><Track id="t" name="v"><Channel><Volume unit="linear" value="1"/></Channel></Track></Structure>

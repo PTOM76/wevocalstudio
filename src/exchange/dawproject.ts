@@ -1,5 +1,6 @@
 // DAWproject（.dawproject。zip の中に project.xml、metadata.xml、音声）の XML を書く（memo/daw-exchange.md）。時間軸は秒、MIDI の音符は拍。親と子は入れ子の Track（親はサブミックス）
 import { notesOf, type XProject, type XTrack } from './exchange'
+import type { XEnvPoint } from './reaperPitch'
 
 const dbToGain = (db: number) => (db <= -150 ? 0 : 10 ** (db / 20))
 const num = (v: number) => (Number.isFinite(v) ? String(Math.round(v * 1e9) / 1e9) : '0')
@@ -73,6 +74,11 @@ export function writeDawproject(p: XProject, app: { name: string; version: strin
     for (const c of t.clips) {
       // 元の音の開始と速度は伸縮の対応点（Warps）で表す。ゲインはクリップに無いので、描画した音に含める（exchange.ts）
       open(`Clip time="${num(c.start)}" duration="${num(c.length)}" playStart="0" fadeTimeUnit="seconds" fadeInTime="${num(c.fadeIn)}" fadeOutTime="${num(c.fadeOut)}" enable="${!c.mute}" name="${esc(c.name)}"`)
+      // ピッチ（一定の値とエンベロープ）と音量のエンベロープは、クリップの中の表現の点（Points）にする。そのときは中身を Lanes で包む
+      const transpose = c.pitchEnv?.length ? c.pitchEnv.map((p) => ({ ...p, v: c.pitch + p.v })) : c.pitch ? [{ t: 0, v: c.pitch }] : []
+      const gainPts = (c.volEnv ?? []).map((p) => ({ ...p, v: 10 ** (p.v / 20) }))
+      const wrap = transpose.length > 0 || gainPts.length > 0
+      if (wrap) open(`Lanes timeUnit="seconds" id="${id()}"`)
       open(`Warps timeUnit="seconds" contentTimeUnit="seconds" id="${id()}"`)
       open(`Audio algorithm="stretch" channels="2" id="${id()}"`)
       line(`<File path="${esc(c.file)}"/>`)
@@ -80,6 +86,16 @@ export function writeDawproject(p: XProject, app: { name: string; version: strin
       line(`<Warp time="0" contentTime="${num(c.offset)}"/>`)
       line(`<Warp time="${num(c.length)}" contentTime="${num(c.offset + c.length * c.rate)}"/>`)
       close('Warps')
+      const points = (expression: string, unit: string, pts: XEnvPoint[]) => {
+        if (!pts.length) return
+        open(`Points unit="${unit}" id="${id()}"`)
+        line(`<Target expression="${expression}"/>`)
+        for (const p of pts) line(`<RealPoint time="${num(p.t)}" value="${num(p.v)}" interpolation="${p.shape === 'square' ? 'hold' : 'linear'}"/>`)
+        close('Points')
+      }
+      points('transpose', 'semitones', transpose)
+      points('gain', 'linear', gainPts)
+      if (wrap) close('Lanes')
       close('Clip')
     }
     for (const m of t.midi) {

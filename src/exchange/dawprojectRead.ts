@@ -97,8 +97,17 @@ export function readDawproject(xml: string): { project: XProject; notes: { skipp
       track.midi.push({ ...base, ticks: Math.round((map.toBeat(end) - map.toBeat(start)) * PPQ), events })
       return
     }
-    const warps = child(c, 'Warps')
-    const audio = child(warps ?? c, 'Audio')
+    // 表現の点（移調、音量）があると、中身は Lanes で包まれている
+    const inner = child(c, 'Lanes') ?? c
+    const warps = child(inner, 'Warps')
+    const audio = child(warps ?? inner, 'Audio')
+    const expr = (name: string) =>
+      childrenOf(inner, 'Points')
+        .filter((pt) => child(pt, 'Target')?.attrs.expression === name)
+        .flatMap((pt) => childrenOf(pt, 'RealPoint').map((r) => ({ t: numAttr(r, 'time'), v: numAttr(r, 'value'), ...(r.attrs.interpolation === 'hold' ? { shape: 'square' as const } : {}) })))
+        .sort((a, b) => a.t - b.t)
+    const transpose = expr('transpose')
+    const gains = expr('gain')
     const file = child(audio, 'File')?.attrs.path
     if (!file) {
       skippedClips++
@@ -121,7 +130,20 @@ export function readDawproject(xml: string): { project: XProject; notes: { skipp
       const at0 = cs(numAttr(a, 'contentTime')) - ws(numAttr(a, 'time')) * rate
       offset = at0 + ws(numAttr(c, 'playStart')) * rate
     } else if ((c.attrs.contentTimeUnit ?? unit) !== 'seconds') offset = (offset * 60) / bpm
-    const clip: XClip = { ...base, file, offset: Math.max(0, offset), gain: 0, fadeIn: fade('fadeInTime'), fadeOut: fade('fadeOutTime'), rate: rate > 0 ? rate : 1, pitch: 0 }
+    // 移調の点が 1 つ（か全部同じ値）なら一定のピッチ、変わるならエンベロープ
+    const flat = transpose.length > 0 && transpose.every((p) => p.v === transpose[0].v)
+    const clip: XClip = {
+      ...base,
+      file,
+      offset: Math.max(0, offset),
+      gain: 0,
+      fadeIn: fade('fadeInTime'),
+      fadeOut: fade('fadeOutTime'),
+      rate: rate > 0 ? rate : 1,
+      pitch: flat ? transpose[0].v : 0,
+      ...(transpose.length && !flat ? { pitchEnv: transpose } : {}),
+      ...(gains.length ? { volEnv: gains.map((p) => ({ ...p, v: p.v <= 0 ? -60 : Math.max(-60, 20 * Math.log10(p.v)) })) } : {}),
+    }
     track.clips.push(clip)
   }
 

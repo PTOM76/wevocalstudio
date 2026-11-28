@@ -1209,7 +1209,7 @@
   "dawExport.titleRpp": "REAPER のプロジェクトに書き出す",
   "dawExport.titleDawproject": "DAWproject に書き出す",
   "dawExport.originalHelpRpp": "相手の DAW で編集しやすく、ファイルも増えない。ピッチ、速度、音量、フェードは REAPER の項目に書く。ピッチカーブ、エンベロープ、フォルマントは反映されない",
-  "dawExport.originalHelpDawproject": "相手の DAW で編集しやすく、ファイルも増えない。速度とフェードは DAWproject の項目に書く。ピッチ、音量、ピッチカーブ、エンベロープ、フォルマントは反映されない",
+  "dawExport.originalHelpDawproject": "相手の DAW で編集しやすく、ファイルも増えない。速度とフェードは DAWproject の項目に、ピッチとピッチや音量のエンベロープはクリップの表現の点に書く（相手の DAW が読むかは DAW による）。ブロックの音量とフォルマントは反映されない",
   "dawExport.changedHelp": "ピッチなどを変えたブロックだけ、音を描画したファイルにする。音は同じになるが、そのブロックは相手の DAW でピッチを変え直せない",
   "dawExport.allHelp": "すべてのブロックを、音を描画したファイルにする。音は同じになるが、ファイルが多く大きくなる",
   "dawExport.run": "書き出す"
