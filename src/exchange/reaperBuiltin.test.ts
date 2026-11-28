@@ -77,6 +77,22 @@ describe('JSFX への変換', () => {
     if (g.kind === 'vst') for (const [k, x] of Object.entries(gv)) expect(reaVstToBuiltin(g)!.values[k]).toBeCloseTo(x, 3)
   })
 
+  it('ディレイ ↔ ReaDelay、ピッチ ↔ ReaPitch、リミッター ↔ ReaLimit は塊で書き、読むと主な値が戻る', () => {
+    const cases: [string, string, Record<string, number>, string[]][] = [
+      ['wevocal.delay', 'readelay.dll', { sync: 0, time: 375, feedback: 0.4, tone: 6000, mix: 0.3 }, ['time', 'feedback', 'tone', 'mix']],
+      ['wevocal.pitch', 'reapitch.dll', { pitch: -5.5, formant: 2, keep: 1, algorithm: 0 }, ['pitch', 'formant']],
+      ['wevocal.limiter', 'realimit.dll', { ceiling: -2.5, release: 100 }, ['ceiling']],
+    ]
+    for (const [plugin, file, v, keys] of cases) {
+      const fx = builtinToReaper(slot(plugin, v), v, 120, 'vst')!
+      expect(fx.kind === 'vst' && [fx.file, !!fx.chunk]).toEqual([file, true])
+      if (fx.kind !== 'vst') continue
+      const back = reaVstToBuiltin(fx)!
+      expect(back.plugin).toBe(plugin)
+      for (const k of keys) expect(back.values[k]).toBeCloseTo(v[k], 2)
+    }
+  })
+
   it('JSFX の行は 64 個の値で、無い番号は -', () => {
     const fx = builtinToReaper(slot('wevocal.limiter', { ceiling: -1, release: 100 }), { ceiling: -1, release: 100 }, 120, 'js')!
     const lines = fxLines(fx, (s) => `"${s}"`)

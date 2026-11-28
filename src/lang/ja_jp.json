@@ -440,7 +440,7 @@
   "settings.reaperPitch.efficient": "Efficient",
   "settings.reaperPitch.other": "そのほか",
   "settings.exchangeFxPrefer": "組み込みの FX の変換先",
-  "settings.exchangeFxPreferHelp": "REAPER に書き出すとき、組み込みの FX を REAPER のどの FX にするか。先に選んだ方に対応するものが無ければ、もう一方にする。Rea 系の VST は WevEQ → ReaEQ、コンプ → ReaComp、リバーブ → ReaVerbate、ゲート → ReaGate。JSFX はディレイ、コーラス、ディストーションなど",
+  "settings.exchangeFxPreferHelp": "REAPER に書き出すとき、組み込みの FX を REAPER のどの FX にするか。先に選んだ方に対応するものが無ければ、もう一方にする。Rea 系の VST は EQ、コンプ、リバーブ、ゲート、ディレイ、ピッチ、リミッター。JSFX はディレイ、コーラス、ディストーション、フィルターなど",
   "settings.exchangeFxPreferVst": "Rea 系の VST を優先",
   "settings.exchangeFxPreferJs": "JSFX を優先",
 

@@ -165,13 +165,81 @@ const REA: ReaMap[] = [
   },
 ]
 
-/** B（Rea 系の VST）にできる FX。WevEQ → ReaEQ、コンプ → ReaComp、リバーブ → ReaVerbate、ゲート → ReaGate */
+/**
+ * 状態を塊で持つ Rea 系の VST。塊は REAPER が新しく入れたときのもの（16 進）を土台にし、つまみの所だけを書き換える。
+ * 位置は、REAPER でつまみを 1 つずつ変えて塊を比べて調べた（データの先頭からのバイト）
+ */
+interface ReaChunkMap {
+  plugin: string
+  name: string
+  file: string
+  uniqueId: number
+  template: string
+  to: (v: Values, d: DataView) => void
+  from: (d: DataView) => Values
+}
+
+const f32 = (d: DataView, at: number) => d.getFloat32(at, true)
+const setF32 = (d: DataView, at: number, v: number) => d.setFloat32(at, v, true)
+
+const REA_CHUNK: ReaChunkMap[] = [
+  {
+    // タップが 1 つ。24 ウェット、28 ドライ（倍率）、40 長さ（10000 ms × 値）、44 長さ（拍。使わないので 0）、48 フィードバック（倍率）、52 ローパス（20000 Hz × 値）
+    plugin: 'wevocal.delay',
+    name: 'ReaDelay (Cockos)',
+    file: 'readelay.dll',
+    uniqueId: 0x7265646c,
+    template: '0000000000000000010000002c00000002000000000000004302003f0000803f000000000000803f000000000000003c9cd107330000803f000000000000803f0000803f0000803f0000003f',
+    to: (v, d) => {
+      setF32(d, 24, clamp(v.mix, 0, 2))
+      setF32(d, 28, clamp(1 - v.mix, 0, 2))
+      setF32(d, 40, clamp(v.time / 10000, 0, 1))
+      setF32(d, 44, 0)
+      setF32(d, 48, clamp(v.feedback, 0, 2))
+      setF32(d, 52, clamp(v.tone / 20000, 0, 1))
+    },
+    from: (d) => ({ sync: 0, mix: clamp(f32(d, 24) / (f32(d, 24) + f32(d, 28) || 1), 0, 1), time: clamp(f32(d, 40) * 10000, 10, 2000), feedback: clamp(f32(d, 48), 0, 0.95), tone: clamp(f32(d, 52) * 20000, 1000, 20000) }),
+  },
+  {
+    // 24 ウェット、28 ドライ（倍率）、40 ピッチ（全範囲。(値 - 0.5) × 48 半音）、56 フォルマント（同じ目盛り）
+    plugin: 'wevocal.pitch',
+    name: 'ReaPitch (Cockos)',
+    file: 'reapitch.dll',
+    uniqueId: 0x72657063,
+    template: '00000000ffffffff010000002c00000002000000000000000000803f00000000000000000000803f0000003f0000003f0000003f0000003f0000003f0000003f0000003f0000803f0000003f',
+    to: (v, d) => {
+      setF32(d, 40, clamp(0.5 + v.pitch / 48, 0, 1))
+      setF32(d, 56, clamp(0.5 + v.formant / 48, 0, 1))
+    },
+    from: (d) => ({ pitch: clamp((f32(d, 40) - 0.5) * 48, -24, 24), formant: clamp((f32(d, 56) - 0.5) * 48, -12, 12) }),
+  },
+  {
+    // 8 しきい値、16 上限（dB の double）。リリース（40 の double）は単位が分からないので既定のまま
+    plugin: 'wevocal.limiter',
+    name: 'ReaLimit (Cockos)',
+    file: 'realimit.dll',
+    uniqueId: 0x726c6d74,
+    template: '030000000000000000000000000000000000000000000000020000000002000000000000000000003f9f76e310c3c63f',
+    to: (v, d) => d.setFloat64(16, clamp(v.ceiling, -24, 0), true),
+    from: (d) => ({ ceiling: clamp(d.getFloat64(16, true), -12, 0) }),
+  },
+]
+
+const fromHex = (h: string) => Uint8Array.from(h.match(/../g)!, (x) => parseInt(x, 16))
+
+/** B（Rea 系の VST）にできる FX。WevEQ → ReaEQ、コンプ → ReaComp、リバーブ → ReaVerbate、ゲート → ReaGate、ディレイ → ReaDelay、ピッチ → ReaPitch、リミッター → ReaLimit */
 function toVst(s: FxSlot, v: Values): XFx | null {
   const r = REA.find((x) => x.plugin === s.plugin)
   if (r) {
     const params = [...r.defaults]
     r.to(v, params)
     return { kind: 'vst', on: s.on, name: r.name, file: r.file, uniqueId: r.uniqueId, params, inputs: r.inputs, preset: '' }
+  }
+  const c = REA_CHUNK.find((x) => x.plugin === s.plugin)
+  if (c) {
+    const chunk = fromHex(c.template)
+    c.to(v, new DataView(chunk.buffer))
+    return { kind: 'vst', on: s.on, name: c.name, file: c.file, uniqueId: c.uniqueId, params: [], chunk, preset: '' }
   }
   if (s.plugin !== EQ_ID) return null
   const eq = valuesToEq(s.values, s.on)
@@ -204,8 +272,10 @@ export function jsToBuiltin(fx: JsFx): { plugin: string; values: Values } | null
   return { plugin, values: JS[plugin].from(s) }
 }
 
-/** 読み込み: Rea 系の VST を Studio の FX にする（ReaComp → コンプ、ReaVerbate → リバーブ、ReaGate → ゲート）。知らないものは null */
+/** 読み込み: Rea 系の VST を Studio の FX にする（ReaComp、ReaVerbate、ReaGate、ReaDelay、ReaPitch、ReaLimit）。知らないものは null */
 export function reaVstToBuiltin(fx: Extract<XFx, { kind: 'vst' }>): { plugin: string; values: Values } | null {
+  const c = REA_CHUNK.find((x) => x.uniqueId === fx.uniqueId)
+  if (c && fx.chunk && fx.chunk.length >= fromHex(c.template).length) return { plugin: c.plugin, values: c.from(new DataView(fx.chunk.buffer, fx.chunk.byteOffset, fx.chunk.byteLength)) }
   const r = REA.find((x) => x.uniqueId === fx.uniqueId)
   if (!r || fx.params.length < r.defaults.length) return null
   return { plugin: r.plugin, values: r.from(fx.params) }
