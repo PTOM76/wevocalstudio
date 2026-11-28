@@ -159,6 +159,8 @@ src/exchange/
   rppFx.ts  REAPER のプロジェクトに書く FX（<VST …> の項目と、状態の塊の base64）。組み込みの EQ は ReaEQ にする（memo/daw-exchange.md）
   rppRead.test.ts  rppRead.ts のテスト（rpp.ts で書いたものを読むと元に戻る、フォルダーの深さ、語の分け方）
   rppRead.ts  REAPER のプロジェクト（.rpp）を読み、中間の形にする（memo/daw-exchange.md）。音声はファイルのパスのまま返し、中身は呼ぶ側が探す
+  vstPreset.test.ts  VST のプリセットのファイル（.fxp、.vstpreset）の形
+  vstPreset.ts  VST のプリセットのファイル（VST2 の .fxp、VST3 の .vstpreset）を作る。DAWproject の装置の状態に使う（形は VST SDK の仕様）
   xml.ts  小さな XML の読み取り（要素、属性、子。文字は Title などの短いものだけ）。DAWproject の読み込み用で、ブラウザとテスト（Node）の両方で動く
 
 src/mixer/

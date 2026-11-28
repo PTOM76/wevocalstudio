@@ -1,6 +1,7 @@
 // DAWproject（.dawproject。zip の中に project.xml、metadata.xml、音声）の XML を書く（memo/daw-exchange.md）。時間軸は秒、MIDI の音符は拍。親と子は入れ子の Track（親はサブミックス）
 import { notesOf, type XProject, type XTrack } from './exchange'
 import type { XEnvPoint } from './reaperPitch'
+import { fxp, vstPreset } from './vstPreset'
 
 const dbToGain = (db: number) => (db <= -150 ? 0 : 10 ** (db / 20))
 const num = (v: number) => (Number.isFinite(v) ? String(Math.round(v * 1e9) / 1e9) : '0')
@@ -32,10 +33,29 @@ export function writeDawproject(p: XProject, app: { name: string; version: strin
   const trackIds = p.tracks.map(() => id())
   const channel = (t: XTrack, submix: boolean) => {
     open(`Channel role="${submix ? 'submix' : 'regular'}" audioChannels="2" solo="${t.solo}" id="${id()}"`)
+    devices(t)
     line(`<Mute value="${t.mute}" id="${id()}"/>`)
     line(`<Pan unit="normalized" value="${num((t.pan + 1) / 2)}" min="0" max="1" id="${id()}"/>`)
     line(`<Volume unit="linear" value="${num(dbToGain(t.volume))}" min="0" max="2" id="${id()}"/>`)
     close('Channel')
+  }
+  // FX の列（VST だけ）。状態はプリセットのファイル（plugins/ の .vstpreset、.fxp）にして zip に入れる
+  let preset = 0
+  const devices = (t: XTrack) => {
+    const vsts = (t.fx ?? []).filter((f) => f.kind === 'vst')
+    if (!vsts.length) return
+    open('Devices')
+    for (const f of vsts) {
+      const tag = f.cid ? 'Vst3Plugin' : 'Vst2Plugin'
+      const path = `plugins/${++preset}.${f.cid ? 'vstpreset' : 'fxp'}`
+      const data = f.cid && f.chunk ? vstPreset(f.cid, f.chunk) : fxp(f)
+      p.files.set(path, new Blob([data as Uint8Array<ArrayBuffer>]))
+      open(`${tag} deviceID="${esc(f.cid ?? String(f.uniqueId >>> 0))}" deviceName="${esc(f.name)}" deviceRole="audioFX" loaded="true" id="${id()}"`)
+      line(`<Enabled value="${f.on}" id="${id()}"/>`)
+      line(`<State path="${path}"/>`)
+      close(tag)
+    }
+    close('Devices')
   }
   open('Structure')
   // 深さの順に入れ子にする（親のすぐ後に子が続く並び）

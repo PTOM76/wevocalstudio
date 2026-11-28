@@ -1,5 +1,5 @@
 // ほかの DAW とやり取りするための中間の形（トラックとクリップの一覧）と、Studio のプロジェクトからの変換（memo/daw-exchange.md）。形式ごとのファイル（rpp.ts など）はこの形だけを扱う
-import { EQ_ID, encodeWav, findPlugin, migrateValues, type Clip } from 'wevocal-lib'
+import { EQ_ID, encodeWav, externalPackage, findPlugin, migrateValues, vstChunkFromParams, type Clip } from 'wevocal-lib'
 import type { XFx } from './rppFx'
 import { builtinToReaper, type ReaperFxPrefer } from './reaperBuiltin'
 import { reaperModeFor, simplify, type XEnvPoint } from './reaperPitch'
@@ -182,23 +182,28 @@ export interface ExchangeTarget {
   fx?: boolean
   /** 組み込みの FX の変換先の優先（Rea 系の VST か JSFX） */
   fxPrefer?: ReaperFxPrefer
+  /** 書き出す先。dawproject は VST（VST2、VST3）だけを書き、組み込みの FX は書かない（省くと reaper） */
+  daw?: 'reaper' | 'dawproject'
 }
 
 /** トラックの FX の列を、書き出せる FX にする（VST はつまみの値のまま、組み込みの EQ は ReaEQ の帯に。ほかは数だけ返す） */
-export function trackFx(t: Project['tracks'][number], bpm = 120, prefer: ReaperFxPrefer = 'vst'): { fx: XFx[]; skipped: number } {
+export function trackFx(t: Project['tracks'][number], bpm = 120, prefer: ReaperFxPrefer = 'vst', daw: ExchangeTarget['daw'] = 'reaper'): { fx: XFx[]; skipped: number } {
   const fx: XFx[] = []
   let skipped = 0
   for (const s of t.fx ?? []) {
     const plugin = findPlugin(s.plugin)
     const m = plugin?.manifest
-    // VST3 は REAPER の書き方（状態の形）が VST2 と違い、まだ書けない
-    if (m?.format === 'vst' && /\.vst3$/i.test(m.vst?.file ?? '')) skipped++
+    const vst3 = m?.format === 'vst' && /\.vst3$/i.test(m.vst?.file ?? '')
+    // VST3 は REAPER の書き方（状態の形）が VST2 と違い、まだ書けない。DAWproject は cid が要る（古い導入には無い）
+    if (vst3 && (daw === 'reaper' || !m?.vst?.cid)) skipped++
     else if (m?.format === 'vst') {
       const values = migrateValues(m, s.values)
       const name = String(plugin?.lang?.en_us?.name ?? plugin?.lang?.ja_jp?.name ?? m.id)
       // 状態の塊（ほかの DAW から読んだもの）があれば、塊で書く
       const chunk = s.state ? Uint8Array.from(atob(s.state), (c) => c.charCodeAt(0)) : undefined
-      fx.push({ kind: 'vst', on: s.on, name, file: m.vst?.file ?? `${name}.dll`, uniqueId: m.vst?.uniqueId ?? 0, params: m.params.map((d) => values[d.id] ?? d.default), ...(chunk ? { chunk } : {}) })
+      fx.push({ kind: 'vst', on: s.on, name, file: m.vst?.file ?? `${name}.dll`, uniqueId: m.vst?.uniqueId ?? 0, params: m.params.map((d) => values[d.id] ?? d.default), plugin: m.id, ...(chunk ? { chunk } : {}), ...(vst3 ? { cid: m.vst?.cid } : {}) })
+    } else if (daw === 'dawproject') {
+      if (s.plugin !== EQ_ID) skipped++
     } else {
       // 組み込みの FX は、REAPER の FX（Rea 系の VST か JSFX。prefer の方を先に）にする。平らな EQ は書かない
       const r = m ? builtinToReaper(s, migrateValues(m, s.values), bpm, prefer) : null
@@ -252,8 +257,20 @@ export async function toExchange(p: Project, mode: ExchangeBlocks, target: Excha
       .filter((x) => x.track === t.id)
       .sort((x, y) => x.start - y.start)
       .map((x) => midiEvents(x, map))
-    const fx = target.fx ? trackFx(t, p.tempo.bpm, target.fxPrefer) : null
+    const fx = target.fx ? trackFx(t, p.tempo.bpm, target.fxPrefer, target.daw) : null
     skippedFx += fx?.skipped ?? 0
+    // VST3 の状態は、つまみの値を VST に渡して作る（Worker で DLL を読み込む）。作れなければ書かない
+    for (const f of fx?.fx ?? []) {
+      if (f.kind !== 'vst' || !f.cid || f.chunk) continue
+      const pkg = f.plugin ? externalPackage(findPlugin(f.plugin)) : null
+      const chunk = pkg ? await vstChunkFromParams(pkg, f.params) : null
+      if (chunk) f.chunk = chunk
+    }
+    if (fx) {
+      const before = fx.fx.length
+      fx.fx = fx.fx.filter((f) => f.kind !== 'vst' || !f.cid || f.chunk)
+      skippedFx += before - fx.fx.length
+    }
     tracks.push({ name: t.name, volume: t.volume, pan: t.pan, mute: t.mute, solo: t.solo, invert: !!t.invert, depth: ancestors(p, t).length, clips, midi, ...(fx ? { fx: fx.fx } : {}) })
   }
   const project: XProject = {

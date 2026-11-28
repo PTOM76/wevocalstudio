@@ -1212,5 +1212,6 @@
   "dawExport.originalHelpDawproject": "Easy to edit in the other DAW, with no extra files. Speed and fades become DAWproject settings, and pitch plus pitch and volume envelopes become clip expression points (whether the other DAW reads them depends on the DAW). Block gain and formant changes are not kept",
   "dawExport.changedHelp": "Only blocks with pitch or other changes are rendered to new audio files. The sound matches, but those blocks cannot be re-pitched in the other DAW",
   "dawExport.allHelp": "All blocks are rendered to new audio files. The sound matches, but there are more and larger files",
-  "dawExport.run": "Export"
+  "dawExport.run": "Export",
+  "dawExport.fxHelpDawproject": "VST plugins (VST2 and VST3) are written with their state. Built-in effects are not written"
 }

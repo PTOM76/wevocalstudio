@@ -1212,5 +1212,6 @@
   "dawExport.originalHelpDawproject": "相手の DAW で編集しやすく、ファイルも増えない。速度とフェードは DAWproject の項目に、ピッチとピッチや音量のエンベロープはクリップの表現の点に書く（相手の DAW が読むかは DAW による）。ブロックの音量とフォルマントは反映されない",
   "dawExport.changedHelp": "ピッチなどを変えたブロックだけ、音を描画したファイルにする。音は同じになるが、そのブロックは相手の DAW でピッチを変え直せない",
   "dawExport.allHelp": "すべてのブロックを、音を描画したファイルにする。音は同じになるが、ファイルが多く大きくなる",
-  "dawExport.run": "書き出す"
+  "dawExport.run": "書き出す",
+  "dawExport.fxHelpDawproject": "VST（VST2、VST3）を状態ごと書く。組み込みの FX は書かない"
 }

@@ -3,7 +3,7 @@
 
 /** 中間の形の FX。vst はつまみの値（0〜1）をそのまま、reaeq は帯（周波数、dB、幅（オクターブ））で持つ */
 export type XFx =
-  | { kind: 'vst'; on: boolean; name: string; file: string; uniqueId: number; params: number[]; /** 状態の塊（塊でしか状態を持たない VST）。あれば params より優先して書く */ chunk?: Uint8Array; /** 入力のピンの数（サイドチェーンを持つ ReaComp は 4。省くと 2） */ inputs?: number; /** プリセットの名前（省くと Default） */ preset?: string }
+  | { kind: 'vst'; on: boolean; name: string; file: string; uniqueId: number; params: number[]; /** 状態の塊（塊でしか状態を持たない VST）。あれば params より優先して書く */ chunk?: Uint8Array; /** 入力のピンの数（サイドチェーンを持つ ReaComp は 4。省くと 2） */ inputs?: number; /** プリセットの名前（省くと Default） */ preset?: string; /** VST3 のクラスの id（32 桁の 16 進。DAWproject のみ書く） */ cid?: string; /** Studio のプラグインの id（書き出す前に状態を作るため） */ plugin?: string }
   | { kind: 'reaeq'; on: boolean; bands: { freq: number; gain: number; bw: number }[] }
   /** REAPER の JSFX（パスと、スライダーの値を単位のまま。1 番から並べ、無い番号は undefined） */
   | { kind: 'js'; on: boolean; path: string; sliders: (number | undefined)[] }

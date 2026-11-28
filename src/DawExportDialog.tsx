@@ -41,15 +41,12 @@ export default function DawExportDialog(p: { open: boolean; format: DawFormat; b
             {option('changed', 'settings.exchangeChanged', 'dawExport.changedHelp')}
             {option('all', 'settings.exchangeAll', 'dawExport.allHelp')}
           </RadioGroup>
-          {/* FX は REAPER だけ（DAWproject のプラグインの状態の書き方はまだ） */}
-          {p.format === 'rpp' && (
-            <Box sx={{ pt: 1 }}>
-              <FormControlLabel control={<Checkbox size="small" checked={fx} onChange={(e) => setFx(e.target.checked)} />} label={t('settings.exchangeFx')} />
-              <Typography variant="caption" component="div" sx={{ color: 'text.secondary', pl: 3.5, mt: -0.5 }}>
-                {t('settings.exchangeFxHelp')}
-              </Typography>
-            </Box>
-          )}
+          <Box sx={{ pt: 1 }}>
+            <FormControlLabel control={<Checkbox size="small" checked={fx} onChange={(e) => setFx(e.target.checked)} />} label={t('settings.exchangeFx')} />
+            <Typography variant="caption" component="div" sx={{ color: 'text.secondary', pl: 3.5, mt: -0.5 }}>
+              {t(p.format === 'rpp' ? 'settings.exchangeFxHelp' : 'dawExport.fxHelpDawproject')}
+            </Typography>
+          </Box>
         </Stack>
       </DialogContent>
       <DialogActions>

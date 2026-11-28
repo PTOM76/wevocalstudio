@@ -219,7 +219,11 @@ export function useProjectFile(o: {
       return { data: r.zip, note: r.skippedFx ? t('toast.exportedSkippedFx', { n: r.skippedFx }) : undefined }
     })
   /** DAWproject（.dawproject） */
-  const runDawprojectExport = (mode: ExchangeBlocks) => runDawExport(`${o.fileName}.dawproject`, 'dawproject', t('file.dawprojectType'), 'application/zip', '.dawproject', async (signal, onProgress) => ({ data: await exportDawproject(o.project, o.fileName, mode, onProgress, signal) }))
+  const runDawprojectExport = (mode: ExchangeBlocks, fx: boolean) =>
+    runDawExport(`${o.fileName}.dawproject`, 'dawproject', t('file.dawprojectType'), 'application/zip', '.dawproject', async (signal, onProgress) => {
+      const r = await exportDawproject(o.project, o.fileName, mode, fx, onProgress, signal)
+      return { data: r.zip, note: r.skippedFx ? t('toast.exportedSkippedFx', { n: r.skippedFx }) : undefined }
+    })
 
   /** 範囲（全トラックを混ぜたもの）を切り出して WAV にする。仕上げは書き出しと同じ */
   const renderRange = async (p: Project, r: Range) => encodeWav(await renderFinished(p, r))
@@ -305,7 +309,7 @@ export function useProjectFile(o: {
     saveAs: () => void save(true),
     exportWvsp: (selected: string[]) => void runWvspExport(selected),
     /** ほかの DAW へ書き出す（書き出しのダイアログから） */
-    exportDaw: (format: DawFormat, mode: ExchangeBlocks, fx: boolean) => void (format === 'rpp' ? runRppExport(mode, fx) : runDawprojectExport(mode)),
+    exportDaw: (format: DawFormat, mode: ExchangeBlocks, fx: boolean) => void (format === 'rpp' ? runRppExport(mode, fx) : runDawprojectExport(mode, fx)),
     saveOptimized: (opt: OptimizeOptions) => void runOptimizedSave(opt),
     runExport: (c: ExportSettings, win?: Window | null) => void runExport(c, win),
     runVideoExport: (v: VideoExportSettings, look: VideoLook, win?: Window | null) => void runVideoExport(v, look, win),
