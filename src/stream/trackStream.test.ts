@@ -40,6 +40,22 @@ describe('TrackStream', () => {
     expect(run(s, 0).L[10]).toBeCloseTo(0.25 * 0.5 * db6)
   })
 
+  it('子のトラックの音を、子のパンを掛けて親の声に混ぜ、親の音量と processor を通す', () => {
+    const s = new TrackStream(SR, clips)
+    s.setGain(0.5)
+    s.setSlots([slot()])
+    // 子: 自分の声（0.25）、音量 1、パン 0（真ん中は左右とも 1 倍。StereoPannerNode と同じ）
+    s.setKids([{ gain: 1, pan: 0, slots: [], voices: [voice], kids: [] }], 0, false)
+    const mid = run(s, 0)
+    expect(mid.L[10]).toBeCloseTo(0.25 * 0.5 * db6)
+    expect(mid.R[10]).toBeCloseTo(0.25 * 0.5 * db6)
+    // パン -1 は、右の音も左へ寄せる（左 0.5、右 0）
+    s.setKids([{ gain: 1, pan: -1, slots: [], voices: [voice], kids: [] }], 0, false)
+    const left = run(s, QUANTUM)
+    expect(left.L[10]).toBeCloseTo(0.5 * 0.5 * db6)
+    expect(left.R[10]).toBeCloseTo(0)
+  })
+
   it('オートメーション（曲の時刻の値）', () => {
     const s = new TrackStream(SR, clips)
     s.setVoices([voice], 0, false)

@@ -126,6 +126,14 @@ scope.onmessage = (e) => {
     }
     t.stream.setGain(m.gain)
     t.stream.setVoices(m.voices, now() / sampleRate, m.smooth)
+    try {
+      t.stream.setKids(m.kids ?? [], now() / sampleRate, m.smooth)
+    } catch (err) {
+      scope.postMessage({ type: 'failed', id: m.id, error: String(err) })
+      t.stream.dispose()
+      tracks.delete(m.id)
+      return
+    }
     if (m.rewind) rewind(t)
   } else if (m.type === 'remove') {
     tracks.get(m.id)?.stream.dispose()

@@ -146,7 +146,9 @@ export class Player {
     // 作れなかったトラックのほかは先読みにする（待っているトラックは無音から）
     const ok = chunked.filter((_, i) => primed[i]?.buf !== null)
     // 子孫の音は、親の FX を通した形で、親の作った音に入っている。子孫をノードでも鳴らすと二重になるので、ノードでは鳴らさない（memo/anticipate-parent.md）
-    this.graph.setAnticipated([...ok.flatMap((t) => subtree(p, t).map((x) => x.id)), ...(this.stream?.ids ?? [])])
+    // 先を走る方式のトラックも、子孫の音は Worker で親に混ぜているので、ノードでは鳴らさない
+    const streamTree = (this.stream?.ids ?? []).flatMap((id) => { const t = p.tracks.find((x) => x.id === id); return t ? subtree(p, t).map((x) => x.id) : [id] })
+    this.graph.setAnticipated([...ok.flatMap((t) => subtree(p, t).map((x) => x.id)), ...streamTree])
     this.graph.setStreamed(this.stream?.ids ?? [])
     this.automation = setInterval(() => {
       this.graph?.automate()
@@ -235,6 +237,9 @@ export class Player {
         host.remove(id)
         this.antInfo += ` / stream gave up ${id}`
         if (!this.graph || !this.project) return
+        // 子孫もノードで鳴らす側に戻す
+        const t = this.project.tracks.find((x) => x.id === id)
+        for (const x of t ? subtree(this.project, t) : []) this.graph.release(x.id, x.id === id)
         this.graph.release(id)
         this.graph.sync(this.project, true)
       }

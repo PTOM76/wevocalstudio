@@ -3,6 +3,7 @@ import { autoValueAt, clampParam, ProcessorRunner, QUANTUM, SMOOTH, setFrame } f
 import type { ParamDef } from 'wevocal-lib'
 import { mixInto, nextVoices, type ClipStore, type Live } from '../mixer/mixCore'
 import type { Voice } from '../mixer/types'
+import type { StreamKid } from './types'
 
 /** processor の列の 1 項目（メインスレッドが FX の項目から作って送る） */
 export interface StreamSlot {
@@ -59,6 +60,21 @@ export class TrackStream {
     this.live = nextVoices(this.live, voices, now, smooth)
   }
 
+  /** 子のトラック（親の声に混ぜてから、親の音量と FX を掛ける）。同じ並びの子は作り直さない */
+  private kids: { stream: TrackStream; pan: number; L: Float32Array; R: Float32Array }[] = []
+  setKids(specs: StreamKid[], now: number, smooth: boolean) {
+    while (this.kids.length > specs.length) this.kids.pop()!.stream.dispose()
+    specs.forEach((k, i) => {
+      if (!this.kids[i]) this.kids[i] = { stream: new TrackStream(this.sampleRate, this.clips, this.assets), pan: 0, L: new Float32Array(QUANTUM), R: new Float32Array(QUANTUM) }
+      const kid = this.kids[i]
+      kid.pan = k.pan
+      kid.stream.setSlots(k.slots)
+      kid.stream.setGain(k.gain)
+      kid.stream.setVoices(k.voices, now, smooth)
+      kid.stream.setKids(k.kids, now, smooth)
+    })
+  }
+
   /** 音量（線形。位相の反転は負の値） */
   setGain(g: number) {
     this.gain = g
@@ -107,6 +123,8 @@ export class TrackStream {
       setTimeout(() => port.close(), 0)
     }
     this.stages = []
+    for (const k of this.kids) k.stream.dispose()
+    this.kids = []
   }
 
   /** 曲のサンプル位置 frame からの 128 サンプルを作る（out は左右。上書きする） */
@@ -117,6 +135,19 @@ export class TrackStream {
     L.fill(0)
     R.fill(0)
     mixInto(this.live, this.clips, t, this.sampleRate, L, R, 0)
+    // 子のトラック（子の音量と FX を掛けた音に、StereoPannerNode と同じ式でパンを掛けて足す）
+    for (const k of this.kids) {
+      k.stream.render(frame, k.L, k.R)
+      const x = ((k.pan <= 0 ? k.pan + 1 : k.pan) * Math.PI) / 2
+      const gl = Math.cos(x)
+      const gr = Math.sin(x)
+      for (let i = 0; i < QUANTUM; i++) {
+        const l = k.L[i]
+        const r = k.R[i]
+        L[i] += k.pan <= 0 ? l + r * gl : l * gl
+        R[i] += k.pan <= 0 ? r * gr : r + l * gr
+      }
+    }
     // 音量（変わったら、ならす）
     let g = this.gainCur ?? this.gain
     for (let i = 0; i < QUANTUM; i++) {

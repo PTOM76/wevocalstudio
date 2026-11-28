@@ -2,6 +2,15 @@
 import type { Voice } from '../mixer/types'
 import type { StreamSlot } from './trackStream'
 
+/** 子のトラック（親の声に混ぜてから親の FX を掛ける）。音量、パン、FX、声、さらに子 */
+export interface StreamKid {
+  gain: number
+  pan: number
+  slots: StreamSlot[]
+  voices: Voice[]
+  kids: StreamKid[]
+}
+
 /** メイン → Worker */
 export type StreamMessage =
   | { type: 'init'; sampleRate: number }
@@ -13,7 +22,7 @@ export type StreamMessage =
    * トラックの今の値（初めてのときは、読むだけのノードへ送る port を付ける）。smooth は途中から始まる声をフェードインする、
    * rewind は作ってある先を捨てて作り直す（プラグインの状態だけが変わったときは作り直さない）。preroll は始める前に流す長さ（秒。余韻の長さ）
    */
-  | { type: 'track'; id: string; gain: number; slots: StreamSlot[]; voices: Voice[]; smooth: boolean; rewind: boolean; preroll: number; port?: MessagePort }
+  | { type: 'track'; id: string; gain: number; slots: StreamSlot[]; voices: Voice[]; kids?: StreamKid[]; smooth: boolean; rewind: boolean; preroll: number; port?: MessagePort }
   | { type: 'remove'; id: string }
   /** 作り始める。pos を受け取るまでは位置を進めない（再生が始まる時刻はあとで決まる） */
   | { type: 'play'; frame: number }

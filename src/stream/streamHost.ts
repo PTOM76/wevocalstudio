@@ -1,5 +1,5 @@
 // 先を走る方式のメインスレッドの側。Worker（stream.worker.ts）と、トラックごとの読むだけのノードを組み、プロジェクトの変更を送る（memo/anticipate-stream.md）
-import { migrateValues, type Clip } from 'wevocal-lib'
+import { migrateValues, type Clip, type FxSlot } from 'wevocal-lib'
 import { prerollOf } from '../anticipate'
 import { piecesFor } from '../dsp/pitch'
 import { clipId, voicesOf } from '../mixer/mixer'
@@ -8,7 +8,7 @@ import { volumeSteps } from '../engine/params'
 import { audible, dbToGain, descendants, liveSlots, midiBlocks, type Project, type Track } from '../project'
 import type { StreamSlot } from './trackStream'
 import { isHeavyWorkerFx, streamPrefix, workerFx } from './streamPrefix'
-import type { ReaderControl, ReaderEvent, StreamEvent, StreamMessage } from './types'
+import type { ReaderControl, ReaderEvent, StreamEvent, StreamKid, StreamMessage } from './types'
 import readerUrl from './stream.reader.worklet.ts?worker&url'
 
 /** 再生位置を Worker に知らせる間隔（ミリ秒） */
@@ -30,12 +30,24 @@ const loadReader = (ctx: BaseAudioContext) => {
   return p
 }
 
+type Sources = Map<string, { source: string; assets: Record<string, unknown> }>
+
 /** Worker で動かす FX の項目（先頭から streamPrefix 個）。外から足した processor か VST が 1 つもなければ null（組み込みの EQ だけならノードで十分） */
-function streamSlots(t: Track, sampleRate: number): { slots: StreamSlot[]; sources: Map<string, { source: string; assets: Record<string, unknown> }> } | null {
-  const slots: StreamSlot[] = []
-  const sources = new Map<string, { source: string; assets: Record<string, unknown> }>()
+function streamSlots(t: Track, sampleRate: number): { slots: StreamSlot[]; sources: Sources } | null {
   const head = liveSlots(t).slice(0, streamPrefix(t))
   if (!head.some(isHeavyWorkerFx)) return null
+  const sources: Sources = new Map()
+  return { slots: slotsOf(head, sampleRate, sources), sources }
+}
+
+/** 子のトラックを Worker で計算できるか（FX が全部 Worker で動かせて、音源、MIDI ブロック、センドが無い） */
+function kidOk(p: Project, t: Track) {
+  return !t.instrument && !t.sends?.length && !midiBlocks(p).some((b) => b.track === t.id) && streamPrefix(t) === liveSlots(t).length
+}
+
+/** FX の項目を、Worker で動かす形にする（大きいものは sources に集める） */
+function slotsOf(head: FxSlot[], sampleRate: number, sources: Sources): StreamSlot[] {
+  const slots: StreamSlot[] = []
   for (const s of head) {
     const fx = workerFx(s)!
     // 大きいもの（wasm、dll、写し）はプラグインごとに 1 回だけ送る。項目には小さい値だけを持たせる
@@ -51,12 +63,15 @@ function streamSlots(t: Track, sampleRate: number): { slots: StreamSlot[]; sourc
       options: { sampleRate, state: s.state, offline: true },
     })
   }
-  return { slots, sources }
+  return slots
 }
 
-/** 先を走る方式にできるトラックか（子のトラック、音源、MIDI ブロックがなく、FX の列の先頭が wevocal の processor か VST。後ろの組み込みの FX などはノードで掛ける） */
+/**
+ * 先を走る方式にできるトラックか（音源、MIDI ブロックがなく、FX の列の先頭が wevocal の processor か VST。後ろの組み込みの FX などはノードで掛ける）。
+ * 子のトラックがあれば、子も Worker で計算して親の声に混ぜる（子孫はどれも kidOk）
+ */
 export function streamable(p: Project, t: Track, sampleRate: number): boolean {
-  return !descendants(p, t).length && !t.instrument && !midiBlocks(p).some((b) => b.track === t.id) && !!streamSlots(t, sampleRate)?.slots.length
+  return descendants(p, t).every((d) => kidOk(p, d)) && !t.instrument && !midiBlocks(p).some((b) => b.track === t.id) && !!streamSlots(t, sampleRate)?.slots.length
 }
 
 /** トラックの声（曲の秒。起点 0）と、使う音のデータ */
@@ -220,6 +235,18 @@ export class StreamHost {
       }
     const used = new Map<number, Clip>()
     const voices = trackVoices(p, t, used)
+    // 子のトラック（入れ子）。FX の大きいものは親と同じく 1 回だけ送る
+    const kidSources: Sources = new Map()
+    const kidsOf = (parent: Track): StreamKid[] =>
+      p.tracks
+        .filter((k) => k.parent === parent.id)
+        .map((k) => ({ gain: audible(p, k) ? dbToGain(k.volume) * (k.invert ? -1 : 1) : 0, pan: k.pan, slots: slotsOf(liveSlots(k), this.ctx.sampleRate, kidSources), voices: trackVoices(p, k, used), kids: kidsOf(k) }))
+    const kids = kidsOf(t)
+    for (const [key, { source, assets }] of kidSources)
+      if (!w.sources.has(key) || (!w.sources.get(key) && assets.snap)) {
+        w.worker.postMessage({ type: 'source', key, source, assets } satisfies StreamMessage)
+        w.sources.set(key, !!assets.snap)
+      }
     for (const [cid, c] of used)
       if (!w.clips.has(cid)) {
         w.worker.postMessage({ type: 'clip', id: cid, sampleRate: c.sampleRate, channels: c.channels } satisfies StreamMessage)
@@ -227,7 +254,8 @@ export class StreamHost {
       }
     const gain = audible(p, t) ? dbToGain(t.volume) * (t.invert ? -1 : 1) : 0
     // プラグインの状態は別に比べる（プラグインが知らせた状態が戻ってきただけで、作ってある先を捨てないように）
-    const sig = JSON.stringify([gain, made.slots.map(({ options: _o, ...s }) => s), voices.map((v) => v.key + v.sig)])
+    const kidSig = (ks: StreamKid[]): unknown => ks.map((k) => [k.gain, k.pan, k.slots.map(({ options: _o, ...s }) => s), k.voices.map((v) => v.key + v.sig), kidSig(k.kids)])
+    const sig = JSON.stringify([gain, made.slots.map(({ options: _o, ...s }) => s), voices.map((v) => v.key + v.sig), kidSig(kids)])
     const states = JSON.stringify(made.slots.map((s) => s.options.state ?? null))
     let port: MessagePort | undefined
     if (!this.readers.has(id)) {
@@ -250,6 +278,6 @@ export class StreamHost {
     const last = this.sent.get(id)
     if (!port && last?.sig === sig && last.states === states) return
     this.sent.set(id, { sig, states })
-    w.worker.postMessage({ type: 'track', id, gain, slots: made.slots, voices, smooth, rewind: smooth && last?.sig !== sig, preroll: prerollOf(p, t), port } satisfies StreamMessage, port ? [port] : [])
+    w.worker.postMessage({ type: 'track', id, gain, slots: made.slots, voices, kids, smooth, rewind: smooth && last?.sig !== sig, preroll: prerollOf(p, t), port } satisfies StreamMessage, port ? [port] : [])
   }
 }
