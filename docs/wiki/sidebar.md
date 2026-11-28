@@ -12,6 +12,7 @@
 - [ボーカル抽出](extract.md)
 - [音声の作成と一音ずつの切り出し](create.md)
 - [操作履歴、タブ、書き出し](save.md)
+- [ほかの DAW とのやり取り](daw.md)
 - [設定](settings.md)
 - [キーボード操作](shortcuts.md)
 - [困ったとき](troubleshooting.md)

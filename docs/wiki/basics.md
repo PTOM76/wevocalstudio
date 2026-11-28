@@ -16,6 +16,7 @@
 | 読み込み | ブラウザが再生できる音声（WAV、MP3、AAC、FLAC、Ogg など）。AIFF は WeVocal Studio が直接読み込む |
 | プロジェクト | .wvst |
 | 書き出し | WAV、FLAC、MP3、AAC、Opus |
+| ほかの DAW | REAPER のプロジェクト（.rpp、.rpp と音声を入れた zip）、DAWproject（.dawproject）の読み込みと書き出し、WeVocalSynth のプロジェクト（.wvsp）への書き出し |
 
 ## 保存とデータ
 
