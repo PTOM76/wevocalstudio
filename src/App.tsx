@@ -1,156 +1,156 @@
 // 画面の組み立て。上のバー、時間軸、選んだ波形ブロックの欄、ステータスバー、ダイアログ
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Box } from '@mui/material'
-import { DockArea, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowFocusContext, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, DocumentTabs } from 'pevenmui'
-import StatusBar from './StatusBar'
-import { useAddonFolder } from './useAddonFolder'
-import AppHeader from './AppHeader'
-import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug'
-import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web'
-import { configurePlayback } from 'wevocal-lib'
-import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa'
-import { AUDIO_ACCEPT, readWvsp } from 'wevocal-lib'
-import { app } from './appConfig'
-import AppDialogs from './AppDialogs'
-import { DocContext } from './DocContext'
-import { useDialogs, type DialogId } from './useDialogs'
-import type { TimelineView } from './drawTimeline'
-import { useTransport } from './useTransport'
-import { useTouchHint } from './useTouchHint'
-import AnalysisDock from './AnalysisDock'
-import { useMidiFiles } from './useMidiFiles'
-import OverviewMinimap from './OverviewMinimap'
-import EmptyProject from './EmptyProject'
-import { useBlockJobs } from './useBlockJobs'
-import { viewToggles } from './viewToggles'
-import { useAppSetup } from './useAppSetup'
-import { buildOverview } from './overview'
-import { useT } from './i18n'
-import { setKeyOverrides } from './keymap'
-import { f0Options, type Settings } from './settings/settings'
-import LevelMeter from './LevelMeter'
-import { snapGrid } from './grid'
-import { emitNote } from './pianoRoll/noteBus'
-import { addWvspTracks, isMidiBlock, midiBlocks, type MidiBlock, newId, newProject, songEnd, visibleTracks } from './project'
-import { AHEAD } from './anticipate'
-import { isBlank } from './projectTabs'
-import { useProjectTabs } from './useProjectTabs'
-import Timeline, { useHeaderWidth } from './Timeline'
-import Toolbar from './Toolbar'
-import Transport from './Transport'
-import { useActions } from './useActions'
-import { useProject, type DropAt } from './useProject'
-import { isProjectLike, useProjectFile } from './useProjectFile'
-import { useTempoDetect } from './useTempoDetect'
-import { useExtract } from './useExtract'
-import BlockEditBar from './BlockEditBar'
-import { CONVERTER_ADDON } from 'wevocalconverter/host'
-import { useMidiInput } from './useMidiInput'
-import { useRecorder } from './useRecorder'
-import { useAutosave } from './useAutosave'
-import { useScreensetMenu } from './useScreensetMenu'
-import { usePlayerSync } from './usePlayerSync'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Box } from '@mui/material';
+import { DockArea, NoticeMessage, editBarEnabled, useAddonInstall, ContextMenu, SliderResetContext, TempoField, FULL_HEIGHT, WindowFocusContext, WindowModeContext, autoWindowMode, useConfirm, useMobileLayout, DocumentTabs } from 'pevenmui';
+import StatusBar from './StatusBar';
+import { useAddonFolder } from './useAddonFolder';
+import AppHeader from './AppHeader';
+import { DebugOverlay, reportAudioContext, countRender } from 'pevenmui/debug';
+import { isMobile, openNewWindow, openWindowCount, slot } from 'pevenmui/web';
+import { configurePlayback } from 'wevocal-lib';
+import { UpdatePrompt, checkForUpdate, promptUpdate } from 'pevenmui/pwa';
+import { AUDIO_ACCEPT, readWvsp } from 'wevocal-lib';
+import { app } from './appConfig';
+import AppDialogs from './AppDialogs';
+import { DocContext } from './DocContext';
+import { useDialogs, type DialogId } from './useDialogs';
+import type { TimelineView } from './drawTimeline';
+import { useTransport } from './useTransport';
+import { useTouchHint } from './useTouchHint';
+import AnalysisDock from './AnalysisDock';
+import { useMidiFiles } from './useMidiFiles';
+import OverviewMinimap from './OverviewMinimap';
+import EmptyProject from './EmptyProject';
+import { useBlockJobs } from './useBlockJobs';
+import { viewToggles } from './viewToggles';
+import { useAppSetup } from './useAppSetup';
+import { buildOverview } from './overview';
+import { useT } from './i18n';
+import { setKeyOverrides } from './keymap';
+import { f0Options, type Settings } from './settings/settings';
+import LevelMeter from './LevelMeter';
+import { snapGrid } from './grid';
+import { emitNote } from './pianoRoll/noteBus';
+import { addWvspTracks, isMidiBlock, midiBlocks, type MidiBlock, newId, newProject, songEnd, visibleTracks } from './project';
+import { AHEAD } from './anticipate';
+import { isBlank } from './projectTabs';
+import { useProjectTabs } from './useProjectTabs';
+import Timeline, { useHeaderWidth } from './Timeline';
+import Toolbar from './Toolbar';
+import Transport from './Transport';
+import { useActions } from './useActions';
+import { useProject, type DropAt } from './useProject';
+import { isProjectLike, useProjectFile } from './useProjectFile';
+import { useTempoDetect } from './useTempoDetect';
+import { useExtract } from './useExtract';
+import BlockEditBar from './BlockEditBar';
+import { CONVERTER_ADDON } from 'wevocalconverter/host';
+import { useMidiInput } from './useMidiInput';
+import { useRecorder } from './useRecorder';
+import { useAutosave } from './useAutosave';
+import { useScreensetMenu } from './useScreensetMenu';
+import { usePlayerSync } from './usePlayerSync';
 
 /** 今動いている版 */
-const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`
+const BUILD = `${__APP_VERSION__} (${__APP_COMMIT__})`;
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
+const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
 // デバッグ表示に AudioContext の状態を出す（iPhone で音が出ないときの調査。WeVocalSynth と同じ）
-configurePlayback({ report: reportAudioContext })
+configurePlayback({ report: reportAudioContext });
 
 export default function App(p: { settings: Settings; onSettingsChange: (patch: Partial<Settings>) => void }) {
-  countRender('App')
-  const t = useT()
-  const { confirm, dialog: confirmDialog } = useConfirm()
-  const screensets = useScreensetMenu({ showAnalysis: (on) => p.onSettingsChange({ showAnalysis: on }) })
+  countRender('App');
+  const t = useT();
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const screensets = useScreensetMenu({ showAnalysis: (on) => p.onSettingsChange({ showAnalysis: on }) });
   // キーの割り当ては設定から（描く前に入れる。メニューとツールチップの表記もこれを使う）
-  setKeyOverrides(p.settings.keymap, p.settings.ctrlS)
-  const mobile = useMobileLayout()
-  const { width: header, bar: headerBar, collapsed: headerCollapsed, toggle: toggleHeader } = useHeaderWidth()
-  useAppSetup(p.settings, p.onSettingsChange)
-  const addonFolderNotice = useAddonFolder(p.settings.addonFolder)
-  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit, defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0, defaultBpm: p.settings.defaultBpm, rangeStyle: p.settings.rangeStyle })
-  const { project, selected } = doc
-  const setSelected = doc.select
+  setKeyOverrides(p.settings.keymap, p.settings.ctrlS);
+  const mobile = useMobileLayout();
+  const { width: header, bar: headerBar, collapsed: headerCollapsed, toggle: toggleHeader } = useHeaderWidth();
+  useAppSetup(p.settings, p.onSettingsChange);
+  const addonFolderNotice = useAddonFolder(p.settings.addonFolder);
+  const doc = useProject({ algorithm: p.settings.algorithm, preserveFormant: p.settings.preserveFormant, historyLimit: p.settings.historyLimit, defaultFade: p.settings.defaultBlockFade ? p.settings.defaultBlockFadeMs / 1000 : 0, defaultBpm: p.settings.defaultBpm, rangeStyle: p.settings.rangeStyle });
+  const { project, selected } = doc;
+  const setSelected = doc.select;
   // 選んでいるトラック（複数。最後に選んだものが「選んでいるトラック」で、貼り付けや録音の先）
-  const { selectedTracks, selectTracks: setSelectedTracks, range, setRange } = doc
-  const [selectMode, setSelectMode] = useState(false)
-  const selectedTrack = selectedTracks[selectedTracks.length - 1] ?? null
-  const setSelectedTrack = (id: string | null) => setSelectedTracks(id ? [id] : [])
-  const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 })
-  const [timelineWidth, setTimelineWidth] = useState(0)
-  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
+  const { selectedTracks, selectTracks: setSelectedTracks, range, setRange } = doc;
+  const [selectMode, setSelectMode] = useState(false);
+  const selectedTrack = selectedTracks[selectedTracks.length - 1] ?? null;
+  const setSelectedTrack = (id: string | null) => setSelectedTracks(id ? [id] : []);
+  const [view, setView] = useState<TimelineView>({ scroll: 0, pps: 50 });
+  const [timelineWidth, setTimelineWidth] = useState(0);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
   // 何もない所の右クリックのメニュー（押した所の時刻とトラック）
   // エンベロープの道具（ペンなら、波形ブロックのどこを押しても点を足す。既定は選択で、線と点だけを触る）と、線や点の右クリックのメニュー
-  const [envPen, setEnvPen] = useState(false)
-  const [envAt, setEnvAt] = useState<{ block: string; index: number; x: number; y: number } | null>(null)
-  const envKind = p.settings.envelope ? 'volume' : p.settings.pitchEnvelope ? 'pitch' : null
-  const [emptyAt, setEmptyAt] = useState<{ kind: 'lane' | 'ruler'; time: number; track: string | null; x: number; y: number; marker?: string } | null>(null)
+  const [envPen, setEnvPen] = useState(false);
+  const [envAt, setEnvAt] = useState<{ block: string; index: number; x: number; y: number } | null>(null);
+  const envKind = p.settings.envelope ? 'volume' : p.settings.pitchEnvelope ? 'pitch' : null;
+  const [emptyAt, setEmptyAt] = useState<{ kind: 'lane' | 'ruler'; time: number; track: string | null; x: number; y: number; marker?: string } | null>(null);
   // 「ここに読み込む」の行き先（ファイルを選んだら使う）
-  const importTarget = useRef<DropAt | undefined>(undefined)
+  const importTarget = useRef<DropAt | undefined>(undefined);
   // プロパティを開いている波形ブロック（複数なら一括で変える）
-  const [fileName, setFileName] = useState('untitled')
+  const [fileName, setFileName] = useState('untitled');
   // ピッチや速度を変えた音ができるたびに増やす（解析の欄が作り直した音で解析し直す）
-  const [madeVersion, setMadeVersion] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [madeVersion, setMadeVersion] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   // 起動時の復元が終わるまでは自動保存しない（空のプロジェクトで前回の作業を上書きしないように）
-  const [restored, setRestored] = useState(false)
+  const [restored, setRestored] = useState(false);
   // ダイアログの開閉（PevenMUI の useDialogs。WeVocalSynth と同じ）。描画は AppDialogs.tsx
-  const dialogs = useDialogs()
+  const dialogs = useDialogs();
   // 非同期の処理の後で、ダイアログがまだ開いているかを見るための最新の状態
-  const dialogsRef = useRef(dialogs)
-  dialogsRef.current = dialogs
-  const audioInput = useRef<HTMLInputElement>(null)
+  const dialogsRef = useRef(dialogs);
+  dialogsRef.current = dialogs;
+  const audioInput = useRef<HTMLInputElement>(null);
   // 時間軸に出すのは見えているトラックだけ（たたんだ親の子孫は隠す）
-  const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project])
+  const shown = useMemo(() => ({ ...project, tracks: visibleTracks(project) }), [project]);
   const moveVisibleTrack = (id: string, visibleTo: number) => {
-    const visible = shown.tracks
-    const before = visible[visibleTo]
-    const fullTo = before ? project.tracks.findIndex((tr) => tr.id === before.id) : project.tracks.length
-    doc.reorderTrack(id, fullTo)
+    const visible = shown.tracks;
+    const before = visible[visibleTo];
+    const fullTo = before ? project.tracks.findIndex((tr) => tr.id === before.id) : project.tracks.length;
+    doc.reorderTrack(id, fullTo);
   }
   // ミニマップ（全体を縮めた波形。WeVocalSynth と同じ部品）
   // 作り直しは操作のあとに回す（ドラッグの途中で固まらないように）
-  const deferredProject = useDeferredValue(project)
+  const deferredProject = useDeferredValue(project);
   // 出していないときは作らない（全ブロックを走査するため）
-  const overview = useMemo(() => (p.settings.showMinimap ? buildOverview(deferredProject) : null), [deferredProject, p.settings.showMinimap])
-  const end = songEnd(project)
+  const overview = useMemo(() => (p.settings.showMinimap ? buildOverview(deferredProject) : null), [deferredProject, p.settings.showMinimap]);
+  const end = songEnd(project);
 
-  const fail = (e: unknown) => setError(String(e))
+  const fail = (e: unknown) => setError(String(e));
 
   // 再生と編集カーソル（src/useTransport.ts）。録音の側が play を使うので、録音を止める手段はあとから入れる
-  const recorderRef = useRef<{ recording: boolean; stop: () => void } | null>(null)
-  const { player, playing, setPlaying, cursor, setCursor, playPos, setPlayPos, repeat, setRepeat, livePos, startAt, play, playRoll, pause, stop, moveCursor, seek } = useTransport({ project, range, setRange, fail, anticipativeFx: p.settings.anticipativeFx, recorder: recorderRef })
+  const recorderRef = useRef<{ recording: boolean; stop: () => void } | null>(null);
+  const { player, playing, setPlaying, cursor, setCursor, playPos, setPlayPos, repeat, setRepeat, livePos, startAt, play, playRoll, pause, stop, moveCursor, seek } = useTransport({ project, range, setRange, fail, anticipativeFx: p.settings.anticipativeFx, recorder: recorderRef });
   // 音を作る処理の負荷（FX のダイアログに出す）
-  const [renderLoad, setRenderLoad] = useState<number | null>(null)
+  const [renderLoad, setRenderLoad] = useState<number | null>(null);
   useEffect(() => {
-    player.current.onLoad = setRenderLoad
+    player.current.onLoad = setRenderLoad;
     // プラグインが保存したい状態を、FX の項目に入れる（操作ではないので履歴には積まない）
-    player.current.onFxState = doc.setFxState
-  }, [doc.setFxState])
+    player.current.onFxState = doc.setFxState;
+  }, [doc.setFxState]);
   // 重いプラグインを先に計算して鳴らすか（設定）
-  player.current.anticipative = p.settings.anticipativeFx
-  player.current.chunkCacheMb = p.settings.anticipativeCacheMb
-  player.current.warmWhileStopped = p.settings.anticipateWhileStopped
-  player.current.anticipativeStream = p.settings.anticipateStream
-  player.current.gauge.label = p.settings.showAnticipateGauge ? (kind, track) => t(kind === 'warm' ? 'job.anticipateWarm' : 'job.anticipateAhead', { track, sec: AHEAD }) : null
-  player.current.offsetMs = p.settings.playbackOffsetMs
+  player.current.anticipative = p.settings.anticipativeFx;
+  player.current.chunkCacheMb = p.settings.anticipativeCacheMb;
+  player.current.warmWhileStopped = p.settings.anticipateWhileStopped;
+  player.current.anticipativeStream = p.settings.anticipateStream;
+  player.current.gauge.label = p.settings.showAnticipateGauge ? (kind, track) => t(kind === 'warm' ? 'job.anticipateWarm' : 'job.anticipateAhead', { track, sec: AHEAD }) : null;
+  player.current.offsetMs = p.settings.playbackOffsetMs;
 
   // 追加機能の導入の確かめ（動画の書き出し。PevenMUI）
-  const addonInstall = useAddonInstall()
+  const addonInstall = useAddonInstall();
   // ボーカル抽出と楽器ごとの分離（extractor の host.ts。WeVocalSynth と共通）
-  const { bake, freeze } = useBlockJobs({ doc, t, fail, notify: setNotice })
-  const extract = useExtract({ doc, settings: p.settings, fail, notify: setNotice })
+  const { bake, freeze } = useBlockJobs({ doc, t, fail, notify: setNotice });
+  const extract = useExtract({ doc, settings: p.settings, fail, notify: setNotice });
   // テンポの解析（候補、BPM の設定）
-  const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice, tempoChange: p.settings.tempoChange, onTempoChanges: (sections) => dialogs.open('tempoChange', sections) })
+  const tempo = useTempoDetect({ project, selected, updateTempo: doc.updateTempo, fail, notify: setNotice, tempoChange: p.settings.tempoChange, onTempoChanges: (sections) => dialogs.open('tempoChange', sections) });
 
   // 録音（再生位置から、ほかのトラックを鳴らしながら録る）
-  const { recording: audioRecording, midiRec, onMidiNote, live, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), position: () => player.current.position(), fail })
+  const { recording: audioRecording, midiRec, onMidiNote, live, toggleRecord, stopRecord } = useRecorder({ project, doc, selectedTrack, cursor, settings: p.settings, play, stopPlayer: () => (player.current.stop(), setPlaying(false)), position: () => player.current.position(), fail });
   // 音を録っているか、弾いた音符（MIDI）を録っているか
-  const recording = audioRecording ?? (midiRec ? true : null)
-  recorderRef.current = { recording: !!recording, stop: () => void stopRecord() }
+  const recording = audioRecording ?? (midiRec ? true : null);
+  recorderRef.current = { recording: !!recording, stop: () => void stopRecord() };
 
   // MIDI キーボード: 弾いた音を、録音待機（なければ選んでいる、音源のある最初の）トラックの音源で鳴らす。録音中は MIDI ブロックに録る
   useMidiInput({
@@ -160,27 +160,27 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     sustain: p.settings.midiSustain,
     onNote: (pitch, vel, on) => {
       // 開いているピアノロールのステップ入力にも渡す
-      emitNote(pitch, vel, on)
-      const tracks = project.tracks.filter((tr) => tr.instrument)
+      emitNote(pitch, vel, on);
+      const tracks = project.tracks.filter((tr) => tr.instrument);
       // ピアノロールを開いているときは、そのブロックのトラック（画面の鍵盤と同じ）
-      const rollId = dialogs.arg<string>('pianoRoll')
-      const rollTrack = rollId ? midiBlocks(project).find((b) => b.id === rollId)?.track : undefined
-      const target = tracks.find((tr) => tr.id === rollTrack) ?? tracks.find((tr) => tr.armed) ?? tracks.find((tr) => tr.id === selectedTrack) ?? tracks[0]
-      if (!target) return
-      void player.current.monitorNote(project, target.id, pitch, vel, on)
-      onMidiNote(pitch, vel, on)
+      const rollId = dialogs.arg<string>('pianoRoll');
+      const rollTrack = rollId ? midiBlocks(project).find((b) => b.id === rollId)?.track : undefined;
+      const target = tracks.find((tr) => tr.id === rollTrack) ?? tracks.find((tr) => tr.armed) ?? tracks.find((tr) => tr.id === selectedTrack) ?? tracks[0];
+      if (!target) return;
+      void player.current.monitorNote(project, target.id, pitch, vel, on);
+      onMidiNote(pitch, vel, on);
     },
     fail,
-  })
+  });
 
   // 何もない状態で最初に読み込んだ音からは、テンポを自動で解析する（設定）
   const load = (files: File[], at?: DropAt) => {
-    const first = project.blocks.length === 0
+    const first = project.blocks.length === 0;
     return doc
       .addFiles(files, at)
       .then((added) => (first && p.settings.autoTempo && added[0] ? tempo.detectClip(added[0].clip) : undefined))
-      .catch(fail)
-  }
+      .catch(fail);
+  };
 
   const files = useProjectFile({
     t,
@@ -201,13 +201,12 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     onMissingPlugins: (ids) => dialogs.open('missingPlugins', ids),
     onMissingAudio: () => dialogs.open('missingAudio'),
     onExported: () => dialogs.close('export'),
-  })
+  });
 
-
-  const tabs = useProjectTabs({ store: doc.store, files, name: fileName, setName: setFileName, cursor, setCursor, view, setView, stop, dirty: files.dirty })
+  const tabs = useProjectTabs({ store: doc.store, files, name: fileName, setName: setFileName, cursor, setCursor, view, setView, stop, dirty: files.dirty });
   const closeTab = (id: string) =>
-    void (tabs.dirtyOf(id) ? confirm({ message: t('confirm.discard'), okLabel: t('confirm.discardOk'), danger: true }) : Promise.resolve(true)).then((ok) => ok && tabs.close(id, () => newProject(p.settings.defaultBpm)))
-  const midiFiles = useMidiFiles({ project, fileName, t, notify: setNotice, fail, onPending: (m) => dialogs.open('midiImport', m) })
+    void (tabs.dirtyOf(id) ? confirm({ message: t('confirm.discard'), okLabel: t('confirm.discardOk'), danger: true }) : Promise.resolve(true)).then((ok) => ok && tabs.close(id, () => newProject(p.settings.defaultBpm)));
+  const midiFiles = useMidiFiles({ project, fileName, t, notify: setNotice, fail, onPending: (m) => dialogs.open('midiImport', m) });
   const { menus, blockMenu, emptyMenu, envelopeMenu, commands } = useActions({
     envKind,
     envPen,
@@ -233,13 +232,13 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     newProject: () => (isBlank(project, files.dirty) ? tabs.replaceActive(newProject(p.settings.defaultBpm), 'untitled', null, 'history.new') : tabs.add(newProject(p.settings.defaultBpm), 'untitled')),
     fit: (from, to) => {
       // 両端に少し余白を残す
-      const len = Math.max(0.1, to - from)
-      const pps = Math.min(2000, Math.max(2, (timelineWidth * 0.9) / len))
-      setView({ pps, scroll: Math.max(0, from - (len * 0.05)) })
+      const len = Math.max(0.1, to - from);
+      const pps = Math.min(2000, Math.max(2, (timelineWidth * 0.9) / len));
+      setView({ pps, scroll: Math.max(0, from - (len * 0.05)) });
     },
     playAt: (at) => {
-      setCursor(at)
-      startAt(at)
+      setCursor(at);
+      startAt(at);
     },
     end,
     openDialog: (id, arg) => dialogs.open(id, arg),
@@ -251,11 +250,11 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     saveOptimized: () => dialogs.open('optimize', selected),
     exportVideo: () =>
       void (async () => {
-        if (!(await addonInstall.ensure(CONVERTER_ADDON))) return
+        if (!(await addonInstall.ensure(CONVERTER_ADDON))) return;
         // 全体のミックスは時間がかかるので、無音の仮の音で先に開き、できたら差し替える
-        dialogs.open('video', { sampleRate: 48000, channels: [new Float32Array(48000)] })
-        const clip = await files.renderPreview()
-        if (dialogsRef.current.isOpen('video')) dialogs.open('video', clip)
+        dialogs.open('video', { sampleRate: 48000, channels: [new Float32Array(48000)] });
+        const clip = await files.renderPreview();
+        if (dialogsRef.current.isOpen('video')) dialogs.open('video', clip);
       })().catch(fail),
     bake: (ids) => void bake(ids),
     extract: { vocals: (id) => void extract.splitVocals(id), lead: (id) => void extract.splitLead(id), instruments: (id) => void extract.splitInstruments(id), voices: (id, by) => void extract.splitVoices(id, by) },
@@ -268,13 +267,13 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     openProperties: (id: string) => dialogs.open('block', selected.includes(id) ? selected : [id]),
     openFile: files.picker.open,
     importFiles: () => {
-      importTarget.current = undefined
-      audioInput.current?.click()
+      importTarget.current = undefined;
+      audioInput.current?.click();
     },
     ...midiFiles,
     importAt: (time, track) => {
-      importTarget.current = track ? { track, start: time } : undefined
-      audioInput.current?.click()
+      importTarget.current = track ? { track, start: time } : undefined;
+      audioInput.current?.click();
     },
     save: files.save,
     saveAs: files.saveAs,
@@ -291,24 +290,24 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       // 新しい版があれば右下の通知から更新できる。ここでは結果だけを知らせる（WeVocalSynth と同じ）
       checkUpdate: () =>
         void checkForUpdate().then((r) => {
-          if (r.kind === 'found') return promptUpdate(r.build)
-          if (r.kind === 'failed') return fail(t('toast.updateFailed'))
-          setNotice(t(r.kind === 'latest' ? 'toast.updateLatest' : 'toast.updateUnsupported'))
+          if (r.kind === 'found') return promptUpdate(r.build);
+          if (r.kind === 'failed') return fail(t('toast.updateFailed'));
+          setNotice(t(r.kind === 'latest' ? 'toast.updateLatest' : 'toast.updateUnsupported'));
         }),
       licenses: () => dialogs.open('licenses'), about: () => dialogs.open('about') },
   })
 
   // 起動時の復元と自動保存（WeVocalSynth と同じ）
-  useAutosave({ project, fileName, autoRestore: p.settings.autoRestore && slot !== null, tabs, fail, notify: setNotice, onMissingPlugins: (ids) => dialogs.open('missingPlugins', ids), onRestored: () => setRestored(true), restored })
+  useAutosave({ project, fileName, autoRestore: p.settings.autoRestore && slot !== null, tabs, fail, notify: setNotice, onMissingPlugins: (ids) => dialogs.open('missingPlugins', ids), onRestored: () => setRestored(true), restored });
   // 再生中の同期（範囲の終わりで止める、変更の反映、ピッチを変えた音の準備と進み具合）
-  usePlayerSync({ player: player.current, project, cursor, playing, range, repeat, end, setPlayPos, setPlaying, fail, onMade: () => setMadeVersion((v) => v + 1) })
+  usePlayerSync({ player: player.current, project, cursor, playing, range, repeat, end, setPlayPos, setPlaying, fail, onMade: () => setMadeVersion((v) => v + 1) });
 
   // 波形ブロックか範囲を選んでいるとき、編集のボタンの列（設定で、スマホとタブレットだけか、すべてか、出さないかを選ぶ）。パソコンはツールバーの下、スマホは波形マップの下
-  const touchLike = mobile || isMobile()
-  const editBarOn = editBarEnabled(p.settings.editBar, touchLike)
-  const hasBlocks = project.blocks.length > 0
-  useTouchHint(touchLike, hasBlocks, t, setNotice)
-  const editBar = editBarOn && (selected.length > 0 || range) ? <BlockEditBar commands={commands} mode={selected.length > 0 ? (selected.every((id) => midiBlocks(project).some((b) => b.id === id)) ? 'midi' : 'block') : 'range'} top={!touchLike} /> : null
+  const touchLike = mobile || isMobile();
+  const editBarOn = editBarEnabled(p.settings.editBar, touchLike);
+  const hasBlocks = project.blocks.length > 0;
+  useTouchHint(touchLike, hasBlocks, t, setNotice);
+  const editBar = editBarOn && (selected.length > 0 || range) ? <BlockEditBar commands={commands} mode={selected.length > 0 ? (selected.every((id) => midiBlocks(project).some((b) => b.id === id)) ? 'midi' : 'block') : 'range'} top={!touchLike} /> : null;
 
   return (
     // 設定などのダイアログを、PC では別のウィンドウに出す（WeVocalSynth と同じ）
@@ -321,8 +320,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
       sx={{ height: FULL_HEIGHT, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: 'background.default' }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
-        e.preventDefault()
-        files.openFiles(Array.from(e.dataTransfer.files))
+        e.preventDefault();
+        files.openFiles(Array.from(e.dataTransfer.files));
       }}
     >
       <AppHeader menus={menus} canUndo={doc.canUndo} canRedo={doc.canRedo} onUndo={doc.undo} onRedo={doc.redo} projectName={fileName} dirty={files.dirty} />
@@ -364,9 +363,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         selectionCount={selectedTracks.length || selected.length}
         showSelectMode={touchLike}
         onToggleSelectMode={() => {
-          if (!selectMode && selected.length > 0) setSelectedTracks([])
-          setSelectMode(!selectMode)
-          if (p.settings.rangeStyle === 'classic') setRange(null)
+          if (!selectMode && selected.length > 0) setSelectedTracks([]);
+          setSelectMode(!selectMode);
+          if (p.settings.rangeStyle === 'classic') setRange(null);
         }}
       />
       {!touchLike && editBar}
@@ -383,9 +382,9 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         project={shown}
         tree={project}
         onTrackOp={(op, id) => {
-          if (op === 'addSubtrack') setSelectedTrack(doc.addSubtrack(id))
-          else if (op === 'indent') doc.indentTrack(id)
-          else doc.outdentTrack(id)
+          if (op === 'addSubtrack') setSelectedTrack(doc.addSubtrack(id));
+          else if (op === 'indent') doc.indentTrack(id);
+          else doc.outdentTrack(id);
         }}
         onMoveTrack={moveVisibleTrack}
         cursor={cursor}
@@ -408,8 +407,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onBlockMenu={(_, x, y) => setMenuAt({ x, y })}
         onEmptyMenu={(kind, time, track, x, y, marker) => setEmptyAt({ kind, time, track, x, y, marker })}
         onCopyBlocks={(blocks) => {
-          void doc.insertBlocks(blocks.filter((b): b is Exclude<typeof b, MidiBlock> => !isMidiBlock(b)))
-          for (const b of blocks.filter(isMidiBlock)) doc.addMidiBlock({ ...b, id: newId() })
+          void doc.insertBlocks(blocks.filter((b): b is Exclude<typeof b, MidiBlock> => !isMidiBlock(b)));
+          for (const b of blocks.filter(isMidiBlock)) doc.addMidiBlock({ ...b, id: newId() });
         }}
         onMarkerEdit={(id) => dialogs.open('marker', id)}
         onProperties={(id) => dialogs.open('block', selected.includes(id) ? selected : [id])}
@@ -420,8 +419,8 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
         onTrackProperties={(ids) => dialogs.open('trackProperties', ids)}
         onSends={(id) => dialogs.open('sends', id)}
         onRemoveTrack={(id) => {
-          doc.removeTrack(id)
-          setSelected([])
+          doc.removeTrack(id);
+          setSelected([]);
         }}
         view={view}
         snap={p.settings.snap}
@@ -518,5 +517,5 @@ export default function App(p: { settings: Settings; onSettingsChange: (patch: P
     </SliderResetContext.Provider>
     </WindowFocusContext.Provider>
     </WindowModeContext.Provider>
-  )
+  );
 }
