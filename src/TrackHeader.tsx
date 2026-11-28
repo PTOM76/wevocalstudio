@@ -1,5 +1,5 @@
 // トラックとマスタートラックの左の欄（名前、録音待機、ミュート、ソロ、音量、パン、位相の反転、EQ）。名前はダブルクリックで変える
-import { useRef, useState, type ReactNode } from 'react'
+import { memo, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Box, ButtonBase, InputBase, Tooltip, Typography } from '@mui/material'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSnowflake } from '@fortawesome/free-solid-svg-icons'
@@ -70,7 +70,7 @@ const fxLabel = (fx: FxSlot[] | undefined) => {
   return n ? `FX ${n}` : 'FX'
 }
 
-export default function TrackHeader(p: {
+type TrackHeaderProps = {
   track: Track
   height: number
   selected: boolean
@@ -101,7 +101,26 @@ export default function TrackHeader(p: {
   onResizeStart: (e: React.PointerEvent) => void
   /** ドラッグ中（半透明で表示） */
   dragging?: boolean
-}) {
+}
+
+/** 関数の props（呼ばれたときに最新のものを呼ぶ固定の関数にして渡す） */
+const CALLBACKS = ['onSelect', 'onChange', 'onEndMerge', 'onFx', 'onDuplicate', 'onFreeze', 'onSends', 'onProperties', 'onRemove', 'onAddSubtrack', 'onIndent', 'onOutdent', 'onMoveUp', 'onMoveDown', 'onReorderStart', 'onResizeStart'] as const
+
+/**
+ * トラックの欄。編集のたびにすべてのトラックの欄を描き直すと、トラックが多いときに重いので、トラックの中身や高さ、選択が変わったときだけ描き直す。
+ * 呼ぶ側は毎回新しい関数を渡すため、関数は最新のものを呼ぶ固定の関数に置き換える
+ */
+export default function TrackHeader(p: TrackHeaderProps) {
+  const latest = useRef(p)
+  latest.current = p
+  const stable = useMemo(() => {
+    const o = Object.fromEntries(CALLBACKS.map((k) => [k, (...a: unknown[]) => (latest.current[k] as (...x: unknown[]) => void)(...a)]))
+    return { ...o, meter: () => latest.current.meter?.() ?? null } as Pick<TrackHeaderProps, (typeof CALLBACKS)[number]> & { meter: NonNullable<TrackHeaderProps['meter']> }
+  }, [])
+  return <TrackHeaderBody {...p} {...stable} meter={p.meter ? stable.meter : undefined} />
+}
+
+const TrackHeaderBody = memo(function TrackHeaderBody(p: TrackHeaderProps) {
   countRender('TrackHeader')
   const t = useT()
   const { track } = p
@@ -259,7 +278,7 @@ export default function TrackHeader(p: {
       />
     </Box>
   )
-}
+})
 
 /** マスタートラックの欄（トラックの一番上。トラックと同じ形で波形ブロックは置かない） */
 export function MasterHeader(p: { master: Master; height: number; onFx: () => void; onChange: (patch: Partial<Master>, merge?: string) => void; onEndMerge: () => void; meter?: () => readonly AnalyserNode[] | null }) {
