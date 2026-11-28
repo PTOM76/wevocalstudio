@@ -1030,7 +1030,7 @@
   "plugins.updated": "更新しました",
   "plugins.upToDate": "最新です",
   "plugins.noSource": "取得元が分からないため更新できません",
-  "plugins.vst.pick": "VST（DLL）を選ぶ",
+  "plugins.vst.pick": "VST（.dll、.vst3）を選ぶ",
   "plugins.vst.notice": "試験的な機能です。処理が重いプラグインは、再生中に自動で素通しになります",
   "plugins.vst.warning": "Windows の VST をエミュレーターで動かします。読み込めても、無音になる、音が正しくないなど、動作しないことがあります",
   "plugins.vst.load": "重さの目安: 再生の時間の約 {n}%（1 つ分）",

@@ -191,7 +191,9 @@ export function trackFx(t: Project['tracks'][number], bpm = 120, prefer: ReaperF
   for (const s of t.fx ?? []) {
     const plugin = findPlugin(s.plugin)
     const m = plugin?.manifest
-    if (m?.format === 'vst') {
+    // VST3 は REAPER の書き方（状態の形）が VST2 と違い、まだ書けない
+    if (m?.format === 'vst' && /\.vst3$/i.test(m.vst?.file ?? '')) skipped++
+    else if (m?.format === 'vst') {
       const values = migrateValues(m, s.values)
       const name = String(plugin?.lang?.en_us?.name ?? plugin?.lang?.ja_jp?.name ?? m.id)
       // 状態の塊（ほかの DAW から読んだもの）があれば、塊で書く

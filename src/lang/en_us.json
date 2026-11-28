@@ -1030,7 +1030,7 @@
   "plugins.updated": "Updated",
   "plugins.upToDate": "Up to date",
   "plugins.noSource": "Cannot update because the source is unknown",
-  "plugins.vst.pick": "Choose a VST (DLL)",
+  "plugins.vst.pick": "Choose a VST (.dll, .vst3)",
   "plugins.vst.notice": "Experimental. Heavy plugins are bypassed automatically during playback",
   "plugins.vst.warning": "The Windows VST runs in an emulator. Even if it loads, it may not work, for example it may be silent or sound wrong",
   "plugins.vst.load": "Estimated load: about {n}% of playback time (per instance)",
