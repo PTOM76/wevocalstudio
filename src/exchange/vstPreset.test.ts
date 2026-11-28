@@ -1,6 +1,7 @@
 // VST のプリセットのファイル（.fxp、.vstpreset）の形
 import { describe, expect, it } from 'vitest'
-import { fxp, vstPreset } from './vstPreset'
+import { fxp, readFxp, readVstPreset, vstPreset } from './vstPreset'
+import { readDawproject } from './dawprojectRead'
 import { writeDawproject } from './dawproject'
 import type { XProject } from './exchange'
 
@@ -62,5 +63,22 @@ describe('vstPreset', () => {
     expect(xml).toContain(`<Vst3Plugin deviceID="${'AB'.repeat(16)}" deviceName="Three"`)
     expect(xml).toContain('<State path="plugins/2.vstpreset"/>')
     expect([...p.files.keys()]).toEqual(['plugins/1.fxp', 'plugins/2.vstpreset'])
+  })
+
+  it('書いた .fxp と .vstpreset を読み戻すと同じ値になる', () => {
+    expect(readFxp(fxp({ kind: 'vst', on: true, name: 'T', file: 't.dll', uniqueId: 7, params: [0.25, 0.75] }))).toEqual({ uniqueId: 7, params: [0.25, 0.75] })
+    expect([...readFxp(fxp({ kind: 'vst', on: true, name: 'T', file: 't.dll', uniqueId: 7, params: [], chunk: Uint8Array.of(1, 2) }))!.chunk!]).toEqual([1, 2])
+    const state = Uint8Array.of(2, 0, 0, 0, 0xaa, 0xbb, 1, 0, 0, 0, 0xcc)
+    const r = readVstPreset(vstPreset('ab'.repeat(16), state))!
+    expect([r.cid, [...r.state]]).toEqual(['AB'.repeat(16), [...state]])
+  })
+
+  it('DAWproject の Devices から VST を読む（状態はファイルのパス）', () => {
+    const p = { bpm: 120, beatsPerBar: 4, markers: [], tempos: [], files: new Map(), tracks: [{ name: 'A', volume: 0, pan: 0, mute: false, solo: false, invert: false, depth: 0, clips: [], midi: [], fx: [{ kind: 'vst', on: true, name: 'Two', file: 'two.dll', uniqueId: 5, params: [0.1] }, { kind: 'vst', on: false, name: 'Three', file: 'three.vst3', uniqueId: 6, params: [], cid: 'AB'.repeat(16), chunk: Uint8Array.of(0, 0, 0, 0, 0, 0, 0, 0) }] }] } as unknown as XProject
+    const back = readDawproject(writeDawproject(p, { name: 'x', version: '1' })).project.tracks[0].fx
+    expect(back).toEqual([
+      { kind: 'vst', on: true, name: 'Two', file: '', uniqueId: 5, params: [], statePath: 'plugins/1.fxp' },
+      { kind: 'vst', on: false, name: 'Three', file: '', uniqueId: 0, params: [], cid: 'AB'.repeat(16), statePath: 'plugins/2.vstpreset' },
+    ])
   })
 })

@@ -5,10 +5,31 @@ import type { Project } from '../project'
 import { readDawproject } from './dawprojectRead'
 import { baseName, fromExchange } from './fromExchange'
 import { readRpp } from './rppRead'
+import { readFxp, readVstPreset } from './vstPreset'
 import type { XProject } from './exchange'
 import type { ReaperPitchMap } from './reaperPitch'
 
 const ext = (name: string) => name.toLowerCase().match(/\.[^.]+$/)?.[0] ?? ''
+/** DAWproject の VST の状態（zip の中の .fxp、.vstpreset）を読み、つまみの値か状態の塊にする。読めないファイルは既定の値のまま */
+async function readPresets(x: XProject, entries: Map<string, Blob>) {
+  for (const t of x.tracks)
+    for (const f of t.fx ?? []) {
+      if (f.kind !== 'vst' || !f.statePath) continue
+      const blob = entries.get(f.statePath.replace(/\\/g, '/'))
+      if (!blob) continue
+      const b = new Uint8Array(await blob.arrayBuffer())
+      if (f.cid) {
+        const p = readVstPreset(b)
+        if (p) f.chunk = p.state
+      } else {
+        const p = readFxp(b)
+        if (p?.chunk) f.chunk = p.chunk
+        if (p?.params) f.params = p.params
+        if (p && !f.uniqueId) f.uniqueId = p.uniqueId
+      }
+    }
+}
+
 /** ほかの DAW のプロジェクトとして開くファイルか（zip は中を見るまで分からないので、開いてみる） */
 export const isDawFile = (f: File) => ['.rpp', '.dawproject', '.zip'].includes(ext(f.name))
 export const DAW_ACCEPT = '.rpp,.dawproject,.zip'
@@ -41,6 +62,7 @@ export async function importDaw(files: File[], pitchMap?: ReaperPitchMap): Promi
       const r = readDawproject(await xml.text())
       x = r.project
       skipped = r.notes.skippedClips
+      await readPresets(x, entries)
     } else if (rpp) {
       const r = readRpp(await entries.get(rpp)!.text())
       x = r.project

@@ -66,6 +66,16 @@ export function readDawproject(xml: string): { project: XProject; notes: { skipp
         clips: [],
         midi: [],
       }
+      // FX の列（VST だけ。状態はプリセットのファイルで、中身は読み込みの側で読む）
+      const fx: NonNullable<XTrack['fx']> = []
+      for (const d of child(ch, 'Devices')?.children ?? []) {
+        if (d.tag !== 'Vst2Plugin' && d.tag !== 'Vst3Plugin') continue
+        const vst3 = d.tag === 'Vst3Plugin'
+        const id = d.attrs.deviceID ?? ''
+        const on = child(d, 'Enabled')?.attrs.value !== 'false'
+        fx.push({ kind: 'vst', on, name: d.attrs.deviceName ?? '', file: '', uniqueId: vst3 ? 0 : Number(id) >>> 0, params: [], ...(vst3 ? { cid: id.toUpperCase() } : {}), ...(child(d, 'State')?.attrs.path ? { statePath: child(d, 'State')!.attrs.path } : {}) })
+      }
+      if (fx.length) x.fx = fx
       tracks.push(x)
       if (t.attrs.id) byId.set(t.attrs.id, x)
       walk(t, depth + 1)

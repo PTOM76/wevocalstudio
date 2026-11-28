@@ -57,6 +57,7 @@ export function vstToSlot(fx: Extract<XFx, { kind: 'vst' }>, installed: readonly
   const lower = (s: string) => s.toLowerCase()
   const nameOf = (p: FxPlugin) => String(p.lang?.en_us?.name ?? p.lang?.ja_jp?.name ?? '')
   const hit =
+    (fx.cid && vsts.find((p) => p.manifest.vst?.cid?.toUpperCase() === fx.cid)) ||
     (fx.uniqueId && vsts.find((p) => p.manifest.vst?.uniqueId === fx.uniqueId)) ||
     vsts.find((p) => p.manifest.vst && lower(p.manifest.vst.file) === lower(fx.file)) ||
     vsts.find((p) => lower(nameOf(p)) === lower(fx.name))
