@@ -1205,6 +1205,8 @@
   "missingAudio.loading": "Loading…",
   "missingAudio.folder": "Search a Folder…",
   "missingAudio.found": "Assigned {n} of {total}",
+  "missingAudio.searching": "Searching the folder…",
+  "missingAudio.progress": "Loading ({done} / {total}) {name}",
 
   "dawExport.titleRpp": "Export as REAPER Project",
   "dawExport.titleDawproject": "Export as DAWproject",

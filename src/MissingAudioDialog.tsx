@@ -1,5 +1,5 @@
 // ほかの DAW から読み込んだとき見つからなかった音声（Source の missing）に、ファイルを選んで割り当てる。フォルダーを選ぶと、中からパスと名前でまとめて探す。割り当てるまでは無音の仮の音
-import { Box, Button, DialogActions, DialogContent, Typography } from '@mui/material'
+import { Box, Button, DialogActions, DialogContent, LinearProgress, Typography } from '@mui/material'
 import { useRef, useState } from 'react'
 import { WindowDialog, pevenFont } from 'pevenmui'
 import { pickFolderFiles } from 'pevenmui/web'
@@ -19,6 +19,8 @@ export default function MissingAudioDialog(p: { open: boolean; project: Project;
   const input = useRef<HTMLInputElement>(null)
   const [target, setTarget] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  /** フォルダーから探している間の進み具合（探している間は total が 0、読み込み中は読み込んだ数と見つかった数と名前） */
+  const [progress, setProgress] = useState<{ done: number; total: number; name: string } | null>(null)
   const missing = p.project.sources.filter((s) => s.missing)
   const pick = (id: string) => {
     setTarget(id)
@@ -38,6 +40,7 @@ export default function MissingAudioDialog(p: { open: boolean; project: Project;
   /** フォルダーを選び、見つからない音声をまとめて探す（.rpp のあるフォルダーを選ぶ想定。サブフォルダーも見る） */
   const fromFolder = async (win: Window) => {
     setBusy('folder')
+    setProgress({ done: 0, total: 0, name: '' })
     try {
       // 押した窓で開く（ダイアログを別の窓に出しているとき、元の窓ではクリックとみなされず開けない）
       const files = await pickFolderFiles(isAudioName, win)
@@ -47,16 +50,22 @@ export default function MissingAudioDialog(p: { open: boolean; project: Project;
         files,
       )
       const list: AudioAssignment[] = []
-      for (const s of missing) {
-        const file = found.get(s.missing!)
-        if (file) list.push({ source: s.id, clip: await decodeFile(file), name: file.name })
+      const hits = missing.filter((s) => found.has(s.missing!))
+      for (const s of hits) {
+        const file = found.get(s.missing!)!
+        setProgress({ done: list.length, total: hits.length, name: file.name })
+        list.push({ source: s.id, clip: await decodeFile(file), name: file.name })
       }
+      setProgress({ done: list.length, total: hits.length, name: '' })
+      // 進み具合を描いてから割り当てる（割り当ては波形の計算などで少し止まる）
+      await new Promise((r) => setTimeout(r, 30))
       if (list.length) p.onAssign(list)
       p.onNotify(t('missingAudio.found', { n: list.length, total: missing.length }))
     } catch (e) {
       p.onError(e)
     } finally {
       setBusy(null)
+      setProgress(null)
     }
   }
   return (
@@ -70,6 +79,14 @@ export default function MissingAudioDialog(p: { open: boolean; project: Project;
               <Button size="small" disabled={busy !== null} onClick={(e) => void fromFolder(e.currentTarget.ownerDocument.defaultView ?? window)}>
                 {busy === 'folder' ? t('missingAudio.loading') : t('missingAudio.folder')}
               </Button>
+            </Box>
+          )}
+          {progress && (
+            <Box>
+              <LinearProgress variant={progress.total ? 'determinate' : 'indeterminate'} value={progress.total ? (progress.done / progress.total) * 100 : 0} />
+              <Typography sx={{ fontSize: pevenFont('sm'), color: 'text.secondary', mt: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {progress.total ? t('missingAudio.progress', { done: progress.done, total: progress.total, name: progress.name }) : t('missingAudio.searching')}
+              </Typography>
             </Box>
           )}
           {missing.map((s) => (
