@@ -111,8 +111,10 @@ export class Graph {
 
   /** そのトラックで、今ノードとして動かす FX の列（先に作った音で鳴らすトラックは空。先を走る方式のトラックは、Worker で掛けなかった後ろの分） */
   private liveFx(t: Track) {
-    if (this.streamed.has(t.id)) return liveSlots(t).slice(streamPrefix(t))
-    return this.anticipated.has(t.id) ? [] : liveSlots(t)
+    const slots = this.streamed.has(t.id) ? liveSlots(t).slice(streamPrefix(t)) : this.anticipated.has(t.id) ? [] : liveSlots(t)
+    // ミュートやソロで聞こえないトラック（センドも無いもの）は FX を止める（無音を処理し続けないように。トラックが多いときの負荷）
+    if (this.proj && !audible(this.proj, t) && !(t.sends ?? []).some((x) => x.db > SEND_MIN)) return slots.map((x) => (x.on ? { ...x, on: false } : x))
+    return slots
   }
 
   /** 先を走る方式で鳴らすトラックを決める（setAnticipated にも入れる。sync の前に呼ぶ） */
