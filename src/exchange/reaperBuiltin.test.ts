@@ -47,8 +47,8 @@ describe('JSFX への変換', () => {
     expect(builtinToReaper(slot('wevocal.filter', { type: 2, freq: 1000 }), { type: 2, freq: 1000 }, 120, 'js')).toBeNull()
   })
 
-  it('リバーブは変換先が無い。EQ は優先によらず ReaEQ', () => {
-    expect(builtinToReaper(slot('wevocal.reverb', { mix: 0.3 }), { mix: 0.3 }, 120, 'js')).toBeNull()
+  it('リバーブは JSFX に無いので、JSFX を優先しても ReaVerbate。EQ は優先によらず ReaEQ', () => {
+    expect(builtinToReaper(slot('wevocal.reverb', { mix: 0.3 }), { mix: 0.3 }, 120, 'js')).toMatchObject({ kind: 'vst', file: 'reaverbate.dll' })
     const eq = { bands: 0, range: 0, b5: 3 }
     expect(builtinToReaper(slot(EQ_ID, eq), eq, 120, 'js')?.kind).toBe('reaeq')
     expect(builtinToReaper(slot(EQ_ID, eq), eq, 120, 'vst')?.kind).toBe('reaeq')
@@ -64,6 +64,17 @@ describe('JSFX への変換', () => {
     for (const [k, x] of Object.entries(v)) expect(back.values[k]).toBeCloseTo(x, 3)
     // JSFX を優先すると Major Tom
     expect(builtinToReaper(slot('wevocal.compressor', v), v, 120, 'js')?.kind).toBe('js')
+  })
+
+  it('リバーブ ↔ ReaVerbate、ゲート ↔ ReaGate の主な値が戻る', () => {
+    const rv = { type: 1, size: 0.6, damp: 0.3, mix: 0.25, predelay: 20 }
+    const r = builtinToReaper(slot('wevocal.reverb', rv), rv, 120, 'vst')!
+    expect(r.kind === 'vst' && [r.file, r.inputs, r.params.length]).toEqual(['reaverbate.dll', 2, 8])
+    if (r.kind === 'vst') for (const k of ['size', 'damp', 'mix', 'predelay']) expect(reaVstToBuiltin(r)!.values[k]).toBeCloseTo(rv[k as keyof typeof rv], 3)
+    const gv = { threshold: -45, range: -60, attack: 2, hold: 80, release: 150 }
+    const g = builtinToReaper(slot('wevocal.gate', gv), gv, 120, 'vst')!
+    expect(g.kind === 'vst' && [g.file, g.inputs, g.params.length]).toEqual(['reagate.dll', 4, 21])
+    if (g.kind === 'vst') for (const [k, x] of Object.entries(gv)) expect(reaVstToBuiltin(g)!.values[k]).toBeCloseTo(x, 3)
   })
 
   it('JSFX の行は 64 個の値で、無い番号は -', () => {

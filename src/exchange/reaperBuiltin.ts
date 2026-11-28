@@ -92,27 +92,86 @@ const JS: Record<string, JsMap> = {
 /** REAPER の JSFX のパス → Studio の FX の id（読み込み用。ensemble と chorus は声の数で分ける） */
 const BY_PATH = new Map(Object.entries(JS).filter(([id]) => id !== 'wevocal.ensemble').map(([id, m]) => [m.path.toLowerCase(), id]))
 
-/** ReaComp（識別番号 'recm'）。つまみの値は 21 個で、サイドチェーンの分だけ入力が 4 つ */
-const REACOMP_ID = 0x7265636d
-/** 新しく入れた ReaComp のつまみの値（REAPER が保存したもの）。コンプで決まる所だけを書き換える */
-const REACOMP_DEFAULTS = [1, 0.030303, 0.010364, 0.025146, 0.001124, 0, 1, 0, 0, 0, 3.16e-8, 1, 0, 0.05, 0, 0, 0, 0.25, 0, 0, 0]
 /**
- * ReaComp のつまみの目盛り（REAPER 7.82 で測られたもの。https://github.com/xDarkzx/Reaper-MCP/issues/41）。
- * 0 しきい値（倍率）、1 比率（(比率 - 1) / 99）、2 アタック（ms / 500）、3 リリース（ms / 5000）、11 ウェット（倍率）、14 ニー（dB / 24）
+ * Rea 系の VST（つまみの値で状態を持つもの）。つまみの目盛りは、REAPER で TrackFX_SetParam と TrackFX_GetFormattedParamValue で測ったもの
+ * （ReaComp は https://github.com/xDarkzx/Reaper-MCP/issues/41 の式とも一致）。.rpp に書くのは、REAPER が足す最後の 3 つ（バイパス、Wet、Delta）を除いたつまみ
  */
-const REACOMP = { threshold: 0, ratio: 1, attack: 2, release: 3, wet: 11, knee: 14 }
+interface ReaMap {
+  plugin: string
+  name: string
+  file: string
+  /** 識別番号（4 文字） */
+  uniqueId: number
+  /** 入力のピンの数（サイドチェーンを持つものは 4） */
+  inputs: number
+  /** 新しく入れたときのつまみの値（REAPER で測った既定値） */
+  defaults: number[]
+  to: (v: Values, p: number[]) => void
+  from: (p: number[]) => Values
+}
 
-/** B（Rea 系の VST）にできる FX。WevEQ → ReaEQ、コンプ → ReaComp（ほかの Rea 系はつまみの目盛りが分かってから足す） */
+const REA: ReaMap[] = [
+  {
+    // 0 しきい値（倍率）、1 比率（1 + 99 × 値）、2 アタック（500 ms × 値）、3 リリース（5000 ms × 値）、10 ドライ、11 ウェット（倍率）、14 ニー（24 dB × 値）
+    plugin: 'wevocal.compressor',
+    name: 'ReaComp (Cockos)',
+    file: 'reacomp.dll',
+    uniqueId: 0x7265636d,
+    inputs: 4,
+    defaults: [1, 0.030303, 0.006, 0.02, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0.05, 0, 0, 0, 0.25, 0, 0, 0],
+    to: (v, p) => {
+      p[0] = gain(v.threshold)
+      p[1] = clamp((v.ratio - 1) / 99, 0, 1)
+      p[2] = clamp(v.attack / 500, 0, 1)
+      p[3] = clamp(v.release / 5000, 0, 1)
+      p[11] = gain(v.makeup)
+      p[14] = clamp(v.knee / 24, 0, 1)
+    },
+    from: (p) => ({ threshold: clamp(dB(p[0]), -60, 0), ratio: clamp(1 + 99 * p[1], 1, 20), attack: clamp(p[2] * 500, 0, 100), release: clamp(p[3] * 5000, 10, 1000), makeup: clamp(dB(p[11]), 0, 24), knee: clamp(p[14] * 24, 0, 40) }),
+  },
+  {
+    // 0 ウェット、1 ドライ（倍率）、2 部屋の大きさ（画面は 30 + 68 × 値）、3 ダンピング（100 % × 値）、4 幅（2 × 値 - 1）、5 プリディレイ（500 ms × 値）、6 ローパス、7 ハイパス（20000 Hz × 値）。部屋の種類は移らない
+    plugin: 'wevocal.reverb',
+    name: 'ReaVerbate (Cockos)',
+    file: 'reaverbate.dll',
+    uniqueId: 0x72766238,
+    inputs: 2,
+    defaults: [0.500035, 1, 0.294118, 0.5, 1, 0, 1, 0],
+    to: (v, p) => {
+      p[0] = clamp(v.mix, 0, 2)
+      p[1] = clamp(1 - v.mix, 0, 2)
+      p[2] = clamp(v.size, 0, 1)
+      p[3] = clamp(v.damp, 0, 1)
+      p[5] = clamp(v.predelay / 500, 0, 1)
+    },
+    from: (p) => ({ mix: clamp(p[0] / (p[0] + p[1] || 1), 0, 1), size: clamp(p[2], 0, 1), damp: clamp(p[3], 0, 1), predelay: clamp(p[5] * 500, 0, 100) }),
+  },
+  {
+    // 0 しきい値（倍率）、1 アタック（500 ms × 値）、2 リリース（5000 ms × 値）、4 ホールド（1000 ms × 値）、9 ドライ（閉じても通る音。レンジにする）、10 ウェット（倍率）
+    plugin: 'wevocal.gate',
+    name: 'ReaGate (Cockos)',
+    file: 'reagate.dll',
+    uniqueId: 0x72656774,
+    inputs: 4,
+    defaults: [0, 0.006, 0.02, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0.543307, 0, 0, 0, 0],
+    to: (v, p) => {
+      p[0] = gain(v.threshold)
+      p[1] = clamp(v.attack / 500, 0, 1)
+      p[2] = clamp(v.release / 5000, 0, 1)
+      p[4] = clamp(v.hold / 1000, 0, 1)
+      p[9] = gain(v.range)
+    },
+    from: (p) => ({ threshold: clamp(dB(p[0]), -90, 0), attack: clamp(p[1] * 500, 0.1, 100), release: clamp(p[2] * 5000, 5, 1000), hold: clamp(p[4] * 1000, 0, 500), range: clamp(dB(p[9]), -90, 0) }),
+  },
+]
+
+/** B（Rea 系の VST）にできる FX。WevEQ → ReaEQ、コンプ → ReaComp、リバーブ → ReaVerbate、ゲート → ReaGate */
 function toVst(s: FxSlot, v: Values): XFx | null {
-  if (s.plugin === 'wevocal.compressor') {
-    const p = [...REACOMP_DEFAULTS]
-    p[REACOMP.threshold] = gain(v.threshold)
-    p[REACOMP.ratio] = clamp((v.ratio - 1) / 99, 0, 1)
-    p[REACOMP.attack] = clamp(v.attack / 500, 0, 1)
-    p[REACOMP.release] = clamp(v.release / 5000, 0, 1)
-    p[REACOMP.knee] = clamp(v.knee / 24, 0, 1)
-    p[REACOMP.wet] = gain(v.makeup)
-    return { kind: 'vst', on: s.on, name: 'ReaComp (Cockos)', file: 'reacomp.dll', uniqueId: REACOMP_ID, params: p, inputs: 4, preset: '' }
+  const r = REA.find((x) => x.plugin === s.plugin)
+  if (r) {
+    const params = [...r.defaults]
+    r.to(v, params)
+    return { kind: 'vst', on: s.on, name: r.name, file: r.file, uniqueId: r.uniqueId, params, inputs: r.inputs, preset: '' }
   }
   if (s.plugin !== EQ_ID) return null
   const eq = valuesToEq(s.values, s.on)
@@ -145,19 +204,9 @@ export function jsToBuiltin(fx: JsFx): { plugin: string; values: Values } | null
   return { plugin, values: JS[plugin].from(s) }
 }
 
-/** 読み込み: Rea 系の VST を Studio の FX にする（ReaComp → コンプ）。知らないものは null */
+/** 読み込み: Rea 系の VST を Studio の FX にする（ReaComp → コンプ、ReaVerbate → リバーブ、ReaGate → ゲート）。知らないものは null */
 export function reaVstToBuiltin(fx: Extract<XFx, { kind: 'vst' }>): { plugin: string; values: Values } | null {
-  if (fx.uniqueId !== REACOMP_ID || fx.params.length <= REACOMP.knee) return null
-  const p = fx.params
-  return {
-    plugin: 'wevocal.compressor',
-    values: {
-      threshold: clamp(dB(p[REACOMP.threshold]), -60, 0),
-      ratio: clamp(1 + 99 * p[REACOMP.ratio], 1, 20),
-      attack: clamp(p[REACOMP.attack] * 500, 0, 100),
-      release: clamp(p[REACOMP.release] * 5000, 10, 1000),
-      knee: clamp(p[REACOMP.knee] * 24, 0, 40),
-      makeup: clamp(dB(p[REACOMP.wet]), 0, 24),
-    },
-  }
+  const r = REA.find((x) => x.uniqueId === fx.uniqueId)
+  if (!r || fx.params.length < r.defaults.length) return null
+  return { plugin: r.plugin, values: r.from(fx.params) }
 }
