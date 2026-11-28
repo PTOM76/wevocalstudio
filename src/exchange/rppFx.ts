@@ -107,10 +107,43 @@ export function fxLines(fx: XFx, quote: (s: string) => string): string[] {
     return [`BYPASS ${fx.on ? 0 : 1} 0 0`, `<JS ${fx.path.includes(' ') ? quote(fx.path) : fx.path} ""`, `  ${values.join(' ')}`, '>', 'FLOATPOS 0 0 0 0', 'WAK 0 0']
   }
   const vst = fx.kind === 'vst' ? fx : { name: REAEQ.name, file: REAEQ.file, uniqueId: REAEQ_ID }
+  const vst3 = fx.kind === 'vst' && fx.cid && fx.chunk ? fx.cid : null
   const chunk = fx.kind === 'reaeq' || !!fx.chunk
-  const data = fx.kind === 'reaeq' ? reaeqChunk(fx.bands) : fx.chunk ?? fx.params.reduce((b, v) => b.f32(v), new Bytes().u32(0xdeadbeef).u32(0xdeadf00d)).done()
+  const data = fx.kind === 'reaeq' ? reaeqChunk(fx.bands) : vst3 && fx.chunk ? toReaperVst3(fx.chunk) : fx.chunk ?? fx.params.reduce((b, v) => b.f32(v), new Bytes().u32(0xdeadbeef).u32(0xdeadf00d)).done()
   const lines = blobLines(vst.uniqueId, data, chunk, fx.kind === 'vst' ? (fx.preset ?? 'Default') : '', fx.kind === 'vst' ? fx.inputs : 2)
-  return [`BYPASS ${fx.on ? 0 : 1} 0 0`, `<VST ${quote(`VST: ${vst.name}`)} ${vst.file.includes(' ') ? quote(vst.file) : vst.file} 0 "" ${vst.uniqueId >>> 0}<${vstTag(vst.uniqueId, vst.name)}> ""`, ...lines.map((l) => `  ${l}`), '>', 'FLOATPOS 0 0 0 0', 'WAK 0 0']
+  // VST3 は「VST3: 名前」と、番号の後ろに {クラスの id}
+  const tag = vst3 ? `{${vst3.toUpperCase()}}` : `<${vstTag(vst.uniqueId, vst.name)}>`
+  return [`BYPASS ${fx.on ? 0 : 1} 0 0`, `<VST ${quote(`${vst3 ? 'VST3' : 'VST'}: ${vst.name}`)} ${vst.file.includes(' ') ? quote(vst.file) : vst.file} 0 "" ${vst.uniqueId >>> 0}${tag} ""`, ...lines.map((l) => `  ${l}`), '>', 'FLOATPOS 0 0 0 0', 'WAK 0 0']
+}
+
+/**
+ * VST3 の状態（vstbridge の形: 長さと音の処理の状態、長さとコントローラーの状態）を、REAPER の塊のデータにする。
+ * REAPER が保存したファイルから読み取った形: 音の処理の状態の長さ、1、音の処理の状態、コントローラーの状態の長さ、コントローラーの状態、0
+ */
+export function toReaperVst3(state: Uint8Array): Uint8Array {
+  const { comp, ctrl } = splitVst3(state)
+  return new Bytes().u32(comp.length).u32(1).bytes(comp).u32(ctrl.length).bytes(ctrl).u32(0).done()
+}
+
+/** REAPER の VST3 の塊のデータを、vstbridge の状態の形にする（toReaperVst3 の逆）。形が違えば null */
+export function fromReaperVst3(d: Uint8Array): Uint8Array | null {
+  const v = new DataView(d.buffer, d.byteOffset, d.byteLength)
+  if (d.length < 12) return null
+  const n = v.getUint32(0, true)
+  if (8 + n + 4 > d.length) return null
+  const comp = d.subarray(8, 8 + n)
+  const m = v.getUint32(8 + n, true)
+  const ctrl = 12 + n + m <= d.length ? d.subarray(12 + n, 12 + n + m) : new Uint8Array()
+  return new Bytes().u32(comp.length).bytes(comp).u32(ctrl.length).bytes(ctrl).done()
+}
+
+/** vstbridge の状態を、音の処理の状態とコントローラーの状態に分ける */
+function splitVst3(state: Uint8Array): { comp: Uint8Array; ctrl: Uint8Array } {
+  const v = new DataView(state.buffer, state.byteOffset, state.byteLength)
+  const n = state.length >= 4 ? v.getUint32(0, true) : 0
+  const comp = state.subarray(4, 4 + n)
+  const m = state.length >= 8 + n ? v.getUint32(4 + n, true) : 0
+  return { comp, ctrl: state.subarray(8 + n, 8 + n + m) }
 }
 
 const fromBase64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
@@ -119,7 +152,7 @@ const fromBase64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0
  * <VST …> の項目を読む（fxLines の逆）。ReaEQ は帯域（種類 8）の帯だけを、つまみの値の VST はその値を読む。
  * 塊でしか状態を持たない VST（つまみの値が読めない）と、読めない塊は null
  */
-export function readFx(o: { name: string; file: string; uniqueId: number; lines: string[]; on: boolean }): XFx | null {
+export function readFx(o: { name: string; file: string; uniqueId: number; lines: string[]; on: boolean; cid?: string }): XFx | null {
   let raw: Uint8Array[]
   try {
     raw = o.lines.map(fromBase64)
@@ -152,6 +185,11 @@ export function readFx(o: { name: string; file: string; uniqueId: number; lines:
     return { kind: 'reaeq', on: o.on, bands }
   }
   const name = o.name.replace(/^VST3?i?: /, '').replace(/\s*\([^()]*\)$/, '')
+  // VST3 は塊を vstbridge の状態の形にする
+  if (o.cid) {
+    const state = chunk ? fromReaperVst3(all.subarray(0, data.byteLength)) : null
+    return state ? { kind: 'vst', on: o.on, name, file: o.file, uniqueId: o.uniqueId, params: [], cid: o.cid, chunk: state } : null
+  }
   // 塊でしか状態を持たない VST は、塊をそのまま持つ（つまみの値は読み込むときに VST から読む）
   if (chunk) return data.byteLength ? { kind: 'vst', on: o.on, name, file: o.file, uniqueId: o.uniqueId, params: [], chunk: new Uint8Array(all.subarray(0, data.byteLength)) } : null
   if (data.byteLength < 8 || data.getUint32(0, true) !== 0xdeadbeef) return null

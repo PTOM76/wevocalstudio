@@ -146,7 +146,7 @@ function readChain(chain: Node | undefined, notes: ReadNotes): XFx[] {
       bypass = false
       continue
     }
-    const fx = x.name === 'VST' ? readFx({ name: x.args[0] ?? '', file: x.args[1] ?? '', uniqueId: parseInt(x.args[4] ?? '0', 10) || 0, lines: x.lines.map((l) => l.join('')), on: !bypass }) : null
+    const fx = x.name === 'VST' ? readFx({ name: x.args[0] ?? '', file: x.args[1] ?? '', uniqueId: parseInt(x.args[4] ?? '0', 10) || 0, cid: x.args[4]?.match(/\{([0-9A-Fa-f]{32})\}/)?.[1]?.toUpperCase(), lines: x.lines.map((l) => l.join('')), on: !bypass }) : null
     if (fx) out.push(fx)
     else if (x.name !== 'JS_SER') notes.skippedFx++
     bypass = false

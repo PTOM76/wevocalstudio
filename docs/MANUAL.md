@@ -697,7 +697,7 @@ REAPER のプロジェクトと DAWproject（Bitwig Studio、Studio One など�
 | 項目 | 内容 |
 | --- | --- |
 | 波形ブロックの渡し方 | 「元の音で渡し、ピッチや速度は設定値にする」（既定）、「加工したブロックだけ描画する」、「すべて描画する」。元の音で渡すと、相手の DAW で編集しやすいが、処理方式の違いで音は少し変わる |
-| FX も書き出す | REAPER は、VST2 をつまみの値ごと書き（VST3 は書き出さない）、組み込みの FX を REAPER の FX にする。DAWproject は、VST（VST2、VST3）を状態ごと書き、組み込みの FX は書かない |
+| FX も書き出す | REAPER は、VST2 をつまみの値ごと、VST3 を状態ごと書き、組み込みの FX を REAPER の FX にする。DAWproject は、VST（VST2、VST3）を状態ごと書き、組み込みの FX は書かない |
 
 書き出すもの:
 
@@ -731,7 +731,7 @@ REAPER のプロジェクトと DAWproject（Bitwig Studio、Studio One など�
 
 - 音声は、zip の中か、一緒に選んだファイルから、パスと名前で探す
 - 見つからない音声は無音の仮の音になり、「不足している音声」が表示される。「フォルダーから探す…」で .rpp のあるフォルダーを選ぶと、サブフォルダーも含めてまとめて探す。1 つずつファイルを選ぶこともできる。あとからは「ブロック」→「不足している音声を割り当てる…」で開く
-- FX は、導入済みの VST、ReaEQ、上の表の Rea 系の VST と JSFX を、組み込みの FX か VST にして読み込む。DAWproject は、導入済みの VST（VST2、VST3）を状態ごと読み込む。読み込めない FX とアイテムの数は、開いたときに表示される
+- FX は、導入済みの VST、ReaEQ、上の表の Rea 系の VST と JSFX を、組み込みの FX か VST にして読み込む。VST3 は、REAPER と DAWproject のどちらからも状態ごと読み込む。読み込めない FX とアイテムの数は、開いたときに表示される
 - REAPER のアイテムのピッチの処理方式は、設定の「ファイル」の「REAPER のピッチの処理方式」で、種類（Soloist、Pro、Efficient、そのほか）ごとに処理方式とフォルマントを決める。既定は、Soloist が Vesola でフォルマントを保ち、Pro と Efficient が Phasera v2 でフォルマントを保たない
 
 ## 設定

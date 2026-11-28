@@ -1,6 +1,6 @@
 // rppFx.ts のテスト（REAPER の FX の塊の形。値は架空のもの）
 import { describe, expect, it } from 'vitest'
-import { fxLines, qToOctaves } from './rppFx'
+import { fxLines, qToOctaves, readFx, toReaperVst3 } from './rppFx'
 
 const q = (s: string) => `"${s}"`
 const bytes = (b64: string) => {
@@ -44,5 +44,16 @@ describe('qToOctaves', () => {
   it('10 帯の Q（1.41）は約 1 オクターブ、31 帯の Q（4.32）は約 1/3 オクターブ', () => {
     expect(qToOctaves(1.41)).toBeCloseTo(1, 1)
     expect(qToOctaves(4.32)).toBeCloseTo(1 / 3, 2)
+  })
+
+  it('VST3 は「VST3: 名前」と {クラスの id} で書き、状態を REAPER の形にして読み戻せる', () => {
+    // vstbridge の状態: 長さ 2 の音の処理の状態と、長さ 1 のコントローラーの状態
+    const chunk = Uint8Array.of(2, 0, 0, 0, 0xaa, 0xbb, 1, 0, 0, 0, 0xcc)
+    const cid = '0123456789ABCDEF0123456789ABCDEF'
+    const lines = fxLines({ kind: 'vst', on: true, name: 'Test Three', file: 'Test Three.vst3', uniqueId: 9, params: [], cid, chunk }, q)
+    expect(lines[1]).toBe(`<VST "VST3: Test Three" "Test Three.vst3" 0 "" 9{${cid}} ""`)
+    expect([...toReaperVst3(chunk)]).toEqual([2, 0, 0, 0, 1, 0, 0, 0, 0xaa, 0xbb, 1, 0, 0, 0, 0xcc, 0, 0, 0, 0])
+    const back = readFx({ name: 'VST3: Test Three', file: 'Test Three.vst3', uniqueId: 9, lines: lines.slice(2, -3).map((l) => l.trim()), on: true, cid })
+    expect(back && back.kind === 'vst' && [back.cid, [...(back.chunk ?? [])]]).toEqual([cid, [...chunk]])
   })
 })

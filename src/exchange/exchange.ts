@@ -194,8 +194,8 @@ export function trackFx(t: Project['tracks'][number], bpm = 120, prefer: ReaperF
     const plugin = findPlugin(s.plugin)
     const m = plugin?.manifest
     const vst3 = m?.format === 'vst' && /\.vst3$/i.test(m.vst?.file ?? '')
-    // VST3 は REAPER の書き方（状態の形）が VST2 と違い、まだ書けない。DAWproject は cid が要る（古い導入には無い）
-    if (vst3 && (daw === 'reaper' || !m?.vst?.cid)) skipped++
+    // VST3 は cid が要る（古い導入には無い）
+    if (vst3 && !m?.vst?.cid) skipped++
     else if (m?.format === 'vst') {
       const values = migrateValues(m, s.values)
       const name = String(plugin?.lang?.en_us?.name ?? plugin?.lang?.ja_jp?.name ?? m.id)
